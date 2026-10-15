@@ -4,7 +4,8 @@
  */
 import { SymbolView, type SFSymbol, type SymbolWeight } from 'expo-symbols';
 import React from 'react';
-import type { StyleProp, ViewStyle } from 'react-native';
+import { Platform, type StyleProp, type ViewStyle } from 'react-native';
+import { WebSymbol } from './symbolWeb';
 import { iconTier } from '../theme';
 
 type Props = { size?: number; color?: string; fill?: string; strokeWidth?: number; style?: StyleProp<ViewStyle> };
@@ -14,6 +15,7 @@ function make(name: SFSymbol, filled?: SFSymbol) {
     const useFilled = filled && fill && fill !== 'transparent';
     const weight: SymbolWeight = strokeWidth && strokeWidth >= 2.3 ? 'semibold' : 'medium';
     const s = iconTier(size);
+    if (Platform.OS === 'web') return <WebSymbol name={useFilled ? filled! : name} size={s} color={color} />;
     return <SymbolView name={useFilled ? filled : name} size={s} tintColor={color} weight={weight} style={[{ width: s, height: s }, style]} />;
   };
   Icon.displayName = name;

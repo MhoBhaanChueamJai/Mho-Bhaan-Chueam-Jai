@@ -1,7 +1,8 @@
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AppProvider, useApp } from '../store/app';
@@ -33,7 +34,23 @@ function Root() {
   );
 }
 
+/** เว็บ: โหลด CanvasKit (Skia) ก่อนแสดงผล — iOS ไม่ต้อง */
+function useSkiaWeb() {
+  const [ok, setOk] = useState(Platform.OS !== 'web');
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const base = (process.env.EXPO_BASE_URL ?? '').replace(/\/$/, '');
+    import('@shopify/react-native-skia/lib/module/web')
+      .then(({ LoadSkiaWeb }) => LoadSkiaWeb({ locateFile: (f: string) => `${base}/${f}` }))
+      .then(() => setOk(true))
+      .catch(() => setOk(true));
+  }, []);
+  return ok;
+}
+
 export default function Layout() {
+  const skiaReady = useSkiaWeb();
+  if (!skiaReady) return null;
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: palette.bg }}>
       <SafeAreaProvider>

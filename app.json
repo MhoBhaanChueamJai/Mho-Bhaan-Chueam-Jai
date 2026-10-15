@@ -31,7 +31,9 @@
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "output": "single",
+      "bundler": "metro"
     },
     "plugins": [
       [
@@ -59,6 +61,9 @@
       ],
       "expo-video"
     ],
-    "scheme": "suebsan"
+    "scheme": "suebsan",
+    "experiments": {
+      "baseUrl": "/Mho-Bhaan-Chueam-Jai"
+    }
   }
 }

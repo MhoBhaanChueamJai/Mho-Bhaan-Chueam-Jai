@@ -8,7 +8,8 @@
  */
 import { SymbolView, type SFSymbol, type SymbolWeight } from 'expo-symbols';
 import React from 'react';
-import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { Platform, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { WebSymbol } from './symbolWeb';
 import { PressableScale, T } from './ui';
 import { iconTier, palette } from '../theme';
 
@@ -23,13 +24,14 @@ export const ios = {
 
 export function Sym({ name, size = 22, color = palette.primary, weight = 'medium', type = 'monochrome' }: { name: SFSymbol; size?: number; color?: string; weight?: SymbolWeight; type?: 'monochrome' | 'hierarchical' | 'palette' | 'multicolor' }) {
   const s = iconTier(size);
+  if (Platform.OS === 'web') return <WebSymbol name={name} size={s} color={color} />;
   return <SymbolView name={name} size={s} tintColor={color} weight={weight} type={type} style={{ width: s, height: s }} />;
 }
 
 export function AppIcon({ name, bg, size = 29, glyph }: { name: SFSymbol; bg: string; size?: number; glyph?: number }) {
   return (
     <View style={{ width: size, height: size, borderRadius: size * 0.26, borderCurve: 'continuous', backgroundColor: bg, alignItems: 'center', justifyContent: 'center' }}>
-      <SymbolView name={name} size={glyph ?? (size <= 32 ? 17 : 22)} tintColor="#FFFFFF" weight="semibold" style={{ width: glyph ?? (size <= 32 ? 17 : 22), height: glyph ?? (size <= 32 ? 17 : 22) }} />
+      {Platform.OS === 'web' ? <WebSymbol name={name} size={glyph ?? (size <= 32 ? 17 : 22)} color="#FFFFFF" /> : <SymbolView name={name} size={glyph ?? (size <= 32 ? 17 : 22)} tintColor="#FFFFFF" weight="semibold" style={{ width: glyph ?? (size <= 32 ? 17 : 22), height: glyph ?? (size <= 32 ? 17 : 22) }} />}
     </View>
   );
 }
