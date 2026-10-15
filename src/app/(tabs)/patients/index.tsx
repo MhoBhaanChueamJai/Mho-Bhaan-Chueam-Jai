@@ -57,6 +57,8 @@ function WeekPager({ selected, onSelect }: { selected: Date; onSelect: (d: Date)
         pagingEnabled
         showsHorizontalScrollIndicator={false}
         contentOffset={{ x: PAST_WEEKS * width, y: 0 }}
+        // เว็บไม่รองรับ contentOffset → เลื่อนไปสัปดาห์ปัจจุบันเมื่อวางเลย์เอาต์เสร็จ
+        onLayout={() => ref.current?.scrollTo({ x: page * width, animated: false })}
         onMomentumScrollEnd={(e) => setPage(Math.round(e.nativeEvent.contentOffset.x / width))}
         style={{ marginHorizontal: -16, marginVertical: -14 }}
       >
