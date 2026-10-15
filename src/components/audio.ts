@@ -1,0 +1,104 @@
+import {
+  AudioModule,
+  AudioQuality,
+  IOSOutputFormat,
+  createAudioPlayer,
+  setAudioModeAsync,
+  useAudioRecorder,
+  useAudioRecorderState,
+  type AudioPlayer,
+  type RecordingOptions,
+} from 'expo-audio';
+import { useEffect, useRef, useState } from 'react';
+import { useSharedValue } from 'react-native-reanimated';
+import { synthesize } from '../api/ai';
+import { useApp } from '../store/app';
+
+/** WAV 16kHz mono — รูปแบบที่ ASR (Qwen3-ASR) รองรับ */
+const ASR_PRESET: RecordingOptions = {
+  extension: '.wav',
+  sampleRate: 16000,
+  numberOfChannels: 1,
+  bitRate: 256000,
+  isMeteringEnabled: true,
+  ios: {
+    outputFormat: IOSOutputFormat.LINEARPCM,
+    audioQuality: AudioQuality.HIGH,
+    linearPCMBitDepth: 16,
+    linearPCMIsBigEndian: false,
+    linearPCMIsFloat: false,
+  },
+  android: { outputFormat: 'mpeg4', audioEncoder: 'aac' },
+  web: { mimeType: 'audio/webm' },
+};
+
+export function useVoiceRecorder() {
+  const recorder = useAudioRecorder(ASR_PRESET);
+  const state = useAudioRecorderState(recorder, 80);
+  const level = useSharedValue(0);
+
+  useEffect(() => {
+    // metering dBFS (-160..0) → 0..1
+    const db = state.metering ?? -160;
+    const v = state.isRecording ? Math.max(0, Math.min(1, (db + 55) / 50)) : 0;
+    level.value = v;
+  }, [state.metering, state.isRecording]);
+
+  const start = async () => {
+    const perm = await AudioModule.requestRecordingPermissionsAsync();
+    if (!perm.granted) throw new Error('mic-denied');
+    await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
+    await recorder.prepareToRecordAsync();
+    recorder.record();
+  };
+
+  const stop = async (): Promise<string | null> => {
+    await recorder.stop();
+    await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
+    return recorder.uri;
+  };
+
+  return { start, stop, level, isRecording: state.isRecording, durationMs: state.durationMillis };
+}
+
+/** พูดข้อความด้วย VoxCPM (ภาษาไทย) */
+export function useSpeaker() {
+  const { settings } = useApp();
+  const player = useRef<AudioPlayer | null>(null);
+  const [speaking, setSpeaking] = useState(false);
+  const level = useSharedValue(0);
+
+  useEffect(() => () => player.current?.remove(), []);
+
+  const stop = () => {
+    player.current?.pause();
+    player.current?.remove();
+    player.current = null;
+    setSpeaking(false);
+    level.value = 0;
+  };
+
+  const speak = async (text: string) => {
+    stop();
+    setSpeaking(true);
+    try {
+      const clean = text.replace(/[•*#]/g, ' ').replace(/\s+/g, ' ');
+      const uri = await synthesize(clean, settings.voice);
+      await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: false });
+      const p = createAudioPlayer({ uri });
+      player.current = p;
+      p.addListener('playbackStatusUpdate', (s) => {
+        level.value = s.playing ? 0.35 + Math.random() * 0.5 : 0;
+        if (s.didJustFinish) {
+          setSpeaking(false);
+          level.value = 0;
+        }
+      });
+      p.play();
+    } catch {
+      setSpeaking(false);
+    }
+  };
+
+  return { speak, stop, speaking, level };
+}

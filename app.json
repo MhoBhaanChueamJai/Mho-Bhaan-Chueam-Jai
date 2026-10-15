@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "folk-doctor-ai",
-    "slug": "folk-doctor-ai",
+    "name": "หมอบ้านเชื่อมใจ",
+    "slug": "suebsan-folk-doctor-ai",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -10,21 +10,55 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#2E8B5E"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "th.bms.suebsan",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "ใช้ไมโครโฟนเพื่อบันทึกเสียงเล่าอาการและภูมิปัญญา",
+        "NSCameraUsageDescription": "ใช้กล้องเพื่อสแกนตำรายาและสมุดข่อย",
+        "NSPhotoLibraryUsageDescription": "เลือกภาพตำรายาเพื่อแปลงเป็นดิจิทัล"
+      },
+      "appleTeamId": "FFFGJANVWN"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#1F6B4A"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "ใช้ไมโครโฟนเพื่อบันทึกเสียงเล่าอาการและภูมิปัญญา"
+        }
+      ],
+      "expo-font",
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "ใช้กล้องเพื่อสแกนตำรายาและสมุดข่อย"
+        }
+      ],
+      "expo-router",
+      "expo-asset",
+      "./plugins/withPodDeploymentTarget",
+      "./plugins/withSceneLifecycle",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "ใช้ Face ID เพื่อเข้าสู่ระบบหมอบ้านเชื่อมใจอย่างรวดเร็ว"
+        }
+      ],
+      "expo-video"
+    ],
+    "scheme": "suebsan"
   }
 }
