@@ -1,20 +1,16 @@
-import * as LocalAuthentication from 'expo-local-authentication';
-import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useVideoPlayer, VideoView } from 'expo-video';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View, useWindowDimensions } from 'react-native';
-import Animated, { FadeIn, FadeInDown, FadeInUp, useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeInUp, useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Sym, ios } from '../components/ios';
-import { AIFlower, IridescentPill, SoftShadow } from '../components/Orb';
-import { PressableScale, T, useHaptic } from '../components/ui';
+import { KeynoteIntro } from '../components/Intro';
+import { Button, PressableScale, T, useHaptic } from '../components/ui';
 import { useApp } from '../store/app';
 import { control, palette } from '../theme';
 
 /** รหัสผ่านสาธิต — ยังไม่มีระบบบัญชีหลังบ้าน */
 const DEMO_PASSWORD = '123456';
-const PROMO = require('../../assets/ai/promo.mp4');
 
 /** ช่องกรอกแคปซูลแยก (ชื่อผู้ใช้ / รหัสผ่าน) */
 function Field({
@@ -81,24 +77,9 @@ export default function Login() {
   const [show, setShow] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const [faceId, setFaceId] = useState(false);
   const shake = useSharedValue(0);
   const shakeStyle = useAnimatedStyle(() => ({ transform: [{ translateX: shake.value }] }));
   const canSubmit = user.trim().length >= 3 && pass.length >= 4 && !busy;
-
-  // วิดีโอพรีเซนต์แอป เล่นวนแบบปิดเสียง
-  const player = useVideoPlayer(PROMO, (p) => {
-    p.loop = true;
-    p.muted = true;
-    p.play();
-  });
-
-  useEffect(() => {
-    if (!settings.username) return;
-    Promise.all([LocalAuthentication.hasHardwareAsync(), LocalAuthentication.isEnrolledAsync()])
-      .then(([hw, en]) => setFaceId(hw && en))
-      .catch(() => {});
-  }, [settings.username]);
 
   const enter = (name: string) => {
     h.success();
@@ -123,44 +104,17 @@ export default function Login() {
     }, 600);
   };
 
-  const withFaceId = async () => {
-    const r = await LocalAuthentication.authenticateAsync({ promptMessage: 'เข้าสู่ระบบหมอบ้านเชื่อมใจ', cancelLabel: 'ยกเลิก' });
-    if (r.success) enter(settings.username);
-  };
 
-  const heroH = Math.min(height * 0.5, 460);
-  const phoneH = heroH - insets.top - 96;
-  const phoneW = phoneH * (440 / 960);
+
+  const heroH = Math.min(height * 0.56, 500) + insets.top;
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: '#FBF8FF' }}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: '#071A11' }}>
       <ScrollView contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} bounces={false}>
-        {/* ── ส่วนบน: วิดีโอพรีเซนต์แอป ── */}
-        <View style={{ height: heroH, paddingTop: insets.top + 12, alignItems: 'center', overflow: 'hidden' }}>
-          <LinearGradient colors={['#FFE6D6', '#FBDDF0', '#E7DDFF', '#DCE9FF']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
-          <View style={[styles.blob, { width: width * 0.9, height: width * 0.9, left: -width * 0.35, top: -width * 0.3, backgroundColor: 'rgba(255,190,150,0.45)' }]} />
-          <View style={[styles.blob, { width: width * 0.8, height: width * 0.8, right: -width * 0.35, top: heroH * 0.35, backgroundColor: 'rgba(170,150,255,0.35)' }]} />
-
-          <Animated.View entering={FadeInDown.duration(500)} style={styles.brand}>
-            <AIFlower size={30} active />
-            <T v="title" style={{ fontWeight: '700' }}>หมอบ้านเชื่อมใจ</T>
-          </Animated.View>
-
-          <Animated.View entering={FadeIn.delay(150).duration(600)} style={{ marginTop: 14 }}>
-            <SoftShadow width={phoneW} height={phoneH} radius={phoneW * 0.16} blur={22} offsetY={14} color="rgba(120,80,170,0.32)" />
-            <View style={[styles.phone, { width: phoneW, height: phoneH, borderRadius: phoneW * 0.16 }]}>
-              <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="cover" nativeControls={false} allowsPictureInPicture={false} />
-            </View>
-          </Animated.View>
-
-          <View style={[styles.tag, { left: 20, top: insets.top + 96 }]}>
-            <Sym name="waveform" size={15} color="#A35DD8" />
-            <T v="caption" style={{ fontWeight: '600' }}>พูดแทนพิมพ์</T>
-          </View>
-          <View style={[styles.tag, { right: 20, top: insets.top + 96 + phoneH * 0.45 }]}>
-            <Sym name="leaf.fill" size={15} color={palette.primary} />
-            <T v="caption" style={{ fontWeight: '600' }}>ภูมิปัญญาไทย</T>
-          </View>
+        {/* ── ส่วนบน: อินโทรเปิดตัวแอปแบบ keynote ── */}
+        <View style={{ height: heroH, paddingTop: insets.top }}>
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: '#071A11' }]} />
+          <KeynoteIntro width={width} height={heroH - insets.top} />
         </View>
 
         {/* ── ส่วนล่าง: กรอกข้อมูลเข้าสู่ระบบ ── */}
@@ -216,19 +170,14 @@ export default function Login() {
             </PressableScale>
           </View>
 
-          <PressableScale haptic="press" disabled={!canSubmit} onPress={submit} scaleTo={0.97} style={{ opacity: canSubmit ? 1 : 0.55, marginTop: 6 }}>
-            <IridescentPill style={styles.cta}>
-              <T v="body" style={{ fontWeight: '700' }}>{busy ? 'กำลังเข้าสู่ระบบ…' : 'เข้าสู่ระบบ'}</T>
-              {busy ? null : <Sym name="arrow.right" size={17} color={ios.label} weight="semibold" />}
-            </IridescentPill>
-          </PressableScale>
+          <Button
+            label={busy ? 'กำลังเข้าสู่ระบบ…' : 'เข้าสู่ระบบ'}
+            disabled={!canSubmit}
+            onPress={submit}
+            icon={busy ? undefined : <Sym name="arrow.right" size={17} color="#FFFFFF" weight="semibold" />}
+            style={{ marginTop: 6, height: 54 }}
+          />
 
-          {faceId ? (
-            <PressableScale haptic="press" onPress={withFaceId} scaleTo={0.97} style={styles.faceId}>
-              <Sym name="faceid" size={20} color={palette.primary} />
-              <T v="body" color={palette.primary} style={{ fontWeight: '600' }}>เข้าสู่ระบบด้วย Face ID</T>
-            </PressableScale>
-          ) : null}
 
           <View style={{ flex: 1 }} />
           <T v="caption" center color={ios.tertiary} style={{ marginTop: 22 }}>
@@ -241,10 +190,6 @@ export default function Login() {
 }
 
 const styles = StyleSheet.create({
-  blob: { position: 'absolute', borderRadius: 999, opacity: 0.9 },
-  brand: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(255,255,255,0.7)', paddingLeft: 6, paddingRight: 14, height: 40, borderRadius: 20 },
-  phone: { overflow: 'hidden', borderWidth: 5, borderColor: '#14201A', backgroundColor: '#fff' },
-  tag: { position: 'absolute', flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(255,255,255,0.85)', paddingHorizontal: 12, height: 34, borderRadius: 17 },
   sheet: { flex: 1, marginTop: -28, backgroundColor: '#FFFFFF', borderTopLeftRadius: 32, borderTopRightRadius: 32, borderCurve: 'continuous', paddingHorizontal: 24, paddingTop: 28 },
   label: { marginLeft: 16, marginBottom: 6, fontWeight: '600' },
   field: { flexDirection: 'row', alignItems: 'center', gap: 10, height: 54, borderRadius: 27, paddingLeft: 18, paddingRight: 8, backgroundColor: '#F4F4F7', borderWidth: 1.5, borderColor: 'transparent' },
@@ -254,6 +199,4 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8, minHeight: 36 },
   error: { flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 },
   forgot: { minHeight: 36, justifyContent: 'center', paddingLeft: 12 },
-  cta: { height: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
-  faceId: { height: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 12, borderRadius: 26, borderWidth: 1.5, borderColor: palette.primarySoft },
 });
