@@ -7,8 +7,9 @@ import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
+import { MenuView } from '@react-native-menu/menu';
 import React, { useEffect, useRef, useState } from 'react';
-import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import { Alert, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown, FadeInUp, useAnimatedRef, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSpeaker } from '../../components/audio';
@@ -137,14 +138,13 @@ export default function WisdomDetail() {
         },
       ],
     );
-  const [menuOpen, setMenuOpen] = useState(false);
+  // เมนู native ของ iOS (compact) — ต้องใส่ imageColor เอง ไม่งั้นไลบรารีส่งสีโปร่งใส ทำให้ไอคอนหาย
   const menu = [
-    { id: 'share', title: 'แชร์ให้เพื่อน', image: 'qrcode', destructive: false },
-    ...(isShared ? [] : [{ id: 'edit', title: 'แก้ไข', image: 'pencil', destructive: false }]),
-    { id: 'delete', title: isShared ? 'ลบออกจากคลังของฉัน' : 'ลบ', image: 'trash', destructive: true },
+    { id: 'share', title: 'แชร์ให้เพื่อน', image: 'qrcode', imageColor: palette.ink },
+    ...(isShared ? [] : [{ id: 'edit', title: 'แก้ไข', image: 'pencil', imageColor: palette.ink }]),
+    { id: 'delete', title: isShared ? 'ลบออกจากคลังของฉัน' : 'ลบ', image: 'trash', imageColor: '#E5484D', attributes: { destructive: true } },
   ];
   const onMenu = (id: string) => {
-    setMenuOpen(false);
     if (id === 'share') share();
     else if (id === 'edit') router.push({ pathname: '/wisdom/new', params: { id: w.id } });
     else if (id === 'delete') confirmDelete();
@@ -169,9 +169,11 @@ export default function WisdomDetail() {
               <HeaderButton label={readIdx !== null ? 'หยุดอ่านออกเสียง' : 'อ่านออกเสียงให้ฟัง'} onPress={toggleRead}>
                 <Sym name={readIdx !== null ? 'stop.fill' : 'headphones'} size={19} color={readIdx !== null ? palette.primary : palette.ink} weight="semibold" />
               </HeaderButton>
-              <HeaderButton label="เพิ่มเติม" onPress={() => setMenuOpen((o) => !o)}>
-                <Sym name="ellipsis" size={19} color={palette.ink} weight="semibold" />
-              </HeaderButton>
+              <MenuView shouldOpenOnLongPress={false} themeVariant="light" actions={menu} onPressAction={({ nativeEvent }) => onMenu(nativeEvent.event)}>
+                <View style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }} accessibilityRole="button" accessibilityLabel="เพิ่มเติม">
+                  <Sym name="ellipsis" size={19} color={palette.ink} weight="semibold" />
+                </View>
+              </MenuView>
             </View>
           ),
         }}
@@ -288,26 +290,6 @@ export default function WisdomDetail() {
         </View>
       </Animated.ScrollView>
 
-      {/* เมนูเพิ่มเติม: กระจกฝ้าลอยใต้ปุ่ม ⋯ (มีไอคอน) · แตะที่ว่างเพื่อปิด */}
-      {menuOpen ? (
-        <>
-          <Pressable style={StyleSheet.absoluteFill} onPress={() => setMenuOpen(false)} accessibilityLabel="ปิดเมนู" />
-          <View style={[styles.menuWrap, { top: insets.top + 50 }]}>
-            <Glass interactive tint="rgba(255,255,255,0.72)" style={styles.menu}>
-              {menu.map((m, i) => (
-                <View key={m.id}>
-                  {i ? <View style={styles.menuSep} /> : null}
-                  <PressableScale haptic="select" scaleTo={0.98} onPress={() => onMenu(m.id)} style={styles.menuRow} accessibilityLabel={m.title}>
-                    <T v="body" color={m.destructive ? palette.coral : palette.ink} style={{ flex: 1 }}>{m.title}</T>
-                    <Sym name={m.image as any} size={18} color={m.destructive ? palette.coral : palette.ink} />
-                  </PressableScale>
-                </View>
-              ))}
-            </Glass>
-          </View>
-        </>
-      ) : null}
-
       {/* แถบกำลังอ่านออกเสียง (เปิดจากปุ่มหูฟังบนแถบเครื่องมือ) — กระจกฝ้าลอยเหนือเนื้อหา */}
       {readIdx !== null ? (
         <View pointerEvents="box-none" style={[styles.readWrap, { bottom: insets.bottom ? 24 : 16 }]}>
@@ -337,10 +319,6 @@ const styles = StyleSheet.create({
   reading: { borderWidth: 2, borderColor: palette.primary, boxShadow: '0px 0px 0px 4px rgba(20,144,92,0.15), 0px 8px 20px rgba(20,60,40,0.12)' },
   readWrap: { position: 'absolute', left: 24, right: 24, borderRadius: 32 },
   readBar: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingLeft: 10, paddingRight: 10, height: 64, borderRadius: 32 },
-  menuWrap: { position: 'absolute', right: 16, width: 250, borderRadius: 22, boxShadow: '0px 16px 40px rgba(0,0,0,0.22)' },
-  menu: { borderRadius: 22, paddingVertical: 4 },
-  menuRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 18, height: 50 },
-  menuSep: { height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(0,0,0,0.12)', marginLeft: 18 },
   readIcon: { width: 36, height: 36, borderRadius: 18, backgroundColor: palette.primary, alignItems: 'center', justifyContent: 'center' },
   readBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.06)', alignItems: 'center', justifyContent: 'center' },
   coverWrap: { transform: [{ rotate: '-2deg' }] },
