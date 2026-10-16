@@ -26,7 +26,7 @@ const PAPER = '#F5ECD9';
 const INK = '#3A2C1C';
 const ORIGIN_RE = /\n*(ได้รับสืบทอดจาก|แหล่งที่มา):\s*(.+)$/;
 
-type Page = { kind: 'cover' } | { kind: 'title' } | { kind: 'text'; heading?: string; text: string } | { kind: 'list'; heading: string; items: string[]; numbered?: boolean };
+type Page = { kind: 'cover' } | { kind: 'title' } | { kind: 'refs' } | { kind: 'text'; heading?: string; text: string } | { kind: 'list'; heading: string; items: string[]; numbered?: boolean };
 
 /** ── พลิกหน้าแบบกระดาษม้วน (page curl) ──
  * ดัดแปลงหลักการจาก react-native-pagecurl (MIT, github.com/Onedayago/react-native-pagecurl):
@@ -100,6 +100,7 @@ export default function ReadBook() {
       if (extra && kf.extra) out.push({ kind: 'text', heading: kf.extra.label, text: extra });
     }
     if (w.caution) out.push({ kind: 'text', heading: kf.caution.label, text: w.caution });
+    if (w.refs?.length) out.push({ kind: 'refs' });
     return out;
   }, [w, body, kf, perPage]);
 
@@ -384,6 +385,21 @@ export default function ReadBook() {
             <Text style={[styles.small, { textAlign: 'center' }, F.r]}>{om ? `${om[1]} ${om[2]}` : w.sharedBy ? `จาก ${w.sharedBy}` : w.source}</Text>
             <Text style={[styles.small, { textAlign: 'center', marginTop: 4, color: 'rgba(58,44,28,0.5)' }, F.r]}>{w.date}</Text>
           </View>
+        ) : item.kind === 'refs' ? (
+          <View style={[styles.textPage, { paddingTop: padTop, paddingBottom: padBottom }]}>
+            <Text style={[styles.heading, F.b]}>บรรณานุกรม</Text>
+            {(w.refs ?? []).map((r, i) => (
+              <View key={i} style={styles.li}>
+                <Text style={[styles.bullet, F.r]}>{i + 1}.</Text>
+                <Text style={[styles.refText, { flex: 1 }, F.r]}>
+                  {r.title}
+                  {r.org ? `. ${r.org}` : ''}
+                  {r.year ? `, ${r.year}` : ''}
+                  {r.url ? `\n${r.url}` : ''}
+                </Text>
+              </View>
+            ))}
+          </View>
         ) : item.kind === 'text' ? (
           <View style={[styles.textPage, { paddingTop: padTop, paddingBottom: padBottom }]}>
             {item.heading ? <Text style={[styles.heading, F.b]}>{item.heading}</Text> : null}
@@ -474,6 +490,7 @@ const styles = StyleSheet.create({
   body: { fontSize: 17, lineHeight: 32, color: INK },
   chant: { textAlign: 'center', fontSize: 19, lineHeight: 38 },
   li: { flexDirection: 'row', gap: 10, marginBottom: 8 },
+  refText: { fontSize: 14.5, lineHeight: 26, color: INK },
   bullet: { fontSize: 17, lineHeight: 32, color: 'rgba(58,44,28,0.7)', minWidth: 22 },
   folio: { position: 'absolute', left: 0, right: 0, fontSize: 13, color: 'rgba(58,44,28,0.5)', textAlign: 'center' },
   top: { position: 'absolute', left: 16, right: 16, flexDirection: 'row', alignItems: 'center' },

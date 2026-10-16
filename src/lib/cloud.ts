@@ -141,7 +141,7 @@ export async function seedIfEmpty(): Promise<boolean> {
   if ((count ?? 0) > 0) return false;
   check(await supabase.from('patients').insert(seedPatients.map(patientToRow)));
   check(await supabase.from('visits').insert(seedPatients.flatMap((p) => p.visits.map((v) => visitToRow(p.id, v)))));
-  check(await supabase.from('wisdoms').insert(seedWisdoms.map(wisdomToRow)));
+  if (seedWisdoms.length) check(await supabase.from('wisdoms').insert(seedWisdoms.map(wisdomToRow)));
   check(
     await supabase.from('appointments').insert(
       Object.entries(seedAgenda).flatMap(([day, list]) => list.map((x) => ({ patient_id: x.pid, day, start_time: x.start, end_time: x.end, what: x.what }))),

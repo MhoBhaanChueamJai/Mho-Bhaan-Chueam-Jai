@@ -26,7 +26,7 @@ const KIND: Record<Wisdom['kind'], { icon: string; color: string }> = {
   ตำราโบราณ: { icon: 'scroll.fill', color: '#B07A2A' },
 };
 const KINDS = Object.keys(KIND) as Wisdom['kind'][];
-const SOURCE_ICON: Record<Wisdom['source'], string> = { เสียงเล่า: 'waveform', สแกนตำรา: 'doc.viewfinder', พิมพ์เอง: 'pencil', เพื่อนแชร์: 'person.2.fill' };
+const SOURCE_ICON: Record<Wisdom['source'], string> = { เสียงเล่า: 'waveform', สแกนตำรา: 'doc.viewfinder', พิมพ์เอง: 'pencil', เพื่อนแชร์: 'person.2.fill', ตำราอ้างอิง: 'checkmark.seal.fill' };
 
 const COVER = {
   shelf: require('../../../../assets/vault/shelf.jpg'),
@@ -60,7 +60,8 @@ export default function Vault() {
   const { width: SW } = useWindowDimensions();
   // ชั้นหนังสือ 3 คอลัมน์: ขอบ 20 + ช่องไฟ 16
   const GRID_W = Math.floor((SW - 40 - 32) / 3) - 4;
-  const list = wisdoms;
+  const list = wisdoms.filter((w) => !w.builtin);
+  const library = wisdoms.filter((w) => w.builtin);
   const count = (k: Wisdom['kind']) => wisdoms.filter((w) => w.kind === k).length;
 
   return (
@@ -99,7 +100,7 @@ export default function Vault() {
         </View>
 
         <Animated.View entering={FadeInDown.duration(420)}>
-          <T v="h1" color="#FFFFFF" style={styles.title}>บันทึกแล้ว {wisdoms.length} เรื่อง</T>
+          <T v="h1" color="#FFFFFF" style={styles.title}>บันทึกแล้ว {list.length} เรื่อง</T>
           <T v="callout" color="rgba(255,255,255,0.78)">ตำรับยา วิธีรักษา คาถา และตำราโบราณของคุณหมอ</T>
         </Animated.View>
 
@@ -137,6 +138,22 @@ export default function Vault() {
           <T v="callout" color={ios.secondary}>ยังไม่มีภูมิปัญญา กด “เพิ่มภูมิปัญญา” ได้เลย</T>
         </View>
       )}
+
+      {/* ── ตำราเริ่มต้นในระบบ (เนื้อหาจากแหล่งอ้างอิงทางการ) ── */}
+      {library.length ? (
+        <>
+          <View style={[styles.secHead, { marginTop: 30 }]}>
+            <T v="h3">ตำราอ้างอิงในระบบ</T>
+            <T v="subhead" color={ios.secondary}>{library.length} เล่ม</T>
+          </View>
+          <T v="caption" color={ios.secondary} style={{ paddingHorizontal: 20, marginTop: 4 }}>เนื้อหาจากบัญชียาหลักแห่งชาติ กรมการแพทย์แผนไทยฯ และแหล่งอ้างอิงทางการ</T>
+          <View style={styles.shelf}>
+            {library.map((w, i) => (
+              <Book key={w.id} w={w} width={GRID_W} i={i} />
+            ))}
+          </View>
+        </>
+      ) : null}
     </ScrollView>
     </>
   );

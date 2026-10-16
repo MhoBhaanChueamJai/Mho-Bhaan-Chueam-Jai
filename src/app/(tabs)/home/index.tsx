@@ -45,7 +45,8 @@ function Bell({ unread, shake }: { unread: number; shake: number }) {
 }
 
 export default function Home() {
-  const { patients, settings, isPractitioner, profile, wisdoms } = useApp();
+  const { patients, settings, isPractitioner, profile, wisdoms: allW } = useApp();
+  const wisdoms = allW.filter((w) => !w.builtin); // นับเฉพาะของหมอ (ไม่รวมตำราอ้างอิงในระบบ)
   // ผู้ป่วยที่มารักษาล่าสุด 3 ราย (หมอพื้นบ้านไม่ใช้ระบบนัด)
   const recent = [...patients].sort((a, b) => visitSortKey(lastVisit(b)?.date) - visitSortKey(lastVisit(a)?.date)).slice(0, 3);
   const name = settings.username && settings.username !== 'somchai' ? settings.username : doctor.short;

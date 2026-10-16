@@ -9,7 +9,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { MenuView } from '@react-native-menu/menu';
 import React, { useEffect, useRef, useState } from 'react';
-import { Alert, StyleSheet, View } from 'react-native';
+import { Alert, Linking, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown, FadeInUp, useAnimatedRef, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSpeaker } from '../../components/audio';
@@ -170,8 +170,9 @@ export default function WisdomDetail() {
   // เมนู native ของ iOS (compact) — ต้องใส่ imageColor เอง ไม่งั้นไลบรารีส่งสีโปร่งใส ทำให้ไอคอนหาย
   const menu = [
     { id: 'share', title: 'แชร์ให้เพื่อน', image: 'qrcode', imageColor: palette.ink },
-    ...(isShared ? [] : [{ id: 'edit', title: 'แก้ไข', image: 'pencil', imageColor: palette.ink }]),
-    { id: 'delete', title: isShared ? 'ลบออกจากคลังของฉัน' : 'ลบ', image: 'trash', imageColor: '#E5484D', attributes: { destructive: true } },
+    // ตำราเริ่มต้นในระบบ: อ่าน/แชร์ได้อย่างเดียว
+    ...(isShared || w.builtin ? [] : [{ id: 'edit', title: 'แก้ไข', image: 'pencil', imageColor: palette.ink }]),
+    ...(w.builtin ? [] : [{ id: 'delete', title: isShared ? 'ลบออกจากคลังของฉัน' : 'ลบ', image: 'trash', imageColor: '#E5484D', attributes: { destructive: true } }]),
   ];
   const onMenu = (id: string) => {
     if (id === 'share') share();
@@ -333,6 +334,27 @@ export default function WisdomDetail() {
             </Animated.View>
           ) : null}
 
+          {/* แหล่งอ้างอิง */}
+          {w.refs?.length ? (
+            <Animated.View entering={FadeInDown.delay(400).duration(380)} style={[styles.refs, elevation.e1]}>
+              <View style={styles.refsHead}>
+                <Sym name="checkmark.seal.fill" size={16} color={palette.primary} />
+                <T v="title">แหล่งอ้างอิง</T>
+              </View>
+              {w.refs.map((r, i) => (
+                <PressableScale key={i} haptic="select" disabled={!r.url} onPress={() => r.url && Linking.openURL(r.url)} style={styles.refRow} accessibilityLabel={`อ้างอิง ${r.title}`}>
+                  <T v="caption" color={ios.secondary} style={{ width: 18, fontWeight: '700' }}>{i + 1}.</T>
+                  <View style={{ flex: 1, gap: 1 }}>
+                    <T v="subhead" style={{ fontWeight: '600' }}>{r.title}</T>
+                    {r.org || r.year ? <T v="caption" color={ios.secondary}>{[r.org, r.year].filter(Boolean).join(' · ')}</T> : null}
+                    {r.url ? <T v="caption" color={palette.primary} numberOfLines={1}>{r.url.replace(/^https?:\/\//, '')}</T> : null}
+                  </View>
+                  {r.url ? <Sym name="arrow.up.right.square" size={15} color={ios.tertiary} /> : null}
+                </PressableScale>
+              ))}
+            </Animated.View>
+          ) : null}
+
         </View>
       </Animated.ScrollView>
 
@@ -384,5 +406,8 @@ const styles = StyleSheet.create({
   originRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12, paddingTop: 12, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: ios.separator },
   extra: { flexDirection: 'row', gap: 10, marginTop: 14, padding: 12, borderRadius: 14, backgroundColor: '#FDF3E3' },
   stepNum: { width: 24, height: 24, borderRadius: 12, backgroundColor: '#D9921A', alignItems: 'center', justifyContent: 'center', marginTop: 2 },
+  refs: { padding: 16, borderRadius: 22, borderCurve: 'continuous', backgroundColor: palette.surface, gap: 12 },
+  refsHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  refRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 6 },
   warn: { flexDirection: 'row', gap: 12, padding: 18, borderRadius: 22, borderCurve: 'continuous', backgroundColor: palette.coralSoft },
 });

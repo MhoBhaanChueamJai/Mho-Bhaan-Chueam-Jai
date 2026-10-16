@@ -2,7 +2,8 @@ import { setDialect, type Dialect } from '../lib/dialect';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import type { ModelKey } from '../api/ai';
-import { agenda as seedAgenda, patients as seedPatients, wisdoms as seedWisdoms, type MB5Visit, type Patient, type Wisdom } from '../data/mock';
+import { LIBRARY } from '../data/library';
+import { LEGACY_SAMPLE_WISDOMS, agenda as seedAgenda, patients as seedPatients, wisdoms as seedWisdoms, type MB5Visit, type Patient, type Wisdom } from '../data/mock';
 import * as cloud from '../lib/cloud';
 import type { Agenda } from '../lib/cloud';
 import { supabase } from '../lib/supabase';
@@ -105,7 +106,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [settings, setSettings] = useState<Settings>(defaults);
   // ให้ส่วน AI (นอก React) รู้ภาษาถิ่นที่ตั้งไว้
   useEffect(() => setDialect(settings.dialect ?? 'central'), [settings.dialect]);
-  const [wisdoms, setWisdoms] = useState<Wisdom[]>(seedWisdoms);
+  // mine = ตำราของผู้ใช้ (บันทึกเครื่อง/คลาวด์) · wisdoms = ของผู้ใช้ + ตำราเริ่มต้นในระบบ
+  const [mine, setMineRaw] = useState<Wisdom[]>(seedWisdoms);
+  const setWisdoms = (v: Wisdom[] | ((l: Wisdom[]) => Wisdom[])) =>
+    setMineRaw((l) => (typeof v === 'function' ? v(l) : v).filter((x) => !LEGACY_SAMPLE_WISDOMS.includes(x.id) && !x.builtin));
+  const wisdoms = useMemo(() => [...mine, ...LIBRARY], [mine]);
   const [patients, setPatients] = useState<Patient[]>(seedPatients);
   const [unlocked, setUnlocked] = useState(false);
   const [searchLog, setSearchLog] = useState<SearchLog>([]);
@@ -145,6 +150,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const d = await cloud.loadAll();
       setPatients(d.patients);
       setWisdoms(d.wisdoms);
+      // ตำราตัวอย่างรุ่นเก่าในคลาวด์ → ลบทิ้ง
+      d.wisdoms.filter((x) => LEGACY_SAMPLE_WISDOMS.includes(x.id)).forEach((x) => cloud.deleteWisdom(x.id).catch(() => {}));
       setAgenda(d.agenda);
       setSearchLog(d.events.filter((x) => x.kind === 'search').map((x) => ({ q: x.value, at: x.at })).slice(0, 30));
       setOpenLog(d.events.filter((x) => x.kind === 'open').map((x) => ({ pid: x.value, at: x.at })).slice(0, 50));
@@ -191,8 +198,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (ready) AsyncStorage.setItem(KEY, JSON.stringify({ settings, wisdoms, patients, searchLog, openLog, agenda })).catch(() => {});
-  }, [settings, wisdoms, patients, searchLog, openLog, agenda, ready]);
+    if (ready) AsyncStorage.setItem(KEY, JSON.stringify({ settings, wisdoms: mine, patients, searchLog, openLog, agenda })).catch(() => {});
+  }, [settings, mine, patients, searchLog, openLog, agenda, ready]);
 
   const value = useMemo<Ctx>(
     () => ({
@@ -201,6 +208,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       update: (patch) => setSettings((s) => ({ ...s, ...patch })),
       wisdoms,
       removeWisdom: (id) => {
+        if (LIBRARY.some((x) => x.id === id)) return;
         setWisdoms((list) => list.filter((x) => x.id !== id));
         push(() => cloud.deleteWisdom(id));
       },
