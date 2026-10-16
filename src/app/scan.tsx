@@ -161,7 +161,7 @@ export default function Scan() {
       {stage === 'result' && reading && (
         <View style={{ flex: 1, backgroundColor: palette.bg, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl }}>
           <ScrollView contentContainerStyle={{ padding: space.lg, paddingBottom: insets.bottom + 120 }} showsVerticalScrollIndicator={false}>
-            <Animated.View entering={FadeInDown.springify()} style={{ flexDirection: 'row', gap: space.md, alignItems: 'center' }}>
+            <Animated.View entering={FadeInDown.duration(420)} style={{ flexDirection: 'row', gap: space.md, alignItems: 'center' }}>
               {uri ? <Image source={{ uri }} style={styles.thumb} contentFit="cover" /> : null}
               <View style={{ flex: 1 }}>
                 {demo ? <Badge label="โหมดสาธิต" fg={palette.coral} bg={palette.coralSoft} /> : <Badge label="✓ อ่านด้วย Typhoon OCR" />}
@@ -191,7 +191,7 @@ export default function Scan() {
             </Animated.View>
 
             {reading.ingredients.length ? (
-              <Animated.View entering={FadeInDown.delay(120).springify()}>
+              <Animated.View entering={FadeInDown.delay(120).duration(420)}>
                 <T v="bodyStrong" color={palette.ink} style={{ marginTop: space.lg, marginBottom: space.sm }}>สมุนไพรที่พบในตำรา</T>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                   {reading.ingredients.map((x) => (
@@ -203,7 +203,7 @@ export default function Scan() {
               </Animated.View>
             ) : null}
 
-            <Animated.View entering={FadeInDown.delay(180).springify()} style={styles.note}>
+            <Animated.View entering={FadeInDown.delay(180).duration(420)} style={styles.note}>
               <IconBubble bg="rgba(197,154,61,0.2)" size={44}>
                 <ScrollText size={22} color="#8A6A1E" />
               </IconBubble>

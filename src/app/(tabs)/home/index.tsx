@@ -12,7 +12,7 @@ import { visitSortKey } from '../../../data/tones';
 import { useApp } from '../../../store/app';
 import { palette } from '../../../theme';
 
-const enter = (i: number) => FadeInDown.delay(30 + i * 50).springify().damping(20);
+const enter = (i: number) => FadeInDown.delay(30 + i * 50).duration(420);
 
 /** เครื่องมือ — ไอคอนสี่เหลี่ยมมนสีทึบแบบแอป Apple */
 const TOOLS = [

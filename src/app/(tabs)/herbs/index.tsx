@@ -48,7 +48,7 @@ export default function Herbs() {
         renderItem={({ item, index }) => {
           const tone = tasteTone[item.taste];
           return (
-            <Animated.View entering={FadeInDown.delay((index % 6) * 60).springify().damping(18)} layout={LinearTransition.springify()} style={{ flex: 1 / 2 }}>
+            <Animated.View entering={FadeInDown.delay((index % 6) * 60).duration(420)} layout={LinearTransition.duration(280)} style={{ flex: 1 / 2 }}>
               <PressableScale scaleTo={0.96} onPress={() => router.push(`/herb/${item.id}`)} style={[styles.card, elevation.e1]} accessibilityLabel={item.name}>
                 <View>
                   <Image source={item.image} style={styles.img} contentFit="cover" transition={250} />

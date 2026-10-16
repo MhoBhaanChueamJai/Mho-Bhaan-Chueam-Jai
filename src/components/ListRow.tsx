@@ -24,7 +24,7 @@ export function CircleIcon({ name, color = palette.primary, size = ICON }: { nam
 
 export function ListSection({ title, footer, children, i = 0 }: { title?: string; footer?: string; children: React.ReactNode; i?: number }) {
   return (
-    <Animated.View entering={FadeInDown.delay(40 + i * 50).springify().damping(20)} layout={LinearTransition.springify().damping(20)} style={{ marginTop: 32 }}>
+    <Animated.View entering={FadeInDown.delay(40 + i * 50).duration(420)} layout={LinearTransition.duration(280)} style={{ marginTop: 32 }}>
       {title ? <T v="h3" style={styles.title}>{title}</T> : null}
       <View style={[styles.group, elevation.e1]}>{children}</View>
       {footer ? <T v="caption" color={ios.secondary} style={styles.footer}>{footer}</T> : null}

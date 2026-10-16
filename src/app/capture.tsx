@@ -319,7 +319,7 @@ herbs ไม่เกิน 3 รายการ รายการอื่น�
             { m: 'patient' as Mode, title: 'เล่าอาการผู้ป่วย', sub: 'ครูปัญญาช่วยจด วิเคราะห์ธาตุ แนะนำสมุนไพร และเตือนอันตราย', Icon: Stethoscope, bg: palette.primarySoft, fg: palette.primary },
             { m: 'wisdom' as Mode, title: 'ถ่ายทอดภูมิปัญญา', sub: 'เล่าตำรับยาหรือวิธีรักษา ครูปัญญาเรียบเรียงเป็นสมุดข่อยดิจิทัล', Icon: BookMarked, bg: palette.peach, fg: '#A8642B' },
           ].map(({ m, title, sub, Icon, bg, fg }, i) => (
-            <Animated.View key={m} entering={FadeInDown.delay(120 + i * 90).springify()}>
+            <Animated.View key={m} entering={FadeInDown.delay(120 + i * 90).duration(420)}>
               <Card onPress={() => pick(m)} style={{ flexDirection: 'row', gap: space.md, alignItems: 'center', minHeight: 120 }}>
                 <IconBubble bg={bg} size={64}>
                   <Icon size={32} color={fg} />
@@ -422,12 +422,12 @@ herbs ไม่เกิน 3 รายการ รายการอื่น�
 
       {stage === 'result' && (
         <ScrollView contentContainerStyle={{ padding: space.lg, paddingBottom: insets.bottom + 140 }} showsVerticalScrollIndicator={false}>
-          <Animated.View entering={FadeInDown.springify()} style={{ alignItems: 'center', marginBottom: space.sm }}>
+          <Animated.View entering={FadeInDown.duration(420)} style={{ alignItems: 'center', marginBottom: space.sm }}>
             <AISphere size={96} active={tts.speaking} level={tts.level} />
             {demo ? <Badge label="โหมดสาธิต · ไม่ได้เชื่อมต่อ AI" fg={palette.coral} bg={palette.coralSoft} /> : <Badge label="✓ ครูปัญญาวิเคราะห์แล้ว" />}
           </Animated.View>
 
-          <Animated.View entering={FadeInDown.delay(80).springify()} layout={LinearTransition}>
+          <Animated.View entering={FadeInDown.delay(80).duration(420)} layout={LinearTransition}>
             <Card tone="clay" style={{ marginBottom: space.md }}>
               <T v="caption" color={palette.inkMute}>สิ่งที่ครูปัญญาได้ยิน</T>
               <T v="callout" color={palette.inkSoft} style={{ marginTop: 4 }}>“{transcript}”</T>
@@ -440,7 +440,7 @@ herbs ไม่เกิน 3 รายการ รายการอื่น�
       )}
 
       {stage === 'result' && (
-        <Animated.View entering={FadeInUp.springify()} style={StyleSheet.absoluteFill} pointerEvents="box-none">
+        <Animated.View entering={FadeInUp.duration(420)} style={StyleSheet.absoluteFill} pointerEvents="box-none">
           <GlassDock>
           <PressableScale onPress={() => (tts.speaking ? tts.stop() : tts.speak(patient ? `${patient.summary} การรักษา ${patient.visit.treatment}` : `${wisdom?.title} ${wisdom?.method}`))} style={styles.sideBtn} accessibilityLabel="ฟังสรุป">
             {tts.speaking ? <VolumeX size={26} color={palette.primary} /> : <Volume2 size={26} color={palette.primary} />}
@@ -470,7 +470,7 @@ herbs ไม่เกิน 3 รายการ รายการอื่น�
 
 function Section({ title, icon, children, i, tint = palette.primary }: { title: string; icon: React.ReactNode; children: React.ReactNode; i: number; tint?: string }) {
   return (
-    <Animated.View entering={FadeInDown.delay(160 + i * 90).springify().damping(18)}>
+    <Animated.View entering={FadeInDown.delay(160 + i * 90).duration(420)}>
       <Card style={{ marginBottom: space.md }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
           {icon}
@@ -552,7 +552,7 @@ function PatientView({ r }: { r: PatientResult }) {
 function WisdomView({ r }: { r: WisdomResult }) {
   return (
     <>
-      <Animated.View entering={FadeInDown.delay(140).springify()}>
+      <Animated.View entering={FadeInDown.delay(140).duration(420)}>
         <View style={styles.scroll}>
           <T v="micro" color="#8A6A1E">สมุดข่อยดิจิทัล · หน้าใหม่</T>
           <T v="h1" color={palette.ink} style={{ marginTop: 4 }}>{r.title}</T>

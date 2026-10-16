@@ -37,7 +37,7 @@ export default function Vault() {
 
 
         {/* สรุปแบบการ์ด Total records ใน ref */}
-        <Animated.View entering={FadeInDown.springify().damping(18)} style={{ marginTop: space.xl }}>
+        <Animated.View entering={FadeInDown.duration(420)} style={{ marginTop: space.xl }}>
           <Card style={styles.row}>
             <IconTile size={56}>
               <BookHeart size={28} color={palette.teal} />
@@ -54,7 +54,7 @@ export default function Vault() {
 
         <View style={{ marginTop: space.md, gap: space.md }}>
           {list.map((w, i) => (
-            <Animated.View key={w.id} entering={FadeInDown.delay(80 + i * 70).springify().damping(18)} layout={LinearTransition.springify()}>
+            <Animated.View key={w.id} entering={FadeInDown.delay(80 + i * 70).duration(420)} layout={LinearTransition.duration(280)}>
               <Card onPress={() => router.push(`/wisdom/${w.id}`)} style={styles.row}>
                 <IconTile size={56}>
                   {w.source === 'สแกนตำรา' ? <ScrollText size={30} color={palette.orange} /> : <Mic size={30} color={palette.primary} />}
@@ -73,7 +73,7 @@ export default function Vault() {
         </View>
 
         {/* การ์ดอธิบายแบบ ref */}
-        <Animated.View entering={FadeInDown.delay(300).springify().damping(18)}>
+        <Animated.View entering={FadeInDown.delay(300).duration(420)}>
           <View style={[styles.info, elevation.e1]}>
             <IconTile size={72}>
               <BookHeart size={44} color={palette.primary} />

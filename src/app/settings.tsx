@@ -20,7 +20,7 @@ import { useApp } from '../store/app';
 import { authenticateBiometric, biometricInfo, clearPin } from '../store/security';
 import { elevation, palette } from '../theme';
 
-const enter = (i: number) => FadeInDown.delay(40 + i * 50).springify().damping(20);
+const enter = (i: number) => FadeInDown.delay(40 + i * 50).duration(420);
 
 export default function Settings() {
   const { settings, update, patients, wisdoms, resetData, setUnlocked, profile, isPractitioner } = useApp();

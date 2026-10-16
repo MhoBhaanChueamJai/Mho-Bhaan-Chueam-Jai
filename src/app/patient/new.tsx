@@ -20,7 +20,7 @@ import { useApp } from '../../store/app';
 import { elevation, palette } from '../../theme';
 
 /** แอนิเมชันเลย์เอาต์มาตรฐาน: ส่วนที่ขยาย/หด และส่วนข้างเคียงเลื่อนตามแบบสปริงนุ่ม */
-const SMOOTH = LinearTransition.springify().damping(20).stiffness(170).mass(0.8);
+const SMOOTH = LinearTransition.duration(280);
 
 type Form = {
   prefix: string;
@@ -264,7 +264,7 @@ function NewPatientInner() {
       <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.page} keyboardDismissMode="interactive" keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         {/* สถานะ AI (แสดงเมื่อกำลังฟัง/ประมวลผล/มีผล) — ปุ่มพูดและสแกนบัตรอยู่ในแถบเครื่องมือด้านล่าง */}
         {recording || aiBusy ? (
-          <Animated.View entering={FadeInDown.springify().damping(18)} exiting={FadeOut.duration(180)} layout={SMOOTH} style={[styles.status, recording && styles.statusOn, elevation.e1]}>
+          <Animated.View entering={FadeInDown.duration(420)} exiting={FadeOut.duration(180)} layout={SMOOTH} style={[styles.status, recording && styles.statusOn, elevation.e1]}>
             {recording ? <Sym name="waveform" size={20} color={palette.white} /> : <ActivityIndicator color={palette.primary} />}
             <View style={{ flex: 1, gap: 2 }}>
               <T v="title" color={recording ? palette.white : palette.ink}>

@@ -38,7 +38,7 @@ export default function HerbDetail() {
       <Animated.ScrollView onScroll={onScroll} scrollEventThrottle={16} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom + 120 }}>
         <View style={{ height: HERO - 40 }} />
         <View style={styles.sheet}>
-          <Animated.View entering={FadeInDown.delay(100).springify()}>
+          <Animated.View entering={FadeInDown.delay(100).duration(420)}>
             <View style={[styles.taste, { backgroundColor: tone.bg }]}>
               <T v="micro" color={tone.fg}>รส{herb.taste}</T>
             </View>
@@ -46,7 +46,7 @@ export default function HerbDetail() {
             <T v="callout" color={palette.inkSoft} style={{ fontStyle: 'italic' }}>{herb.sci}</T>
           </Animated.View>
 
-          <Animated.View entering={FadeInDown.delay(160).springify()} style={styles.facts}>
+          <Animated.View entering={FadeInDown.delay(160).duration(420)} style={styles.facts}>
             {[
               { k: 'ชื่อท้องถิ่น', v: herb.local, Icon: Sprout, c: palette.green },
               { k: 'ส่วนที่ใช้', v: herb.part, Icon: FlaskConical, c: palette.orange },
@@ -62,7 +62,7 @@ export default function HerbDetail() {
             ))}
           </Animated.View>
 
-          <Animated.View entering={FadeInDown.delay(220).springify()}>
+          <Animated.View entering={FadeInDown.delay(220).duration(420)}>
             <T v="h3" style={styles.h}>สรรพคุณ</T>
             <View style={{ gap: space.sm }}>
               {herb.uses.map((u) => (
@@ -74,14 +74,14 @@ export default function HerbDetail() {
             </View>
           </Animated.View>
 
-          <Animated.View entering={FadeInDown.delay(280).springify()}>
+          <Animated.View entering={FadeInDown.delay(280).duration(420)}>
             <T v="h3" style={styles.h}>วิธีใช้</T>
             <Card tone="cyan">
               <T v="body">{herb.howto}</T>
             </Card>
           </Animated.View>
 
-          <Animated.View entering={FadeInDown.delay(340).springify()}>
+          <Animated.View entering={FadeInDown.delay(340).duration(420)}>
             <T v="h3" style={styles.h}>ข้อควรระวัง</T>
             <View style={styles.warn}>
               <AlertTriangle size={24} color={palette.coral} />

@@ -343,7 +343,7 @@ export function ElementInsight({ el, age }: { el: El; age?: number }) {
   const ss = seasonNow();
   // สรุปสั้น 3 บรรทัด: มักเป็น · รสที่เหมาะ · วัย/ฤดู
   return (
-    <Animated.View key={el} entering={FadeInDown.duration(320)} exiting={FadeOut.duration(150)} layout={LinearTransition.springify().damping(20).stiffness(170)} style={styles.insight}>
+    <Animated.View key={el} entering={FadeInDown.duration(320)} exiting={FadeOut.duration(150)} layout={LinearTransition.duration(280)} style={styles.insight}>
       <View style={styles.line}>
         <Sym name="stethoscope" size={13} color={tint} />
         <T v="subhead" color={ios.secondary} style={{ flex: 1 }} numberOfLines={2}>

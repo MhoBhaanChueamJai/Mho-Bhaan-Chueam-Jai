@@ -33,7 +33,7 @@ export default function AISettings() {
   return (
     <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingTop: 8, paddingBottom: 56 }}>
       {/* ก้อนแสงครูปัญญา */}
-      <Animated.View entering={FadeInDown.springify().damping(20)} style={[styles.hero, elevation.e2]}>
+      <Animated.View entering={FadeInDown.duration(420)} style={[styles.hero, elevation.e2]}>
         <AISphere size={170} active={tts.speaking} level={tts.level} />
         <T v="h2" color="#FFFFFF" style={{ marginTop: 6 }}>ครูปัญญา</T>
         <T v="subhead" color="rgba(255,255,255,0.65)" center>ผู้ช่วย AI ของหมอพื้นบ้าน · คิดวิเคราะห์ 2 ทางเพื่อความแม่นยำ</T>

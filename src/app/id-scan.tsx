@@ -18,7 +18,7 @@ import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
-import Animated, { Easing, FadeIn, FadeInDown, ZoomIn, useAnimatedStyle, useDerivedValue, useSharedValue, withDelay, withRepeat, withSequence, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, FadeIn, FadeInDown, useAnimatedStyle, useDerivedValue, useSharedValue, withDelay, withRepeat, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 import { BlurMask, Canvas, RoundedRect, SweepGradient, vec } from '@shopify/react-native-skia';
 import { AIGlow, AI_COLORS } from '../components/Orb';
 import { AISphere } from '../components/AISphere';
@@ -377,7 +377,7 @@ export default function IdScan() {
 
           <View style={[styles.readBox, { top: cy + ch + 48 }]}>
             {stage === 'reading' ? (
-              <Animated.View entering={FadeInDown.delay(300).springify()} style={{ alignItems: 'center' }}>
+              <Animated.View entering={FadeInDown.delay(300).duration(420)} style={{ alignItems: 'center' }}>
                 <AISphere size={44} active />
                 <T v="h3" color="#FFFFFF" center style={{ marginTop: 10 }}>ครูปัญญากำลังอ่านบัตร</T>
                 {/* ขั้นตอนเป็นเส้นทาง: ผ่านแล้ว ✓ · กำลังทำ (เรือง) · ยังไม่ถึง (จาง) */}
@@ -396,7 +396,7 @@ export default function IdScan() {
                 </View>
               </Animated.View>
             ) : stage === 'done' ? (
-              <Animated.View entering={ZoomIn.springify()} style={{ alignItems: 'center', gap: 10 }}>
+              <Animated.View entering={FadeIn.duration(320)} style={{ alignItems: 'center', gap: 10 }}>
                 <View style={styles.okBadge}>
                   <Sym name="checkmark" size={24} color="#FFFFFF" weight="bold" />
                 </View>

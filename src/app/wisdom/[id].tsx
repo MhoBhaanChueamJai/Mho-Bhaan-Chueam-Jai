@@ -25,7 +25,7 @@ export default function WisdomDetail() {
       <Backdrop />
       <Stack.Screen options={{ headerShown: true, title: w.kind, headerTransparent: true, headerShadowVisible: false, headerTintColor: palette.primary, headerBackVisible: false, headerLeft: () => <HeaderBack fallback="/vault" color={palette.primary} /> }} />
       <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={{ paddingHorizontal: space.xl, paddingTop: space.md, paddingBottom: insets.bottom + 130 }} showsVerticalScrollIndicator={false}>
-        <Animated.View entering={FadeInDown.springify()}>
+        <Animated.View entering={FadeInDown.duration(420)}>
           <View style={{ flexDirection: 'row', gap: 8 }}>
             <Badge label={w.source} />
             {w.verified ? <Badge label="ตรวจทานแล้ว" bg={palette.lime} fg={palette.green} /> : <Badge label="รอตรวจทาน" bg={palette.peach} fg="#A8642B" />}
@@ -35,12 +35,12 @@ export default function WisdomDetail() {
         </Animated.View>
 
         {w.source === 'สแกนตำรา' ? (
-          <Animated.View entering={FadeInDown.delay(60).springify()} style={{ marginTop: space.xl }}>
+          <Animated.View entering={FadeInDown.delay(60).duration(420)} style={{ marginTop: space.xl }}>
             <Image source={manuscriptImage} style={styles.scan} contentFit="cover" />
           </Animated.View>
         ) : null}
 
-        <Animated.View entering={FadeInDown.delay(100).springify()} style={{ marginTop: space.xl }}>
+        <Animated.View entering={FadeInDown.delay(100).duration(420)} style={{ marginTop: space.xl }}>
           <Card tone="white">
             <T v="body">{w.summary}</T>
             {w.indication ? (
@@ -53,7 +53,7 @@ export default function WisdomDetail() {
         </Animated.View>
 
         {w.ingredients?.length ? (
-          <Animated.View entering={FadeInDown.delay(150).springify()} style={{ marginTop: space.md }}>
+          <Animated.View entering={FadeInDown.delay(150).duration(420)} style={{ marginTop: space.md }}>
             <Card tone="lime">
               <T v="title">ตัวยา</T>
               {w.ingredients.map((x, i) => (
@@ -69,7 +69,7 @@ export default function WisdomDetail() {
         ) : null}
 
         {w.method ? (
-          <Animated.View entering={FadeInDown.delay(200).springify()} style={{ marginTop: space.md }}>
+          <Animated.View entering={FadeInDown.delay(200).duration(420)} style={{ marginTop: space.md }}>
             <Card tone="cyan">
               <T v="title">วิธีปรุงและวิธีใช้</T>
               <T v="body" style={{ marginTop: 4 }}>{w.method}</T>
@@ -78,7 +78,7 @@ export default function WisdomDetail() {
         ) : null}
 
         {w.caution ? (
-          <Animated.View entering={FadeInDown.delay(250).springify()} style={styles.warn}>
+          <Animated.View entering={FadeInDown.delay(250).duration(420)} style={styles.warn}>
             <AlertTriangle size={22} color={palette.coral} />
             <T v="body" style={{ flex: 1 }}>{w.caution}</T>
           </Animated.View>

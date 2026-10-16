@@ -31,7 +31,7 @@ export default function Profile() {
   const name = profile?.display_name || [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || doctor.name;
   return (
     <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingTop: 8, paddingBottom: 56 }}>
-      <Animated.View entering={FadeInDown.springify().damping(20)} style={{ alignItems: 'center', marginTop: 8 }}>
+      <Animated.View entering={FadeInDown.duration(420)} style={{ alignItems: 'center', marginTop: 8 }}>
         <View style={styles.avatarRing}>
           <Avatar name={name} src={avatars.doctor} size={96} />
         </View>
@@ -61,8 +61,6 @@ export default function Profile() {
               </View>
             </View>
             <View style={styles.typeSep} />
-          </View>
-            ))}
           </View>
           <Info icon="doc.text.fill" bg="#8A6A44" label="เลขที่หนังสือรับรอง" value={profile?.cert_number ?? '-'} />
           <Info icon="mappin.and.ellipse" bg="#C2564B" label="จังหวัดที่ขึ้นทะเบียน" value={profile?.cert_province ?? '-'} />
