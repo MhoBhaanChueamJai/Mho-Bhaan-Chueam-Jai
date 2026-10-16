@@ -555,7 +555,7 @@ export function VoiceSession({ scribe, initialOptions, title, opening, topics, h
       {/* ข้อมูลที่ได้แล้ว */}
       {/* ความคืบหน้า: จุดตามจำนวนหัวข้อ (ได้ข้อมูลแล้ว = จุดเขียวยาว) */}
       {kbOpen ? null : (
-        <View style={[styles.dots, { bottom: insets.bottom + (mode === 'chat' && got.length === topics.length ? 168 : 108) }]} accessibilityLabel={`ได้ข้อมูลแล้ว ${got.length} จาก ${topics.length} หัวข้อ`}>
+        <View style={[styles.dots, { bottom: insets.bottom + (mode === 'chat' && got.length === topics.length ? 140 : 82) }]} accessibilityLabel={`ได้ข้อมูลแล้ว ${got.length} จาก ${topics.length} หัวข้อ`}>
           {topics.map((t) => {
             const ok = got.includes(t);
             return <View key={t.key} style={[styles.pDot, ok && styles.pDotOn]} />;
