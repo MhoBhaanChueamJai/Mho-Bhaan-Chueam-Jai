@@ -8,7 +8,7 @@
  */
 import { Stack, router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View, useWindowDimensions } from 'react-native';
 import Animated, { FadeIn, FadeInDown, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { AISphere } from '../../components/AISphere';
 import { BookCover } from '../../components/BookCover';
@@ -53,6 +53,46 @@ function Field({ label, value, onChange, placeholder, big }: { label?: string; v
   );
 }
 
+/** ตัวอักษรราว 1 หน้าหนังสือ (ตรงกับหน้าอ่านแบบหนังสือ) */
+const PAGE_CHARS = 520;
+const PAPER = '#F7F0E0';
+const INK = '#3A2C1C';
+
+/** หน้ากระดาษยาว 1 หน้า = 1 หน้าหนังสือ — ตัวอักษรขนาดเดียวกับหน้าอ่าน จะเห็นว่าเต็มหน้าเมื่อไร */
+function PaperPage({ n, value, onChange, onRemove, height }: { n: number; value: string; onChange: (v: string) => void; onRemove?: () => void; height: number }) {
+  const [focus, setFocus] = useState(false);
+  const len = value.trim().length;
+  const over = len > PAGE_CHARS;
+  return (
+    <View style={[styles.sheet, { minHeight: height }, focus && styles.sheetFocus]}>
+      <View style={styles.sheetGutter} />
+      <TextInput
+        value={value}
+        onChangeText={onChange}
+        placeholder={n === 1 ? 'เริ่มเขียนได้เลย…' : `หน้า ${n}`}
+        placeholderTextColor="rgba(58,44,28,0.35)"
+        onFocus={() => setFocus(true)}
+        onBlur={() => setFocus(false)}
+        multiline
+        scrollEnabled={false}
+        style={[styles.sheetInput, { minHeight: height - 46 }]}
+        accessibilityLabel={`หน้า ${n}`}
+      />
+      <View style={styles.sheetFoot}>
+        <T v="caption" color={over ? '#B26A12' : 'rgba(58,44,28,0.45)'}>
+          {over ? `เกิน 1 หน้า · ครูปัญญาจะแบ่งหน้าให้` : `${len}/${PAGE_CHARS}`}
+        </T>
+        <T v="caption" color="rgba(58,44,28,0.5)" style={{ fontWeight: '700' }}>— {n} —</T>
+        {onRemove ? (
+          <PressableScale haptic="select" onPress={onRemove} hitSlop={8} accessibilityLabel={`ลบหน้า ${n}`}>
+            <Sym name="trash" size={15} color="rgba(58,44,28,0.45)" />
+          </PressableScale>
+        ) : <View style={{ width: 15 }} />}
+      </View>
+    </View>
+  );
+}
+
 function Section({ title, icon, footer, children, right }: { title: string; icon: string; footer?: string; children: React.ReactNode; right?: React.ReactNode }) {
   return (
     <Animated.View layout={SMOOTH} entering={FadeIn.duration(250)} style={[styles.card, elevation.e1]}>
@@ -83,6 +123,8 @@ function NewWisdomInner() {
   const [mode, setMode] = useState<'write' | 'organizing' | 'review'>('write');
   const [org, setOrg] = useState<Organized | null>(null);
   const [aiNote, setAiNote] = useState('');
+  const { height: SH } = useWindowDimensions();
+  const sheetH = Math.round(SH * 0.66); // สูงราวหน้ากระดาษในหน้าอ่านแบบหนังสือ
   const cfg = KIND_FORM[kind];
   const setPage = (i: number) => (v: string) => setDraft((d) => d.map((p, j) => (j === i ? v : p)));
 
@@ -192,9 +234,12 @@ function NewWisdomInner() {
 
           <Section title={`${cfg.summary.big ? cfg.summary.label : 'เนื้อหา'} · ${org.pages.length} หน้า`} icon="book.pages.fill">
             {org.pages.map((p, i) => (
-              <View key={i} style={styles.paper}>
-                <T v="caption" color="rgba(58,44,28,0.55)" style={{ fontWeight: '700', marginBottom: 6 }}>หน้า {i + 1}</T>
-                <T v="body" color="#3A2C1C" style={{ lineHeight: 27 }}>{p}</T>
+              <View key={i} style={[styles.sheet, { minHeight: sheetH }]}>
+                <View style={styles.sheetGutter} />
+                <T v="body" color={INK} style={styles.sheetText}>{p}</T>
+                <View style={[styles.sheetFoot, { justifyContent: 'center' }]}>
+                  <T v="caption" color="rgba(58,44,28,0.5)" style={{ fontWeight: '700' }}>— {i + 1} —</T>
+                </View>
               </View>
             ))}
           </Section>
@@ -297,19 +342,8 @@ function NewWisdomInner() {
         {/* เขียนตำรา: พื้นที่เดียว หลายหน้า */}
         <Section title="เขียนตำรา" icon="pencil.and.scribble" footer={WRITE_HINT[kind]} right={<T v="caption" color={ios.secondary}>{draft.length} หน้า</T>}>
           {draft.map((pg, i) => (
-            <Animated.View key={i} layout={SMOOTH} entering={FadeIn.duration(200)} style={{ gap: 6 }}>
-              <View style={styles.pageHead}>
-                <View style={styles.pageTag}>
-                  <Sym name="doc.plaintext" size={12} color={palette.primaryDeep} />
-                  <T v="caption" color={palette.primaryDeep} style={{ fontWeight: '700' }}>หน้า {i + 1}</T>
-                </View>
-                {draft.length > 1 ? (
-                  <PressableScale haptic="select" onPress={() => setDraft((d) => d.filter((_, j) => j !== i))} hitSlop={6} accessibilityLabel={`ลบหน้า ${i + 1}`}>
-                    <Sym name="minus.circle.fill" size={20} color={ios.tertiary} />
-                  </PressableScale>
-                ) : null}
-              </View>
-              <Field value={pg} onChange={setPage(i)} placeholder={i === 0 ? 'เริ่มเขียนได้เลย…' : `หน้า ${i + 1}`} big />
+            <Animated.View key={i} layout={SMOOTH} entering={FadeIn.duration(200)}>
+              <PaperPage n={i + 1} value={pg} onChange={setPage(i)} height={sheetH} onRemove={draft.length > 1 ? () => setDraft((d) => d.filter((_, j) => j !== i)) : undefined} />
             </Animated.View>
           ))}
           <PressableScale haptic="select" scaleTo={0.97} onPress={() => setDraft((d) => [...d, ''])} style={styles.addRow} accessibilityLabel="เพิ่มหน้า">
@@ -351,14 +385,17 @@ const styles = StyleSheet.create({
   kindOn: { borderColor: palette.primary, backgroundColor: palette.mint },
   kindIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: palette.primarySoft, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
   kindCheck: { position: 'absolute', top: 12, right: 12 },
-  pageHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  pageTag: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, backgroundColor: palette.primarySoft },
+  sheet: { backgroundColor: PAPER, borderRadius: 6, borderTopRightRadius: 14, borderBottomRightRadius: 14, borderWidth: 1.5, borderColor: 'rgba(120,90,40,0.18)', overflow: 'hidden', paddingLeft: 26, paddingRight: 20, paddingTop: 22 },
+  sheetFocus: { borderColor: palette.primary },
+  sheetGutter: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 12, backgroundColor: 'rgba(90,60,20,0.07)' },
+  sheetInput: { fontSize: 18.5, lineHeight: 33, color: INK, textAlignVertical: 'top', padding: 0 },
+  sheetText: { flex: 1, fontSize: 18.5, lineHeight: 33 },
+  sheetFoot: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', height: 46 },
   addRow: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 999, backgroundColor: palette.primarySoft },
   busy: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center' },
   busyCard: { alignItems: 'center', padding: 28, borderRadius: 28, borderCurve: 'continuous', backgroundColor: 'rgba(8,16,12,0.94)', marginHorizontal: 40 },
   reviewHead: { flexDirection: 'row', alignItems: 'center', gap: 16, paddingHorizontal: 4 },
   kindPill: { flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, backgroundColor: palette.primarySoft },
-  paper: { padding: 16, borderRadius: 12, backgroundColor: '#F7F0E0', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(120,90,40,0.25)' },
   li: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   liNum: { width: 26, height: 26, borderRadius: 13, backgroundColor: palette.primarySoft, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
   stepNum: { backgroundColor: '#FCEBD2' },
