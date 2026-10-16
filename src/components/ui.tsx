@@ -4,7 +4,7 @@ import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { ChevronLeft, Search } from './icons';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import {
   Pressable,
   StyleSheet,
@@ -21,7 +21,6 @@ import {
 import Animated, { Easing, useAnimatedProps, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Path } from 'react-native-svg';
-import { SoftShadow } from './Orb';
 import { useApp } from '../store/app';
 import { Image } from 'expo-image';
 import { clayCard, control, elevation, motion, palette, radius, space, type, type TypeVariant } from '../theme';
@@ -142,13 +141,16 @@ export function GlassCircle({ children, onPress, size = control.icon, label, tin
 }
 
 /** แถบปุ่มล่างลอยแบบกระจก */
-export function GlassDock({ children }: { children: React.ReactNode }) {
+/**
+ * แถบปุ่มลอยด้านล่าง (Design system: Floating action bar) — ใช้กับปุ่มหลักของทุกหน้าที่ต้องบันทึก/ดำเนินการ
+ * Liquid Glass ใสทรงแคปซูล + เงา e3 ลอยเหนือขอบล่าง เนื้อหาเลื่อนผ่านใต้แถบได้ (เผื่อ paddingBottom ~130 ให้ ScrollView)
+ */
+export function GlassDock({ children, style }: { children: React.ReactNode; style?: StyleProp<ViewStyle> }) {
   const insets = useSafeAreaInsets();
-  const [box, setBox] = useState({ w: 0, h: 0 });
   return (
-    <View style={{ position: 'absolute', left: space.lg, right: space.lg, bottom: Math.max(insets.bottom, 16) }} pointerEvents="box-none" onLayout={(e) => setBox({ w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height })}>
-      <SoftShadow width={box.w} height={box.h} radius={box.h / 2} />
-      <Glass style={{ borderRadius: radius.pill, padding: 6, flexDirection: 'row', alignItems: 'center', gap: 6 }}>{children}</Glass>
+    <View style={{ position: 'absolute', left: 16, right: 16, bottom: insets.bottom + 8 }} pointerEvents="box-none">
+      {/* ขอบนอกเป็น Liquid Glass ใส (ไม่ทาสีขาวทับ) ให้เห็นเนื้อหาด้านหลังแบบกระจกจริง */}
+      <Glass interactive tint="rgba(255,255,255,0.12)" style={[styles.dock, elevation.e3, style]}>{children}</Glass>
     </View>
   );
 }
@@ -398,6 +400,7 @@ export function Hatch({ height = 80, label }: { height?: number; label: string }
 
 export const styles = StyleSheet.create({
   card: { borderRadius: radius.lg, padding: space.lg },
+  dock: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 32, borderCurve: 'continuous', padding: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.9)' },
   btn: { height: control.button, borderRadius: radius.pill, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.xs },
   chip: { height: control.buttonSmall, paddingHorizontal: 14, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
   seg: { flexDirection: 'row', borderRadius: radius.pill, padding: 5, alignSelf: 'center' },

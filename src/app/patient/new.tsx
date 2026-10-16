@@ -7,12 +7,11 @@ import React, { useState } from 'react';
 import { PractitionerGate } from '../../components/PractitionerGate';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View, type KeyboardTypeOptions } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { chatJSON, transcribe } from '../../api/ai';
 import { useVoiceRecorder } from '../../components/audio';
 import { Sym, ios } from '../../components/ios';
 import { Waveform } from '../../components/Orb';
-import { Button, Glass, PressableScale, T, useHaptic } from '../../components/ui';
+import { Button, GlassDock, PressableScale, T, useHaptic } from '../../components/ui';
 import type { Patient } from '../../data/mock';
 import { useApp } from '../../store/app';
 import { elevation, palette } from '../../theme';
@@ -112,7 +111,6 @@ function Section({ title, icon, footer, children }: { title: string; icon: strin
 }
 
 function NewPatientInner() {
-  const insets = useSafeAreaInsets();
   const { addPatient } = useApp();
   const h = useHaptic();
   const rec = useVoiceRecorder();
@@ -246,16 +244,14 @@ function NewPatientInner() {
         </Section>
       </ScrollView>
 
-      {/* ปุ่มบันทึกแบบแถบลอย (กระจกขุ่น + เงา e3) */}
-      <View pointerEvents="box-none" style={[styles.floatWrap, { bottom: insets.bottom + 8 }]}>
-        <Glass tint="rgba(255,255,255,0.75)" style={[styles.floatBar, elevation.e3]}>
+      {/* ปุ่มบันทึกแบบแถบลอย (GlassDock) */}
+      <GlassDock>
           <View style={{ flex: 1, paddingLeft: 6 }}>
             <T v="subhead" style={{ fontWeight: '600' }} numberOfLines={1}>{f.name.trim() || 'ยังไม่ได้กรอกชื่อ'}</T>
             <T v="caption" color={ios.secondary} numberOfLines={1}>{canSave ? `${f.sex}${f.age ? ` · ${f.age} ปี` : ''}${f.village ? ` · ${f.village}` : ''}` : 'กรอกชื่อเพื่อบันทึก'}</T>
           </View>
           <Button label="บันทึก" disabled={!canSave} onPress={save} style={{ height: 48, paddingHorizontal: 26 }} />
-        </Glass>
-      </View>
+        </GlassDock>
     </KeyboardAvoidingView>
   );
 }
@@ -276,8 +272,6 @@ const styles = StyleSheet.create({
   choices: { flexDirection: 'row', gap: 8 },
   choice: { flex: 1, height: 48, borderRadius: 24, backgroundColor: palette.mint, alignItems: 'center', justifyContent: 'center' },
   choiceOn: { backgroundColor: palette.primary },
-  floatWrap: { position: 'absolute', left: 16, right: 16 },
-  floatBar: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 32, borderCurve: 'continuous', padding: 8, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.9)' },
 });
 
 export default function NewPatient() {

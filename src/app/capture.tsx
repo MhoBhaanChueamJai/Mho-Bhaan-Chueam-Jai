@@ -24,7 +24,7 @@ import { SYSTEM_PROMPT, chatJSON, transcribe } from '../api/ai';
 import { useSpeaker, useVoiceRecorder } from '../components/audio';
 import { AIFlower, ParticleRing, ProgressHalo, Waveform } from '../components/Orb';
 import { Sym } from '../components/ios';
-import { Backdrop, Badge, Button, Card, Glass, GlassCircle, IconBubble, PressableScale, T, useHaptic } from '../components/ui';
+import { Backdrop, Badge, Button, Card, GlassCircle, GlassDock, IconBubble, PressableScale, T, useHaptic } from '../components/ui';
 import { elementColor, palette, radius, space } from '../theme';
 import { useApp } from '../store/app';
 
@@ -439,8 +439,8 @@ herbs ไม่เกิน 3 รายการ รายการอื่น�
       )}
 
       {stage === 'result' && (
-        <Animated.View entering={FadeInUp.springify()} style={[styles.dockWrap, { bottom: Math.max(insets.bottom, 14) }]}>
-          <Glass style={styles.dock}>
+        <Animated.View entering={FadeInUp.springify()} style={StyleSheet.absoluteFill} pointerEvents="box-none">
+          <GlassDock>
           <PressableScale onPress={() => (tts.speaking ? tts.stop() : tts.speak(patient ? `${patient.summary} การรักษา ${patient.visit.treatment}` : `${wisdom?.title} ${wisdom?.method}`))} style={styles.sideBtn} accessibilityLabel="ฟังสรุป">
             {tts.speaking ? <VolumeX size={26} color={palette.primary} /> : <Volume2 size={26} color={palette.primary} />}
             <T v="micro" color={palette.inkSoft}>{tts.speaking ? 'หยุด' : 'ฟังสรุป'}</T>
@@ -460,7 +460,7 @@ herbs ไม่เกิน 3 รายการ รายการอื่น�
             <RotateCcw size={24} color={palette.primary} />
             <T v="micro" color={palette.inkSoft}>เริ่มใหม่</T>
           </PressableScale>
-          </Glass>
+          </GlassDock>
         </Animated.View>
       )}
     </KeyboardAvoidingView>
