@@ -1,6 +1,6 @@
 /**
  * หน้าตำรา — Hero ปกหนังสือ (พื้นหลังเบลอจากปก) + ชื่อ/ที่มา + แผ่นเนื้อหาโค้งซ้อนขึ้นมา
- * สรุป · สรรพคุณ · ตัวยา (มีรูปถ้าตรงกับคลังสมุนไพร กดดูได้) · วิธีปรุงและวิธีใช้ · ข้อห้าม · ภาพต้นฉบับ (สแกน)
+ * สรุป · สรรพคุณ · ตัวยา (มีรูปถ้าตรงกับคลังสมุนไพร กดดูได้) · วิธีปรุงและวิธีใช้ · ข้อห้าม
  * แถบล่าง: ฟังด้วยเสียง · หัวขวา: แชร์ QR ให้เพื่อน
  */
 import { BlurView } from 'expo-blur';
@@ -19,7 +19,7 @@ import { CircleIcon } from '../../components/ListRow';
 import { Sym, ios } from '../../components/ios';
 import { Glass, HeaderBack, HeaderButton, PressableScale, T, useHaptic } from '../../components/ui';
 import { fetchLatestShared } from '../../lib/wisdomShare';
-import { herbs, manuscriptImage } from '../../data/herbs';
+import { herbs } from '../../data/herbs';
 import { doctor } from '../../data/mock';
 import { useApp } from '../../store/app';
 import { elevation, palette } from '../../theme';
@@ -282,11 +282,6 @@ export default function WisdomDetail() {
             </Animated.View>
           ) : null}
 
-          {w.source === 'สแกนตำรา' ? (
-            <Section i={5} icon="doc.viewfinder" color="#B07A2A" title="ภาพต้นฉบับ">
-              <Image source={manuscriptImage} style={styles.scan} contentFit="cover" />
-            </Section>
-          ) : null}
         </View>
       </Animated.ScrollView>
 
@@ -335,5 +330,4 @@ const styles = StyleSheet.create({
   sep: { height: StyleSheet.hairlineWidth, backgroundColor: ios.separator, marginLeft: 56 },
   stepNum: { width: 24, height: 24, borderRadius: 12, backgroundColor: '#D9921A', alignItems: 'center', justifyContent: 'center', marginTop: 2 },
   warn: { flexDirection: 'row', gap: 12, padding: 18, borderRadius: 22, borderCurve: 'continuous', backgroundColor: palette.coralSoft },
-  scan: { height: 200, borderRadius: 16, marginTop: 4 },
 });
