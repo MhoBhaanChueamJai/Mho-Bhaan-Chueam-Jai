@@ -1,13 +1,13 @@
 /**
  * แท็บคลังภูมิปัญญา — สมุดข่อยดิจิทัลของคุณหมอ
- * Hero: พื้นหลังสันหนังสือ/ตำราเรียงบนหิ้ง (เบลอ) + ชื่อหน้า + ชิปประเภทตำรา (กรองรายการ) + ปุ่มเพิ่ม · สแกน QR รับตำรา
+ * Hero (การ์ด): พื้นหลังสันหนังสือ/ตำราเรียงบนหิ้ง (เบลอ) + ชื่อหน้า + KPI จำนวนตามประเภท + ปุ่มเพิ่ม · สแกน QR รับตำรา
  * → เรื่องล่าสุด (การ์ดภาพใหญ่เลื่อนแนวนอน) → รายการทั้งหมด
  */
 import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import React, { useMemo, useState } from 'react';
+import React from 'react';
 import { ScrollView, StyleSheet, View, type ImageSourcePropType } from 'react-native';
 import Animated, { FadeIn, FadeInDown, LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -79,9 +79,8 @@ function Feature({ w, i }: { w: Wisdom; i: number }) {
 export default function Vault() {
   const { wisdoms } = useApp();
   const insets = useSafeAreaInsets();
-  const [kind, setKind] = useState<Wisdom['kind'] | 'all'>('all');
   const recorded = legacy.recorded + Math.max(0, wisdoms.length - 3);
-  const list = useMemo(() => (kind === 'all' ? wisdoms : wisdoms.filter((w) => w.kind === kind)), [wisdoms, kind]);
+  const list = wisdoms;
   const count = (k: Wisdom['kind']) => wisdoms.filter((w) => w.kind === k).length;
 
   return (
@@ -109,21 +108,19 @@ export default function Vault() {
           <T v="callout" color="rgba(255,255,255,0.78)">ตำรับยา วิธีรักษา และตำราโบราณ · บันทึกแล้ว {recorded} เรื่อง</T>
         </Animated.View>
 
-        {/* ชิปประเภทตำรา (กรองรายการด้านล่าง) */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsBox} contentContainerStyle={styles.chips}>
-          {(['all', ...KINDS] as const).map((k) => {
-            const on = kind === k;
-            const n = k === 'all' ? wisdoms.length : count(k);
-            return (
-              <PressableScale key={k} haptic="select" scaleTo={0.95} onPress={() => setKind(k)} style={[styles.chip, on && styles.chipOn]} accessibilityLabel={k === 'all' ? 'ทั้งหมด' : k} accessibilityState={{ selected: on }}>
-                {on ? null : <BlurView intensity={24} tint="light" style={StyleSheet.absoluteFill} />}
-                {k === 'all' ? null : <Sym name={KIND[k].icon as any} size={13} color={on ? KIND[k].color : '#FFFFFF'} />}
-                <T v="subhead" color={on ? palette.ink : '#FFFFFF'} style={{ fontWeight: '600' }}>{k === 'all' ? 'ทั้งหมด' : k}</T>
-                <T v="caption" color={on ? ios.secondary : 'rgba(255,255,255,0.7)'}>{n}</T>
-              </PressableScale>
-            );
-          })}
-        </ScrollView>
+        {/* KPI: จำนวนตามประเภทตำรา (แสดงผลอย่างเดียว) */}
+        <View style={styles.kpis}>
+          {KINDS.map((k, i) => (
+            <Animated.View key={k} entering={FadeInDown.delay(120 + i * 60).duration(380)} style={styles.kpi}>
+              <BlurView intensity={26} tint="light" style={StyleSheet.absoluteFill} />
+              <View style={[styles.kpiIcon, { backgroundColor: `${KIND[k].color}` }]}>
+                <Sym name={KIND[k].icon as any} size={13} color="#FFFFFF" />
+              </View>
+              <T v="h2" color="#FFFFFF" style={{ marginTop: 8 }}>{count(k)}</T>
+              <T v="micro" color="rgba(255,255,255,0.82)" numberOfLines={1} style={{ fontWeight: '600' }}>{k}</T>
+            </Animated.View>
+          ))}
+        </View>
 
         {/* ปุ่มหลัก: เพิ่ม · สแกน QR รับตำราจากเพื่อน */}
         <View style={styles.heroBtns}>
@@ -144,9 +141,9 @@ export default function Vault() {
       {list.length ? (
         <>
           <View style={styles.secHead}>
-            <T v="h3">{kind === 'all' ? 'ล่าสุด' : kind}</T>
+            <T v="h3">ล่าสุด</T>
           </View>
-          <ScrollView key={kind} horizontal showsHorizontalScrollIndicator={false} decelerationRate="fast" snapToInterval={CARD_W + 14} snapToAlignment="start" contentContainerStyle={styles.rail}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} decelerationRate="fast" snapToInterval={CARD_W + 14} snapToAlignment="start" contentContainerStyle={styles.rail}>
             {list.slice(0, 6).map((w, i) => (
               <Feature key={w.id} w={w} i={i} />
             ))}
@@ -160,7 +157,7 @@ export default function Vault() {
         <T v="subhead" color={ios.secondary}>{list.length} เรื่อง</T>
       </View>
       {list.length ? (
-        <Animated.View key={kind} layout={LinearTransition.duration(260)} style={[styles.list, elevation.e1]}>
+        <Animated.View layout={LinearTransition.duration(260)} style={[styles.list, elevation.e1]}>
           {list.map((w, i) => (
             <Animated.View key={w.id} entering={FadeIn.delay(i * 35).duration(200)}>
               {i ? <View style={styles.sep} /> : null}
@@ -186,7 +183,7 @@ export default function Vault() {
       ) : (
         <View style={[styles.list, elevation.e1, { alignItems: 'center', paddingVertical: 28, gap: 6 }]}>
           <Sym name="book.closed" size={28} color={ios.tertiary} />
-          <T v="callout" color={ios.secondary}>ยังไม่มี{kind === 'all' ? 'ภูมิปัญญา' : kind} กด “เพิ่มภูมิปัญญา” ได้เลย</T>
+          <T v="callout" color={ios.secondary}>ยังไม่มีภูมิปัญญา กด “เพิ่มภูมิปัญญา” ได้เลย</T>
         </View>
       )}
     </ScrollView>
@@ -201,10 +198,9 @@ const styles = StyleSheet.create({
   eyebrow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   glassBtn: { width: 42, height: 42, borderRadius: 21, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.45)' },
   title: { marginBottom: 4 },
-  chipsBox: { marginHorizontal: -20, marginTop: 18 },
-  chips: { paddingHorizontal: 20, gap: 8 },
-  chip: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 38, paddingHorizontal: 14, borderRadius: 19, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.4)' },
-  chipOn: { backgroundColor: '#FFFFFF', borderColor: '#FFFFFF' },
+  kpis: { flexDirection: 'row', gap: 8, marginTop: 18 },
+  kpi: { flex: 1, paddingVertical: 12, paddingHorizontal: 10, borderRadius: 18, borderCurve: 'continuous', overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.35)' },
+  kpiIcon: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
   heroBtns: { flexDirection: 'row', gap: 10, marginTop: 18 },
   btn: { flex: 1, height: 50, borderRadius: 25, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, overflow: 'hidden' },
   btnMain: { backgroundColor: '#FFFFFF' },
