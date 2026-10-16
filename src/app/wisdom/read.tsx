@@ -15,7 +15,7 @@ import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { Easing, runOnJS, useAnimatedStyle, useDerivedValue, useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BookCover, COVERS, COVER_RATIO } from '../../components/BookCover';
+import { COVERS, COVER_RATIO } from '../../components/BookCover';
 import { KindIcon } from '../../components/KindIcon';
 import { Sym } from '../../components/ios';
 import { GlassCircle, T, useHaptic } from '../../components/ui';
@@ -81,7 +81,11 @@ export default function ReadBook() {
   const frame = { left: 0, top: 0, width: W, height: SH };
   const padTop = insets.top + 62;
   const padBottom = insets.bottom + 46;
-  const coverW = Math.min(W * 0.74, (SH - insets.top - insets.bottom - 220) / COVER_RATIO);
+  const cover = COVERS[w.kind] ?? COVERS['ตำรับยา'];
+  const imgW = Math.max(W, SH / COVER_RATIO); // ขนาดภาพปกเมื่อขยายเต็มจอ (contentFit cover)
+  const imgH = imgW * COVER_RATIO;
+  const [rx, ry, rw, rh] = cover.rect;
+  const coverTitle = { left: (W - imgW) / 2 + rx * imgW, top: (SH - imgH) / 2 + ry * imgH, width: rw * imgW, height: rh * imgH };
   // ตัวอักษรต่อหน้า ตามขนาดกระดาษจริงของเครื่อง (บรรทัด × ตัวอักษรต่อบรรทัด เผื่อหัวข้อ)
   const perPage = Math.round(Math.floor((SH - padTop - padBottom - 50) / 32) * ((W - 56) / 7.5) * 0.78);
   const pages = useMemo<Page[]>(() => {
@@ -110,7 +114,7 @@ export default function ReadBook() {
   const tilt = useSharedValue(0); // เอียงเส้นพับตามนิ้วแนวตั้ง
   const sy = useSharedValue(Hp * 0.8); // ระดับที่จับขอบกระดาษ
   const dir = useSharedValue(1); // 1 = หน้าถัดไป · -1 = ย้อนกลับ
-  const active = useSharedValue(0); // แสดงชั้น Skia (ระหว่างพลิก)
+  const active = useSharedValue(0); // แสดงชั้น Skia (ระหว่างพลิก และค้างไว้ครู่หนึ่งหลังพลิก)
   const busy = useSharedValue(0);
   const dragging = useSharedValue(0); // pan นี้เป็นคนพลิกอยู่ (กันลากซ้อนระหว่างอนิเมชั่น)
   const readyF = useSharedValue(0);
@@ -122,7 +126,19 @@ export default function ReadBook() {
   const cache = useRef(new Map<number, SkImage>());
   const cacheKey = `${w.id}:${W}x${SH}:${fontsOk ? 1 : 0}:${n}`;
   const keyRef = useRef(cacheKey);
-  const [imgs, setImgs] = useState<{ prev: SkImage | null; cur: SkImage | null; next: SkImage | null }>({ prev: null, cur: null, next: null });
+  // ภาพอยู่ใน shared value: ตอนพลิกเสร็จสลับภาพบน UI thread ในเฟรมเดียวกับที่รีเซ็ตแผ่น → ไม่กระพริบ
+  const pv = useSharedValue<SkImage | null>(null);
+  const cv = useSharedValue<SkImage | null>(null);
+  const nv = useSharedValue<SkImage | null>(null);
+  const [hasImg, setHasImg] = useState(false);
+  // ซ่อนชั้น Skia หลัง RN วาดหน้าใหม่เสร็จแน่นอนแล้ว (ภาพเหมือนกัน จึงไม่เห็นการสลับ)
+  const hideT = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const hideLater = useCallback(() => {
+    clearTimeout(hideT.current);
+    hideT.current = setTimeout(() => {
+      if (!busy.value) active.value = 0;
+    }, 350);
+  }, [active, busy]);
   useEffect(() => {
     if (keyRef.current !== cacheKey) {
       cache.current.clear();
@@ -136,24 +152,34 @@ export default function ReadBook() {
       if (im && alive) cache.current.set(k, im);
     };
     const publish = () => {
+      if (!alive) return;
+      if (busy.value) {
+        setTimeout(publish, 120); // กำลังพลิกอยู่ ค่อยอัปเดตภาพทีหลัง
+        return;
+      }
       const c = cache.current;
       for (const k of [...c.keys()]) if (k < page - 2 || k > page + 2) c.delete(k);
       const cur = c.get(page) ?? null;
       const next = c.get(page + 1) ?? null;
       const prev = c.get(page - 1) ?? null;
-      setImgs({ prev, cur, next });
+      pv.value = prev;
+      cv.value = cur;
+      nv.value = next;
       readyF.value = cur && next ? 1 : 0;
       readyB.value = prev && cur ? 1 : 0;
+      if (cur) setHasImg(true);
     };
-    // ซ่อนชั้น Skia เมื่อ RN แสดงหน้าใหม่แล้ว
-    const raf = requestAnimationFrame(() => {
-      active.value = 0;
-      busy.value = 0;
-    });
-    const t1 = setTimeout(async () => {
-      for (const k of [page, page + 1, page - 1]) if (!cache.current.has(k)) await snap(k);
-      if (alive) publish();
-    }, 60);
+    // ถ่ายหน้าที่ยังขาด ถ้าบางหน้ายังถ่ายไม่ได้ (ยังวาดไม่เสร็จ) ลองซ้ำจนครบ — ไม่งั้นจะพลิกไม่ไป
+    const need = [page, page + 1, page - 1].filter((k) => k >= 0 && k < n);
+    let tries = 0;
+    let t1: ReturnType<typeof setTimeout> | undefined;
+    const fill = async () => {
+      for (const k of need) if (!cache.current.has(k)) await snap(k);
+      if (!alive) return;
+      publish();
+      if (need.some((k) => !cache.current.has(k)) && ++tries < 12) t1 = setTimeout(fill, 150);
+    };
+    t1 = setTimeout(fill, 60);
     // รูปปกโหลดช้ากว่าตัวหนังสือ: ถ่ายปกซ้ำอีกรอบ
     const t2 = page <= 1 ? setTimeout(async () => {
       await snap(0);
@@ -161,18 +187,18 @@ export default function ReadBook() {
     }, 900) : undefined;
     return () => {
       alive = false;
-      cancelAnimationFrame(raf);
       clearTimeout(t1);
       if (t2) clearTimeout(t2);
     };
-  }, [page, n, cacheKey, active, busy, readyF, readyB]);
+  }, [page, n, cacheKey, busy, readyF, readyB, pv, cv, nv]);
 
   const turned = useCallback(
     (d: number) => {
       setPage((p) => Math.max(0, Math.min(n - 1, p + d)));
       h.select();
+      hideLater();
     },
-    [n, h],
+    [n, h, hideLater],
   );
 
   // เรขาคณิต: S = จุดจับที่ขอบขวา (Wp, sy) · C = จุดบนเส้นพับ · u = ทิศม้วน · f = แนวเส้นพับ
@@ -244,9 +270,8 @@ export default function ReadBook() {
   const s1 = useDerivedValue(() => ({ x: geo.value.cx + geo.value.ux * (R + 46), y: geo.value.cy + geo.value.uy * (R + 46) }));
   const baseDim = useDerivedValue(() => (geo.value.valid ? 0.22 * (1 - tt.value) : 0));
   // หน้าล่าง/แผ่นที่พลิก ตามทิศ (ไปหน้า: ล่าง=ถัดไป พลิก=ปัจจุบัน · ย้อน: ล่าง=ปัจจุบัน พลิก=ก่อนหน้า)
-  const { prev: iPrev, cur: iCur, next: iNext } = imgs;
-  const baseImg = useDerivedValue(() => (dir.value > 0 ? iNext : iCur) ?? iCur);
-  const turnImg = useDerivedValue(() => (dir.value > 0 ? iCur : iPrev) ?? iCur);
+  const baseImg = useDerivedValue(() => (dir.value > 0 ? nv.value : cv.value) ?? cv.value);
+  const turnImg = useDerivedValue(() => (dir.value > 0 ? cv.value : pv.value) ?? cv.value);
   const layer = useAnimatedStyle(() => ({ opacity: active.value }));
 
   const DUR = 620;
@@ -255,12 +280,26 @@ export default function ReadBook() {
     'worklet';
     tilt.value = withTiming(0, { duration: DUR, easing: ease });
     tt.value = withTiming(target, { duration: DUR, easing: ease }, (ok) => {
-      if (!ok) return;
-      if (done) runOnJS(turned)(d);
-      else {
-        active.value = 0;
-        busy.value = 0;
+      // สลับภาพ + รีเซ็ตแผ่นในเฟรมเดียว: ภาพที่เห็นยังเป็นหน้าเดิมเป๊ะ
+      if (done && ok) {
+        if (d > 0) {
+          pv.value = cv.value;
+          cv.value = nv.value;
+          nv.value = null;
+        } else {
+          nv.value = cv.value;
+          cv.value = pv.value;
+          pv.value = null;
+        }
       }
+      dir.value = 1;
+      tilt.value = 0;
+      tt.value = 0;
+      busy.value = 0;
+      readyF.value = cv.value && nv.value ? 1 : 0;
+      readyB.value = pv.value && cv.value ? 1 : 0;
+      if (done && ok) runOnJS(turned)(d);
+      else runOnJS(hideLater)();
     });
   };
   const begin = (d: number, y: number) => {
@@ -314,10 +353,15 @@ export default function ReadBook() {
   const renderPage = (item: Page, index: number) =>
     item.kind === 'cover' ? (
       <View style={styles.coverPage}>
-        <ExpoImage source={COVERS[w.kind]?.src ?? COVERS['ตำรับยา'].src} style={StyleSheet.absoluteFill} contentFit="cover" blurRadius={36} />
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(10,8,5,0.42)' }]} />
-        <BookCover w={w} width={coverW} />
-        <T v="caption" color="rgba(255,255,255,0.7)" center style={{ marginTop: 30 }}>ปัดหรือแตะขวาเพื่อเปิดอ่าน  ›</T>
+        {/* ปกเต็มจอ: ขยายภาพปกให้เต็ม (ตัดขอบซ้ายขวา) แล้ววางชื่อเรื่องในกรอบโค้งตามตำแหน่งบนภาพ */}
+        <ExpoImage source={cover.src} style={StyleSheet.absoluteFill} contentFit="cover" />
+        <LinearGradient colors={['rgba(0,0,0,0.45)', 'rgba(255,255,255,0.08)', 'rgba(0,0,0,0.12)', 'rgba(0,0,0,0)']} locations={[0, 0.3, 0.6, 1]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.spine} />
+        <View style={[styles.coverTitleBox, coverTitle]}>
+          <Text numberOfLines={3} adjustsFontSizeToFit minimumFontScale={0.5} style={[styles.coverTitle, { color: cover.ink }, F.b]}>{w.title}</Text>
+        </View>
+        <LinearGradient colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.45)']} style={[styles.coverHint, { paddingBottom: insets.bottom + 22 }]}>
+          <T v="caption" color="rgba(255,255,255,0.85)" center>ปัดหรือแตะขวาเพื่อเปิดอ่าน  ›</T>
+        </LinearGradient>
       </View>
     ) : (
     <View style={{ flex: 1 }}>
@@ -387,7 +431,7 @@ export default function ReadBook() {
             ))}
           {/* ชั้นพลิกหน้า (Skia) แสดงเฉพาะตอนพลิก */}
           <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, layer]}>
-            {iCur ? (
+            {hasImg ? (
               <Canvas style={StyleSheet.absoluteFill}>
                 <CurlLayer base={baseImg} turning={turnImg} Wp={Wp} Hp={Hp} verts={verts} tex={tex} idx={idx} g0={g0} g1={g1} s0={s0} s1={s1} baseDim={baseDim} paper="rgba(240,231,211,0.93)" />
               </Canvas>
@@ -409,7 +453,11 @@ export default function ReadBook() {
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: '#1A140E' },
   paper: { flex: 1, backgroundColor: PAPER, overflow: 'hidden' },
-  coverPage: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#1A140E', overflow: 'hidden' },
+  coverPage: { flex: 1, backgroundColor: '#1A140E', overflow: 'hidden' },
+  spine: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 34 },
+  coverTitleBox: { position: 'absolute', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
+  coverTitle: { fontSize: 30, lineHeight: 46, textAlign: 'center', fontWeight: '700', textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 },
+  coverHint: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingTop: 40 },
   sheet: { position: 'absolute' },
   gutter: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 26 },
   titlePage: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 30 },
