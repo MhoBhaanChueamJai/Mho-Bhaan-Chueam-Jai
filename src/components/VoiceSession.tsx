@@ -81,7 +81,6 @@ export function VoiceSession({ scribe, initialOptions, title, opening, topics, h
   const scribing = useRef(false);
   const scribePause = useRef(false);
   const jobs = useRef<Promise<void>[]>([]);
-  const transcriptScroll = useRef<ScrollView>(null);
   const kb = useAnimatedKeyboard();
   const dockLift = useAnimatedStyle(() => ({ transform: [{ translateY: -Math.max(0, kb.height.value - 16) }] }));
   const player = useRef<AudioPlayer | null>(null);
@@ -462,7 +461,7 @@ export function VoiceSession({ scribe, initialOptions, title, opening, topics, h
       {mode === 'scribe' || mode === 'analyzing' ? (
         /* ── โหมดฟังบทสนทนา ── */
         <View style={styles.scribe}>
-          <AISphere size={170} active={!paused} level={mode === 'scribe' && !paused ? (micLevel as any) : undefined} />
+          <AISphere size={230} active={!paused} level={mode === 'scribe' && !paused ? (micLevel as any) : undefined} />
           <View style={styles.statusPill}>
             {mode === 'scribe' ? <View style={[styles.liveDot, paused && { backgroundColor: '#FFC24A' }]} /> : <ActivityIndicator size="small" color="#7CF0A8" />}
             <T v="subhead" color="rgba(255,255,255,0.85)">
@@ -475,15 +474,9 @@ export function VoiceSession({ scribe, initialOptions, title, opening, topics, h
             </View>
           ) : null}
           <T v="caption" color="rgba(255,255,255,0.55)" center style={{ marginTop: 8, paddingHorizontal: 40 }}>คุยกับผู้ป่วยตามปกติ ครูปัญญาจะฟังแล้วจัดลงหัวข้อให้</T>
-          <ScrollView ref={transcriptScroll} onContentSizeChange={() => transcriptScroll.current?.scrollToEnd({ animated: true })} style={styles.transcript} contentContainerStyle={{ padding: 16, gap: 8 }}>
-            {lines.filter(Boolean).map((l, i) => (
-              <Animated.View key={i} entering={FadeInDown.duration(300)}>
-                <T v="callout" color="rgba(255,255,255,0.88)">{l}</T>
-              </Animated.View>
-            ))}
-            {pending > 0 ? <T v="caption" color="rgba(255,255,255,0.45)">กำลังถอดเสียง…</T> : null}
-            {!lines.filter(Boolean).length && !pending ? <T v="caption" color="rgba(255,255,255,0.4)" center>ข้อความจากบทสนทนาจะขึ้นที่นี่</T> : null}
-          </ScrollView>
+          {mode === 'analyzing' ? null : pending > 0 || lines.filter(Boolean).length ? (
+            <T v="caption" color="rgba(255,255,255,0.45)" style={{ marginTop: 6 }}>ได้ยินบทสนทนาแล้ว {lines.filter(Boolean).length} ช่วง</T>
+          ) : null}
         </View>
       ) : mode === 'review' ? (
         /* ── ตรวจทาน: แก้ เพิ่ม ลบ แต่ละหัวข้อ ก่อนบันทึก ── */
@@ -506,12 +499,6 @@ export function VoiceSession({ scribe, initialOptions, title, opening, topics, h
               </Animated.View>
             );
           })}
-          {lines.filter(Boolean).length ? (
-            <View style={[styles.field, { opacity: 0.85 }]}>
-              <T v="subhead" color="rgba(255,255,255,0.6)" style={{ fontWeight: '600', marginBottom: 6 }}>บทสนทนาที่ถอดได้</T>
-              <T v="caption" color="rgba(255,255,255,0.6)">{lines.filter(Boolean).join('\n')}</T>
-            </View>
-          ) : null}
         </ScrollView>
       ) : (
       <>
@@ -658,8 +645,7 @@ const styles = StyleSheet.create({
   opts: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8 },
   opt: { flexDirection: 'row', alignItems: 'center', gap: 5, minHeight: 40, paddingHorizontal: 14, borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.3)' },
   optOn: { borderColor: '#7CF0A8', borderWidth: 1 },
-  scribe: { flex: 1, alignItems: 'center', paddingTop: 10, paddingBottom: 110 },
-  transcript: { flex: 1, alignSelf: 'stretch', marginTop: 14, marginHorizontal: 20, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.12)' },
+  scribe: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: 140 },
   scribeCtrls: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   ctrlSmall: { width: 52, height: 52, borderRadius: 26, backgroundColor: 'rgba(255,255,255,0.14)', alignItems: 'center', justifyContent: 'center' },
   ctrlMain: { flex: 1, height: 52, borderRadius: 26, backgroundColor: '#7CF0A8', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
