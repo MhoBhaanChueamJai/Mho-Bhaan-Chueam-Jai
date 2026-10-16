@@ -6,17 +6,16 @@
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated, { Easing, FadeIn, FadeOut, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Sym, ios } from '../../components/ios';
 import { Button, Glass, PressableScale, T, useHaptic } from '../../components/ui';
-import { tasteTone } from '../../data/herbs';
-import { identifyHerb, type ScanResult } from '../../lib/herbScan';
-import { elementColor, palette } from '../../theme';
+import { identifyHerb, setLastScan, type ScanResult } from '../../lib/herbScan';
+import { palette } from '../../theme';
 
 const MINT = '#7CF0A8';
 
@@ -30,7 +29,6 @@ export default function HerbScan() {
   const [photo, setPhoto] = useState<string | null>(null);
   const [state, setState] = useState<'idle' | 'busy' | 'done' | 'error'>('idle');
   const [res, setRes] = useState<ScanResult | null>(null);
-  const [pick, setPick] = useState(0);
 
   // กรอบเล็ง + เส้นสแกนตอนกำลังวิเคราะห์
   const size = Math.min(W - 72, 320);
@@ -44,13 +42,19 @@ export default function HerbScan() {
     setPhoto(uri);
     setState('busy');
     setRes(null);
-    setPick(0);
     try {
       const r = await identifyHerb(uri);
       setRes(r);
-      setState(r.isPlant ? 'done' : 'error');
-      if (r.isPlant) h.success();
-      else h.warn();
+      if (r.isPlant) {
+        // เจอสมุนไพร → เปิดแผ่นผลลัพธ์ (Sheet ของ iOS แบบหน้าสมุนไพร)
+        h.success();
+        setLastScan(uri, r);
+        setState('done');
+        router.push('/herb/found');
+      } else {
+        setState('error');
+        h.warn();
+      }
     } catch {
       setState('error');
       h.warn();
@@ -71,6 +75,14 @@ export default function HerbScan() {
     setRes(null);
     setState('idle');
   };
+  // ปิดแผ่นผลลัพธ์กลับมา → พร้อมถ่ายใหม่
+  const shown = useRef(false);
+  useFocusEffect(
+    useCallback(() => {
+      if (shown.current) reset();
+      shown.current = true;
+    }, []),
+  );
 
   if (!perm) return <View style={styles.page} />;
   if (!perm.granted) {
@@ -88,8 +100,6 @@ export default function HerbScan() {
     );
   }
 
-  const g = res?.guesses[pick];
-  const herb = g?.herb;
   return (
     <View style={styles.page}>
       <StatusBar style="light" />
@@ -156,107 +166,6 @@ export default function HerbScan() {
         </View>
       ) : null}
 
-      {/* ผลลัพธ์ */}
-      {state === 'done' && res && g ? (
-        <View style={[styles.modalWrap, { bottom: insets.bottom + 10 }]}>
-          <Glass tint="rgba(255,255,255,0.62)" style={[styles.modal, { maxHeight: H * 0.74 }]}>
-          <ScrollView style={{ flexShrink: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 6 }}>
-            <View style={styles.resHead}>
-              <Image source={herb ? herb.image : { uri: photo ?? undefined }} style={styles.resImg} contentFit="cover" />
-              <View style={{ flex: 1, gap: 2 }}>
-                <View style={styles.confRow}>
-                  <View style={[styles.conf, { backgroundColor: g.confidence >= 70 ? palette.primarySoft : '#FCEBD2' }]}>
-                    <T v="micro" color={g.confidence >= 70 ? palette.primaryDeep : '#9A5A0C'} style={{ fontWeight: '700' }}>
-                      {g.confidence >= 70 ? 'มั่นใจสูง' : g.confidence >= 45 ? 'น่าจะเป็น' : 'ไม่แน่ใจ'} · {g.confidence}%
-                    </T>
-                  </View>
-                  {herb ? (
-                    <View style={[styles.conf, { backgroundColor: palette.primarySoft }]}>
-                      <T v="micro" color={palette.primaryDeep} style={{ fontWeight: '700' }}>มีในคลัง</T>
-                    </View>
-                  ) : null}
-                </View>
-                <T v="h2" numberOfLines={1}>{g.name}</T>
-                {g.sci ? <T v="subhead" color={ios.secondary} numberOfLines={1} style={{ fontStyle: 'italic' }}>{g.sci}</T> : null}
-              </View>
-            </View>
-
-            {/* อันดับใกล้เคียง: กดสลับ */}
-            {res.guesses.length > 1 ? (
-              <View style={styles.alts}>
-                <T v="caption" color={ios.secondary} style={{ fontWeight: '600' }}>ใกล้เคียง</T>
-                {res.guesses.map((x, i) => (
-                  <PressableScale key={x.name} haptic="select" onPress={() => setPick(i)} style={[styles.alt, i === pick && styles.altOn]} accessibilityState={{ selected: i === pick }}>
-                    <T v="subhead" color={i === pick ? '#FFFFFF' : palette.ink} style={{ fontWeight: '600' }}>{x.name}</T>
-                  </PressableScale>
-                ))}
-              </View>
-            ) : null}
-
-            {herb ? (
-              <>
-                <View style={styles.pills}>
-                  <View style={[styles.pill, { backgroundColor: tasteTone[herb.taste].bg }]}>
-                    <T v="caption" color={tasteTone[herb.taste].fg} style={{ fontWeight: '700' }}>รส{herb.taste}</T>
-                  </View>
-                  <View style={[styles.pill, { backgroundColor: elementColor[herb.element].bg }]}>
-                    <T v="caption" color={elementColor[herb.element].fg} style={{ fontWeight: '700' }}>{elementColor[herb.element].label}</T>
-                  </View>
-                  <View style={[styles.pill, { backgroundColor: 'rgba(255,255,255,0.7)' }]}>
-                    <T v="caption" color={palette.inkSoft} style={{ fontWeight: '600' }}>ใช้ {herb.part}</T>
-                  </View>
-                </View>
-                <Info icon="cross.case.fill" color="#3B7DD8" title="สรรพคุณ" items={herb.uses.slice(0, 4)} />
-                <Info icon="drop.fill" color="#B26A12" title="วิธีใช้" text={herb.howto} />
-                <Info icon="exclamationmark.triangle.fill" color={palette.coral} title="ข้อควรระวัง" text={herb.caution} />
-              </>
-            ) : pick === 0 && (g.uses.length || g.howto) ? (
-              <>
-                <View style={styles.aiNote}>
-                  <Sym name="sparkles" size={13} color="#9A5A0C" />
-                  <T v="caption" color="#9A5A0C" style={{ flex: 1 }}>ยังไม่มีในคลังสมุนไพร ข้อมูลด้านล่างมาจากครูปัญญา ควรตรวจสอบกับตำราก่อนใช้</T>
-                </View>
-                {g.uses.length ? <Info icon="cross.case.fill" color="#3B7DD8" title="สรรพคุณ" items={g.uses} /> : null}
-                {g.howto ? <Info icon="drop.fill" color="#B26A12" title="วิธีใช้" text={g.howto} /> : null}
-                {g.caution ? <Info icon="exclamationmark.triangle.fill" color={palette.coral} title="ข้อควรระวัง" text={g.caution} /> : null}
-              </>
-            ) : null}
-            {g.clues ? <T v="caption" color={ios.tertiary} style={{ marginTop: 12 }}>ลักษณะที่ครูปัญญาเห็น: {g.clues}</T> : null}
-            {res.tip && g.confidence < 70 ? <T v="caption" color={ios.tertiary} style={{ marginTop: 4 }}>เคล็ดลับ: {res.tip}</T> : null}
-          </ScrollView>
-
-          <View style={styles.actions}>
-            <Button kind="secondary" label="ถ่ายใหม่" onPress={reset} style={{ flex: 1, height: 52 }} />
-            {herb ? (
-              <Button label="ดูรายละเอียด" onPress={() => router.replace(`/herb/${herb.id}`)} style={{ flex: 1.4, height: 52 }} />
-            ) : (
-              <Button label="ถามครูปัญญา" icon={<Sym name="sparkles" size={16} color="#FFFFFF" />} onPress={() => router.replace({ pathname: '/assistant', params: { q: `${g.name} มีสรรพคุณและวิธีใช้ตามการแพทย์แผนไทยอย่างไร ข้อควรระวังมีอะไรบ้าง` } })} style={{ flex: 1.4, height: 52 }} />
-            )}
-          </View>
-          </Glass>
-        </View>
-      ) : null}
-    </View>
-  );
-}
-
-function Info({ icon, color, title, text, items }: { icon: string; color: string; title: string; text?: string; items?: string[] }) {
-  return (
-    <View style={styles.info}>
-      <View style={styles.infoHead}>
-        <Sym name={icon as any} size={14} color={color} />
-        <T v="subhead" style={{ fontWeight: '700' }}>{title}</T>
-      </View>
-      {items ? (
-        items.map((x) => (
-          <View key={x} style={{ flexDirection: 'row', gap: 6 }}>
-            <T v="body" color={palette.inkSoft}>•</T>
-            <T v="body" color={palette.inkSoft} style={{ flex: 1 }}>{x}</T>
-          </View>
-        ))
-      ) : (
-        <T v="body" color={palette.inkSoft}>{text}</T>
-      )}
     </View>
   );
 }
@@ -281,17 +190,4 @@ const styles = StyleSheet.create({
   shutterIn: { width: 62, height: 62, borderRadius: 31, backgroundColor: '#FFFFFF' },
   modalWrap: { position: 'absolute', left: 12, right: 12, borderRadius: 38, borderCurve: 'continuous', boxShadow: '0px 18px 48px rgba(0,0,0,0.35)' },
   modal: { borderRadius: 38, borderCurve: 'continuous', paddingHorizontal: 20, paddingTop: 20, paddingBottom: 18 },
-  resHead: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  resImg: { width: 76, height: 76, borderRadius: 20, borderCurve: 'continuous', backgroundColor: palette.bgDeep },
-  confRow: { flexDirection: 'row', gap: 6 },
-  conf: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999 },
-  alts: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginTop: 14 },
-  alt: { paddingHorizontal: 12, height: 32, justifyContent: 'center', borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.6)', borderWidth: 1, borderColor: 'rgba(60,60,67,0.12)' },
-  altOn: { backgroundColor: palette.primary, borderColor: 'transparent' },
-  pills: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 14 },
-  pill: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999 },
-  aiNote: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginTop: 14, padding: 10, borderRadius: 12, backgroundColor: '#FDF3E3' },
-  info: { marginTop: 14, gap: 4 },
-  infoHead: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 },
-  actions: { flexDirection: 'row', gap: 10, marginTop: 14 },
 });

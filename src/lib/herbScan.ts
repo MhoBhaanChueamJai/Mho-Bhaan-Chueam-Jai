@@ -106,3 +106,10 @@ export async function identifyHerb(uri: string): Promise<ScanResult> {
   const tip = String(outs.find((o) => o.tip)?.tip ?? '');
   return { isPlant, guesses, tip };
 }
+
+/** ผลสแกนล่าสุด (ส่งต่อให้แผ่นผลลัพธ์ herb/found) */
+let last: { photo: string; result: ScanResult } | null = null;
+export const setLastScan = (photo: string, result: ScanResult) => {
+  last = { photo, result };
+};
+export const getLastScan = () => last;
