@@ -14,7 +14,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { synthesize, transcribe } from '../../api/ai';
 import { rmsLevel, useVoiceRecorder } from '../../components/audio';
 import { Sym } from '../../components/ios';
-import { AIFlower, AIGlow, Waveform } from '../../components/Orb';
+import { AISphere } from '../../components/AISphere';
+import { AIGlow, Waveform } from '../../components/Orb';
 import { Button, GlassCircle, GlassDock, PressableScale, T, useHaptic } from '../../components/ui';
 import { OPENING, TOPICS, hasTopic, intakeTurn, isYes, setIntakeResult, type IntakeData, type Turn } from '../../lib/intake';
 import { ageFrom, elementFromMonth, normalizeBirth, toISO } from '../../lib/birth';
@@ -246,7 +247,7 @@ export default function VoiceIntake() {
   return (
     <View style={styles.page}>
       <StatusBar style="light" />
-      <LinearGradient colors={['#04150E', '#0B3B28', '#062218']} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={['#000000', '#050B08', '#000000']} style={StyleSheet.absoluteFill} />
       <AIGlow active={phase === 'listening' || phase === 'speaking'} />
 
       {/* หัว */}
@@ -267,7 +268,7 @@ export default function VoiceIntake() {
           }}
           accessibilityLabel={phase === 'listening' ? 'ส่งคำตอบ' : 'ครูปัญญา'}
         >
-          <AIFlower size={190} active={phase !== 'done'} level={(phase === 'listening' ? micLevel : speakLevel) as any} />
+          <AISphere size={230} active={phase !== 'done'} level={(phase === 'listening' ? micLevel : speakLevel) as any} />
         </PressableScale>
         <View style={styles.statusPill}>
           {phase === 'listening' ? <View style={styles.liveDot} /> : null}
@@ -310,7 +311,7 @@ export default function VoiceIntake() {
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: '#04150E' },
+  page: { flex: 1, backgroundColor: '#000000' },
   top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: 160 },
   statusPill: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14, paddingHorizontal: 14, paddingVertical: 6, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.1)' },

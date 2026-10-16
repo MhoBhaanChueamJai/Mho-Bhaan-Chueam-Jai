@@ -1,0 +1,89 @@
+/**
+ * ทรงกลม AI (อ้างอิง Dribbble "Sphere — AI Voice Assistant") — วาดด้วย shader (Skia SkSL)
+ * ลูกแก้วมืด ขอบเรืองแสงสี (fresnel) + ริบบิ้นแสงพลิ้วอยู่ข้างใน สีไล่เปลี่ยนตามเวลา
+ * level (0..1) = ระดับเสียง AI/ไมค์ → ริบบิ้นหนาขึ้น คลื่นแรงขึ้น ขอบสว่างขึ้น
+ */
+import { Canvas, Fill, Shader, Skia } from '@shopify/react-native-skia';
+import React, { useEffect } from 'react';
+import { View } from 'react-native';
+import { useDerivedValue, useFrameCallback, useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated';
+
+export const SPHERE_SKSL = `uniform float2 res; uniform float t; uniform float e;
+uniform float3 c1; uniform float3 c2; uniform float3 c3;
+half4 main(float2 fc) {
+  float2 uv = (fc - 0.5 * res) / (0.5 * min(res.x, res.y));
+  float r = length(uv);
+  float R = 0.86;
+  float2 p = uv / R;
+  float inside = 1.0 - smoothstep(R - 0.012, R + 0.004, r);
+  float z = sqrt(max(1.0 - dot(p, p), 0.0));
+  float amp = 0.16 + 0.24 * e;
+  float y0 = 0.32 * p.x - amp * sin(p.x * 2.2 + t * 0.9) - 0.05 * sin(p.x * 5.5 - t * 1.8) * (0.4 + e);
+  float d = p.y + y0;
+  float th = 0.07 + 0.11 * e;
+  float core = exp(-d * d / (th * th * 0.12));
+  float glow = exp(-d * d / (th * th * 2.2));
+  float haze = exp(-d * d * 3.5);
+  float along = smoothstep(-1.0, -0.15, p.x) * (1.0 - 0.35 * smoothstep(0.7, 1.0, p.x));
+  float k = clamp(p.x * 0.5 + 0.5, 0.0, 1.0);
+  float3 col = mix(c1, c2, smoothstep(0.0, 0.55, k));
+  col = mix(col, c3, smoothstep(0.45, 1.0, k));
+  float3 inner = col * (glow * 0.85 + core * 1.5) * along * (0.75 + 0.7 * e);
+  inner += col * haze * 0.32 * along;
+  inner += mix(c2, c3, 0.5) * exp(-dot(p - float2(0.55, -0.15), p - float2(0.55, -0.15)) * 6.0) * 0.18;
+  float fres = pow(1.0 - z, 1.9);
+  float ang = atan(p.y, p.x);
+  float3 rimc = mix(c1, c3, 0.5 + 0.5 * sin(ang * 1.0 + t * 0.35));
+  float3 rim = rimc * fres * (0.95 + 0.5 * e);
+  float spec = exp(-pow(length(p - float2(-0.38, -0.5)) * 3.2, 2.0)) * 0.10;
+  float3 c = (inner + rim + spec) * inside;
+  // ขอบนอก: ต่อเนื่องจากขอบใน (ไม่มีรอยต่อ) + แสงฟุ้งรอบลูก
+  float og = exp(-pow((r - R + 0.006) * 26.0, 2.0)) * (0.55 + 0.5 * e) + exp(-pow((r - R) * 9.0, 2.0)) * (0.28 + 0.5 * e) * (1.0 - inside);
+  c += rimc * og;
+  float a = clamp(inside + og * 0.8, 0.0, 1.0);
+  return half4(half3(c), half(a));
+}`;
+
+const FX = Skia.RuntimeEffect.Make(SPHERE_SKSL);
+
+/** ชุดสีที่ไล่เปลี่ยนวนไป: ม่วงชมพู→ส้ม · น้ำเงิน→ม่วง · เขียวมรกต→ทอง (โทนแอป) */
+const THEMES: [number, number, number][][] = [
+  [[0.85, 0.22, 0.85], [1.0, 0.18, 0.32], [1.0, 0.62, 0.18]],
+  [[0.15, 0.45, 1.0], [0.55, 0.25, 1.0], [1.0, 0.25, 0.85]],
+  [[0.1, 0.75, 0.55], [0.2, 0.85, 0.75], [0.95, 0.78, 0.25]],
+];
+
+export function AISphere({ size = 200, level, active = true }: { size?: number; level?: SharedValue<number>; active?: boolean }) {
+  const t = useSharedValue(0);
+  const zero = useSharedValue(0);
+  const src = level ?? zero;
+  const speed = useSharedValue(active ? 1 : 0.4);
+  useEffect(() => {
+    speed.value = withTiming(active ? 1 : 0.4, { duration: 600 });
+  }, [active, speed]);
+  useFrameCallback((f) => {
+    t.value += ((f.timeSincePreviousFrame ?? 16) / 1000) * speed.value;
+  });
+  const e = useDerivedValue(() => withTiming(Math.min(1, src.value), { duration: 120 }));
+  const uniforms = useDerivedValue(() => {
+    // สีไล่เปลี่ยนนุ่มๆ ทุก ~8 วิ
+    const ph = (t.value / 8) % THEMES.length;
+    const i = Math.floor(ph);
+    const f = ph - i;
+    const s = f * f * (3 - 2 * f);
+    const A = THEMES[i];
+    const B = THEMES[(i + 1) % THEMES.length];
+    const mixC = (j: number) => [0, 1, 2].map((q) => A[j][q] + (B[j][q] - A[j][q]) * s);
+    return { res: [size, size], t: t.value, e: e.value, c1: mixC(0), c2: mixC(1), c3: mixC(2) };
+  });
+  if (!FX) return <View style={{ width: size, height: size }} />;
+  return (
+    <View style={{ width: size, height: size }} pointerEvents="none">
+      <Canvas style={{ width: size, height: size }}>
+        <Fill>
+          <Shader source={FX} uniforms={uniforms} />
+        </Fill>
+      </Canvas>
+    </View>
+  );
+}
