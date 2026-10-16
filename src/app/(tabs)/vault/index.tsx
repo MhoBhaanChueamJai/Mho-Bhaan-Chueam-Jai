@@ -38,7 +38,7 @@ function Book({ w, width, i }: { w: Wisdom; width: number; i: number }) {
       <PressableScale scaleTo={0.96} haptic="select" onPress={() => router.push(`/wisdom/${w.id}`)} style={styles.bookShadow} accessibilityLabel={`${w.title} ${w.kind}${w.verified ? '' : ' รอตรวจทาน'}`}>
         <BookCover w={w} width={width} />
       </PressableScale>
-      <T v="subhead" numberOfLines={2} style={{ marginTop: 10, fontWeight: '600' }}>{w.title}</T>
+      <T v="subhead" numberOfLines={1} style={{ marginTop: 10, fontWeight: '600' }}>{w.title}</T>
       <View style={styles.meta}>
         <Sym name={SOURCE_ICON[w.source] as any} size={10} color={ios.tertiary} />
         <T v="caption" color={ios.tertiary} numberOfLines={1} style={{ flexShrink: 1 }}>{w.sharedBy ? `จาก ${w.sharedBy}` : w.source}</T>
