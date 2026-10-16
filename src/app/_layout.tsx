@@ -57,6 +57,7 @@ function Root() {
         <Stack.Screen name="wisdom/receive" options={{ headerShown: true, title: 'รับตำราจากเพื่อน', headerBackTitle: 'คลังภูมิ', headerTintColor: palette.ink, headerShadowVisible: false, headerStyle: { backgroundColor: palette.bg }, contentStyle: { backgroundColor: palette.bg } }} />
         <Stack.Screen name="settings" options={{ headerShown: true, title: 'ตั้งค่า', headerLargeTitle: true, headerTransparent: true, headerShadowVisible: false, headerLargeTitleShadowVisible: false, headerBackVisible: false }} />
         <Stack.Screen name="profile" options={{ headerShown: true, title: 'ข้อมูลส่วนตัว', headerBackTitle: 'ตั้งค่า', headerTintColor: palette.ink, headerShadowVisible: false, headerStyle: { backgroundColor: palette.bg } }} />
+        <Stack.Screen name="notifications" options={{ headerShown: true, title: 'แจ้งเตือน', headerBackTitle: 'หน้าหลัก', headerTintColor: palette.ink, headerShadowVisible: false, headerStyle: { backgroundColor: palette.bg } }} />
         <Stack.Screen name="ai-settings" options={{ headerShown: true, title: 'ตั้งค่า AI', headerBackTitle: 'ตั้งค่า', headerTintColor: palette.ink, headerShadowVisible: false, headerStyle: { backgroundColor: palette.bg } }} />
       </Stack>
       {lockEnabled && !unlocked ? <LockScreen /> : null}

@@ -6,7 +6,8 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { AppIcon, Group, IOSCard, Row, SectionTitle, Sym, ios } from '../../../components/ios';
 import { AISphere } from '../../../components/AISphere';
-import { Avatar, PressableScale, T } from '../../../components/ui';
+import { Avatar, HeaderButton, PressableScale, T } from '../../../components/ui';
+import { noticesFrom } from '../../../lib/notices';
 import { TODAY, avatarFor, avatars, doctor, lastVisit, legacy, thaiDate } from '../../../data/mock';
 import { visitSortKey } from '../../../data/tones';
 import { useApp } from '../../../store/app';
@@ -23,22 +24,29 @@ const TOOLS = [
 ] as const;
 
 export default function Home() {
-  const { patients, settings, isPractitioner, profile } = useApp();
+  const { patients, settings, isPractitioner, profile, wisdoms } = useApp();
   // ผู้ป่วยที่มารักษาล่าสุด 3 ราย (หมอพื้นบ้านไม่ใช้ระบบนัด)
   const recent = [...patients].sort((a, b) => visitSortKey(lastVisit(b)?.date) - visitSortKey(lastVisit(a)?.date)).slice(0, 3);
   const name = settings.username && settings.username !== 'somchai' ? settings.username : doctor.short;
+  const notices = noticesFrom(patients, wisdoms, isPractitioner);
   const me = profile?.first_name || profile?.display_name?.split(' ')[0] || name;
 
   return (
     <>
       <Stack.Screen
         options={{
-          headerRight: () => (
-            // โปรไฟล์บนหัวจอ: รูป + ชื่อ ในแคปซูลกระจกของระบบ
+          // ซ้าย: โปรไฟล์ (รูป + ชื่อ) · ขวา: แจ้งเตือน
+          headerLeft: () => (
             <PressableScale onPress={() => router.push('/settings')} accessibilityLabel={`บัญชีและตั้งค่า ${me}`} hitSlop={6} style={styles.me}>
               <Image source={avatars.doctor} style={styles.meAvatar} />
-              <T v="title" color={palette.ink} numberOfLines={1} style={{ maxWidth: 140 }}>{me}</T>
+              <T v="title" color={palette.ink} numberOfLines={1} style={{ maxWidth: 150 }}>{me}</T>
             </PressableScale>
+          ),
+          headerRight: () => (
+            <HeaderButton label={`แจ้งเตือน ${notices.length} รายการ`} onPress={() => router.push('/notifications')}>
+              <Sym name="bell" size={20} color={palette.ink} weight="semibold" />
+              {notices.length ? <View style={styles.dot} /> : null}
+            </HeaderButton>
           ),
         }}
       />
@@ -131,7 +139,8 @@ export default function Home() {
 }
 
 const styles = StyleSheet.create({
-  me: { flexDirection: 'row', alignItems: 'center', gap: 8, height: 36, paddingLeft: 2, paddingRight: 8 },
+  me: { flexDirection: 'row', alignItems: 'center', gap: 8, height: 36, paddingLeft: 2, paddingRight: 10 },
+  dot: { position: 'absolute', top: 6, right: 7, width: 9, height: 9, borderRadius: 5, backgroundColor: '#E5484D', borderWidth: 1.5, borderColor: '#FFFFFF' },
   meAvatar: { width: 32, height: 32, borderRadius: 16 },
   page: { paddingHorizontal: 16, paddingBottom: 120 },
   ai: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14 },
