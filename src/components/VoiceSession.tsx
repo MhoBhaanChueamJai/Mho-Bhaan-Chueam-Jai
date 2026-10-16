@@ -534,11 +534,11 @@ export function VoiceSession({ scribe, initialOptions, title, opening, topics, h
                 const on = picked.includes(o);
                 return (
                   <PressableScale key={o} haptic="select" scaleTo={0.95} onPress={() => togglePick(o)} accessibilityRole="checkbox" accessibilityState={{ checked: on }} accessibilityLabel={o}>
-                    {/* ชิป Liquid Glass (เลือกแล้ว = กระจกอมเขียว ขอบเขียว) */}
-                    <Glass tint={on ? 'rgba(124,240,168,0.28)' : 'rgba(255,255,255,0.08)'} style={[styles.opt, on && styles.optOn]}>
+                    {/* ชิปมืด (กระจกระบบบนพื้นดำออกเป็นขาวฝ้า จึงใช้พื้นมืดโปร่งแทน) */}
+                    <View style={[styles.opt, on && styles.optOn]}>
                       {on ? <Sym name="checkmark" size={12} color="#7CF0A8" weight="bold" /> : null}
                       <T v="subhead" color={on ? '#BFFFD6' : 'rgba(255,255,255,0.92)'} style={{ fontWeight: on ? '700' : '500' }}>{o}</T>
-                    </Glass>
+                    </View>
                   </PressableScale>
                 );
               })}
@@ -641,8 +641,8 @@ const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: '#000000' },
   optWrap: { alignItems: 'center', marginTop: 16, paddingHorizontal: 20, gap: 12 },
   opts: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8 },
-  opt: { flexDirection: 'row', alignItems: 'center', gap: 5, minHeight: 40, paddingHorizontal: 14, borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.3)' },
-  optOn: { borderColor: '#7CF0A8', borderWidth: 1 },
+  opt: { flexDirection: 'row', alignItems: 'center', gap: 5, minHeight: 40, paddingHorizontal: 14, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.22)' },
+  optOn: { backgroundColor: 'rgba(124,240,168,0.16)', borderColor: '#7CF0A8' },
   scribe: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: 140 },
   scribeCtrls: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   ctrlSmall: { width: 52, height: 52, borderRadius: 26, backgroundColor: 'rgba(255,255,255,0.14)', alignItems: 'center', justifyContent: 'center' },
