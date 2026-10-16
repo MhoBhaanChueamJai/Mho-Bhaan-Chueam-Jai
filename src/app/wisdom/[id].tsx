@@ -8,8 +8,8 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import React from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
-import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
+import { StyleSheet, View } from 'react-native';
+import Animated, { FadeInDown, FadeInUp, interpolate, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSpeaker } from '../../components/audio';
 import { BookCover, COVERS } from '../../components/BookCover';
@@ -49,6 +49,16 @@ export default function WisdomDetail() {
   /** ตัวยา → สมุนไพรในคลัง (ถ้าชื่อตรง) */
   const herbOf = (name: string) => herbs.find((h) => name.includes(h.name));
   /** วิธีทำแยกเป็นขั้นตอน (ตัดตามช่องว่าง/ขึ้นบรรทัดใหม่ที่คั่นประโยค) */
+  // ความสูง Hero + การหดปกเมื่อเลื่อน (เนื้อหาเลื่อนทับ Hero ที่อยู่กับที่)
+  const heroH = insets.top + 56 + 150 * (700 / 480) + 40;
+  const y = useSharedValue(0);
+  const onScroll = useAnimatedScrollHandler((e) => {
+    y.value = e.contentOffset.y;
+  });
+  const coverSt = useAnimatedStyle(() => ({
+    opacity: interpolate(y.value, [0, heroH * 0.7], [1, 0.2], 'clamp'),
+    transform: [{ scale: interpolate(y.value, [0, heroH * 0.7], [1, 0.9], 'clamp') }, { rotate: '-2deg' }],
+  }));
   const steps = (w.method ?? '').split(/\n+|\s+(?=(?:แล้ว|จากนั้น|นำ|กิน|ใช้|ต้ม|บด|ห่อ|ประคบ))/).map((s) => s.trim()).filter(Boolean);
 
   return (
@@ -59,6 +69,8 @@ export default function WisdomDetail() {
           title: '',
           headerTransparent: true,
           headerShadowVisible: false,
+          // ไม่เบลอ/จางขอบบน ให้ Hero ชนขอบจอ
+          scrollEdgeEffects: { top: 'hidden' },
           headerTintColor: '#FFFFFF',
           headerBackVisible: false,
           headerLeft: () => <HeaderBack fallback="/vault" color={palette.ink} />,
@@ -69,17 +81,18 @@ export default function WisdomDetail() {
           ),
         }}
       />
-      <ScrollView contentInsetAdjustmentBehavior="never" contentContainerStyle={{ paddingBottom: insets.bottom + 130 }} showsVerticalScrollIndicator={false}>
-        {/* ── Hero: ปกหนังสือบนพื้นเบลอจากภาพปก ── */}
-        <View style={[styles.hero, { paddingTop: insets.top + 60 }]}>
-          <Image source={cover.src} style={StyleSheet.absoluteFill} contentFit="cover" />
-          <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFill} />
-          <LinearGradient colors={['rgba(0,0,0,0.15)', 'rgba(0,0,0,0.35)', palette.bg]} locations={[0, 0.72, 1]} style={StyleSheet.absoluteFill} />
-          <Animated.View entering={FadeInUp.duration(500)} style={styles.coverWrap}>
-            <BookCover w={{ ...w, verified: true }} width={150} />
-          </Animated.View>
-        </View>
-
+      {/* ── Hero ตรึงอยู่กับที่: ปกหนังสือบนพื้นเบลอจากภาพปก (เนื้อหาเลื่อนขึ้นมาทับ) ── */}
+      <View style={[styles.hero, { height: heroH, paddingTop: insets.top + 56 }]} pointerEvents="none">
+        <Image source={cover.src} style={StyleSheet.absoluteFill} contentFit="cover" />
+        <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFill} />
+        <LinearGradient colors={['rgba(0,0,0,0.25)', 'rgba(0,0,0,0.35)', 'rgba(0,0,0,0.55)']} style={StyleSheet.absoluteFill} />
+        <Animated.View entering={FadeInUp.duration(500)} style={[styles.coverWrap, coverSt]}>
+          <BookCover w={{ ...w, verified: true }} width={150} />
+        </Animated.View>
+      </View>
+      <Animated.ScrollView onScroll={onScroll} scrollEventThrottle={16} bounces={false} contentInsetAdjustmentBehavior="never" contentContainerStyle={{ paddingTop: heroH - 28, paddingBottom: 0 }} showsVerticalScrollIndicator={false}>
+        <View style={[styles.sheet, { paddingBottom: insets.bottom + 130 }]}>
+          <View style={styles.grab} />
         {/* ── ชื่อ + ที่มา ── */}
         <Animated.View entering={FadeInDown.delay(60).duration(380)} style={styles.head}>
           <View style={styles.kindPill}>
@@ -177,7 +190,8 @@ export default function WisdomDetail() {
             </Section>
           ) : null}
         </View>
-      </ScrollView>
+        </View>
+      </Animated.ScrollView>
 
       <GlassDock>
         <Button
@@ -192,8 +206,10 @@ export default function WisdomDetail() {
 }
 
 const styles = StyleSheet.create({
-  hero: { alignItems: 'center', paddingBottom: 26 },
-  coverWrap: { transform: [{ rotate: '-2deg' }] },
+  hero: { position: 'absolute', left: 0, right: 0, top: 0, alignItems: 'center', overflow: 'hidden' },
+  sheet: { backgroundColor: palette.bg, borderTopLeftRadius: 28, borderTopRightRadius: 28, borderCurve: 'continuous', paddingTop: 10, minHeight: 600 },
+  grab: { alignSelf: 'center', width: 38, height: 5, borderRadius: 3, backgroundColor: 'rgba(0,0,0,0.12)', marginBottom: 14 },
+  coverWrap: {},
   head: { alignItems: 'center', paddingHorizontal: 24 },
   kindPill: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999, backgroundColor: palette.primarySoft },
   meta: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6, flexWrap: 'wrap', justifyContent: 'center' },
