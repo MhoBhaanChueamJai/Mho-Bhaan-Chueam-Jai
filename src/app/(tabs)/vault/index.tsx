@@ -8,12 +8,11 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, router } from 'expo-router';
 import React from 'react';
-import { ScrollView, StyleSheet, View, type ImageSourcePropType } from 'react-native';
-import Animated, { FadeIn, FadeInDown, LinearTransition } from 'react-native-reanimated';
-import { CircleIcon } from '../../../components/ListRow';
+import { ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+import { BookCover } from '../../../components/BookCover';
 import { Sym, ios } from '../../../components/ios';
 import { HeaderButton, PressableScale, T } from '../../../components/ui';
-import { herbs } from '../../../data/herbs';
 import { type Wisdom } from '../../../data/mock';
 import { useApp } from '../../../store/app';
 import { elevation, palette } from '../../../theme';
@@ -29,54 +28,29 @@ const SOURCE_ICON: Record<Wisdom['source'], string> = { เสียงเล่
 
 const COVER = {
   shelf: require('../../../../assets/vault/shelf.jpg'),
-  hands: require('../../../../assets/vault/hands.jpg'),
-  herbs: require('../../../../assets/vault/herbs.jpg'),
-  manuscript: require('../../../../assets/vault/manuscript.jpg'),
-  healer: require('../../../../assets/vault/healer.jpg'),
 };
-/** ภาพปกตามเนื้อหา: สแกนตำรา/ตำราโบราณ = สมุดข่อย · ตำรับยา = สมุนไพรตัวแรกที่มีภาพ · วิธีรักษา = ลูกประคบ */
-function coverOf(w: Wisdom): ImageSourcePropType {
-  if (w.source === 'สแกนตำรา' || w.kind === 'ตำราโบราณ') return COVER.manuscript;
-  if (w.kind === 'วิธีรักษา') return COVER.herbs;
-  if (w.kind === 'คาถา/พิธี') return COVER.healer;
-  const h = herbs.find((x) => w.ingredients?.some((i) => i.includes(x.name)));
-  return h ? h.image : COVER.hands;
-}
 
-function Feature({ w, i }: { w: Wisdom; i: number }) {
+/** ปกตำรา + ชื่อเรื่องและที่มาใต้ปก (แบบชั้นหนังสือ) */
+function Book({ w, width, i }: { w: Wisdom; width: number; i: number }) {
   return (
-    <Animated.View entering={FadeInDown.delay(40 + i * 50).duration(340)}>
-      <PressableScale scaleTo={0.97} haptic="select" onPress={() => router.push(`/wisdom/${w.id}`)} style={[styles.feature, elevation.e2]} accessibilityLabel={w.title}>
-        <View style={styles.featureClip}>
-          <Image source={coverOf(w)} style={StyleSheet.absoluteFill} contentFit="cover" transition={250} />
-          <LinearGradient colors={['rgba(0,0,0,0)', 'rgba(4,22,14,0.35)', 'rgba(4,22,14,0.9)']} locations={[0.25, 0.55, 1]} style={StyleSheet.absoluteFill} />
-          <View style={styles.featureTop}>
-            <View style={styles.kindPill}>
-              <Sym name={KIND[w.kind]?.icon as any} size={12} color={KIND[w.kind]?.color} />
-              <T v="micro" color={palette.ink} style={{ fontWeight: '700' }}>{w.kind}</T>
-            </View>
-            {w.verified ? null : (
-              <View style={styles.pendingPill}>
-                <T v="micro" color="#8A5A10" style={{ fontWeight: '700' }}>รอตรวจทาน</T>
-              </View>
-            )}
-          </View>
-          <View style={styles.featureText}>
-            <T v="h3" color="#FFFFFF" numberOfLines={2}>{w.title}</T>
-            <T v="subhead" color="rgba(255,255,255,0.8)" numberOfLines={2} style={{ marginTop: 4 }}>{w.summary}</T>
-            <View style={styles.featureMeta}>
-              <Sym name={SOURCE_ICON[w.source] as any} size={12} color="rgba(255,255,255,0.75)" />
-              <T v="caption" color="rgba(255,255,255,0.75)" numberOfLines={1}>{w.sharedBy ? `จาก ${w.sharedBy}` : w.source} · {w.date}</T>
-            </View>
-          </View>
-        </View>
+    <Animated.View entering={FadeInDown.delay(40 + (i % 9) * 45).duration(340)} style={{ width: width + 4 }}>
+      <PressableScale scaleTo={0.96} haptic="select" onPress={() => router.push(`/wisdom/${w.id}`)} style={styles.bookShadow} accessibilityLabel={`${w.title} ${w.kind}${w.verified ? '' : ' รอตรวจทาน'}`}>
+        <BookCover w={w} width={width} />
       </PressableScale>
+      <T v="subhead" numberOfLines={2} style={{ marginTop: 10, fontWeight: '600' }}>{w.title}</T>
+      <View style={styles.meta}>
+        <Sym name={SOURCE_ICON[w.source] as any} size={10} color={ios.tertiary} />
+        <T v="caption" color={ios.tertiary} numberOfLines={1} style={{ flexShrink: 1 }}>{w.sharedBy ? `จาก ${w.sharedBy}` : w.source}</T>
+      </View>
     </Animated.View>
   );
 }
 
 export default function Vault() {
   const { wisdoms } = useApp();
+  const { width: SW } = useWindowDimensions();
+  // ชั้นหนังสือ 3 คอลัมน์: ขอบ 20 + ช่องไฟ 16
+  const GRID_W = Math.floor((SW - 40 - 32) / 3) - 4;
   const list = wisdoms;
   const count = (k: Wisdom['kind']) => wisdoms.filter((w) => w.kind === k).length;
 
@@ -142,9 +116,9 @@ export default function Vault() {
           <View style={styles.secHead}>
             <T v="h3">ล่าสุด</T>
           </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} decelerationRate="fast" snapToInterval={CARD_W + 14} snapToAlignment="start" contentContainerStyle={styles.rail}>
-            {list.slice(0, 6).map((w, i) => (
-              <Feature key={w.id} w={w} i={i} />
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} decelerationRate="fast" snapToInterval={RAIL_W + 4 + 16} snapToAlignment="start" contentContainerStyle={styles.rail}>
+            {list.slice(0, 8).map((w, i) => (
+              <Book key={w.id} w={w} width={RAIL_W} i={i} />
             ))}
           </ScrollView>
         </>
@@ -156,31 +130,14 @@ export default function Vault() {
         <T v="subhead" color={ios.secondary}>{list.length} เรื่อง</T>
       </View>
       {list.length ? (
-        <Animated.View layout={LinearTransition.duration(260)} style={[styles.list, elevation.e1]}>
+        // ชั้นหนังสือ 3 คอลัมน์
+        <View style={styles.shelf}>
           {list.map((w, i) => (
-            <Animated.View key={w.id} entering={FadeIn.delay(i * 35).duration(200)}>
-              {i ? <View style={styles.sep} /> : null}
-              <PressableScale scaleTo={0.98} haptic="select" onPress={() => router.push(`/wisdom/${w.id}`)} style={styles.row} accessibilityLabel={`${w.title} ${w.kind}`}>
-                <CircleIcon name={KIND[w.kind]?.icon ?? 'book.closed.fill'} color={KIND[w.kind]?.color ?? palette.primary} size={48} />
-                <View style={{ flex: 1, gap: 1 }}>
-                  <T v="title" numberOfLines={2}>{w.title}</T>
-                  <View style={styles.meta}>
-                    <Sym name={SOURCE_ICON[w.source] as any} size={11} color={ios.tertiary} />
-                    <T v="caption" color={ios.tertiary} numberOfLines={1} style={{ flexShrink: 1 }}>{w.sharedBy ? `จาก ${w.sharedBy}` : w.source} · {w.date}</T>
-                    {w.verified ? null : (
-                      <View style={styles.pending}>
-                        <T v="micro" color="#C27A12" style={{ fontWeight: '700' }}>รอตรวจทาน</T>
-                      </View>
-                    )}
-                  </View>
-                </View>
-                <Sym name="chevron.right" size={13} color={ios.tertiary} weight="semibold" />
-              </PressableScale>
-            </Animated.View>
+            <Book key={w.id} w={w} width={GRID_W} i={i} />
           ))}
-        </Animated.View>
+        </View>
       ) : (
-        <View style={[styles.list, elevation.e1, { alignItems: 'center', paddingVertical: 28, gap: 6 }]}>
+        <View style={[styles.empty, elevation.e1]}>
           <Sym name="book.closed" size={28} color={ios.tertiary} />
           <T v="callout" color={ios.secondary}>ยังไม่มีภูมิปัญญา กด “เพิ่มภูมิปัญญา” ได้เลย</T>
         </View>
@@ -190,8 +147,11 @@ export default function Vault() {
   );
 }
 
-const CARD_W = 272;
+const RAIL_W = 150;
 const styles = StyleSheet.create({
+  empty: { marginHorizontal: 16, marginTop: 10, alignItems: 'center', paddingVertical: 28, gap: 6, backgroundColor: palette.surface, borderRadius: 20, borderCurve: 'continuous' },
+  bookShadow: { borderRadius: 8, boxShadow: '0px 10px 18px rgba(20,40,30,0.22), 0px 2px 4px rgba(20,40,30,0.18)' },
+  shelf: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 16, rowGap: 22, paddingHorizontal: 20, marginTop: 14 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingLeft: 20, paddingRight: 16, marginBottom: 14 },
   heroWrap: { marginHorizontal: 16, borderRadius: 30, borderCurve: 'continuous', backgroundColor: '#14261c' },
   hero: { paddingHorizontal: 20, paddingTop: 18, paddingBottom: 20, borderRadius: 30, borderCurve: 'continuous', overflow: 'hidden' },
@@ -202,17 +162,6 @@ const styles = StyleSheet.create({
   kpi: { flex: 1, paddingVertical: 12, paddingHorizontal: 10, borderRadius: 18, borderCurve: 'continuous', overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.35)' },
   kpiIcon: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
   secHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', paddingHorizontal: 20, marginTop: 24, marginBottom: 2 },
-  rail: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 22, gap: 14 },
-  feature: { width: CARD_W, height: 320, borderRadius: 26, borderCurve: 'continuous', backgroundColor: palette.surface },
-  featureClip: { flex: 1, borderRadius: 26, borderCurve: 'continuous', overflow: 'hidden' },
-  featureTop: { position: 'absolute', top: 14, left: 14, right: 14, flexDirection: 'row', justifyContent: 'space-between' },
-  kindPill: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.92)' },
-  pendingPill: { paddingHorizontal: 9, paddingVertical: 5, borderRadius: 999, backgroundColor: 'rgba(253,240,220,0.95)' },
-  featureText: { position: 'absolute', left: 18, right: 18, bottom: 18 },
-  featureMeta: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 10 },
-  list: { marginHorizontal: 16, marginTop: 10, backgroundColor: palette.surface, borderRadius: 20, borderCurve: 'continuous' },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 12, paddingLeft: 14, paddingRight: 16, minHeight: 76 },
-  sep: { height: StyleSheet.hairlineWidth, backgroundColor: ios.separator, marginLeft: 76 },
+  rail: { paddingHorizontal: 20, paddingTop: 14, paddingBottom: 18, gap: 16 },
   meta: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
-  pending: { marginLeft: 4, paddingHorizontal: 7, paddingVertical: 1, borderRadius: 999, backgroundColor: '#FDF0DC' },
 });
