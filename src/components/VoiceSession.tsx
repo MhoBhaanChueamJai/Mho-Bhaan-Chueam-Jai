@@ -9,7 +9,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useRef, useState } from 'react';
-import { StyleSheet, TextInput, View } from 'react-native';
+import { Keyboard, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown, useAnimatedKeyboard, useAnimatedStyle, useDerivedValue, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { synthesize, transcribe } from '../api/ai';
@@ -17,7 +17,7 @@ import { rmsLevel, useVoiceRecorder } from './audio';
 import { Sym } from './ios';
 import { AISphere } from './AISphere';
 import { AIGlow, Waveform } from './Orb';
-import { Button, GlassCircle, GlassDock, PressableScale, T, useHaptic } from './ui';
+import { Button, GlassCircle, PressableScale, T, useHaptic } from './ui';
 import { isYes, type Turn } from '../lib/intake';
 import { palette } from '../theme';
 
@@ -313,6 +313,8 @@ export function VoiceSession({ title, opening, topics, has, turn, closing, confi
       <StatusBar style="light" />
       <LinearGradient colors={['#000000', '#050B08', '#000000']} style={StyleSheet.absoluteFill} />
       <AIGlow active={phase === 'listening' || phase === 'speaking'} />
+      {/* แตะพื้นที่ว่างเพื่อปิดคีย์บอร์ด */}
+      <Pressable style={StyleSheet.absoluteFill} onPress={Keyboard.dismiss} accessible={false} />
 
       {/* หัว */}
       <View style={[styles.top, { paddingTop: insets.top + 8 }]}>
@@ -373,12 +375,12 @@ export function VoiceSession({ title, opening, topics, has, turn, closing, confi
       <View style={[styles.darkDock, { bottom: insets.bottom ? 24 : 16 }]}>
         {/* พิมพ์ตอบแทนการพูดได้ */}
         <View style={styles.typeRow}>
-          <Sym name="keyboard" size={18} color="rgba(255,255,255,0.75)" />
+          <Sym name="keyboard" size={18} color="#8A928D" />
           <TextInput
             value={draft}
             onChangeText={setDraft}
             placeholder="พิมพ์ตอบได้ที่นี่"
-            placeholderTextColor="rgba(255,255,255,0.6)"
+            placeholderTextColor="#9AA19D"
             returnKeyType="send"
             onSubmitEditing={sendTyped}
             onFocus={() => setKbOpen(true)}
@@ -387,7 +389,7 @@ export function VoiceSession({ title, opening, topics, has, turn, closing, confi
             accessibilityLabel="พิมพ์คำตอบ"
           />
           <PressableScale haptic="press" onPress={sendTyped} disabled={!draft.trim()} style={[styles.send, { backgroundColor: draft.trim() ? palette.primary : 'transparent' }]} accessibilityLabel="ส่งคำตอบ">
-            <Sym name="arrow.up" size={17} color={draft.trim() ? '#FFFFFF' : 'rgba(255,255,255,0.5)'} weight="bold" />
+            <Sym name="arrow.up" size={17} color={draft.trim() ? '#FFFFFF' : '#B5BBB7'} weight="bold" />
           </PressableScale>
         </View>
         {/* ปุ่มบันทึกแสดงเมื่อถามครบทุกหัวข้อแล้วเท่านั้น */}
@@ -405,8 +407,8 @@ export function VoiceSession({ title, opening, topics, has, turn, closing, confi
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: '#000000' },
   darkDock: { position: 'absolute', left: 24, right: 24, gap: 8, padding: 8, borderRadius: 32, borderCurve: 'continuous', backgroundColor: 'rgba(28,30,29,0.96)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.22)', boxShadow: '0px 10px 30px rgba(0,0,0,0.6)' },
-  typeRow: { flexDirection: 'row', alignItems: 'center', gap: 8, height: 50, paddingLeft: 16, paddingRight: 6, borderRadius: 25, backgroundColor: 'rgba(255,255,255,0.1)' },
-  typeInput: { flex: 1, fontSize: 17, color: '#FFFFFF', height: '100%' },
+  typeRow: { flexDirection: 'row', alignItems: 'center', gap: 8, height: 50, paddingLeft: 16, paddingRight: 6, borderRadius: 25, backgroundColor: '#FFFFFF' },
+  typeInput: { flex: 1, fontSize: 17, color: '#1F2A24', height: '100%' },
   send: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
   top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: 230 },
