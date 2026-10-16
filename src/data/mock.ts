@@ -23,7 +23,7 @@ export const doctorTypes = [
 export const nationStats = { wisdomRecords: '250,000+', year: '2564' };
 
 /** ที่อยู่ตามแบบ ม.บ.5 */
-export type Address = { houseNo: string; moo: string; village: string; road?: string; soi?: string; subdistrict: string; district: string; province: string };
+export type Address = { houseNo: string; moo: string; village: string; road?: string; soi?: string; subdistrict: string; district: string; province: string; full?: string /* ข้อความที่อยู่เต็มตามที่กรอก/ตามบัตร */ };
 
 /** หนึ่งแถวใน "ทะเบียนการรักษา" แบบ ม.บ.5 */
 export type MB5Visit = {
@@ -246,6 +246,8 @@ export const patients: Patient[] = [
 /** อาการล่าสุด / วันที่ล่าสุด จากทะเบียนการรักษา */
 export const lastVisit = (p: Patient) => p.visits[0];
 export const fullAddress = (a: Address) =>
+  // มีข้อความเต็มตามที่กรอก/ตามบัตร (รวมซอย ถนน) → ใช้ตามนั้น
+  a.full ||
   [a.houseNo, a.moo && `หมู่ ${a.moo}`, a.village, a.road && `ถ.${a.road}`, a.soi && `ซ.${a.soi}`, a.subdistrict && `ต.${a.subdistrict}`, a.district && `อ.${a.district}`, a.province && `จ.${a.province}`]
     .filter(Boolean)
     .join(' ');

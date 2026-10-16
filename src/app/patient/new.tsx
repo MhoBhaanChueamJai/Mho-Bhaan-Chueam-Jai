@@ -176,7 +176,7 @@ function NewPatientInner() {
         {
           role: 'user',
           content: `แยกข้อมูลผู้ป่วยจากคำพูดนี้: "${text}"\nตอบ JSON เท่านั้น ช่องที่ไม่ได้กล่าวถึงให้เป็น "" (ห้ามเดา) ตัวเลขเป็นเลขอารบิก:
-{"name":"ชื่อ-สกุล พร้อมคำนำหน้า","sex":"ชาย|หญิง","age":"","bDay":"วันเกิด 1-31","bMonth":"เดือนเกิด 1-12","bYear":"ปีเกิด พ.ศ. 4 หลัก","houseNo":"","moo":"","village":"","subdistrict":"","district":"","province":"","phone":"รูปแบบ 0XX-XXX-XXXX","chronic":"โรคประจำตัว","allergies":"การแพ้ยา/อาหาร","weight":"","height":""}`,
+{"name":"ชื่อ-สกุล พร้อมคำนำหน้า","sex":"ชาย|หญิง","age":"","bDay":"วันเกิด 1-31","bMonth":"เดือนเกิด 1-12","bYear":"ปีเกิด พ.ศ. 4 หลัก","address":"ที่อยู่เต็มตามที่พูด รวมเลขที่ หมู่ ซอย ถนน หมู่บ้าน ตำบล อำเภอ จังหวัด","phone":"รูปแบบ 0XX-XXX-XXXX","chronic":"โรคประจำตัว","allergies":"การแพ้ยา/อาหาร","weight":"","height":""}`,
         },
       ]);
       setF((x) => {
@@ -193,8 +193,11 @@ function NewPatientInner() {
             }
           } else (next as any)[k] = k === 'sex' ? (v.includes('ชาย') ? 'ชาย' : 'หญิง') : v;
         });
-        const addr = formatAddress(next);
-        if (addr) next.address = addr;
+        // ใช้ข้อความที่อยู่เต็มตามที่พูด (มีซอย/ถนนได้) — ถ้าไม่มีค่อยประกอบจากส่วนย่อย
+        if (!String(r.address ?? '').trim()) {
+          const addr = formatAddress(next);
+          if (addr) next.address = addr;
+        }
         return next;
       });
       setAiNote('');
@@ -216,7 +219,8 @@ function NewPatientInner() {
         if (v) (next as any)[k] = v;
       });
       if (r.sex) next.sex = String(r.sex).includes('ชาย') ? 'ชาย' : 'หญิง';
-      const addr = formatAddress(next);
+      // ที่อยู่เต็มตามบัตร (รวมซอย ถนน) ไม่แยกช่อง
+      const addr = String(r.address ?? '').trim() || formatAddress(next);
       if (addr) next.address = addr;
       if (r.name) {
         const sp = splitPrefix(r.name);
@@ -251,7 +255,7 @@ function NewPatientInner() {
       sex: f.sex,
       age: num(f.age),
       birthDate: birthISO ?? undefined,
-      address: parseAddress(f.address),
+      address: { ...parseAddress(f.address), full: f.address.trim() },
       phone: f.phone || '-',
       chronic: f.chronic || 'ไม่มี',
       allergies: f.allergies || 'ไม่มี',

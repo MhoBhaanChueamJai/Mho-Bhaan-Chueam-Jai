@@ -4,10 +4,13 @@ type Address = Patient['address'];
 
 /** ส่วนที่อยู่ → ข้อความบรรทัดเดียว เช่น "78 หมู่ 8 บ้านหนองบัว ต.สร้อยพร้าว อ.หนองหาน จ.อุดรธานี" */
 export function formatAddress(a: Partial<Address>): string {
+  if (a.full) return a.full;
   return [
     a.houseNo,
     a.moo ? `หมู่ ${a.moo}` : '',
     a.village,
+    a.soi ? `ซ.${a.soi}` : '',
+    a.road ? `ถ.${a.road}` : '',
     a.subdistrict ? `ต.${a.subdistrict.replace(/^(ตำบล|ต\.)\s*/, '')}` : '',
     a.district ? `อ.${a.district.replace(/^(อำเภอ|อ\.)\s*/, '')}` : '',
     a.province ? `จ.${a.province.replace(/^(จังหวัด|จ\.)\s*/, '')}` : '',
@@ -26,5 +29,7 @@ export function parseAddress(text: string): Address {
   const moo = grab(/(?:หมู่ที่|หมู่|ม\.)\s*(\d+)/);
   const houseNo = grab(/^\s*(\d+(?:\/\d+)?)/);
   const village = grab(/(บ้าน[^\s]+)/);
-  return { houseNo, moo, village, subdistrict, district, province };
+  const soi = grab(/(?:ซอย|ซ\.)\s*([^\s]+)/);
+  const road = grab(/(?:ถนน|ถ\.)\s*([^\s]+)/);
+  return { houseNo, moo, village, soi, road, subdistrict, district, province, full: text.trim() };
 }
