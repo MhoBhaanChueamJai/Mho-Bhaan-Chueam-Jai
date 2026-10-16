@@ -40,6 +40,7 @@ function Root() {
         <Stack.Screen name="capture" options={{ presentation: 'fullScreenModal', animation: 'fade_from_bottom' }} />
         <Stack.Screen name="scan" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
         <Stack.Screen name="id-scan" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
+        <Stack.Screen name="herb/scan" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
         <Stack.Screen name="wisdom/scan-qr" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
         {/* Sheet ของ iOS (แบบหน้ากิจกรรมใหม่ในปฏิทิน): ตัวอย่างตำราที่ได้จากรหัส */}
         <Stack.Screen name="wisdom/got" options={{ presentation: 'formSheet', sheetAllowedDetents: [1.0], sheetGrabberVisible: false, contentStyle: { backgroundColor: palette.bg } }} />

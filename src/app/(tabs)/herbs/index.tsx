@@ -1,6 +1,6 @@
 /**
  * แท็บคลังสมุนไพร — โครงเดียวกับคลังภูมิ (DESIGN_SYSTEM.md)
- * Hero การ์ด (ภาพสมุนไพรประจำวันเบลอ) + จำนวน + KPI กระจกตามธาตุ → สมุนไพรประจำวัน → กรองตามรสยา → ตาราง 2 คอลัมน์
+ * การ์ดฟีเจอร์ใหม่ "สแกนหาสมุนไพร" (เปิดกล้อง) → สมุนไพรประจำวัน → กรองตามรสยา → ตาราง 2 คอลัมน์
  */
 import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
@@ -16,8 +16,6 @@ import { elementColor, elevation, palette } from '../../../theme';
 
 /** สมุนไพรประจำวัน — เปลี่ยนทุกวัน */
 const todayHerb = () => herbs[Math.floor(Date.now() / 86400000) % herbs.length];
-const ELEMENTS = ['ดิน', 'น้ำ', 'ลม', 'ไฟ'] as const;
-const EL_ICON: Record<(typeof ELEMENTS)[number], string> = { ดิน: 'mountain.2.fill', น้ำ: 'drop.fill', ลม: 'wind', ไฟ: 'flame.fill' };
 
 function Pill({ text, fg, bg }: { text: string; fg: string; bg: string }) {
   return (
@@ -76,37 +74,31 @@ export default function Herbs() {
         }}
       />
       <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
-        {/* ── Hero: ภาพสมุนไพรประจำวัน (เบลอ) + จำนวน + KPI ตามธาตุ ── */}
-        <View style={[styles.heroWrap, elevation.e3]}>
-          <View style={styles.hero}>
-            <Image source={today.image} style={StyleSheet.absoluteFill} contentFit="cover" />
-            <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFill} />
-            <LinearGradient colors={['rgba(6,20,13,0.5)', 'rgba(6,20,13,0.3)', 'rgba(6,20,13,0.85)']} locations={[0, 0.4, 1]} style={StyleSheet.absoluteFill} />
-            <View style={styles.eyebrow}>
-              <Sym name="leaf.fill" size={13} color="#BFF0C9" />
-              <T v="subhead" color="#BFF0C9" style={{ fontWeight: '600' }}>คลังสมุนไพรไทย</T>
+        {/* ── ฟีเจอร์ใหม่: สแกนหาสมุนไพรด้วยกล้อง ── */}
+        <Animated.View entering={FadeInDown.duration(420)}>
+          <PressableScale scaleTo={0.98} haptic="press" onPress={() => router.push('/herb/scan')} style={[styles.heroWrap, elevation.e3]} accessibilityLabel="สแกนหาสมุนไพรด้วยกล้อง">
+            <View style={styles.hero}>
+              <Image source={today.image} style={StyleSheet.absoluteFill} contentFit="cover" />
+              <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFill} />
+              <LinearGradient colors={['rgba(6,20,13,0.55)', 'rgba(6,20,13,0.35)', 'rgba(6,20,13,0.9)']} locations={[0, 0.4, 1]} style={StyleSheet.absoluteFill} />
+              <View style={styles.heroTop}>
+                <View style={styles.newBadge}>
+                  <Sym name="sparkles" size={11} color="#04150E" />
+                  <T v="micro" color="#04150E" style={{ fontWeight: '800' }}>ฟีเจอร์ใหม่</T>
+                </View>
+                <View style={styles.scanIcon}>
+                  <Sym name="camera.viewfinder" size={30} color="#7CF0A8" />
+                </View>
+              </View>
+              <T v="h1" color="#FFFFFF" style={{ marginTop: 14, marginBottom: 4 }}>สแกนหาสมุนไพร</T>
+              <T v="callout" color="rgba(255,255,255,0.82)">ส่องกล้องที่ต้น ใบ หรือเหง้า ครูปัญญาบอกชื่อ สรรพคุณ วิธีใช้ และข้อควรระวังให้ทันที</T>
+              <View style={styles.scanBtn}>
+                <Sym name="camera.fill" size={17} color="#04150E" />
+                <T v="bodyStrong" color="#04150E">เปิดกล้องสแกน</T>
+              </View>
             </View>
-            <Animated.View entering={FadeInDown.duration(420)}>
-              <T v="h1" color="#FFFFFF" style={{ marginTop: 10, marginBottom: 4 }}>สมุนไพร {herbs.length} ชนิด</T>
-              <T v="callout" color="rgba(255,255,255,0.8)">ในบัญชียาหลักแห่งชาติ {national} ชนิด · รสยา ธาตุ สรรพคุณ วิธีใช้</T>
-            </Animated.View>
-            <View style={styles.kpis}>
-              {ELEMENTS.map((e, i) => {
-                const c = elementColor[e];
-                return (
-                  <Animated.View key={e} entering={FadeInDown.delay(120 + i * 60).duration(380)} style={styles.kpi}>
-                    <BlurView intensity={26} tint="light" style={StyleSheet.absoluteFill} />
-                    <View style={[styles.kpiIcon, { backgroundColor: c.fg }]}>
-                      <Sym name={EL_ICON[e] as any} size={13} color="#FFFFFF" />
-                    </View>
-                    <T v="h2" color="#FFFFFF" style={{ marginTop: 8 }}>{herbs.filter((h) => h.element === e).length}</T>
-                    <T v="micro" color="rgba(255,255,255,0.85)" style={{ fontWeight: '600' }}>{c.label}</T>
-                  </Animated.View>
-                );
-              })}
-            </View>
-          </View>
-        </View>
+          </PressableScale>
+        </Animated.View>
 
         {/* ── สมุนไพรประจำวัน ── */}
         <T v="h3" style={styles.sec}>สมุนไพรประจำวัน</T>
@@ -129,7 +121,7 @@ export default function Herbs() {
         {/* ── กรองตามรสยา ── */}
         <View style={styles.secRow}>
           <T v="h3">สมุนไพรทั้งหมด</T>
-          <T v="subhead" color={ios.secondary}>{list.length} ชนิด</T>
+          <T v="subhead" color={ios.secondary}>{list.length} ชนิด · บัญชียาหลัก {national}</T>
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips} style={{ marginHorizontal: -16 }}>
           {tasteOpts.map((t) => {
@@ -161,10 +153,10 @@ const styles = StyleSheet.create({
   page: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 130 },
   heroWrap: { borderRadius: 30, borderCurve: 'continuous', backgroundColor: '#14261c' },
   hero: { paddingHorizontal: 20, paddingTop: 18, paddingBottom: 20, borderRadius: 30, borderCurve: 'continuous', overflow: 'hidden' },
-  eyebrow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  kpis: { flexDirection: 'row', gap: 8, marginTop: 18 },
-  kpi: { flex: 1, paddingVertical: 12, paddingHorizontal: 10, borderRadius: 18, borderCurve: 'continuous', overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.35)' },
-  kpiIcon: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  heroTop: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
+  newBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 9, paddingVertical: 4, borderRadius: 999, backgroundColor: '#7CF0A8' },
+  scanIcon: { width: 56, height: 56, borderRadius: 18, backgroundColor: 'rgba(124,240,168,0.14)', borderWidth: 1, borderColor: 'rgba(124,240,168,0.35)', alignItems: 'center', justifyContent: 'center' },
+  scanBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 50, marginTop: 18, borderRadius: 25, backgroundColor: '#7CF0A8' },
   sec: { marginTop: 28, marginBottom: 12, marginLeft: 4 },
   secRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginTop: 28, marginBottom: 10, paddingHorizontal: 4 },
   today: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 12, borderRadius: 24, borderCurve: 'continuous', backgroundColor: palette.surface },
