@@ -1,0 +1,16 @@
+diff --git a/node_modules/@react-native-community/datetimepicker/ios/fabric/RNDateTimePickerComponentView.mm b/node_modules/@react-native-community/datetimepicker/ios/fabric/RNDateTimePickerComponentView.mm
+index 2142b32..8bdf3bd 100644
+--- a/node_modules/@react-native-community/datetimepicker/ios/fabric/RNDateTimePickerComponentView.mm
++++ b/node_modules/@react-native-community/datetimepicker/ios/fabric/RNDateTimePickerComponentView.mm
+@@ -188,6 +188,11 @@ - (Boolean)updatePropsForPicker:(UIDatePicker *)picker props:(Props::Shared cons
+         NSLocale *locale = [[NSLocale alloc] initWithLocaleIdentifier:convertedLocale];
+ 
+         picker.locale = locale;
++        // ใช้ระบบปฏิทินตาม locale ด้วย (เช่น "th-TH@calendar=buddhist" → พุทธศักราช)
++        NSCalendar *localeCalendar = [locale objectForKey:NSLocaleCalendar];
++        if (localeCalendar != nil) {
++            picker.calendar = localeCalendar;
++        }
+         needsToUpdateMeasurements = true;
+     }
+ 

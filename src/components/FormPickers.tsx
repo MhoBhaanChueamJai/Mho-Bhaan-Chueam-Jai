@@ -26,36 +26,14 @@ export function Dropdown({ label, value, options, onChange, placeholder = 'เ�
         actions={options.map((o) => ({ id: o, title: o, state: o === value ? 'on' : 'off' }))}
         onPressAction={({ nativeEvent }) => onChange(nativeEvent.event)}
       >
-        <View style={styles.box} accessibilityRole="button" accessibilityLabel={`${label} ${value || placeholder}`}>
-          <T v="body" color={value ? palette.ink : ios.tertiary} style={{ flex: 1 }} numberOfLines={1}>{value || placeholder}</T>
-          <Sym name="chevron.up.chevron.down" size={13} color={ios.secondary} weight="semibold" />
-        </View>
-      </MenuView>
-    </View>
-  );
-}
-
-const TH_MONTHS = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
-export const thaiDateLong = (d: Date) => `${d.getDate()} ${TH_MONTHS[d.getMonth()]} ${d.getFullYear() + 543}`;
-
-/**
- * วันที่: หน้าตาเป็นแคปซูลเหมือนช่องอื่น แต่ตัวที่รับการแตะคือ UIDatePicker แบบ compact ของ iOS 26 จริง
- * (วางทับทั้งช่องแบบโปร่งใส ขยายให้คลุมทั้งแคปซูล) → แตะแล้วเปิดป๊อปโอเวอร์ Liquid Glass ของระบบ
- */
-export function DateField({ label, value, onChange, flex, placeholder = 'เลือกวันที่', fallback = new Date(1960, 0, 1) }: { label: string; value: Date | null; onChange: (d: Date) => void; flex?: number; placeholder?: string; fallback?: Date }) {
-  return (
-    <View style={flex ? { flex } : undefined}>
-      <Label text={label} />
-      <View style={styles.box} accessibilityRole="button" accessibilityLabel={`${label} ${value ? thaiDateLong(value) : placeholder}`}>
-        <T v="body" color={value ? palette.ink : ios.tertiary} style={{ flex: 1 }} numberOfLines={1}>{value ? thaiDateLong(value) : placeholder}</T>
-        <Sym name="calendar" size={16} color={palette.primary} />
-        {/* ปุ่ม compact ของระบบ (มองไม่เห็น) คลุมทั้งช่อง */}
-        <View style={styles.native} pointerEvents="box-none">
+        <View style={styles.dateBox}>
+        {/* ชั้นล่าง: ปุ่ม compact ของระบบ ขยายคลุมทั้งช่อง (รับการแตะ → ป๊อปโอเวอร์ + แอนิเมชันของ iOS 26) */}
+        <View style={styles.native}>
           <DateTimePicker
             value={value ?? fallback}
             mode="date"
             display="compact"
-            locale="th-TH"
+            locale="th-TH@calendar=buddhist"
             maximumDate={new Date()}
             minimumDate={new Date(1900, 0, 1)}
             accentColor={palette.primary}
@@ -64,6 +42,11 @@ export function DateField({ label, value, onChange, flex, placeholder = 'เล�
             style={styles.nativePicker}
           />
         </View>
+        {/* ชั้นบน: แคปซูลที่มองเห็น ทึบ บังปุ่มระบบไว้ แต่ปล่อยการแตะทะลุลงไป */}
+        <View pointerEvents="none" style={[styles.box, StyleSheet.absoluteFill]} accessibilityRole="button" accessibilityLabel={`${label} ${value ? thaiDateLong(value) : placeholder}`}>
+          <T v="body" color={value ? palette.ink : ios.tertiary} style={{ flex: 1 }} numberOfLines={1}>{value ? thaiDateLong(value) : placeholder}</T>
+          <Sym name="calendar" size={16} color={palette.primary} />
+        </View>
       </View>
     </View>
   );
@@ -71,8 +54,9 @@ export function DateField({ label, value, onChange, flex, placeholder = 'เล�
 
 const styles = StyleSheet.create({
   label: { marginBottom: 6, marginLeft: 4, fontWeight: '600' },
+  dateBox: { height: 52 },
   native: { ...StyleSheet.absoluteFillObject, overflow: 'hidden', borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
-  // ขยายปุ่ม compact ให้คลุมทั้งแคปซูล และโปร่งใสเกือบหมด (ยังรับการแตะได้)
-  nativePicker: { width: 140, height: 40, opacity: 0.02, transform: [{ scaleX: 2.4 }, { scaleY: 1.6 }] },
+  // ขยายปุ่ม compact ให้คลุมทั้งแคปซูล (ถูกแคปซูลชั้นบนบังไว้)
+  nativePicker: { width: 140, height: 40, transform: [{ scaleX: 2.4 }, { scaleY: 1.6 }] },
   box: { height: 52, borderRadius: 26, paddingHorizontal: 18, backgroundColor: palette.mint, flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1.5, borderColor: 'transparent' },
 });
