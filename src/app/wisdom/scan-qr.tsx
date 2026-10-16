@@ -3,6 +3,7 @@
  * เจอรหัสแชร์ → ไปหน้ารับตำรา (ดูตัวอย่างก่อนเก็บเข้าคลัง)
  * แท็บด้านล่างสลับโหมด: สแกน | รหัส (กรอกรหัสแชร์ 8 ตัวในหน้านี้เลย)
  */
+import SegmentedControl from '@react-native-segmented-control/segmented-control';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -11,7 +12,7 @@ import { StyleSheet, TextInput, View, useWindowDimensions } from 'react-native';
 import Animated, { Easing, FadeIn, FadeOut, useAnimatedKeyboard, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Sym } from '../../components/ios';
-import { Button, Glass, PressableScale, T, useHaptic } from '../../components/ui';
+import { Button, PressableScale, T, useHaptic } from '../../components/ui';
 import { cleanCode, codeFromScan } from '../../lib/wisdomShare';
 
 export default function ScanQr() {
@@ -150,21 +151,14 @@ export default function ScanQr() {
             <Button label="รับตำรา" icon={<Sym name="tray.and.arrow.down.fill" size={17} color="#04150E" />} disabled={code.length < 8} onPress={submit} style={{ height: 52, backgroundColor: '#7CF0A8' }} />
           </Animated.View>
         ) : null}
-        {/* แท็บสลับโหมด: สแกน | รหัส */}
-        <Glass tint="rgba(255,255,255,0.14)" style={styles.tabs}>
-          {([
-            { k: 'scan', l: 'สแกน', i: 'qrcode.viewfinder' },
-            { k: 'code', l: 'รหัส', i: 'number' },
-          ] as const).map((t) => {
-            const on = mode === t.k;
-            return (
-              <PressableScale key={t.k} scaleTo={0.96} onPress={() => switchMode(t.k)} style={[styles.tab, on && styles.tabOn]} accessibilityLabel={t.l} accessibilityState={{ selected: on }}>
-                <Sym name={t.i} size={16} color={on ? '#04150E' : '#FFFFFF'} weight="semibold" />
-                <T v="bodyStrong" color={on ? '#04150E' : '#FFFFFF'}>{t.l}</T>
-              </PressableScale>
-            );
-          })}
-        </Glass>
+        {/* แท็บสลับโหมดแบบ iOS (UISegmentedControl) */}
+        <SegmentedControl
+          values={['สแกน', 'รหัส']}
+          selectedIndex={mode === 'scan' ? 0 : 1}
+          onChange={(e) => switchMode(e.nativeEvent.selectedSegmentIndex === 0 ? 'scan' : 'code')}
+          appearance="dark"
+          style={styles.seg}
+        />
       </Animated.View>
     </View>
   );
@@ -185,9 +179,7 @@ const styles = StyleSheet.create({
   top: { position: 'absolute', left: 16, right: 16, flexDirection: 'row', justifyContent: 'space-between' },
   round: { width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' },
   bottom: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
-  tabs: { flexDirection: 'row', padding: 4, borderRadius: 30, gap: 4 },
-  tab: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, height: 48, width: 128, borderRadius: 24 },
-  tabOn: { backgroundColor: '#FFFFFF' },
+  seg: { width: 240, height: 36 },
   codePage: { backgroundColor: 'rgba(0,0,0,0.88)', alignItems: 'center', paddingHorizontal: 24 },
   boxes: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 28 },
   box: { width: 36, height: 48, borderRadius: 10, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.22)', alignItems: 'center', justifyContent: 'center' },
