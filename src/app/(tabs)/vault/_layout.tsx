@@ -6,7 +6,7 @@ import { tabStackOptions } from '../../../components/tabStack';
 export default function TabStack() {
   return (
     <Stack screenOptions={tabStackOptions}>
-      <Stack.Screen name="index" options={{ title: 'คลังภูมิปัญญา', headerShown: false }} />
+      <Stack.Screen name="index" options={{ title: 'คลังภูมิปัญญา' }} />
     </Stack>
   );
 }

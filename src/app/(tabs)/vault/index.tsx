@@ -6,12 +6,11 @@
 import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
+import { Stack, router } from 'expo-router';
 import React from 'react';
 import { ScrollView, StyleSheet, View, type ImageSourcePropType } from 'react-native';
 import Animated, { FadeIn, FadeInDown, LinearTransition } from 'react-native-reanimated';
 import { CircleIcon } from '../../../components/ListRow';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Sym, ios } from '../../../components/ios';
 import { Glass, GlassCircle, PressableScale, T } from '../../../components/ui';
 import { herbs } from '../../../data/herbs';
@@ -78,29 +77,34 @@ function Feature({ w, i }: { w: Wisdom; i: number }) {
 
 export default function Vault() {
   const { wisdoms } = useApp();
-  const insets = useSafeAreaInsets();
   const recorded = legacy.recorded + Math.max(0, wisdoms.length - 3);
   const list = wisdoms;
   const count = (k: Wisdom['kind']) => wisdoms.filter((w) => w.kind === k).length;
 
   return (
-    <ScrollView contentInsetAdjustmentBehavior="never" style={{ backgroundColor: palette.bg }} contentContainerStyle={{ paddingTop: insets.top + 6, paddingBottom: 130 }} showsVerticalScrollIndicator={false}>
-      {/* หัวข้อใหญ่ + ปุ่มกระจกบรรทัดเดียวกัน: [+] แยกเดี่ยว · [ค้นหา | สแกน QR] */}
-      <View style={styles.titleRow}>
-        <T v="hero" style={{ flex: 1 }} numberOfLines={1} adjustsFontSizeToFit>คลังภูมิปัญญา</T>
-        <View style={styles.tools}>
-          <GlassCircle label="เพิ่มภูมิปัญญา" onPress={() => router.push('/wisdom/new')} size={48}>
-            <Sym name="plus" size={22} color={palette.ink} weight="medium" />
-          </GlassCircle>
-          <Glass interactive style={styles.toolGroup}>
-            <PressableScale haptic="select" onPress={() => router.push('/wisdom/search')} style={styles.toolBtn} accessibilityLabel="ค้นหาภูมิปัญญา">
-              <Sym name="magnifyingglass" size={20} color={palette.ink} weight="medium" />
-            </PressableScale>
-            <PressableScale haptic="select" onPress={() => router.push('/wisdom/scan-qr')} style={styles.toolBtn} accessibilityLabel="สแกนคิวอาร์โค้ดรับตำรา">
-              <Sym name="qrcode.viewfinder" size={20} color={palette.ink} weight="medium" />
-            </PressableScale>
-          </Glass>
-        </View>
+    <>
+    {/* ปุ่มบนหัวจอ (แบบแอป Wallet): [+] แยกเดี่ยว · [ค้นหา | สแกน QR] — ปิดพื้นกระจกรวมของระบบ วาดกระจกเอง 2 ก้อน */}
+    <Stack.Screen
+      options={{
+        headerRightBackgroundVisible: false,
+        headerRight: () => (
+          <View style={styles.tools}>
+            <GlassCircle label="เพิ่มภูมิปัญญา" onPress={() => router.push('/wisdom/new')} size={44}>
+              <Sym name="plus" size={21} color={palette.ink} weight="medium" />
+            </GlassCircle>
+            <Glass interactive style={styles.toolGroup}>
+              <PressableScale haptic="select" onPress={() => router.push('/wisdom/search')} style={styles.toolBtn} accessibilityLabel="ค้นหาภูมิปัญญา">
+                <Sym name="magnifyingglass" size={19} color={palette.ink} weight="medium" />
+              </PressableScale>
+              <PressableScale haptic="select" onPress={() => router.push('/wisdom/scan-qr')} style={styles.toolBtn} accessibilityLabel="สแกนคิวอาร์โค้ดรับตำรา">
+                <Sym name="qrcode.viewfinder" size={19} color={palette.ink} weight="medium" />
+              </PressableScale>
+            </Glass>
+          </View>
+        ),
+      }}
+    />
+    <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={{ paddingTop: 4, paddingBottom: 130 }} showsVerticalScrollIndicator={false}>
       </View>
       {/* ── Hero: สันหนังสือบนหิ้ง (เบลอ) ── */}
       <View style={[styles.heroWrap, elevation.e3]}>
@@ -187,6 +191,7 @@ export default function Vault() {
         </View>
       )}
     </ScrollView>
+    </>
   );
 }
 
@@ -194,7 +199,7 @@ const CARD_W = 272;
 const styles = StyleSheet.create({
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingLeft: 20, paddingRight: 16, marginBottom: 14 },
   tools: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  toolGroup: { flexDirection: 'row', alignItems: 'center', height: 48, paddingHorizontal: 8, gap: 14, borderRadius: 24 },
+  toolGroup: { flexDirection: 'row', alignItems: 'center', height: 44, paddingHorizontal: 8, gap: 12, borderRadius: 22 },
   toolBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   heroWrap: { marginHorizontal: 16, borderRadius: 30, borderCurve: 'continuous', backgroundColor: '#14261c' },
   hero: { paddingHorizontal: 20, paddingTop: 18, paddingBottom: 20, borderRadius: 30, borderCurve: 'continuous', overflow: 'hidden' },
