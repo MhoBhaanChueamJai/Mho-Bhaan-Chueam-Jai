@@ -1,11 +1,12 @@
 /**
  * อ่านแบบหนังสือ — เนื้อหายาวแบ่งเป็นหน้า ปัดซ้าย/ขวาเพื่อพลิกหน้า
- * หน้าแรก = ปกหนังสือ (แบบเดียวกับในคลังภูมิ) · หน้าปกใน (ชื่อเรื่อง ประเภท ที่มา) · เนื้อหา (ตัดหน้าให้พอดีจอ) · ท้ายเล่ม = ตัวยา/ขั้นตอน/ข้อห้าม
+ * หนังสือเต็มจอ · หน้าแรก = ปกหนังสือ (แบบเดียวกับในคลังภูมิ บนพื้นปกเบลอ) · หน้าปกใน (ชื่อเรื่อง ประเภท ที่มา) · เนื้อหา (ตัดหน้าให้พอดีจอ) · ท้ายเล่ม = ตัวยา/ขั้นตอน/ข้อห้าม
  * ตัวอักษรในเล่ม: Noto Serif Thai (แบบมีหัว ทางการ)
  * พลิกหน้าแบบกระดาษม้วนจริง (Skia page curl): ลากจากตรงไหนก็ได้ ลากเฉียง = พับเฉียง · แตะขวา/ซ้ายเพื่อพลิก
  */
 import { NotoSerifThai_400Regular, NotoSerifThai_700Bold, useFonts } from '@expo-google-fonts/noto-serif-thai';
-import { Canvas, Group, rect, rrect as rrct, Image as SkImg, ImageShader, LinearGradient as SkLinear, Rect, Vertices, makeImageFromView, type SkImage } from '@shopify/react-native-skia';
+import { Canvas, Group, Image as SkImg, ImageShader, LinearGradient as SkLinear, Rect, Vertices, makeImageFromView, type SkImage } from '@shopify/react-native-skia';
+import { Image as ExpoImage } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -14,7 +15,7 @@ import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { Easing, runOnJS, useAnimatedStyle, useDerivedValue, useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BookCover, COVER_RATIO } from '../../components/BookCover';
+import { BookCover, COVERS, COVER_RATIO } from '../../components/BookCover';
 import { KindIcon } from '../../components/KindIcon';
 import { Sym } from '../../components/ios';
 import { GlassCircle, T, useHaptic } from '../../components/ui';
@@ -33,42 +34,32 @@ type Page = { kind: 'cover' } | { kind: 'title' } | { kind: 'text'; heading?: st
  * จุดบนแผ่นที่เลยเส้นพับถูกม้วนรอบทรงกระบอกรัศมี R เลยครึ่งวงจะพับกลับเป็นหลังกระดาษ
  * เส้นพับเอียงตามนิ้ว (ลากเฉียงได้) · แสงเงา/หลังกระดาษใช้ gradient ในพิกัดกระดาษ · เงาทอดลงหน้าถัดไป
  */
-const COLS = 26;
-const ROWS = 34;
+const COLS = 18;
+const ROWS = 30;
 type Geo = { valid: number; cx: number; cy: number; ux: number; uy: number; fx: number; fy: number };
 
-function CurlLayer({ base, turning, show, Wp, Hp, verts, tex, idx, g0, g1, s0, s1, baseDim, paper }: {
-  base: SkImage | null; turning: SkImage | null; show: SharedValue<number>; Wp: number; Hp: number;
+function CurlLayer({ base, turning, Wp, Hp, verts, tex, idx, g0, g1, s0, s1, baseDim, paper }: {
+  base: SharedValue<SkImage | null>; turning: SharedValue<SkImage | null>; Wp: number; Hp: number;
   verts: SharedValue<{ x: number; y: number }[]>; tex: { x: number; y: number }[]; idx: SharedValue<number[]>;
   g0: SharedValue<{ x: number; y: number }>; g1: SharedValue<{ x: number; y: number }>; s0: SharedValue<{ x: number; y: number }>; s1: SharedValue<{ x: number; y: number }>;
   baseDim: SharedValue<number>; paper: string;
 }) {
   const rect = { x: 0, y: 0, width: Wp, height: Hp };
   return (
-    <Group opacity={show}>
-      {base ? <SkImg image={base} x={0} y={0} width={Wp} height={Hp} fit="fill" /> : null}
+    <Group>
+      <SkImg image={base} x={0} y={0} width={Wp} height={Hp} fit="fill" />
       <Rect x={0} y={0} width={Wp} height={Hp} color="black" opacity={baseDim} />
       {/* เงาที่ส่วนม้วนทอดลงบนหน้าที่อยู่ด้านล่าง */}
-      <Rect x={-Wp} y={-Hp} width={Wp * 3} height={Hp * 3}>
-        <SkLinear start={s0} end={s1} colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.38)', 'rgba(0,0,0,0)']} positions={[0, 0.02, 1]} mode="clamp" />
+      <Rect x={0} y={0} width={Wp} height={Hp}>
+        <SkLinear start={s0} end={s1} colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.36)', 'rgba(0,0,0,0)']} positions={[0, 0.03, 1]} mode="clamp" />
       </Rect>
-      {turning ? (
-        <>
-          <Vertices mode="triangles" vertices={verts} textures={tex} indices={idx}>
-            <ImageShader image={turning} fit="fill" rect={rect} />
-          </Vertices>
-          {/* แสงเงาบนส่วนโค้ง + หลังกระดาษ (เห็นตัวอักษรทะลุจางๆ) */}
-          <Vertices mode="triangles" vertices={verts} textures={tex} indices={idx}>
-            <SkLinear
-              start={g0}
-              end={g1}
-              colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.10)', 'rgba(0,0,0,0.32)', 'rgba(120,100,70,0.55)', paper]}
-              positions={[0, 0.2, 0.47, 0.53, 1]}
-              mode="clamp"
-            />
-          </Vertices>
-        </>
-      ) : null}
+      <Vertices mode="triangles" vertices={verts} textures={tex} indices={idx}>
+        <ImageShader image={turning} fit="fill" rect={rect} />
+      </Vertices>
+      {/* แสงเงาบนส่วนโค้ง + หลังกระดาษ (เห็นตัวอักษรทะลุจางๆ) */}
+      <Vertices mode="triangles" vertices={verts} textures={tex} indices={idx}>
+        <SkLinear start={g0} end={g1} colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.10)', 'rgba(0,0,0,0.30)', 'rgba(120,100,70,0.55)', paper]} positions={[0, 0.2, 0.47, 0.53, 1]} mode="clamp" />
+      </Vertices>
     </Group>
   );
 }
@@ -86,15 +77,13 @@ export default function ReadBook() {
   const om = (w.summary ?? '').match(ORIGIN_RE);
   const body = (w.summary ?? '').replace(ORIGIN_RE, '').trim();
 
-  // ทุกหน้า (รวมปก) ขนาดเท่ากัน = สัดส่วนปกหนังสือ จัดกลางพื้นที่ระหว่างแถบบนและตัวบอกหน้า
-  const areaTop = insets.top + 60;
-  const areaH = SH - areaTop - (insets.bottom + 50);
-  const bookW = Math.min(W - 28, areaH / COVER_RATIO);
-  const bookH = bookW * COVER_RATIO;
-  const bx = (W - bookW) / 2;
-  const frame = { left: bx, top: areaTop + (areaH - bookH) / 2, width: bookW, height: bookH };
+  // หนังสือเต็มจอ: ทุกหน้าขนาดเท่าจอ · ตัวหนังสืออยู่ในขอบปลอดภัย (ใต้แถบบน เหนือเลขหน้า)
+  const frame = { left: 0, top: 0, width: W, height: SH };
+  const padTop = insets.top + 62;
+  const padBottom = insets.bottom + 46;
+  const coverW = Math.min(W * 0.74, (SH - insets.top - insets.bottom - 220) / COVER_RATIO);
   // ตัวอักษรต่อหน้า ตามขนาดกระดาษจริงของเครื่อง (บรรทัด × ตัวอักษรต่อบรรทัด เผื่อหัวข้อ)
-  const perPage = Math.round(Math.floor((bookH - 102) / 32) * ((bookW - 54) / 7.5) * 0.78);
+  const perPage = Math.round(Math.floor((SH - padTop - padBottom - 50) / 32) * ((W - 56) / 7.5) * 0.78);
   const pages = useMemo<Page[]>(() => {
     const out: Page[] = [{ kind: 'cover' }, { kind: 'title' }];
     const heading = kf.summary.big ? kf.summary.label : 'เนื้อหา';
@@ -113,8 +102,8 @@ export default function ReadBook() {
   // ── พลิกหน้า (page curl) ──
   const h = useHaptic();
   const n = pages.length;
-  const Wp = bookW;
-  const Hp = bookH;
+  const Wp = W;
+  const Hp = SH;
   const R = Math.round(Wp * 0.13); // รัศมีม้วนกระดาษ
   const HC = Math.PI * R;
   const tt = useSharedValue(0); // 0 = แผ่นที่พลิกวางราบ · 1 = พลิกพ้นไปทางซ้ายแล้ว
@@ -123,37 +112,60 @@ export default function ReadBook() {
   const dir = useSharedValue(1); // 1 = หน้าถัดไป · -1 = ย้อนกลับ
   const active = useSharedValue(0); // แสดงชั้น Skia (ระหว่างพลิก)
   const busy = useSharedValue(0);
+  const dragging = useSharedValue(0); // pan นี้เป็นคนพลิกอยู่ (กันลากซ้อนระหว่างอนิเมชั่น)
   const readyF = useSharedValue(0);
   const readyB = useSharedValue(0);
 
-  // ภาพหน้ากระดาษ (ถ่ายจาก RN view) ของหน้าก่อน/ปัจจุบัน/ถัดไป
+  // ภาพหน้ากระดาษ (ถ่ายจาก RN view) เก็บแคชตามเลขหน้า — พลิกแต่ละครั้งถ่ายเพิ่มแค่หน้าที่ยังไม่มี
   const refs = useRef<Record<number, React.RefObject<View | null>>>({});
   const refOf = (k: number) => (refs.current[k] ??= createRef<View>());
+  const cache = useRef(new Map<number, SkImage>());
+  const cacheKey = `${w.id}:${W}x${SH}:${fontsOk ? 1 : 0}:${n}`;
+  const keyRef = useRef(cacheKey);
   const [imgs, setImgs] = useState<{ prev: SkImage | null; cur: SkImage | null; next: SkImage | null }>({ prev: null, cur: null, next: null });
   useEffect(() => {
+    if (keyRef.current !== cacheKey) {
+      cache.current.clear();
+      keyRef.current = cacheKey;
+    }
     let alive = true;
-    const shot = async () => {
-      const get = (k: number) => (k >= 0 && k < n && refs.current[k]?.current ? makeImageFromView(refs.current[k] as React.RefObject<View>).catch(() => null) : Promise.resolve(null));
-      const [prev, cur, next] = await Promise.all([get(page - 1), get(page), get(page + 1)]);
-      if (!alive) return;
+    const snap = async (k: number) => {
+      const r = refs.current[k];
+      if (k < 0 || k >= n || !r?.current) return;
+      const im = await makeImageFromView(r as React.RefObject<View>).catch(() => null);
+      if (im && alive) cache.current.set(k, im);
+    };
+    const publish = () => {
+      const c = cache.current;
+      for (const k of [...c.keys()]) if (k < page - 2 || k > page + 2) c.delete(k);
+      const cur = c.get(page) ?? null;
+      const next = c.get(page + 1) ?? null;
+      const prev = c.get(page - 1) ?? null;
       setImgs({ prev, cur, next });
       readyF.value = cur && next ? 1 : 0;
       readyB.value = prev && cur ? 1 : 0;
     };
-    // ซ่อนชั้น Skia เมื่อ RN แสดงหน้าใหม่แล้ว จากนั้นถ่ายภาพหน้าข้างเคียงใหม่ (รอบสองเผื่อรูปปกโหลดช้า)
+    // ซ่อนชั้น Skia เมื่อ RN แสดงหน้าใหม่แล้ว
     const raf = requestAnimationFrame(() => {
       active.value = 0;
       busy.value = 0;
     });
-    const t1 = setTimeout(shot, 90);
-    const t2 = setTimeout(shot, 900);
+    const t1 = setTimeout(async () => {
+      for (const k of [page, page + 1, page - 1]) if (!cache.current.has(k)) await snap(k);
+      if (alive) publish();
+    }, 60);
+    // รูปปกโหลดช้ากว่าตัวหนังสือ: ถ่ายปกซ้ำอีกรอบ
+    const t2 = page <= 1 ? setTimeout(async () => {
+      await snap(0);
+      if (alive) publish();
+    }, 900) : undefined;
     return () => {
       alive = false;
       cancelAnimationFrame(raf);
       clearTimeout(t1);
-      clearTimeout(t2);
+      if (t2) clearTimeout(t2);
     };
-  }, [page, n, fontsOk, active, busy, readyF, readyB]);
+  }, [page, n, cacheKey, active, busy, readyF, readyB]);
 
   const turned = useCallback(
     (d: number) => {
@@ -231,8 +243,10 @@ export default function ReadBook() {
   const s0 = useDerivedValue(() => ({ x: geo.value.cx + geo.value.ux * R * 0.9, y: geo.value.cy + geo.value.uy * R * 0.9 }));
   const s1 = useDerivedValue(() => ({ x: geo.value.cx + geo.value.ux * (R + 46), y: geo.value.cy + geo.value.uy * (R + 46) }));
   const baseDim = useDerivedValue(() => (geo.value.valid ? 0.22 * (1 - tt.value) : 0));
-  const showF = useDerivedValue<number>(() => (dir.value > 0 ? 1 : 0));
-  const showB = useDerivedValue<number>(() => (dir.value < 0 ? 1 : 0));
+  // หน้าล่าง/แผ่นที่พลิก ตามทิศ (ไปหน้า: ล่าง=ถัดไป พลิก=ปัจจุบัน · ย้อน: ล่าง=ปัจจุบัน พลิก=ก่อนหน้า)
+  const { prev: iPrev, cur: iCur, next: iNext } = imgs;
+  const baseImg = useDerivedValue(() => (dir.value > 0 ? iNext : iCur) ?? iCur);
+  const turnImg = useDerivedValue(() => (dir.value > 0 ? iCur : iPrev) ?? iCur);
   const layer = useAnimatedStyle(() => ({ opacity: active.value }));
 
   const DUR = 620;
@@ -263,19 +277,22 @@ export default function ReadBook() {
   const pan = Gesture.Pan()
     .activeOffsetX([-8, 8])
     .onStart((e) => {
+      dragging.value = 0;
       if (busy.value) return;
       const d = e.translationX < 0 ? 1 : -1;
       if (d > 0 ? !readyF.value : !readyB.value) return;
-      begin(d, e.y - frame.top);
+      begin(d, e.y);
+      dragging.value = 1;
     })
     .onUpdate((e) => {
-      if (!active.value || !busy.value) return;
+      if (!dragging.value) return;
       const p = Math.max(0, Math.min(1, Math.abs(e.translationX) / (Wp * 0.95)));
       tt.value = dir.value > 0 ? (e.translationX < 0 ? p : 0) : e.translationX > 0 ? 1 - p : 1;
       tilt.value = e.translationY * 0.6;
     })
     .onEnd((e) => {
-      if (!active.value || !busy.value) return;
+      if (!dragging.value) return;
+      dragging.value = 0;
       if (dir.value > 0) {
         const done = tt.value > 0.3 || e.velocityX < -400;
         finish(done ? 1 : 0, 1, done);
@@ -285,10 +302,10 @@ export default function ReadBook() {
       }
     });
   const tap = Gesture.Tap().onEnd((e) => {
-    if (busy.value) return;
+    if (busy.value || dragging.value) return;
     const fwd = e.x > W * 0.4;
     if (fwd ? !readyF.value : !readyB.value) return;
-    begin(fwd ? 1 : -1, Hp * 0.86);
+    begin(fwd ? 1 : -1, Hp * 0.88);
     tilt.value = -Hp * 0.14; // เปิดจากมุมล่างขวาเฉียงขึ้น เหมือนหยิบมุมกระดาษ
     finish(fwd ? 1 : 0, fwd ? 1 : -1, true);
   });
@@ -296,8 +313,11 @@ export default function ReadBook() {
 
   const renderPage = (item: Page, index: number) =>
     item.kind === 'cover' ? (
-      <View style={{ flex: 1 }}>
-        <BookCover w={w} width={bookW} />
+      <View style={styles.coverPage}>
+        <ExpoImage source={COVERS[w.kind]?.src ?? COVERS['ตำรับยา'].src} style={StyleSheet.absoluteFill} contentFit="cover" blurRadius={36} />
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(10,8,5,0.42)' }]} />
+        <BookCover w={w} width={coverW} />
+        <T v="caption" color="rgba(255,255,255,0.7)" center style={{ marginTop: 30 }}>ปัดหรือแตะขวาเพื่อเปิดอ่าน  ›</T>
       </View>
     ) : (
     <View style={{ flex: 1 }}>
@@ -306,7 +326,7 @@ export default function ReadBook() {
         {/* เงาสันกระดาษด้านซ้าย */}
         <LinearGradient colors={['rgba(90,60,20,0.18)', 'rgba(90,60,20,0)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.gutter} />
         {item.kind === 'title' ? (
-          <View style={styles.titlePage}>
+          <View style={[styles.titlePage, { paddingTop: padTop, paddingBottom: padBottom }]}>
             <Text style={[styles.orn, F.r]}>❦  ❦  ❦</Text>
             <View style={styles.titleKind}>
               <KindIcon kind={w.kind} size={15} color={INK} />
@@ -319,7 +339,7 @@ export default function ReadBook() {
             <Text style={[styles.small, { textAlign: 'center', marginTop: 4, color: 'rgba(58,44,28,0.5)' }, F.r]}>{w.date}</Text>
           </View>
         ) : item.kind === 'text' ? (
-          <View style={styles.textPage}>
+          <View style={[styles.textPage, { paddingTop: padTop, paddingBottom: padBottom }]}>
             {item.heading ? <Text style={[styles.heading, F.b]}>{item.heading}</Text> : null}
             {item.text.split(/\n{2,}/).map((para, j) => {
               const chant = w.kind === 'คาถา/พิธี' && (item.heading ?? kf.summary.label) === kf.summary.label;
@@ -334,7 +354,7 @@ export default function ReadBook() {
             })}
           </View>
         ) : (
-          <View style={styles.textPage}>
+          <View style={[styles.textPage, { paddingTop: padTop, paddingBottom: padBottom }]}>
             <Text style={[styles.heading, F.b]}>{item.heading}</Text>
             {item.items.map((x, i) => (
               <View key={i} style={styles.li}>
@@ -344,14 +364,14 @@ export default function ReadBook() {
             ))}
           </View>
         )}
-        <Text style={[styles.folio, F.r]}>— {index} —</Text>
+        <Text style={[styles.folio, { bottom: insets.bottom + 14 }, F.r]}>— {index} —</Text>
       </View>
     </View>
   );
 
   return (
     <View style={styles.page}>
-      <StatusBar style="light" />
+      <StatusBar style={page === 0 ? 'light' : 'dark'} />
       <LinearGradient colors={['#2B2117', '#1A140E']} style={StyleSheet.absoluteFill} />
       <GestureDetector gesture={gesture}>
         <View style={{ flex: 1 }}>
@@ -367,26 +387,20 @@ export default function ReadBook() {
             ))}
           {/* ชั้นพลิกหน้า (Skia) แสดงเฉพาะตอนพลิก */}
           <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, layer]}>
-            <Canvas style={StyleSheet.absoluteFill}>
-              {/* ตัดขอบให้พลิกอยู่ในเล่มหนังสือเท่านั้น (ไม่ล้นออกนอกหน้ากระดาษ) */}
-              <Group transform={[{ translateX: frame.left }, { translateY: frame.top }]} clip={rrct(rect(0, 0, Wp, Hp), 6, 6)}>
-                <CurlLayer base={imgs.next} turning={imgs.cur} show={showF} Wp={Wp} Hp={Hp} verts={verts} tex={tex} idx={idx} g0={g0} g1={g1} s0={s0} s1={s1} baseDim={baseDim} paper="rgba(240,231,211,0.93)" />
-                <CurlLayer base={imgs.cur} turning={imgs.prev} show={showB} Wp={Wp} Hp={Hp} verts={verts} tex={tex} idx={idx} g0={g0} g1={g1} s0={s0} s1={s1} baseDim={baseDim} paper="rgba(240,231,211,0.93)" />
-              </Group>
-            </Canvas>
+            {iCur ? (
+              <Canvas style={StyleSheet.absoluteFill}>
+                <CurlLayer base={baseImg} turning={turnImg} Wp={Wp} Hp={Hp} verts={verts} tex={tex} idx={idx} g0={g0} g1={g1} s0={s0} s1={s1} baseDim={baseDim} paper="rgba(240,231,211,0.93)" />
+              </Canvas>
+            ) : null}
           </Animated.View>
         </View>
       </GestureDetector>
       <View style={[styles.top, { top: insets.top + 8 }]}>
-        <GlassCircle label="ปิด" onPress={() => router.back()} tint="rgba(255,255,255,0.12)">
-          <Sym name="xmark" size={17} color="#FFFFFF" weight="semibold" />
+        <GlassCircle label="ปิด" onPress={() => router.back()} tint={page === 0 ? 'rgba(255,255,255,0.14)' : 'rgba(58,44,28,0.06)'}>
+          <Sym name="xmark" size={17} color={page === 0 ? '#FFFFFF' : INK} weight="semibold" />
         </GlassCircle>
-        <T v="subhead" color="rgba(255,255,255,0.85)" numberOfLines={1} style={{ flex: 1, textAlign: 'center', marginHorizontal: 12 }}>{w.title}</T>
-        <View style={{ width: 44 }} />
-      </View>
-      {/* ตัวบอกหน้า */}
-      <View style={[styles.dots, { bottom: insets.bottom + 18 }]}>
-        <T v="caption" color="rgba(255,255,255,0.7)">{page === 0 ? 'ปัดหรือแตะขวาเพื่อเปิดอ่าน  ›' : `หน้า ${page + 1} / ${pages.length}`}</T>
+        <T v="subhead" color={page === 0 ? 'rgba(255,255,255,0.85)' : 'rgba(58,44,28,0.6)'} numberOfLines={1} style={{ flex: 1, textAlign: 'center', marginHorizontal: 12 }}>{page === 0 ? '' : w.title}</T>
+        <T v="caption" color={page === 0 ? 'rgba(255,255,255,0.75)' : 'rgba(58,44,28,0.55)'} style={{ minWidth: 44, textAlign: 'right' }}>{page + 1}/{pages.length}</T>
       </View>
     </View>
   );
@@ -394,7 +408,8 @@ export default function ReadBook() {
 
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: '#1A140E' },
-  paper: { flex: 1, backgroundColor: PAPER, borderRadius: 6, borderTopRightRadius: 14, borderBottomRightRadius: 14, overflow: 'hidden', boxShadow: '0px 18px 40px rgba(0,0,0,0.5)' },
+  paper: { flex: 1, backgroundColor: PAPER, overflow: 'hidden' },
+  coverPage: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#1A140E', overflow: 'hidden' },
   sheet: { position: 'absolute' },
   gutter: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 26 },
   titlePage: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 30 },
@@ -404,13 +419,12 @@ const styles = StyleSheet.create({
   sub: { marginTop: 10, fontSize: 16, lineHeight: 28, color: 'rgba(58,44,28,0.75)', textAlign: 'center' },
   small: { fontSize: 14.5, lineHeight: 24, color: 'rgba(58,44,28,0.7)' },
   rule: { width: 60, height: 1, backgroundColor: 'rgba(58,44,28,0.35)', marginVertical: 22 },
-  textPage: { flex: 1, paddingLeft: 30, paddingRight: 24, paddingTop: 28, paddingBottom: 44 },
+  textPage: { flex: 1, paddingLeft: 30, paddingRight: 26 },
   heading: { fontSize: 20, lineHeight: 34, fontWeight: '700', color: INK, marginBottom: 12 },
   body: { fontSize: 17, lineHeight: 32, color: INK },
   chant: { textAlign: 'center', fontSize: 19, lineHeight: 38 },
   li: { flexDirection: 'row', gap: 10, marginBottom: 8 },
   bullet: { fontSize: 17, lineHeight: 32, color: 'rgba(58,44,28,0.7)', minWidth: 22 },
-  folio: { position: 'absolute', left: 0, right: 0, bottom: 16, fontSize: 13, color: 'rgba(58,44,28,0.5)', textAlign: 'center' },
+  folio: { position: 'absolute', left: 0, right: 0, fontSize: 13, color: 'rgba(58,44,28,0.5)', textAlign: 'center' },
   top: { position: 'absolute', left: 16, right: 16, flexDirection: 'row', alignItems: 'center' },
-  dots: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
 });
