@@ -100,7 +100,6 @@ export default function WisdomDetail() {
   const ORIGIN_RE = /\n*(ได้รับสืบทอดจาก|แหล่งที่มา):\s*(.+)$/;
   const om = (w.summary ?? '').match(ORIGIN_RE);
   const body = plainText((w.summary ?? '').replace(ORIGIN_RE, '').trim());
-  const bookCount = bookPages((w.summary ?? '').replace(ORIGIN_RE, '').trim()).length;
   const openBook = () => router.push({ pathname: '/wisdom/read', params: { id: w.id } });
   const L = {
     summary: kf.summary.big ? kf.summary.label : 'เนื้อหา',
@@ -195,6 +194,9 @@ export default function WisdomDetail() {
           headerLeft: () => <HeaderBack fallback="/vault" color={palette.ink} />,
           headerRight: () => (
             <View style={{ flexDirection: 'row', gap: 4 }}>
+              <HeaderButton label="อ่านแบบหนังสือ" onPress={openBook}>
+                <Sym name="book.pages" size={19} color={palette.ink} weight="semibold" />
+              </HeaderButton>
               <HeaderButton label={readIdx !== null ? 'หยุดอ่านออกเสียง' : 'อ่านออกเสียงให้ฟัง'} onPress={toggleRead}>
                 <Sym name={readIdx !== null ? 'stop.fill' : 'headphones'} size={19} color={readIdx !== null ? palette.primary : palette.ink} weight="semibold" />
               </HeaderButton>
@@ -243,12 +245,6 @@ export default function WisdomDetail() {
           {body || om ? (
             <Section reading={reading === 'summary'} onY={(v) => (posY.current['summary'] = v)} i={0} icon={kf.summary.big ? (w.kind === 'คาถา/พิธี' ? 'sparkles' : 'text.book.closed.fill') : 'book.fill'} color={palette.primary} title={L.summary}>
               <T v="body" numberOfLines={readIdx === null ? 9 : undefined} style={[styles.para, w.kind === 'คาถา/พิธี' && styles.chant]}>{body}</T>
-              <PressableScale haptic="select" scaleTo={0.97} onPress={openBook} style={styles.bookBtn} accessibilityLabel="อ่านแบบหนังสือ">
-                <Sym name="book.pages.fill" size={16} color={palette.primaryDeep} />
-                <T v="callout" color={palette.primaryDeep} style={{ fontWeight: '700', flex: 1 }}>อ่านแบบหนังสือ</T>
-                <T v="caption" color={palette.primaryDeep}>{bookCount + 1} หน้า</T>
-                <Sym name="chevron.right" size={12} color={palette.primaryDeep} weight="semibold" />
-              </PressableScale>
               {om ? (
                 <View style={styles.originRow}>
                   <Sym name="person.crop.circle" size={14} color={ios.secondary} />
@@ -383,7 +379,6 @@ const styles = StyleSheet.create({
   herbImg: { width: 44, height: 44, borderRadius: 12 },
   num: { width: 44, height: 44, borderRadius: 12, backgroundColor: palette.primarySoft, alignItems: 'center', justifyContent: 'center' },
   sep: { height: StyleSheet.hairlineWidth, backgroundColor: ios.separator, marginLeft: 56 },
-  bookBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14, paddingHorizontal: 14, height: 44, borderRadius: 22, backgroundColor: palette.primarySoft },
   chant: { fontSize: 19, lineHeight: 32, textAlign: 'center', fontWeight: '500' },
   original: { fontStyle: 'italic', color: '#5B4A2A' },
   originRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12, paddingTop: 12, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: ios.separator },

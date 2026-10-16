@@ -1,39 +1,68 @@
 /**
  * อ่านแบบหนังสือ — เนื้อหายาวแบ่งเป็นหน้า ปัดซ้าย/ขวาเพื่อพลิกหน้า
- * หน้าแรก = หน้าปกใน (ชื่อเรื่อง ประเภท ที่มา) · ถัดไป = เนื้อหา (ตัดหน้าให้พอดีจอ) · ท้ายเล่ม = ตัวยา/ขั้นตอน/ข้อห้าม
+ * หน้าแรก = ปกหนังสือ (แบบเดียวกับในคลังภูมิ) · หน้าปกใน (ชื่อเรื่อง ประเภท ที่มา) · เนื้อหา (ตัดหน้าให้พอดีจอ) · ท้ายเล่ม = ตัวยา/ขั้นตอน/ข้อห้าม
+ * ตัวอักษรในเล่ม: Noto Serif Thai (แบบมีหัว ทางการ)
+ * พลิกหน้าแบบหนังสือจริง: หน้ากระดาษหมุนรอบสันซ้าย (3D) ตามนิ้วลาก มีเงาบนหน้าที่พลิกและหน้าที่เผยด้านล่าง · แตะขวา/ซ้ายเพื่อพลิก
  */
+import { NotoSerifThai_400Regular, NotoSerifThai_700Bold, useFonts } from '@expo-google-fonts/noto-serif-thai';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useMemo, useState } from 'react';
-import { FlatList, Platform, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BookCover, COVER_RATIO } from '../../components/BookCover';
 import { KindIcon } from '../../components/KindIcon';
 import { Sym } from '../../components/ios';
-import { GlassCircle, T } from '../../components/ui';
+import { GlassCircle, T, useHaptic } from '../../components/ui';
 import { KIND_FORM, bookPages, splitMethod } from '../../lib/wisdomKinds';
 import { useApp } from '../../store/app';
 
 const PAPER = '#F5ECD9';
 const INK = '#3A2C1C';
-const SERIF = Platform.select({ ios: 'Sukhumvit Set', default: undefined });
 const ORIGIN_RE = /\n*(ได้รับสืบทอดจาก|แหล่งที่มา):\s*(.+)$/;
 
-type Page = { kind: 'title' } | { kind: 'text'; heading?: string; text: string } | { kind: 'list'; heading: string; items: string[]; numbered?: boolean };
+type Page = { kind: 'cover' } | { kind: 'title' } | { kind: 'text'; heading?: string; text: string } | { kind: 'list'; heading: string; items: string[]; numbered?: boolean };
+
+/** หน้าหนึ่งในเล่ม: pos = ตำแหน่งหน้าแบบทศนิยม (3.4 = กำลังพลิกจากหน้า 3 ไป 4 ได้ 40%) */
+function FlipPage({ k, pos, render }: { k: number; pos: SharedValue<number>; render: (shade: React.ReactNode) => React.ReactNode }) {
+  const turn = useAnimatedStyle(() => {
+    const f = Math.min(1, Math.max(0, pos.value - k)); // 0 = วางราบ · 1 = พลิกไปแล้ว
+    return {
+      zIndex: 1000 - k,
+      opacity: f >= 0.999 ? 0 : 1,
+      transform: [{ perspective: 2200 }, { rotateY: `${-180 * f}deg` }],
+    };
+  });
+  const shade = useAnimatedStyle(() => {
+    const f = Math.min(1, Math.max(0, pos.value - k));
+    const under = pos.value > k - 1 && pos.value < k ? k - pos.value : 0; // หน้าที่กำลังถูกเผยด้านล่าง
+    return { opacity: f > 0 ? Math.min(0.5, f * 0.9) : under * 0.4 };
+  });
+  return (
+    <Animated.View style={[StyleSheet.absoluteFill, styles.flip, turn]}>
+      {render(<Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.shade, shade]} />)}
+    </Animated.View>
+  );
+}
 
 export default function ReadBook() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { wisdoms } = useApp();
   const w = wisdoms.find((x) => x.id === id) ?? wisdoms[0];
   const insets = useSafeAreaInsets();
-  const { width: W } = useWindowDimensions();
+  const { width: W, height: SH } = useWindowDimensions();
+  const [fontsOk] = useFonts({ NotoSerifThai_400Regular, NotoSerifThai_700Bold });
+  const F = fontsOk ? { r: { fontFamily: 'NotoSerifThai_400Regular' }, b: { fontFamily: 'NotoSerifThai_700Bold', fontWeight: 'normal' as const } } : { r: {}, b: {} };
   const [page, setPage] = useState(0);
   const kf = KIND_FORM[w.kind] ?? KIND_FORM['ตำรับยา'];
   const om = (w.summary ?? '').match(ORIGIN_RE);
   const body = (w.summary ?? '').replace(ORIGIN_RE, '').trim();
 
   const pages = useMemo<Page[]>(() => {
-    const out: Page[] = [{ kind: 'title' }];
+    const out: Page[] = [{ kind: 'cover' }, { kind: 'title' }];
     const heading = kf.summary.big ? kf.summary.label : 'เนื้อหา';
     bookPages(body).forEach((t, i) => out.push({ kind: 'text', heading: i === 0 ? heading : undefined, text: t }));
     if (w.ingredients?.length) out.push({ kind: 'list', heading: kf.ingredients?.label ?? 'ตัวยา', items: w.ingredients });
@@ -47,43 +76,90 @@ export default function ReadBook() {
     return out;
   }, [w, body, kf]);
 
-  const renderPage = ({ item, index }: { item: Page; index: number }) => (
-    <View style={{ width: W, paddingHorizontal: 18 }}>
+  // ── พลิกหน้า ──
+  const h = useHaptic();
+  const pos = useSharedValue(0);
+  const start = useSharedValue(0);
+  const n = pages.length;
+  const landed = (t: number) => {
+    setPage(t);
+    h.select();
+  };
+  const settle = (t: number) => {
+    'worklet';
+    pos.value = withTiming(t, { duration: 560, easing: Easing.out(Easing.cubic) });
+    runOnJS(landed)(t);
+  };
+  const pan = Gesture.Pan()
+    .activeOffsetX([-10, 10])
+    .onStart(() => {
+      start.value = Math.round(pos.value);
+    })
+    .onUpdate((e) => {
+      const lo = Math.max(0, start.value - 1);
+      const hi = Math.min(n - 1, start.value + 1);
+      pos.value = Math.min(hi, Math.max(lo, start.value - e.translationX / (W * 0.85)));
+    })
+    .onEnd((e) => {
+      const d = pos.value - start.value;
+      let t = start.value;
+      if (d > 0.25 || (e.velocityX < -450 && d > 0)) t = Math.min(n - 1, start.value + 1);
+      else if (d < -0.25 || (e.velocityX > 450 && d < 0)) t = Math.max(0, start.value - 1);
+      settle(t);
+    });
+  const tap = Gesture.Tap().onEnd((e) => {
+    const cur = Math.round(pos.value);
+    const t = e.x > W * 0.4 ? Math.min(n - 1, cur + 1) : Math.max(0, cur - 1);
+    if (t !== cur) settle(t);
+  });
+  const gesture = Gesture.Exclusive(pan, tap);
+
+  const coverW = Math.min(W - 72, (SH - insets.top - insets.bottom - 200) / COVER_RATIO);
+  const renderPage = (item: Page, index: number, shade: React.ReactNode) =>
+    item.kind === 'cover' ? (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: insets.top + 20 }}>
+        <LinearGradient colors={['#2B2117', '#1A140E']} style={StyleSheet.absoluteFill} />
+        <BookCover w={w} width={coverW} />
+        <T v="caption" color="rgba(255,255,255,0.55)" center style={{ marginTop: 28 }}>ปัดหรือแตะขวาเพื่อเปิดอ่าน  ›</T>
+        {shade}
+      </View>
+    ) : (
+    <View style={{ flex: 1, paddingLeft: 10, paddingRight: 18 }}>
       <View style={[styles.paper, { marginTop: insets.top + 64, marginBottom: insets.bottom + 56 }]}>
         <LinearGradient colors={['rgba(255,255,255,0.35)', 'rgba(255,255,255,0)', 'rgba(120,90,40,0.10)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
         {/* เงาสันกระดาษด้านซ้าย */}
         <LinearGradient colors={['rgba(90,60,20,0.18)', 'rgba(90,60,20,0)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.gutter} />
         {item.kind === 'title' ? (
           <View style={styles.titlePage}>
-            <T v="caption" color="rgba(58,44,28,0.55)" style={{ letterSpacing: 3 }}>❦  ❦  ❦</T>
+            <Text style={[styles.orn, F.r]}>❦  ❦  ❦</Text>
             <View style={styles.titleKind}>
-              <KindIcon kind={w.kind} size={16} color={INK} />
-              <T v="subhead" color={INK} style={{ fontWeight: '600' }}>{w.kind}</T>
+              <KindIcon kind={w.kind} size={15} color={INK} />
+              <Text style={[styles.small, { color: INK }, F.r]}>{w.kind}</Text>
             </View>
-            <Text style={[styles.bookTitle, { fontFamily: SERIF }]}>{w.title}</Text>
-            {w.indication ? <T v="callout" color="rgba(58,44,28,0.75)" center style={{ marginTop: 10 }}>{kf.indication.label} · {w.indication}</T> : null}
+            <Text style={[styles.bookTitle, F.b]}>{w.title}</Text>
+            {w.indication ? <Text style={[styles.sub, F.r]}>{kf.indication.label} · {w.indication}</Text> : null}
             <View style={styles.rule} />
-            <T v="subhead" color="rgba(58,44,28,0.7)" center>{om ? `${om[1]} ${om[2]}` : w.sharedBy ? `จาก ${w.sharedBy}` : w.source}</T>
-            <T v="caption" color="rgba(58,44,28,0.5)" center style={{ marginTop: 4 }}>{w.date}</T>
-            <T v="caption" color="rgba(58,44,28,0.5)" center style={{ marginTop: 28 }}>ปัดซ้ายเพื่ออ่าน  ›</T>
+            <Text style={[styles.small, { textAlign: 'center' }, F.r]}>{om ? `${om[1]} ${om[2]}` : w.sharedBy ? `จาก ${w.sharedBy}` : w.source}</Text>
+            <Text style={[styles.small, { textAlign: 'center', marginTop: 4, color: 'rgba(58,44,28,0.5)' }, F.r]}>{w.date}</Text>
           </View>
         ) : item.kind === 'text' ? (
           <View style={styles.textPage}>
-            {item.heading ? <Text style={[styles.heading, { fontFamily: SERIF }]}>{item.heading}</Text> : null}
-            <Text style={[styles.body, { fontFamily: SERIF }, w.kind === 'คาถา/พิธี' && item.heading === kf.summary.label && styles.chant]}>{item.text}</Text>
+            {item.heading ? <Text style={[styles.heading, F.b]}>{item.heading}</Text> : null}
+            <Text style={[styles.body, F.r, w.kind === 'คาถา/พิธี' && item.heading === kf.summary.label && styles.chant]}>{item.text}</Text>
           </View>
         ) : (
           <View style={styles.textPage}>
-            <Text style={[styles.heading, { fontFamily: SERIF }]}>{item.heading}</Text>
+            <Text style={[styles.heading, F.b]}>{item.heading}</Text>
             {item.items.map((x, i) => (
               <View key={i} style={styles.li}>
-                <Text style={[styles.bullet, { fontFamily: SERIF }]}>{item.numbered ? `${i + 1}.` : '•'}</Text>
-                <Text style={[styles.body, { flex: 1, fontFamily: SERIF }]}>{x}</Text>
+                <Text style={[styles.bullet, F.r]}>{item.numbered ? `${i + 1}.` : '•'}</Text>
+                <Text style={[styles.body, { flex: 1 }, F.r]}>{x}</Text>
               </View>
             ))}
           </View>
         )}
-        <T v="caption" color="rgba(58,44,28,0.5)" center style={styles.folio}>— {index + 1} —</T>
+        <Text style={[styles.folio, F.r]}>— {index} —</Text>
+        {shade}
       </View>
     </View>
   );
@@ -92,15 +168,17 @@ export default function ReadBook() {
     <View style={styles.page}>
       <StatusBar style="light" />
       <LinearGradient colors={['#2B2117', '#1A140E']} style={StyleSheet.absoluteFill} />
-      <FlatList
-        data={pages}
-        keyExtractor={(_, i) => String(i)}
-        renderItem={renderPage}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        onMomentumScrollEnd={(e) => setPage(Math.round(e.nativeEvent.contentOffset.x / W))}
-      />
+      <GestureDetector gesture={gesture}>
+        <View style={{ flex: 1 }}>
+          {pages
+            .map((item, k) => ({ item, k }))
+            .filter(({ k }) => k >= page - 2 && k <= page + 2)
+            .reverse()
+            .map(({ item, k }) => (
+              <FlipPage key={k} k={k} pos={pos} render={(shade) => renderPage(item, k, shade)} />
+            ))}
+        </View>
+      </GestureDetector>
       <View style={[styles.top, { top: insets.top + 8 }]}>
         <GlassCircle label="ปิด" onPress={() => router.back()} tint="rgba(255,255,255,0.12)">
           <Sym name="xmark" size={17} color="#FFFFFF" weight="semibold" />
@@ -119,18 +197,23 @@ export default function ReadBook() {
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: '#1A140E' },
   paper: { flex: 1, backgroundColor: PAPER, borderRadius: 6, borderTopRightRadius: 14, borderBottomRightRadius: 14, overflow: 'hidden', boxShadow: '0px 18px 40px rgba(0,0,0,0.5)' },
+  flip: { transformOrigin: 'left center', backfaceVisibility: 'hidden' },
+  shade: { backgroundColor: '#000' },
   gutter: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 26 },
   titlePage: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 30 },
   titleKind: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 18, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999, borderWidth: 1, borderColor: 'rgba(58,44,28,0.3)' },
-  bookTitle: { marginTop: 18, fontSize: 30, lineHeight: 42, fontWeight: '700', color: INK, textAlign: 'center' },
+  bookTitle: { marginTop: 20, fontSize: 28, lineHeight: 46, fontWeight: '700', color: INK, textAlign: 'center' },
+  orn: { fontSize: 13, color: 'rgba(58,44,28,0.55)', letterSpacing: 3 },
+  sub: { marginTop: 10, fontSize: 16, lineHeight: 28, color: 'rgba(58,44,28,0.75)', textAlign: 'center' },
+  small: { fontSize: 14.5, lineHeight: 24, color: 'rgba(58,44,28,0.7)' },
   rule: { width: 60, height: 1, backgroundColor: 'rgba(58,44,28,0.35)', marginVertical: 22 },
   textPage: { flex: 1, paddingHorizontal: 30, paddingTop: 34, paddingBottom: 50 },
-  heading: { fontSize: 21, fontWeight: '700', color: INK, marginBottom: 14 },
-  body: { fontSize: 18.5, lineHeight: 33, color: INK },
-  chant: { textAlign: 'center', fontSize: 20, lineHeight: 36 },
+  heading: { fontSize: 20, lineHeight: 34, fontWeight: '700', color: INK, marginBottom: 12 },
+  body: { fontSize: 17.5, lineHeight: 34, color: INK },
+  chant: { textAlign: 'center', fontSize: 19, lineHeight: 38 },
   li: { flexDirection: 'row', gap: 10, marginBottom: 8 },
-  bullet: { fontSize: 18.5, lineHeight: 33, color: 'rgba(58,44,28,0.7)', minWidth: 22 },
-  folio: { position: 'absolute', left: 0, right: 0, bottom: 16 },
+  bullet: { fontSize: 17.5, lineHeight: 34, color: 'rgba(58,44,28,0.7)', minWidth: 22 },
+  folio: { position: 'absolute', left: 0, right: 0, bottom: 16, fontSize: 13, color: 'rgba(58,44,28,0.5)', textAlign: 'center' },
   top: { position: 'absolute', left: 16, right: 16, flexDirection: 'row', alignItems: 'center' },
   dots: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
 });
