@@ -1,7 +1,7 @@
 import { router, useFocusEffect } from 'expo-router';
 import React, { useCallback } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { AIFlower } from '../../components/Orb';
+import { AISphere } from '../../components/AISphere';
 import { Button, T } from '../../components/ui';
 import { askLaunch } from '../../lib/askLaunch';
 import { palette } from '../../theme';
@@ -26,7 +26,7 @@ export default function AskTab() {
   // สำรองไว้ ไม่ให้เห็นหน้าขาวระหว่างสลับหน้า
   return (
     <View style={styles.page}>
-      <AIFlower size={110} active />
+      <AISphere size={110} active />
       <T v="h2" center style={{ marginTop: 8 }}>ครูปัญญา</T>
       <T v="callout" center color={palette.inkSoft} style={{ marginTop: 4 }}>ผู้ช่วย AI สำหรับหมอพื้นบ้าน</T>
       <Button label="เริ่มคุยกับครูปัญญา" onPress={() => router.push('/assistant')} style={{ marginTop: 24, alignSelf: 'stretch' }} />

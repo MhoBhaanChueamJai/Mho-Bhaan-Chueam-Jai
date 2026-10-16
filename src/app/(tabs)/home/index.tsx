@@ -5,7 +5,7 @@ import { VerifyPrompt } from '../../../components/PractitionerGate';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { AppIcon, Group, IOSCard, Row, SectionTitle, Sym, ios } from '../../../components/ios';
-import { AIFlower } from '../../../components/Orb';
+import { AISphere } from '../../../components/AISphere';
 import { Avatar, PressableScale, T } from '../../../components/ui';
 import { TODAY, avatarFor, avatars, doctor, lastVisit, legacy, thaiDate } from '../../../data/mock';
 import { visitSortKey } from '../../../data/tones';
@@ -50,7 +50,7 @@ export default function Home() {
         <Animated.View entering={enter(1)} style={{ marginTop: 14 }}>
           <IOSCard onPress={() => router.push('/assistant')} style={styles.ai}>
             <View style={styles.orb}>
-              <AIFlower size={48} active />
+              <AISphere size={48} active />
             </View>
             <View style={{ flex: 1 }}>
               <T v="title">ถามครูปัญญา</T>

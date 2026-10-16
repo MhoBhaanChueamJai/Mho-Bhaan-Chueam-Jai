@@ -6,7 +6,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MODELS, SYSTEM_PROMPT, chat, transcribe, type ChatMsg, type ModelKey } from '../api/ai';
 import { useSpeaker, useVoiceRecorder } from '../components/audio';
 import { Group, Row, Sym, ios } from '../components/ios';
-import { AIFlower, SoftShadow, Waveform } from '../components/Orb';
+import { SoftShadow, Waveform } from '../components/Orb';
+import { AISphere } from '../components/AISphere';
 import { Glass, HeaderBack, HeaderButton, PressableScale, T, useHaptic } from '../components/ui';
 import { askLaunch } from '../lib/askLaunch';
 import { useApp } from '../store/app';
@@ -140,7 +141,7 @@ export default function Assistant() {
         {msgs.length === 0 && (
           <Animated.View entering={FadeIn.duration(250)}>
             <View style={{ alignItems: 'center', paddingTop: 8 }}>
-              <AIFlower size={120} active={busy} />
+              <AISphere size={120} active={busy} />
               <T v="h2" center style={{ marginTop: 4 }}>ถามอะไรก็ได้ครับ</T>
               <T v="callout" center color={ios.secondary} style={{ marginTop: 4, maxWidth: 300 }}>
                 สมุนไพร ตำรับยา ธาตุเจ้าเรือน หรือความปลอดภัยของยา

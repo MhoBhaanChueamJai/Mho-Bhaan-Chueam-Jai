@@ -22,7 +22,8 @@ import Animated, { FadeIn, FadeInDown, FadeInUp, FadeOut, LinearTransition } fro
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SYSTEM_PROMPT, chatJSON, transcribe } from '../api/ai';
 import { useSpeaker, useVoiceRecorder } from '../components/audio';
-import { AIFlower, ParticleRing, ProgressHalo, Waveform } from '../components/Orb';
+import { ParticleRing, ProgressHalo, Waveform } from '../components/Orb';
+import { AISphere } from '../components/AISphere';
 import { Sym } from '../components/ios';
 import { Backdrop, Badge, Button, Card, GlassCircle, GlassDock, IconBubble, PressableScale, T, useHaptic } from '../components/ui';
 import { elementColor, palette, radius, space } from '../theme';
@@ -310,7 +311,7 @@ herbs ไม่เกิน 3 รายการ รายการอื่น�
       {stage === 'choose' && (
         <Animated.View entering={FadeIn} style={{ flex: 1, padding: space.lg, justifyContent: 'center', gap: space.lg }}>
           <View style={{ alignItems: 'center', marginBottom: space.md }}>
-            <AIFlower size={120} />
+            <AISphere size={120} />
             <T v="h1" center color={palette.ink} style={{ marginTop: -20 }}>วันนี้อยากเล่าเรื่องอะไรครับ</T>
             <T v="body" center color={palette.inkSoft}>เลือกหนึ่งอย่าง แล้วพูดได้เลย</T>
           </View>
@@ -343,7 +344,7 @@ herbs ไม่เกิน 3 รายการ รายการอื่น�
               </Animated.View>
             ) : null}
             <ParticleRing size={260} level={rec.level}>
-              <AIFlower size={86} active level={rec.level} />
+              <AISphere size={86} active level={rec.level} />
             </ParticleRing>
             <T v="hero" style={{ marginTop: 4, fontVariant: ['tabular-nums'], fontWeight: '300' }}>{timer}</T>
             <T v="callout" color={palette.inkSoft} style={{ marginTop: 4 }}>{rec.isRecording ? 'ครูปัญญากำลังฟัง พูดได้ตามสบาย' : 'กำลังเตรียมไมโครโฟน…'}</T>
@@ -402,7 +403,7 @@ herbs ไม่เกิน 3 รายการ รายการอื่น�
                 <Sym name="text.alignleft" size={28} color="#D06CB8" />
               </View>
             ) : (
-              <AIFlower size={84} active />
+              <AISphere size={84} active />
             )}
           </ProgressHalo>
           <T v="h2" style={{ marginTop: 12 }}>ครูปัญญากำลังคิด…</T>
@@ -422,7 +423,7 @@ herbs ไม่เกิน 3 รายการ รายการอื่น�
       {stage === 'result' && (
         <ScrollView contentContainerStyle={{ padding: space.lg, paddingBottom: insets.bottom + 140 }} showsVerticalScrollIndicator={false}>
           <Animated.View entering={FadeInDown.springify()} style={{ alignItems: 'center', marginBottom: space.sm }}>
-            <AIFlower size={96} active={tts.speaking} level={tts.level} />
+            <AISphere size={96} active={tts.speaking} level={tts.level} />
             {demo ? <Badge label="โหมดสาธิต · ไม่ได้เชื่อมต่อ AI" fg={palette.coral} bg={palette.coralSoft} /> : <Badge label={`✓ วิเคราะห์โดย ${settings.model === 'qwen' ? 'Qwen' : 'Gemma'}`} />}
           </Animated.View>
 

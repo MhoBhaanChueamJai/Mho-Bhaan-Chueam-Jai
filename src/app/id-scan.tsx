@@ -20,7 +20,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated, { Easing, FadeIn, FadeInDown, ZoomIn, useAnimatedStyle, useDerivedValue, useSharedValue, withDelay, withRepeat, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 import { BlurMask, Canvas, RoundedRect, SweepGradient, vec } from '@shopify/react-native-skia';
-import { AIFlower, AIGlow, AI_COLORS } from '../components/Orb';
+import { AIGlow, AI_COLORS } from '../components/Orb';
+import { AISphere } from '../components/AISphere';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Sym } from '../components/ios';
 import { Button, PressableScale, T, useHaptic } from '../components/ui';
@@ -377,7 +378,7 @@ export default function IdScan() {
           <View style={[styles.readBox, { top: cy + ch + 48 }]}>
             {stage === 'reading' ? (
               <Animated.View entering={FadeInDown.delay(300).springify()} style={{ alignItems: 'center' }}>
-                <AIFlower size={44} active />
+                <AISphere size={44} active />
                 <T v="h3" color="#FFFFFF" center style={{ marginTop: 10 }}>ครูปัญญากำลังอ่านบัตร</T>
                 {/* ขั้นตอนเป็นเส้นทาง: ผ่านแล้ว ✓ · กำลังทำ (เรือง) · ยังไม่ถึง (จาง) */}
                 <View style={styles.steps}>
