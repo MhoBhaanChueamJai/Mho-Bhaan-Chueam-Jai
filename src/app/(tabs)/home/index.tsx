@@ -1,9 +1,9 @@
 import { Image } from 'expo-image';
-import { Stack, router } from 'expo-router';
-import React from 'react';
+import { Stack, router, useFocusEffect } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
 import { VerifyPrompt } from '../../../components/PractitionerGate';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated, { FadeInDown, useAnimatedStyle, useSharedValue, withDelay, withSequence, withTiming } from 'react-native-reanimated';
 import { AppIcon, Group, IOSCard, Row, SectionTitle, Sym, ios } from '../../../components/ios';
 import { AISphere } from '../../../components/AISphere';
 import { Avatar, HeaderButton, PressableScale, T } from '../../../components/ui';
@@ -23,12 +23,37 @@ const TOOLS = [
   { title: 'สมุนไพร', sub: '12 ชนิด', sym: 'leaf.fill', bg: '#4E9A3E', go: () => router.push('/herbs') },
 ] as const;
 
+/** กระดิ่งแจ้งเตือน: มีที่ยังไม่อ่าน → สั่นทุกครั้งที่เข้าหน้า (แกว่งจากจุดแขวนด้านบน) */
+function Bell({ unread, shake }: { unread: number; shake: number }) {
+  const r = useSharedValue(0);
+  useEffect(() => {
+    if (!unread) return;
+    r.value = withDelay(
+      450,
+      withSequence(
+        withTiming(16, { duration: 70 }), withTiming(-14, { duration: 90 }), withTiming(12, { duration: 90 }),
+        withTiming(-10, { duration: 90 }), withTiming(7, { duration: 90 }), withTiming(-4, { duration: 90 }), withTiming(0, { duration: 110 }),
+      ),
+    );
+  }, [shake, unread, r]);
+  const st = useAnimatedStyle(() => ({ transform: [{ translateY: -9 }, { rotate: `${r.value}deg` }, { translateY: 9 }] }));
+  return (
+    <Animated.View style={st}>
+      <Image source={require('../../../../assets/icons/bell.png')} style={{ width: 22, height: 22 }} tintColor={palette.ink} />
+    </Animated.View>
+  );
+}
+
 export default function Home() {
   const { patients, settings, isPractitioner, profile, wisdoms } = useApp();
   // ผู้ป่วยที่มารักษาล่าสุด 3 ราย (หมอพื้นบ้านไม่ใช้ระบบนัด)
   const recent = [...patients].sort((a, b) => visitSortKey(lastVisit(b)?.date) - visitSortKey(lastVisit(a)?.date)).slice(0, 3);
   const name = settings.username && settings.username !== 'somchai' ? settings.username : doctor.short;
   const notices = noticesFrom(patients, wisdoms, isPractitioner);
+  const unread = notices.filter((n) => !settings.readNotices?.includes(n.id)).length;
+  // เข้าหน้านี้ทุกครั้ง → นับรอบ (ให้กระดิ่งสั่นเมื่อมีที่ยังไม่อ่าน)
+  const [visit, setVisit] = useState(0);
+  useFocusEffect(useCallback(() => setVisit((v) => v + 1), []));
   const me = profile?.first_name || profile?.display_name?.split(' ')[0] || name;
 
   return (
@@ -43,9 +68,9 @@ export default function Home() {
             </PressableScale>
           ),
           headerRight: () => (
-            <HeaderButton label={`แจ้งเตือน ${notices.length} รายการ`} onPress={() => router.push('/notifications')}>
-              <Image source={require('../../../../assets/icons/bell.png')} style={{ width: 22, height: 22 }} tintColor={palette.ink} />
-              {notices.length ? <View style={styles.dot} /> : null}
+            <HeaderButton label={`แจ้งเตือน ยังไม่อ่าน ${unread} รายการ`} onPress={() => router.push('/notifications')}>
+              <Bell unread={unread} shake={visit} />
+              {unread ? <View style={styles.dot} /> : null}
             </HeaderButton>
           ),
         }}

@@ -25,9 +25,12 @@ type Settings = {
   faceIdEnabled: boolean;
   /** สิทธิ์ล่าสุดที่รู้ (จำไว้ใช้ตอนออฟไลน์) */
   role: 'member' | 'practitioner' | 'admin';
+  /** แจ้งเตือนที่เปิดอ่านแล้ว (id) */
+  readNotices: string[];
 };
 
 const defaults: Settings = {
+  readNotices: [],
   dialect: 'central',
   model: 'gemma',
   voice: 'female',

@@ -1,6 +1,6 @@
 /** แจ้งเตือน — เปิดจากปุ่มกระดิ่งบนหัวจอหน้าหลัก */
 import { router } from 'expo-router';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { CircleIcon, PAGE_PAD } from '../components/ListRow';
@@ -11,8 +11,14 @@ import { useApp } from '../store/app';
 import { elevation, palette } from '../theme';
 
 export default function Notifications() {
-  const { patients, wisdoms, isPractitioner } = useApp();
+  const { patients, wisdoms, isPractitioner, settings, update } = useApp();
   const list = noticesFrom(patients, wisdoms, isPractitioner);
+  // เปิดหน้านี้ = อ่านแล้วทั้งหมด (กระดิ่งหยุดสั่น จุดแดงหาย)
+  useEffect(() => {
+    const ids = list.map((n) => n.id);
+    if (ids.some((id) => !settings.readNotices?.includes(id))) update({ readNotices: Array.from(new Set([...(settings.readNotices ?? []), ...ids])) });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   return (
     <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingTop: 8, paddingBottom: 60 }}>
       {list.length ? (
