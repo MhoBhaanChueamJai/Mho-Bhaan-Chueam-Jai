@@ -298,7 +298,7 @@ export function WisdomView({ w, preview }: { w: Wisdom; preview?: WisdomPreview 
         <View style={styles.body} onLayout={(e) => (bodyY.current = e.nativeEvent.layout.y)}>
           {body || om ? (
             <Section reading={reading === 'summary'} onY={(v) => (posY.current['summary'] = v)} i={0} icon={kf.summary.big ? (w.kind === 'คาถา/พิธี' ? 'sparkles' : 'text.book.closed.fill') : 'book.fill'} color={palette.primary} title={L.summary}>
-              <T v="body" style={[styles.para, w.kind === 'คาถา/พิธี' && styles.chant]}>{body}</T>
+              <T v="body" numberOfLines={preview ? 10 : undefined} style={[styles.para, w.kind === 'คาถา/พิธี' && styles.chant]}>{body}</T>
               {om ? (
                 <View style={styles.originRow}>
                   <Sym name="person.crop.circle" size={14} color={ios.secondary} />
@@ -308,13 +308,13 @@ export function WisdomView({ w, preview }: { w: Wisdom; preview?: WisdomPreview 
             </Section>
           ) : null}
 
-          {w.indication ? (
+          {!preview && w.indication ? (
             <Section reading={reading === 'indication'} onY={(v) => (posY.current['indication'] = v)} i={1} icon="cross.case.fill" color="#3B7DD8" title={L.indication}>
               <T v="body" style={styles.para}>{w.indication}</T>
             </Section>
           ) : null}
 
-          {w.ingredients?.length ? (
+          {!preview && w.ingredients?.length ? (
             <Section reading={reading === 'ingredients'} onY={(v) => (posY.current['ingredients'] = v)} i={2} icon="leaf.fill" color={palette.primary} title={`${L.ingredients} · ${ingRows.length} รายการ`}>
               {/* สรุปสูตร (บรรทัดในวงเล็บของตำรับ) */}
               {ingNotes.length ? (
@@ -356,7 +356,7 @@ export function WisdomView({ w, preview }: { w: Wisdom; preview?: WisdomPreview 
             </Section>
           ) : null}
 
-          {w.method && !kf.method.hidden ? (
+          {!preview && w.method && !kf.method.hidden ? (
             <Section reading={reading === 'method'} onY={(v) => (posY.current['method'] = v)} i={3} icon="flame.fill" color="#D9921A" title={L.method}>
               {kf.method.steps && steps.length > 1 ? (
                 // ไทม์ไลน์: เลขในวงกลมเชื่อมด้วยเส้นแนวตั้ง
@@ -381,7 +381,7 @@ export function WisdomView({ w, preview }: { w: Wisdom; preview?: WisdomPreview 
           ) : null}
 
           {/* วิธีใช้ / ระยะเวลา: แยกแถวตามรูปแบบยา + ข้อความเตือนแยกแถว */}
-          {extra && kf.extra ? (
+          {!preview && extra && kf.extra ? (
             <Section reading={false} onY={() => {}} i={3} icon={w.kind === 'วิธีรักษา' ? 'clock.fill' : 'drop.fill'} color="#B26A12" title={kf.extra.label}>
               <View style={{ gap: 10 }}>
                 {usage.rows.map((r, i) => (
@@ -404,14 +404,14 @@ export function WisdomView({ w, preview }: { w: Wisdom; preview?: WisdomPreview 
             </Section>
           ) : null}
 
-          {w.caution ? (
+          {!preview && w.caution ? (
             <Section reading={reading === 'caution'} onY={(v) => (posY.current['caution'] = v)} i={4} icon="exclamationmark.triangle.fill" color={palette.coral} title={L.caution}>
               <T v="body" style={styles.para}>{w.caution}</T>
             </Section>
           ) : null}
 
           {/* แหล่งอ้างอิง */}
-          {w.refs?.length ? (
+          {!preview && w.refs?.length ? (
             <Animated.View entering={FadeInDown.delay(400).duration(380)} style={[styles.refs, elevation.e1]}>
               <View style={styles.refsHead}>
                 <Sym name="checkmark.seal.fill" size={16} color={palette.primary} />
