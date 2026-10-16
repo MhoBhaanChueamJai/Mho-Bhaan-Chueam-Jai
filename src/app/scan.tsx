@@ -2,7 +2,7 @@ import { Asset } from 'expo-asset';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { BookMarked, Camera, Check, FileText, Images, Languages, ScrollText, X } from '../components/icons';
 import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
@@ -12,6 +12,7 @@ import { SYSTEM_PROMPT, chatJSON, ocrImage } from '../api/ai';
 import { Badge, Button, Card, GlassCircle, GlassDock, IconBubble, PressableScale, T, useHaptic } from '../components/ui';
 import { manuscriptImage } from '../data/herbs';
 import { useApp } from '../store/app';
+import { setWisdomResult } from '../lib/wisdomTalk';
 import { palette, radius, space } from '../theme';
 
 type Stage = 'pick' | 'scanning' | 'result';
@@ -29,6 +30,8 @@ const FALLBACK: Reading = {
 export default function Scan() {
   const insets = useSafeAreaInsets();
   const { settings, addWisdom } = useApp();
+  // เปิดจากหน้าเพิ่มภูมิปัญญา → ส่งผลกลับไปเติมฟอร์มแทนการบันทึกทันที
+  const { fill } = useLocalSearchParams<{ fill?: string }>();
   const h = useHaptic();
   const [stage, setStage] = useState<Stage>('pick');
   const [uri, setUri] = useState<string | null>(null);
@@ -97,6 +100,12 @@ export default function Scan() {
 
   const save = () => {
     if (!reading) return;
+    if (fill) {
+      setWisdomResult({ title: reading.title, kind: reading.kind, summary: reading.modern, ingredients: reading.ingredients?.join(', '), source: 'สแกนตำรา' });
+      h.success();
+      router.back();
+      return;
+    }
     addWisdom({
       id: `w${Date.now()}`,
       title: reading.title,
@@ -215,7 +224,7 @@ export default function Scan() {
             <Button
               style={{ flex: 1.2 }}
               kind={saved ? 'secondary' : 'primary'}
-              label={saved ? 'ดูในคลัง' : 'เก็บเข้าคลัง'}
+              label={saved ? 'ดูในคลัง' : fill ? 'ใช้ข้อมูลนี้' : 'เก็บเข้าคลัง'}
               icon={saved ? <Check size={20} color={palette.primary} /> : <BookMarked size={20} color={palette.white} />}
               onPress={saved ? () => router.replace('/vault') : save}
             />

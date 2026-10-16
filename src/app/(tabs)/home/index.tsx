@@ -18,7 +18,7 @@ const enter = (i: number) => FadeInDown.delay(30 + i * 50).duration(420);
 const TOOLS = [
   { title: 'เล่าอาการ', sub: 'AI ช่วยบันทึก', sym: 'waveform', bg: palette.primary, go: () => router.push({ pathname: '/capture', params: { mode: 'patient' } }) },
   { title: 'สแกนตำรา', sub: 'สมุดข่อย ใบลาน', sym: 'doc.text.viewfinder', bg: '#D9921A', go: () => router.push('/scan') },
-  { title: 'ถ่ายทอดตำรับ', sub: 'เก็บให้ลูกหลาน', sym: 'book.closed.fill', bg: '#C2564B', go: () => router.push({ pathname: '/capture', params: { mode: 'wisdom' } }) },
+  { title: 'ถ่ายทอดตำรับ', sub: 'เก็บให้ลูกหลาน', sym: 'book.closed.fill', bg: '#C2564B', go: () => router.push('/wisdom/new') },
   { title: 'สมุนไพร', sub: '12 ชนิด', sym: 'leaf.fill', bg: '#4E9A3E', go: () => router.push('/herbs') },
 ] as const;
 

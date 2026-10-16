@@ -1,16 +1,16 @@
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useRef, useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View } from 'react-native';
-import Animated, { FadeIn, FadeInUp, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
+import { Keyboard, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import Animated, { FadeIn, FadeInUp, useAnimatedKeyboard, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SYSTEM_PROMPT, chat, transcribe, type ChatMsg } from '../api/ai';
 import { dialectHint, dialectSpeakStyle } from '../lib/dialect';
 import { useSpeaker, useVoiceRecorder } from '../components/audio';
 import { Sym } from '../components/ios';
-import { SoftShadow, Waveform } from '../components/Orb';
+import { Waveform } from '../components/Orb';
 import { AISphere } from '../components/AISphere';
-import { Glass, HeaderBack, PressableScale, T, useHaptic } from '../components/ui';
+import { GlassCircle, PressableScale, T, useHaptic } from '../components/ui';
 import { askLaunch } from '../lib/askLaunch';
 import { useApp } from '../store/app';
 import { control, palette } from '../theme';
@@ -37,8 +37,10 @@ export default function Assistant() {
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const [speakingId, setSpeakingId] = useState<string | null>(null);
-  const [barW, setBarW] = useState(0);
-  const [barH, setBarH] = useState(52);
+  // แถบพิมพ์ลอยยกขึ้นตามคีย์บอร์ด (แบบหน้าโหมดเสียง)
+  const kb = useAnimatedKeyboard();
+  const dockLift = useAnimatedStyle(() => ({ transform: [{ translateY: -Math.max(0, kb.height.value - 16) }] }));
+  const scrollPad = useAnimatedStyle(() => ({ height: Math.max(0, kb.height.value - 16) }));
 
   const send = async (content: string) => {
     if (!content.trim() || busy) return;
@@ -109,30 +111,28 @@ export default function Assistant() {
   const status = busy ? 'กำลังคิด…' : tts.speaking ? 'กำลังพูด…' : rec.isRecording ? 'กำลังฟัง…' : 'พร้อมช่วยคุณหมอ';
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: DARK }}>
+    <View style={{ flex: 1, backgroundColor: DARK }}>
       <StatusBar style="light" />
-      <Stack.Screen
-        options={{
-          headerShown: true,
-          headerTransparent: false,
-          headerStyle: { backgroundColor: DARK },
-          headerShadowVisible: false,
-          headerBackVisible: false,
-          headerLeft: () => <HeaderBack fallback="/home" color={MINT} />,
-          headerTitle: () => (
-            <View style={{ alignItems: 'center' }}>
-              <T v="title" color="#FFFFFF">ครูปัญญา</T>
-              <T v="micro" color={busy || rec.isRecording ? MINT : 'rgba(255,255,255,0.55)'}>{status}</T>
-            </View>
-          ),
-        }}
-      />
+      <Stack.Screen options={{ headerShown: false }} />
+
+      {/* หัว — ปุ่มกลับกระจกวงกลมแบบหน้าโหมดเสียง */}
+      <View style={[styles.top, { paddingTop: insets.top + 8 }]}>
+        <GlassCircle label="กลับ" onPress={() => (router.canGoBack() ? router.back() : router.replace('/home'))} tint="rgba(255,255,255,0.12)">
+          <Sym name="chevron.left" size={18} color="#FFFFFF" weight="semibold" />
+        </GlassCircle>
+        <View style={{ alignItems: 'center' }}>
+          <T v="title" color="#FFFFFF">ครูปัญญา</T>
+          <T v="micro" color={busy || rec.isRecording ? MINT : 'rgba(255,255,255,0.55)'}>{status}</T>
+        </View>
+        <View style={{ width: 44 }} />
+      </View>
 
       <ScrollView
         ref={scroll}
-        contentInsetAdjustmentBehavior="automatic"
-        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 100, gap: 12 }}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: insets.bottom + 110, gap: 12 }}
         keyboardDismissMode="interactive"
+        keyboardShouldPersistTaps="handled"
+        onScrollBeginDrag={Keyboard.dismiss}
         showsVerticalScrollIndicator={false}
       >
         {/* ก้อนแสงครูปัญญา: ใหญ่ตอนยังไม่คุย · เล็กติดด้านบนเมื่อเริ่มคุย — ตอบสนองเสียงพูด/ตอนคิด */}
@@ -191,32 +191,30 @@ export default function Assistant() {
           ),
         )}
         {busy && <Typing />}
+        <Animated.View style={scrollPad} />
       </ScrollView>
 
-      {/* แถบแชทลอย — แคปซูล Liquid Glass ลอยเหนือเนื้อหา */}
-      <View style={[styles.floatWrap, { paddingBottom: Math.max(insets.bottom, 12) }]} pointerEvents="box-none">
-        <View onLayout={(e) => setBarW(e.nativeEvent.layout.width)}>
-          <SoftShadow width={barW} height={barH} radius={barH / 2} blur={16} offsetY={6} />
-          <Glass interactive style={styles.bar} tint="rgba(255,255,255,0.12)">
-            <View onLayout={(e) => setBarH(e.nativeEvent.layout.height)} style={styles.barInner}>
-              <PressableScale haptic="none" onPress={toggleMic} style={[styles.round, { backgroundColor: rec.isRecording ? palette.coral : 'rgba(124,240,168,0.16)' }]} accessibilityLabel={rec.isRecording ? 'หยุดพูด' : 'พูด'}>
-                <Sym name={rec.isRecording ? 'stop.fill' : 'mic.fill'} size={20} color={rec.isRecording ? palette.white : MINT} />
-              </PressableScale>
-              {rec.isRecording ? (
-                <View style={{ flex: 1, height: control.field, flexDirection: 'row', alignItems: 'center', overflow: 'hidden' }}>
-                  <Waveform level={rec.level} bars={16} />
-                </View>
-              ) : (
-                <TextInput value={text} onChangeText={setText} placeholder="ถามครูปัญญา" placeholderTextColor="rgba(255,255,255,0.4)" multiline style={styles.input} />
-              )}
-              <PressableScale haptic="press" onPress={() => send(text)} disabled={!text.trim()} accessibilityLabel="ส่ง" style={[styles.round, { backgroundColor: text.trim() ? palette.primary : 'transparent' }]}>
-                <Sym name="arrow.up" size={20} color={text.trim() ? palette.white : 'rgba(255,255,255,0.35)'} weight="bold" />
-              </PressableScale>
-            </View>
-          </Glass>
+      {/* แถบมืดลอย + ช่องพิมพ์พื้นขาว (แบบเดียวกับหน้าโหมดเสียง) */}
+      <Animated.View pointerEvents="box-none" style={[StyleSheet.absoluteFill, dockLift]}>
+        <View style={[styles.darkDock, { bottom: insets.bottom ? 24 : 16 }]}>
+          <View style={styles.typeRow}>
+            <PressableScale haptic="none" onPress={toggleMic} style={[styles.send, { backgroundColor: rec.isRecording ? palette.coral : palette.primarySoft }]} accessibilityLabel={rec.isRecording ? 'หยุดพูด' : 'พูด'}>
+              <Sym name={rec.isRecording ? 'stop.fill' : 'mic.fill'} size={17} color={rec.isRecording ? palette.white : palette.primaryDeep} />
+            </PressableScale>
+            {rec.isRecording ? (
+              <View style={{ flex: 1, height: 38, flexDirection: 'row', alignItems: 'center', overflow: 'hidden' }}>
+                <Waveform level={rec.level} bars={16} />
+              </View>
+            ) : (
+              <TextInput value={text} onChangeText={setText} placeholder="ถามครูปัญญา" placeholderTextColor="#9AA19D" multiline style={styles.typeInput} accessibilityLabel="พิมพ์คำถาม" />
+            )}
+            <PressableScale haptic="press" onPress={() => send(text)} disabled={!text.trim()} accessibilityLabel="ส่ง" style={[styles.send, { backgroundColor: text.trim() ? palette.primary : 'transparent' }]}>
+              <Sym name="arrow.up" size={17} color={text.trim() ? '#FFFFFF' : '#B5BBB7'} weight="bold" />
+            </PressableScale>
+          </View>
         </View>
-      </View>
-    </KeyboardAvoidingView>
+      </Animated.View>
+    </View>
   );
 }
 
@@ -249,9 +247,9 @@ const styles = StyleSheet.create({
   suggest: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 60, paddingHorizontal: 14, paddingVertical: 12, borderRadius: 20, borderCurve: 'continuous', backgroundColor: 'rgba(255,255,255,0.07)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.14)' },
   suggestIcon: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(124,240,168,0.14)', alignItems: 'center', justifyContent: 'center' },
   listen: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 6, marginLeft: 6, height: 28 },
-  round: { width: control.field, height: control.field, borderRadius: control.field / 2, alignItems: 'center', justifyContent: 'center' },
-  floatWrap: { position: 'absolute', left: 12, right: 12, bottom: 0 },
-  bar: { borderRadius: 30 },
-  barInner: { flexDirection: 'row', alignItems: 'flex-end', gap: 6, padding: 4 },
-  input: { flex: 1, maxHeight: 120, fontSize: 17, color: '#FFFFFF', paddingTop: 11, paddingBottom: 11, paddingHorizontal: 4 },
+  top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingBottom: 8 },
+  darkDock: { position: 'absolute', left: 24, right: 24, padding: 8, borderRadius: 32, borderCurve: 'continuous', backgroundColor: 'rgba(28,30,29,0.96)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.22)', boxShadow: '0px 10px 30px rgba(0,0,0,0.6)' },
+  typeRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, minHeight: 50, paddingHorizontal: 6, paddingVertical: 6, borderRadius: 25, backgroundColor: '#FFFFFF' },
+  typeInput: { flex: 1, maxHeight: 120, fontSize: 17, color: '#1F2A24', paddingTop: 8, paddingBottom: 8, paddingHorizontal: 4 },
+  send: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
 });
