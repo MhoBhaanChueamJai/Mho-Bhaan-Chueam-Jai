@@ -284,7 +284,8 @@ export default function Login() {
           </T>
         )}
 
-        {/* สลับโหมด: เป็นข้อความ ไม่แย่งความเด่นจากปุ่มหลัก */}
+        {/* สลับโหมด: เส้นคั่น + ข้อความ ไม่แย่งความเด่นจากปุ่มหลัก */}
+        <View style={styles.divider} />
         <PressableScale haptic="select" onPress={toggle} style={styles.alt}>
           <T v="callout" color={ios.secondary} center>
             {mode === 'login' ? 'ยังไม่มีบัญชีเข้าใช้งานใช่ไหม? ' : 'มีบัญชีอยู่แล้วใช่ไหม? '}
@@ -308,5 +309,6 @@ const styles = StyleSheet.create({
   error: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   link: { alignSelf: 'center', minHeight: 44, justifyContent: 'center', paddingHorizontal: 12, marginTop: 2 },
   note: { minHeight: 44, marginTop: 6, paddingHorizontal: 12 },
-  alt: { alignSelf: 'center', minHeight: 44, justifyContent: 'center', paddingHorizontal: 12, marginTop: 8 },
+  divider: { height: StyleSheet.hairlineWidth, backgroundColor: ios.separator, marginTop: 10 },
+  alt: { alignSelf: 'center', minHeight: 44, justifyContent: 'center', paddingHorizontal: 12, marginTop: 6 },
 });
