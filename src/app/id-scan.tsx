@@ -1,7 +1,9 @@
 /**
  * กล้องสแกนบัตรประชาชน — เปิดกล้องทันที
  * - กรอบสัดส่วนบัตรจริง (85.6 × 54 มม.) พร้อมมุมกรอบ ให้วางบัตรพอดีกรอบ = ระยะที่เหมาะ
- * - แตะที่ภาพเพื่อโฟกัสใหม่ (มีวงโฟกัส), เปิดไฟฉายได้
+ * - โฟกัสอัตโนมัติต่อเนื่อง (แตะเพื่อโฟกัสจุดนั้นได้), เปิดไฟฉายได้
+ * - ถ่ายอัตโนมัติ: ถ่ายภาพเล็กเงียบๆ ทุก ~0.4 วิ ให้ Apple Vision หาบัตร (modules/card-detect)
+ *   ถ้ากรอบบัตรตรงกับกรอบบนจอ 2 ครั้งติด → ถ่ายจริงเอง
  * - ถ่ายแล้วครอปเฉพาะส่วนในกรอบ ส่งกลับไปให้ AI อ่าน
  */
 import { CameraView, useCameraPermissions } from 'expo-camera';
@@ -9,12 +11,13 @@ import * as ImageManipulator from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Sym } from '../components/ios';
 import { Button, PressableScale, T, useHaptic } from '../components/ui';
+import { cardDetectAvailable, detectCard } from '../../modules/card-detect';
 import { setIdScanResult } from '../lib/idScan';
 import { palette } from '../theme';
 
@@ -28,7 +31,11 @@ export default function IdScan() {
   const [perm, requestPerm] = useCameraPermissions();
   const [torch, setTorch] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [focus, setFocus] = useState<'on' | 'off'>('on');
+  // expo-camera: 'off' = โฟกัสอัตโนมัติต่อเนื่อง, 'on' = โฟกัสครั้งเดียวแล้วล็อก
+  const [focus, setFocus] = useState<'on' | 'off'>('off');
+  const [ready, setReady] = useState(false);
+  const [hint, setHint] = useState<'search' | 'adjust' | 'hold'>('search');
+  const busyRef = useRef(false);
 
   // กรอบบัตร: กว้างเต็มจอเว้น 24, อยู่กึ่งกลางค่อนบน
   const fw = W - 48;
@@ -44,9 +51,9 @@ export default function IdScan() {
     setRingAt({ x, y });
     ring.value = withSequence(withTiming(1, { duration: 150 }), withTiming(1, { duration: 500 }), withTiming(0, { duration: 250 }));
     h.select();
-    // สลับ autofocus เพื่อให้กล้องโฟกัสใหม่
-    setFocus('off');
-    setTimeout(() => setFocus('on'), 60);
+    // โฟกัสครั้งเดียว ณ ตอนแตะ แล้วกลับไปโฟกัสต่อเนื่อง
+    setFocus('on');
+    setTimeout(() => setFocus('off'), 1500);
   };
 
   const done = (uri: string, mime = 'image/jpeg') => {
@@ -55,12 +62,16 @@ export default function IdScan() {
   };
 
   const shoot = async () => {
-    if (!cam.current || busy) return;
+    if (!cam.current || busyRef.current) return;
+    busyRef.current = true;
     h.heavy();
     setBusy(true);
     try {
       const p = await cam.current.takePictureAsync({ quality: 0.9 });
-      if (!p) return setBusy(false);
+      if (!p) {
+        busyRef.current = false;
+        return setBusy(false);
+      }
       // ภาพตัวอย่างแสดงแบบ cover → แปลงพิกัดกรอบบนจอเป็นพิกัดบนรูปจริง แล้วครอป (เผื่อขอบ 4%)
       const scale = Math.max(W / p.width, H / p.height);
       const ox = (p.width * scale - W) / 2;
@@ -77,9 +88,56 @@ export default function IdScan() {
       const out = await ImageManipulator.manipulateAsync(p.uri, [{ crop }], { compress: 0.9, format: ImageManipulator.SaveFormat.JPEG });
       done(out.uri);
     } catch {
+      busyRef.current = false;
       setBusy(false);
     }
   };
+
+  // ── ถ่ายอัตโนมัติเมื่อบัตรอยู่ในกรอบ ──
+  useEffect(() => {
+    if (!ready || !cardDetectAvailable) return;
+    let alive = true;
+    let stable = 0;
+    const loop = async () => {
+      while (alive) {
+        await new Promise((r) => setTimeout(r, 350));
+        if (!alive || busyRef.current || !cam.current) continue;
+        try {
+          const snap = await cam.current.takePictureAsync({ quality: 0.15, shutterSound: false, skipProcessing: true });
+          if (!alive || busyRef.current || !snap) continue;
+          const rc = await detectCard(snap.uri);
+          if (!rc) {
+            stable = 0;
+            setHint('search');
+            continue;
+          }
+          // กรอบบนจอ → พิกัด normalized บนรูป (ภาพตัวอย่างแสดงแบบ cover)
+          const iw = rc.imageWidth, ih = rc.imageHeight;
+          const sc = Math.max(W / iw, H / ih);
+          const ox = (iw * sc - W) / 2, oy = (ih * sc - H) / 2;
+          const nx = (fx + ox) / sc / iw, ny = (fy + oy) / sc / ih;
+          const nw = fw / sc / iw, nh = fh / sc / ih;
+          const ok = Math.abs(rc.x - nx) < nw * 0.12 && Math.abs(rc.y - ny) < nh * 0.15 && rc.width / nw > 0.82 && rc.width / nw < 1.15;
+          if (ok) {
+            stable += 1;
+            setHint('hold');
+            if (stable >= 2) {
+              alive = false;
+              shoot();
+            }
+          } else {
+            stable = 0;
+            setHint('adjust');
+          }
+        } catch {}
+      }
+    };
+    loop();
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready]);
 
   const fromLibrary = async () => {
     const r = await ImagePicker.launchImageLibraryAsync({ quality: 0.85, mediaTypes: ['images'] });
@@ -105,7 +163,7 @@ export default function IdScan() {
   return (
     <View style={styles.page}>
       <StatusBar style="light" />
-      <CameraView ref={cam} style={StyleSheet.absoluteFill} facing="back" autofocus={focus} enableTorch={torch} />
+      <CameraView ref={cam} style={StyleSheet.absoluteFill} facing="back" autofocus={focus} enableTorch={torch} animateShutter={false} onCameraReady={() => setReady(true)} />
 
       {/* แตะเพื่อโฟกัส */}
       <Pressable style={StyleSheet.absoluteFill} onPress={(e) => tapFocus(e.nativeEvent.locationX, e.nativeEvent.locationY)} accessibilityLabel="แตะเพื่อโฟกัส" />
@@ -120,18 +178,22 @@ export default function IdScan() {
         {/* กรอบบัตร + มุม */}
         <View style={[styles.frame, { left: fx, top: fy, width: fw, height: fh }]}>
           {(['tl', 'tr', 'bl', 'br'] as const).map((c) => (
-            <View key={c} style={[styles.corner, styles[c]]} />
+            <View key={c} style={[styles.corner, styles[c], hint === 'hold' && { borderColor: '#34C759' }]} />
           ))}
           {/* ตำแหน่งรูปถ่ายบนบัตร ช่วยจัดแนวบัตร */}
           <View style={[styles.photoHint, { width: fw * 0.22, height: fh * 0.42 }]} />
         </View>
 
         <View style={[styles.guide, { top: fy - 64 }]}>
-          <T v="title" color="#FFFFFF" center>วางบัตรประชาชนให้พอดีกรอบ</T>
+          <View style={[styles.pill, hint === 'hold' && { backgroundColor: '#34C759' }]}>
+            <T v="title" color="#FFFFFF" center>
+              {busy ? 'กำลังถ่าย…' : hint === 'hold' ? 'ถือนิ่งๆ กำลังถ่ายให้อัตโนมัติ' : hint === 'adjust' ? 'ขยับบัตรให้พอดีกรอบ' : 'วางบัตรประชาชนให้พอดีกรอบ'}
+            </T>
+          </View>
         </View>
         <View style={[styles.guide, { top: fy + fh + 18 }]}>
           <T v="subhead" color="rgba(255,255,255,0.85)" center>ด้านหน้าบัตร · ขอบบัตรชิดมุมกรอบ (ห่างประมาณ 15–20 ซม.)</T>
-          <T v="caption" color="rgba(255,255,255,0.65)" center style={{ marginTop: 4 }}>แตะที่ภาพเพื่อโฟกัส · ไม่เก็บเลขบัตรประชาชน</T>
+          <T v="caption" color="rgba(255,255,255,0.65)" center style={{ marginTop: 4 }}>{cardDetectAvailable ? 'ถ่ายให้อัตโนมัติเมื่อบัตรพอดีกรอบ · ' : ''}แตะที่ภาพเพื่อโฟกัส · ไม่เก็บเลขบัตรประชาชน</T>
         </View>
 
         <Animated.View style={[styles.ring, { left: ringAt.x - 36, top: ringAt.y - 36 }, ringSt]} />
@@ -174,6 +236,7 @@ const styles = StyleSheet.create({
   br: { right: -2, bottom: -2, borderRightWidth: 4, borderBottomWidth: 4, borderBottomRightRadius: 14 },
   photoHint: { position: 'absolute', right: '6%', bottom: '10%', borderRadius: 8, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.35)', borderStyle: 'dashed' },
   guide: { position: 'absolute', left: 24, right: 24, alignItems: 'center' },
+  pill: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 999, backgroundColor: 'rgba(0,0,0,0.45)' },
   ring: { position: 'absolute', width: 72, height: 72, borderRadius: 12, borderWidth: 2, borderColor: '#FFD60A' },
   top: { position: 'absolute', left: 16, right: 16, flexDirection: 'row', justifyContent: 'space-between' },
   bottom: { position: 'absolute', left: 32, right: 32, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
