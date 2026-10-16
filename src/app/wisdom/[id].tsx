@@ -19,6 +19,7 @@ import { CircleIcon } from '../../components/ListRow';
 import { Sym, ios } from '../../components/ios';
 import { Glass, HeaderBack, HeaderButton, PressableScale, T, useHaptic } from '../../components/ui';
 import { fetchLatestShared } from '../../lib/wisdomShare';
+import { KIND_FORM, splitMethod } from '../../lib/wisdomKinds';
 import { herbs } from '../../data/herbs';
 import { doctor } from '../../data/mock';
 import { useApp } from '../../store/app';
@@ -94,12 +95,24 @@ export default function WisdomDetail() {
   }, [w.id]);
 
   // ── โหมดอ่านออกเสียง: อ่านทีละหัวข้อ ไฮไลต์การ์ดที่กำลังอ่าน และเลื่อนตามให้ ──
+  const kf = KIND_FORM[w.kind] ?? KIND_FORM['ตำรับยา'];
+  const { steps, extra } = splitMethod(w.kind, w.method);
+  const ORIGIN_RE = /\n*(ได้รับสืบทอดจาก|แหล่งที่มา):\s*(.+)$/;
+  const om = (w.summary ?? '').match(ORIGIN_RE);
+  const body = (w.summary ?? '').replace(ORIGIN_RE, '').trim();
+  const L = {
+    summary: kf.summary.big ? kf.summary.label : 'เนื้อหา',
+    indication: kf.indication.label,
+    ingredients: kf.ingredients?.label ?? 'ตัวยา',
+    method: kf.method.label,
+    caution: kf.caution.label,
+  };
   const sections = [
-    { key: 'summary', label: 'เนื้อหา', text: [w.title, w.summary].filter(Boolean).join(' ') },
-    { key: 'indication', label: 'สรรพคุณ', text: w.indication ? `สรรพคุณ ${w.indication}` : '' },
-    { key: 'ingredients', label: 'ตัวยา', text: w.ingredients?.length ? `ตัวยา ${w.ingredients.join(' ')}` : '' },
-    { key: 'method', label: w.kind === 'คาถา/พิธี' ? 'ขั้นตอน' : 'วิธีปรุงและวิธีใช้', text: w.method ? `${w.kind === 'คาถา/พิธี' ? 'ขั้นตอน' : 'วิธีปรุงและวิธีใช้'} ${w.method}` : '' },
-    { key: 'caution', label: 'ข้อห้าม', text: w.caution ? `ข้อห้ามและข้อควรระวัง ${w.caution}` : '' },
+    { key: 'summary', label: L.summary, text: [w.title, body].filter(Boolean).join(' ') },
+    { key: 'indication', label: L.indication, text: w.indication ? `${L.indication} ${w.indication}` : '' },
+    { key: 'ingredients', label: L.ingredients, text: w.ingredients?.length ? `${L.ingredients} ${w.ingredients.join(' ')}` : '' },
+    { key: 'method', label: L.method, text: w.method ? `${L.method} ${w.method.replace(/\n/g, ' ')}` : '' },
+    { key: 'caution', label: L.caution, text: w.caution ? `${L.caution} ${w.caution}` : '' },
   ].filter((x) => x.text);
   const [readIdx, setReadIdx] = useState<number | null>(null);
   const reading = readIdx !== null ? sections[readIdx]?.key : null;
@@ -162,7 +175,6 @@ export default function WisdomDetail() {
     else if (id === 'edit') router.push({ pathname: '/wisdom/new', params: { id: w.id } });
     else if (id === 'delete') confirmDelete();
   };
-  const steps = (w.method ?? '').split(/\n+|\s+(?=(?:แล้ว|จากนั้น|นำ|กิน|ใช้|ต้ม|บด|ห่อ|ประคบ))/).map((s) => s.trim()).filter(Boolean);
 
   return (
     <View style={{ flex: 1, backgroundColor: palette.bg }}>
@@ -222,20 +234,26 @@ export default function WisdomDetail() {
         </Animated.View>
 
         <View style={styles.body} onLayout={(e) => (bodyY.current = e.nativeEvent.layout.y)}>
-          {w.summary ? (
-            <Section reading={reading === 'summary'} onY={(v) => (posY.current['summary'] = v)} i={0} icon="book.fill" color={palette.primary} title="เนื้อหา">
-              <T v="body" style={styles.para}>{w.summary}</T>
+          {body || om ? (
+            <Section reading={reading === 'summary'} onY={(v) => (posY.current['summary'] = v)} i={0} icon={kf.summary.big ? (w.kind === 'คาถา/พิธี' ? 'sparkles' : 'text.book.closed.fill') : 'book.fill'} color={palette.primary} title={L.summary}>
+              <T v="body" style={[styles.para, w.kind === 'คาถา/พิธี' && styles.chant]}>{body}</T>
+              {om ? (
+                <View style={styles.originRow}>
+                  <Sym name="person.crop.circle" size={14} color={ios.secondary} />
+                  <T v="subhead" color={ios.secondary} style={{ flex: 1 }}>{om[1]} {om[2]}</T>
+                </View>
+              ) : null}
             </Section>
           ) : null}
 
           {w.indication ? (
-            <Section reading={reading === 'indication'} onY={(v) => (posY.current['indication'] = v)} i={1} icon="cross.case.fill" color="#3B7DD8" title="สรรพคุณ">
+            <Section reading={reading === 'indication'} onY={(v) => (posY.current['indication'] = v)} i={1} icon="cross.case.fill" color="#3B7DD8" title={L.indication}>
               <T v="body" style={styles.para}>{w.indication}</T>
             </Section>
           ) : null}
 
           {w.ingredients?.length ? (
-            <Section reading={reading === 'ingredients'} onY={(v) => (posY.current['ingredients'] = v)} i={2} icon="leaf.fill" color={palette.primary} title={`ตัวยา · ${w.ingredients.length} ชนิด`}>
+            <Section reading={reading === 'ingredients'} onY={(v) => (posY.current['ingredients'] = v)} i={2} icon="leaf.fill" color={palette.primary} title={`${L.ingredients} · ${w.ingredients.length} รายการ`}>
               <View style={{ marginTop: 4 }}>
                 {w.ingredients.map((x, i) => {
                   const h = herbOf(x);
@@ -269,8 +287,8 @@ export default function WisdomDetail() {
           ) : null}
 
           {w.method ? (
-            <Section reading={reading === 'method'} onY={(v) => (posY.current['method'] = v)} i={3} icon="flame.fill" color="#D9921A" title={w.kind === 'คาถา/พิธี' ? 'ขั้นตอน' : 'วิธีปรุงและวิธีใช้'}>
-              {steps.length > 1 ? (
+            <Section reading={reading === 'method'} onY={(v) => (posY.current['method'] = v)} i={3} icon="flame.fill" color="#D9921A" title={L.method}>
+              {kf.method.steps && steps.length > 1 ? (
                 <View style={{ gap: 12, marginTop: 4 }}>
                   {steps.map((s, i) => (
                     <View key={i} style={{ flexDirection: 'row', gap: 12 }}>
@@ -282,8 +300,18 @@ export default function WisdomDetail() {
                   ))}
                 </View>
               ) : (
-                <T v="body" style={styles.para}>{w.method}</T>
+                <T v="body" style={[styles.para, w.kind === 'ตำราโบราณ' && styles.original]}>{steps.join('\n')}</T>
               )}
+              {/* บรรทัดเสริม: วิธีใช้ / ระยะเวลา */}
+              {extra && kf.extra ? (
+                <View style={styles.extra}>
+                  <Sym name={w.kind === 'วิธีรักษา' ? 'clock.fill' : 'drop.fill'} size={15} color="#B26A12" />
+                  <View style={{ flex: 1 }}>
+                    <T v="caption" color="#B26A12" style={{ fontWeight: '700' }}>{kf.extra.label}</T>
+                    <T v="body">{extra}</T>
+                  </View>
+                </View>
+              ) : null}
             </Section>
           ) : null}
 
@@ -291,7 +319,7 @@ export default function WisdomDetail() {
             <Animated.View onLayout={(e) => (posY.current.caution = e.nativeEvent.layout.y)} entering={FadeInDown.delay(360).duration(380)} style={[styles.warn, reading === 'caution' && styles.reading]}>
               <Sym name="exclamationmark.triangle.fill" size={18} color={palette.coral} />
               <View style={{ flex: 1, gap: 2 }}>
-                <T v="title" color={palette.coral}>ข้อห้าม / ข้อควรระวัง</T>
+                <T v="title" color={palette.coral}>{L.caution}</T>
                 <T v="body">{w.caution}</T>
               </View>
             </Animated.View>
@@ -343,6 +371,10 @@ const styles = StyleSheet.create({
   herbImg: { width: 44, height: 44, borderRadius: 12 },
   num: { width: 44, height: 44, borderRadius: 12, backgroundColor: palette.primarySoft, alignItems: 'center', justifyContent: 'center' },
   sep: { height: StyleSheet.hairlineWidth, backgroundColor: ios.separator, marginLeft: 56 },
+  chant: { fontSize: 19, lineHeight: 32, textAlign: 'center', fontWeight: '500' },
+  original: { fontStyle: 'italic', color: '#5B4A2A' },
+  originRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12, paddingTop: 12, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: ios.separator },
+  extra: { flexDirection: 'row', gap: 10, marginTop: 14, padding: 12, borderRadius: 14, backgroundColor: '#FDF3E3' },
   stepNum: { width: 24, height: 24, borderRadius: 12, backgroundColor: '#D9921A', alignItems: 'center', justifyContent: 'center', marginTop: 2 },
   warn: { flexDirection: 'row', gap: 12, padding: 18, borderRadius: 22, borderCurve: 'continuous', backgroundColor: palette.coralSoft },
 });
