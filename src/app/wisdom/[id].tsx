@@ -105,6 +105,8 @@ export default function WisdomDetail() {
   // ── โหมดอ่านออกเสียง: อ่านทีละหัวข้อ ไฮไลต์การ์ดที่กำลังอ่าน และเลื่อนตามให้ ──
   const kf = KIND_FORM[w.kind] ?? KIND_FORM['ตำรับยา'];
   const { steps, extra } = splitMethod(w.kind, w.method);
+  const ingRows = (w.ingredients ?? []).filter((x) => !/^\s*\(/.test(x));
+  const ingNotes = (w.ingredients ?? []).filter((x) => /^\s*\(/.test(x)).map((x) => x.trim().replace(/^\(|\)$/g, ''));
   const ORIGIN_RE = /\n*(ได้รับสืบทอดจาก|แหล่งที่มา):\s*(.+)$/;
   const om = (w.summary ?? '').match(ORIGIN_RE);
   const body = plainText((w.summary ?? '').replace(ORIGIN_RE, '').trim());
@@ -270,20 +272,18 @@ export default function WisdomDetail() {
           ) : null}
 
           {w.ingredients?.length ? (
-            <Section reading={reading === 'ingredients'} onY={(v) => (posY.current['ingredients'] = v)} i={2} icon="leaf.fill" color={palette.primary} title={`${L.ingredients} · ${w.ingredients.length} รายการ`}>
-              {/* ตำรับแบบตาราง: ชื่อ ........ ปริมาณ */}
-              <View style={{ marginTop: 2 }}>
-                {w.ingredients.map((x, i) => {
+            <Section reading={reading === 'ingredients'} onY={(v) => (posY.current['ingredients'] = v)} i={2} icon="leaf.fill" color={palette.primary} title={`${L.ingredients} · ${ingRows.length} รายการ`}>
+              {/* ตำรับแบบตาราง: ชื่อ ........ ปริมาณ · บรรทัดในวงเล็บ = หมายเหตุสรุปท้ายตาราง */}
+              <View>
+                {ingRows.map((x, i) => {
                   const h = herbOf(x);
                   const { name, amount } = splitAmount(x);
                   const row = (
-                    <View style={styles.ing}>
+                    <View style={[styles.ing, i > 0 && styles.ingSep]}>
                       {h ? (
                         <Image source={h.image} style={styles.herbImg} contentFit="cover" />
                       ) : (
-                        <View style={styles.num}>
-                          <T v="micro" color={palette.primaryDeep} style={{ fontWeight: '700' }}>{i + 1}</T>
-                        </View>
+                        <T v="caption" color={ios.tertiary} style={styles.ingIdx}>{i + 1}</T>
                       )}
                       <T v="body" style={styles.ingName}>{name}</T>
                       {amount ? (
@@ -294,7 +294,7 @@ export default function WisdomDetail() {
                       ) : (
                         <View style={{ flex: 1 }} />
                       )}
-                      {h ? <Sym name="chevron.right" size={12} color={ios.tertiary} weight="semibold" /> : null}
+                      {h ? <Sym name="chevron.right" size={11} color={ios.tertiary} weight="semibold" /> : null}
                     </View>
                   );
                   return h ? (
@@ -305,6 +305,12 @@ export default function WisdomDetail() {
                     <View key={`${x}${i}`}>{row}</View>
                   );
                 })}
+                {ingNotes.map((n, i) => (
+                  <View key={i} style={styles.ingNote}>
+                    <Sym name="sum" size={13} color={palette.primaryDeep} />
+                    <T v="subhead" color={palette.primaryDeep} style={{ flex: 1, fontWeight: '600' }}>{n}</T>
+                  </View>
+                ))}
               </View>
             </Section>
           ) : null}
@@ -317,10 +323,11 @@ export default function WisdomDetail() {
                   {steps.map((st, i) => (
                     <View key={i} style={styles.stepRow}>
                       <View style={styles.stepRail}>
+                        {/* เส้นต่อเนื่องผ่านทุกขั้น (วงกลมทับด้านบน) */}
+                        {steps.length > 1 ? <View style={[styles.stepLine, i === 0 && { top: 13 }, i === steps.length - 1 && { bottom: undefined, height: 13 }]} /> : null}
                         <View style={styles.stepNum}>
                           <T v="caption" color="#FFFFFF" style={{ fontWeight: '700' }}>{i + 1}</T>
                         </View>
-                        {i < steps.length - 1 ? <View style={styles.stepLine} /> : null}
                       </View>
                       <T v="body" style={[styles.stepText, i === steps.length - 1 && { paddingBottom: 0 }]}>{st}</T>
                     </View>
@@ -332,10 +339,12 @@ export default function WisdomDetail() {
               {/* บรรทัดเสริม: วิธีใช้ / ระยะเวลา */}
               {extra && kf.extra ? (
                 <View style={styles.extra}>
-                  <Sym name={w.kind === 'วิธีรักษา' ? 'clock.fill' : 'drop.fill'} size={15} color="#B26A12" />
-                  <View style={{ flex: 1 }}>
-                    <T v="caption" color="#B26A12" style={{ fontWeight: '700' }}>{kf.extra.label}</T>
-                    <T v="body">{extra}</T>
+                  <View style={styles.extraIcon}>
+                    <Sym name={w.kind === 'วิธีรักษา' ? 'clock.fill' : 'drop.fill'} size={13} color="#B26A12" />
+                  </View>
+                  <View style={{ flex: 1, gap: 2 }}>
+                    <T v="subhead" color="#B26A12" style={{ fontWeight: '700' }}>{kf.extra.label}</T>
+                    <T v="body" style={styles.para}>{extra}</T>
                   </View>
                 </View>
               ) : null}
@@ -411,21 +420,24 @@ const styles = StyleSheet.create({
   card: { backgroundColor: palette.surface, borderRadius: 22, borderCurve: 'continuous', padding: 18 },
   cardHead: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
   para: { lineHeight: 26 },
-  ing: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 9 },
-  herbImg: { width: 28, height: 28, borderRadius: 14 },
-  num: { width: 28, height: 28, borderRadius: 14, backgroundColor: palette.primarySoft, alignItems: 'center', justifyContent: 'center' },
-  ingName: { flexShrink: 1, fontWeight: '600' },
-  leader: { flex: 1, minWidth: 14, height: 1, marginTop: 10, borderBottomWidth: 1.5, borderStyle: 'dotted', borderColor: 'rgba(60,60,67,0.28)' },
-  ingAmt: { fontWeight: '700', color: palette.primaryDeep },
+  ing: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 46, paddingVertical: 8 },
+  ingSep: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: ios.separator },
+  herbImg: { width: 24, height: 24, borderRadius: 12 },
+  ingIdx: { width: 24, textAlign: 'center', fontWeight: '600' },
+  ingName: { flexShrink: 1 },
+  leader: { flex: 1, minWidth: 12, height: 1, marginTop: 8, borderBottomWidth: 1, borderStyle: 'dotted', borderColor: 'rgba(60,60,67,0.22)' },
+  ingAmt: { fontWeight: '600', color: palette.ink },
+  ingNote: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 12, backgroundColor: palette.primarySoft },
   stepRow: { flexDirection: 'row', gap: 12 },
   stepRail: { width: 26, alignItems: 'center' },
-  stepLine: { flex: 1, width: 2, borderRadius: 1, marginVertical: 4, backgroundColor: '#F2DDBB' },
-  stepText: { flex: 1, paddingTop: 1, paddingBottom: 18 },
+  stepLine: { position: 'absolute', top: 0, bottom: 0, width: 2, borderRadius: 1, backgroundColor: '#F2DDBB' },
+  stepText: { flex: 1, paddingTop: 2, paddingBottom: 16 },
+  extraIcon: { width: 26, height: 26, borderRadius: 13, backgroundColor: '#FCEBD2', alignItems: 'center', justifyContent: 'center' },
   sep: { height: StyleSheet.hairlineWidth, backgroundColor: ios.separator, marginLeft: 56 },
   chant: { fontSize: 19, lineHeight: 32, textAlign: 'center', fontWeight: '500' },
   original: { fontStyle: 'italic', color: '#5B4A2A' },
   originRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12, paddingTop: 12, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: ios.separator },
-  extra: { flexDirection: 'row', gap: 10, marginTop: 14, padding: 12, borderRadius: 14, backgroundColor: '#FDF3E3' },
+  extra: { flexDirection: 'row', gap: 12, marginTop: 4, paddingTop: 14, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: ios.separator },
   stepNum: { width: 26, height: 26, borderRadius: 13, backgroundColor: '#D9921A', alignItems: 'center', justifyContent: 'center' },
   refs: { padding: 16, borderRadius: 22, borderCurve: 'continuous', backgroundColor: palette.surface, gap: 12 },
   refsHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
