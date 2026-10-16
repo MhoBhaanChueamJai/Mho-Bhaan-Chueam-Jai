@@ -46,7 +46,10 @@ export default function VoiceIntake() {
         if (finished) return;
         finished = true;
         speakLevel.value = withTiming(0, { duration: 250 });
-        player.current?.remove();
+        try {
+          player.current?.pause();
+          player.current?.remove();
+        } catch {}
         player.current = null;
         resolve();
       };
@@ -54,6 +57,8 @@ export default function VoiceIntake() {
         const uri = await synthesize(text);
         if (!alive.current) return end();
         await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: false });
+        // ปิดหน้าไประหว่างรอ → ไม่สร้างตัวเล่นเสียง
+        if (!alive.current) return end();
         const p = createAudioPlayer({ uri });
         player.current = p;
         // ดอกไม้ขยับตามระดับเสียงจริงของครูปัญญา (RMS จากคลื่นเสียง) แบบนุ่มนวล
@@ -169,16 +174,30 @@ export default function VoiceIntake() {
       }
       setPhase('done');
     })();
-    return () => {
-      alive.current = false;
-      player.current?.remove();
-      rec.stop().catch(() => {});
-    };
+    return () => stopAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const useData = () => {
+  /** หยุดทุกอย่างทันที (ปิดหน้า / ใช้ข้อมูล): เสียงที่กำลังพูด ไมค์ และวงจรสนทนา */
+  const stopAll = () => {
     alive.current = false;
+    manualStop.current = true;
+    try {
+      player.current?.pause();
+      player.current?.remove();
+    } catch {}
+    player.current = null;
+    speakLevel.value = 0;
+    rec.stop().catch(() => {});
+  };
+
+  const close = () => {
+    stopAll();
+    router.back();
+  };
+
+  const useData = () => {
+    stopAll();
     setIntakeResult({ ...dataRef.current });
     h.success();
     router.back();
@@ -195,7 +214,7 @@ export default function VoiceIntake() {
 
       {/* หัว */}
       <View style={[styles.top, { paddingTop: insets.top + 8 }]}>
-        <GlassCircle label="ปิด" onPress={() => router.back()} tint="rgba(255,255,255,0.12)">
+        <GlassCircle label="ปิด" onPress={close} tint="rgba(255,255,255,0.12)">
           <Sym name="xmark" size={17} color="#FFFFFF" weight="semibold" />
         </GlassCircle>
         <T v="title" color="#FFFFFF">ครูปัญญาซักประวัติ</T>
