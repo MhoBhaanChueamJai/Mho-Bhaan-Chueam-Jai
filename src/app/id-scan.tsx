@@ -96,9 +96,8 @@ export default function IdScan() {
       transform: [
         { translateX: (from.x + from.w / 2 - (cx + cw / 2)) * k },
         { translateY: (from.y + from.h / 2 - (cy + ch / 2)) * k + wob * 6 * f - (1 - out.value) * 120 },
-        { perspective: 900 },
-        { rotateX: `${wob * 3 * f + k * 10}deg` },
-        { rotateY: `${Math.cos(idle.value * Math.PI * 2) * 4 * f}deg` },
+        // ไม่ใช้ rotateX/rotateY: การหมุน 3D ทำให้ครึ่งบัตรไปอยู่หลังชั้นพื้นหลังเบลอ
+        { rotate: `${wob * 0.6 * f}deg` },
         { scaleX: (sx + (1 - sx) * f) * (0.85 + 0.15 * out.value) },
         { scaleY: (sy + (1 - sy) * f) * (0.85 + 0.15 * out.value) },
       ],
@@ -306,7 +305,9 @@ export default function IdScan() {
         <Animated.View style={[styles.ring, { left: ringAt.x - 36, top: ringAt.y - 36 }, ringSt]} />
       </View>
 
-      {/* ปุ่มบน: ปิด / ไฟฉาย */}
+      {/* ปุ่มบน: ปิด / ไฟฉาย (ซ่อนระหว่างอ่านบัตร) */}
+      {shot ? null : (
+      <>
       <View style={[styles.top, { top: insets.top + 8 }]}>
         <PressableScale onPress={() => router.back()} style={styles.round} accessibilityLabel="ปิด">
           <Sym name="xmark" size={18} color="#FFFFFF" weight="semibold" />
@@ -326,6 +327,8 @@ export default function IdScan() {
         </PressableScale>
         <View style={{ width: 48 }} />
       </View>
+      </>
+      )}
 
       {/* ── หลังถ่าย: พื้นหลังเบลอ · บัตรดัดตรงลอยมากลางจอ · ออร่ารุ้ง + เคลือบโฮโลแกรม (สไตล์ครูปัญญา) ── */}
       {shot ? (
