@@ -66,7 +66,7 @@ export function LockScreen() {
       <PinShell
         hero={
           <HeroRing>
-            <Avatar name={doctor.name} src={avatars.doctor} size={76} />
+            <Avatar name={doctor.name} src={avatars.doctor} size={64} />
           </HeroRing>
         }
         title={`สวัสดี ${name}`}

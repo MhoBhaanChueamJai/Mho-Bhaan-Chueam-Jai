@@ -5,6 +5,7 @@
  */
 import { router } from 'expo-router';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { PractitionerGate } from '../../components/PractitionerGate';
 import { ActivityIndicator, Keyboard, ScrollView, StyleSheet, TextInput, View, useWindowDimensions } from 'react-native';
 import Animated, { Easing, FadeIn, FadeInDown, interpolate, runOnJS, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -33,7 +34,7 @@ function Hi({ text, q, v = 'body', color = ios.label, bold }: { text: string; q:
   );
 }
 
-export default function PatientSearch() {
+function PatientSearchInner() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const { patients, searchLog, openLog, logSearch, agenda } = useApp();
@@ -252,3 +253,11 @@ const styles = StyleSheet.create({
   diag: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4, backgroundColor: '#F4F6F3', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 5, alignSelf: 'flex-start', maxWidth: '100%' },
   empty: { alignItems: 'center', paddingVertical: 40, gap: 2 },
 });
+
+export default function PatientSearch() {
+  return (
+    <PractitionerGate>
+      <PatientSearchInner />
+    </PractitionerGate>
+  );
+}

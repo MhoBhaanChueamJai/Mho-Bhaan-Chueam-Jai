@@ -1,6 +1,7 @@
 import SegmentedControl from '@react-native-segmented-control/segmented-control';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { PractitionerGate } from '../../../components/PractitionerGate';
 import { Linking, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { IOSCard, Sym, ios } from '../../../components/ios';
@@ -99,7 +100,7 @@ function nextAppt(agenda: Agenda, pid: string) {
 
 const toMin = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
 
-export default function Patients() {
+function PatientsInner() {
   const { patients, agenda } = useApp();
   const { view } = useLocalSearchParams<{ view?: string }>();
   const [mode, setMode] = useState(view === 'all' ? 1 : 0);
@@ -289,3 +290,11 @@ const styles = StyleSheet.create({
   pLine: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   pMeta: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 16, rowGap: 4 },
 });
+
+export default function Patients() {
+  return (
+    <PractitionerGate>
+      <PatientsInner />
+    </PractitionerGate>
+  );
+}

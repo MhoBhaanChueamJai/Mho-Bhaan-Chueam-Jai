@@ -10,7 +10,7 @@ import { palette } from '../../theme';
  * - แท็บ "ครูปัญญา" (ไมค์) กดแล้วเปิดหน้าแชทเต็มจอ
  */
 export default function TabsLayout() {
-  const { settings } = useApp();
+  const { settings, isPractitioner } = useApp();
   if (!settings.loggedIn) return <Redirect href="/login" />;
   return (
     <NativeTabs tintColor={palette.primary} minimizeBehavior="onScrollDown">
@@ -21,7 +21,7 @@ export default function TabsLayout() {
       <NativeTabs.Trigger name="patients">
         <Icon sf={{ default: 'person.2', selected: 'person.2.fill' }} />
         <Label>ผู้ป่วย</Label>
-        <Badge>2</Badge>
+        {isPractitioner ? <Badge>2</Badge> : null}
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="herbs">
         <Icon sf={{ default: 'leaf', selected: 'leaf.fill' }} />

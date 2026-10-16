@@ -16,6 +16,7 @@ import {
   X,
 } from '../components/icons';
 import React, { useEffect, useRef, useState } from 'react';
+import { VerifyPrompt } from '../components/PractitionerGate';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown, FadeInUp, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -97,7 +98,8 @@ const FALLBACK_WISDOM: WisdomResult = {
   followUp: 'พ่อหมอเลือกเถาเอ็นอ่อนอย่างไร ต้องเก็บช่วงฤดูไหนจึงจะได้ยาที่ดีที่สุดครับ?',
 };
 
-export default function Capture() {
+function CaptureInner() {
+  const { isPractitioner } = useApp();
   const params = useLocalSearchParams<{ mode?: Mode; pid?: string }>();
   const insets = useSafeAreaInsets();
   const { settings, addWisdom, patients, addVisit, addPatient } = useApp();
@@ -134,6 +136,7 @@ export default function Capture() {
   useEffect(() => () => tts.stop(), []);
 
   const pick = (m: Mode) => {
+    if (m === 'patient' && !isPractitioner) return router.replace('/verify');
     h.press();
     setMode(m);
     autoStarted.current = false;
@@ -598,3 +601,11 @@ const styles = StyleSheet.create({
   },
   rule: { height: 1, backgroundColor: palette.line, marginVertical: space.md },
 });
+
+export default function Capture() {
+  const { mode } = useLocalSearchParams<{ mode?: string }>();
+  const { isPractitioner } = useApp();
+  // เล่าอาการผู้ป่วย = การรักษา → เฉพาะหมอพื้นบ้านที่ยืนยันแล้ว
+  if (mode === 'patient' && !isPractitioner) return <VerifyPrompt />;
+  return <CaptureInner />;
+}

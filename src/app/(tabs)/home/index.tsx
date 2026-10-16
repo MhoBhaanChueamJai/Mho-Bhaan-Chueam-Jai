@@ -1,6 +1,7 @@
 import { Image } from 'expo-image';
 import { Stack, router } from 'expo-router';
 import React from 'react';
+import { VerifyPrompt } from '../../../components/PractitionerGate';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { AppIcon, Group, IOSCard, Row, SectionTitle, Sym, ios } from '../../../components/ios';
@@ -21,7 +22,7 @@ const TOOLS = [
 ] as const;
 
 export default function Home() {
-  const { patients, agenda, settings } = useApp();
+  const { patients, agenda, settings, isPractitioner } = useApp();
   // นัดของวันนี้จากฐานข้อมูล — นัดที่เลยเวลาจบแล้วนับว่า "ดูแลแล้ว"
   const today = [...(agenda[dayKey(TODAY)] ?? [])].sort((a, b) => a.start.localeCompare(b.start));
   const now = nowHM();
@@ -63,7 +64,8 @@ export default function Home() {
           </IOSCard>
         </Animated.View>
 
-        {/* ผู้ป่วยวันนี้ */}
+        {/* ผู้ป่วยวันนี้ — เฉพาะหมอพื้นบ้านที่ยืนยันแล้ว */}
+        {isPractitioner ? (
         <Animated.View entering={enter(2)}>
           <SectionTitle title="ผู้ป่วยวันนี้" action="ดูทั้งหมด" onAction={() => router.push('/patients')} />
           <Group>
@@ -97,6 +99,12 @@ export default function Home() {
             })}
           </Group>
         </Animated.View>
+        ) : (
+          <Animated.View entering={enter(2)}>
+            <SectionTitle title="การรักษาผู้ป่วย" />
+            <VerifyPrompt compact />
+          </Animated.View>
+        )}
 
         {/* เครื่องมือ */}
         <Animated.View entering={enter(3)}>

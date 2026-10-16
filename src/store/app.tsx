@@ -20,6 +20,8 @@ type Settings = {
   pinEnabled: boolean;
   /** ปลดล็อกด้วย Face ID / Touch ID */
   faceIdEnabled: boolean;
+  /** สิทธิ์ล่าสุดที่รู้ (จำไว้ใช้ตอนออฟไลน์) */
+  role: 'member' | 'practitioner' | 'admin';
 };
 
 const defaults: Settings = {
@@ -33,9 +35,22 @@ const defaults: Settings = {
   username: '',
   pinEnabled: false,
   faceIdEnabled: false,
+  role: 'member',
 };
 
 /** บันทึกพฤติกรรมการค้นหา (เก็บในเครื่อง ใช้ให้ AI เดาสิ่งที่จะค้น) */
+export type Profile = {
+  first_name: string | null;
+  last_name: string | null;
+  display_name: string | null;
+  email: string | null;
+  role: 'member' | 'practitioner' | 'admin';
+  healer_types: string[];
+  cert_number: string | null;
+  cert_province: string | null;
+  cert_expiry: string | null;
+  verified_at: string | null;
+};
 export type SearchLog = { q: string; at: number }[];
 export type OpenLog = { pid: string; at: number }[];
 
@@ -66,6 +81,10 @@ type Ctx = {
   syncError: string;
   /** โหลดข้อมูลจาก Supabase ใหม่ (เรียกหลังเข้าสู่ระบบ) */
   reloadCloud: () => Promise<void>;
+  /** โปรไฟล์สมาชิก (null = ยังไม่เข้าสู่ระบบ/ออฟไลน์) */
+  profile: Profile | null;
+  /** ยืนยันตัวตนหมอพื้นบ้านแล้ว → ใช้งานการรักษาผู้ป่วยได้ */
+  isPractitioner: boolean;
 };
 
 const AppCtx = createContext<Ctx>(null as any);
@@ -83,6 +102,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [sync, setSync] = useState<Ctx['sync']>('local');
   const [syncError, setSyncError] = useState('');
   const [online, setOnline] = useState(false);
+  const [profile, setProfile] = useState<Profile | null>(null);
 
   /** เขียนขึ้นคลาวด์แบบไม่บล็อก UI — ล้มเหลวก็ยังมีข้อมูลในเครื่อง */
   const push = (fn: () => Promise<unknown>) => {
@@ -102,7 +122,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
     setSync('syncing');
     try {
-      await cloud.seedIfEmpty();
+      const pr = await supabase.from('profiles').select('first_name,last_name,display_name,email,role,healer_types,cert_number,cert_province,cert_expiry,verified_at').eq('id', data.session.user.id).maybeSingle();
+      const prof = (pr.data as Profile | null) ?? null;
+      setProfile(prof);
+      if (prof?.role) setSettings((s) => ({ ...s, role: prof.role }));
+      const practitioner = prof?.role === 'practitioner' || prof?.role === 'admin';
+      // ข้อมูลผู้ป่วยตัวอย่างใส่ให้เฉพาะหมอพื้นบ้านที่ยืนยันแล้ว (สมาชิกทั่วไปไม่มีสิทธิ์ข้อมูลผู้ป่วย)
+      if (practitioner) await cloud.seedIfEmpty();
       const d = await cloud.loadAll();
       setPatients(d.patients);
       setWisdoms(d.wisdoms);
@@ -128,6 +154,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (ev === 'SIGNED_OUT') {
         setOnline(false);
         setSync('local');
+        setProfile(null);
       }
     });
     return () => data.subscription.unsubscribe();
@@ -197,6 +224,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       sync,
       syncError,
       reloadCloud,
+      profile,
+      isPractitioner: (profile?.role ?? settings.role) !== 'member',
       resetData: () => {
         setPatients(seedPatients);
         setWisdoms(seedWisdoms);
@@ -207,7 +236,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       },
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [settings, wisdoms, patients, ready, unlocked, searchLog, openLog, agenda, sync, syncError, online],
+    [settings, wisdoms, patients, ready, unlocked, searchLog, openLog, agenda, sync, syncError, online, profile],
   );
   return <AppCtx.Provider value={value}>{children}</AppCtx.Provider>;
 }

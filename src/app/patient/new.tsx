@@ -1,6 +1,7 @@
 import SegmentedControl from '@react-native-segmented-control/segmented-control';
 import { Stack, router } from 'expo-router';
 import React, { useState } from 'react';
+import { PractitionerGate } from '../../components/PractitionerGate';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View, type KeyboardTypeOptions } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { chatJSON, transcribe } from '../../api/ai';
@@ -71,7 +72,7 @@ function Section({ title, children, footer }: { title?: string; children: React.
   );
 }
 
-export default function NewPatient() {
+function NewPatientInner() {
   const { addPatient } = useApp();
   const h = useHaptic();
   const rec = useVoiceRecorder();
@@ -236,3 +237,11 @@ const styles = StyleSheet.create({
   label: { width: 112 },
   input: { flex: 1, fontSize: 17, color: palette.ink, paddingVertical: 6 },
 });
+
+export default function NewPatient() {
+  return (
+    <PractitionerGate>
+      <NewPatientInner />
+    </PractitionerGate>
+  );
+}

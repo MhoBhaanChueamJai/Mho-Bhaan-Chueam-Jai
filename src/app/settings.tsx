@@ -6,6 +6,7 @@ import { useSpeaker } from '../components/audio';
 import { AppIcon, Sym, ios } from '../components/ios';
 import { Avatar, HeaderBack, PressableScale, T, useHaptic } from '../components/ui';
 import { avatars, doctor, doctorTypes, fullAddress } from '../data/mock';
+import { TYPE_LABEL } from './verify';
 import { supabase } from '../lib/supabase';
 import { useApp } from '../store/app';
 import { authenticateBiometric, biometricInfo, clearPin } from '../store/security';
@@ -74,7 +75,8 @@ function Section({ title, footer, children }: { title?: string; footer?: string;
 }
 
 export default function Settings() {
-  const { settings, update, patients, wisdoms, resetData, setUnlocked, sync, syncError, reloadCloud } = useApp();
+  const { settings, update, patients, wisdoms, resetData, setUnlocked, sync, syncError, reloadCloud, profile, isPractitioner } = useApp();
+  const displayName = profile?.display_name || (profile?.first_name ? `${profile.first_name} ${profile.last_name ?? ''}` : doctor.name);
   const [bio, setBio] = useState({ available: false, label: 'Face ID', icon: 'faceid' as 'faceid' | 'touchid' });
   useEffect(() => {
     biometricInfo().then(setBio);
@@ -181,23 +183,31 @@ export default function Settings() {
           <View style={styles.profile}>
             <Avatar name={doctor.name} src={avatars.doctor} size={64} />
             <View style={{ flex: 1 }}>
-              <T v="title" style={{ fontSize: 20, lineHeight: 26 }}>{doctor.name}</T>
-              <T v="callout" color={ios.secondary}>{type.label} · ประสบการณ์ {doctor.years} ปี</T>
+              <T v="title" style={{ fontSize: 20, lineHeight: 26 }}>{displayName}</T>
+              <T v="callout" color={ios.secondary}>{isPractitioner ? (profile?.healer_types?.length ? profile.healer_types.map((t) => TYPE_LABEL[t] ?? t).join(' · ') : type.label) : 'สมาชิกทั่วไป'}{profile?.email ? ` · ${profile.email}` : ''}</T>
             </View>
           </View>
           <View style={[styles.sep, { marginLeft: 16 }]} />
-          <View style={styles.license}>
-            <Sym name="checkmark.seal.fill" size={20} color={palette.primary} />
-            <View style={{ flex: 1 }}>
-              <T v="callout">หมอพื้นบ้านขึ้นทะเบียน</T>
-              <T v="caption" color={ios.secondary}>{doctor.license.replace('หมอพื้นบ้านขึ้นทะเบียน ', '')}</T>
+          {isPractitioner ? (
+            <View style={styles.license}>
+              <Sym name="checkmark.seal.fill" size={20} color={palette.primary} />
+              <View style={{ flex: 1 }}>
+                <T v="callout">หมอพื้นบ้านที่ได้รับการรับรอง</T>
+                <T v="caption" color={ios.secondary}>
+                  {profile?.cert_number ? `เลขที่ ${profile.cert_number} · ${profile.cert_province ?? ''}${profile.cert_expiry ? ` · หมดอายุ ${profile.cert_expiry}` : ''}` : doctor.license.replace('หมอพื้นบ้านขึ้นทะเบียน ', '')}
+                </T>
+              </View>
             </View>
-          </View>
-          <View style={[styles.sep, { marginLeft: 16 }]} />
-          <View style={styles.license}>
-            <Sym name="mappin.and.ellipse" size={20} color={palette.primary} />
-            <T v="callout" style={{ flex: 1 }}>{doctor.village}</T>
-          </View>
+          ) : (
+            <PressableScale onPress={() => router.push('/verify')} style={styles.license}>
+              <Sym name="person.badge.shield.checkmark.fill" size={20} color={palette.orange} />
+              <View style={{ flex: 1 }}>
+                <T v="callout">ยังไม่ได้ยืนยันตัวตนหมอพื้นบ้าน</T>
+                <T v="caption" color={ios.secondary}>ยืนยันเพื่อใช้งานการรักษาผู้ป่วย</T>
+              </View>
+              <Sym name="chevron.right" size={13} color={ios.tertiary} weight="semibold" />
+            </PressableScale>
+          )}
         </View>
 
         <Section title="ครูปัญญา AI">

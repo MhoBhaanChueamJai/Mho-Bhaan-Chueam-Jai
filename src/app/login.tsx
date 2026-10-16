@@ -23,6 +23,9 @@ function Field({
   onSubmit,
   returnKey,
   autoComplete,
+  placeholder,
+  keyboard,
+  half,
 }: {
   icon: any;
   label: string;
@@ -33,11 +36,14 @@ function Field({
   inputRef?: React.RefObject<TextInput | null>;
   onSubmit?: () => void;
   returnKey?: 'next' | 'go';
-  autoComplete?: 'username' | 'password';
+  autoComplete?: 'username' | 'password' | 'email' | 'new-password' | 'given-name' | 'family-name';
+  placeholder?: string;
+  keyboard?: 'email-address' | 'default';
+  half?: boolean;
 }) {
   const [focus, setFocus] = useState(false);
   return (
-    <View>
+    <View style={half ? { flex: 1 } : undefined}>
       <T v="caption" color={ios.secondary} style={styles.label}>{label}</T>
       <View style={[styles.field, focus && styles.fieldFocus]}>
         <Sym name={icon} size={17} color={focus ? palette.primary : ios.tertiary} />
@@ -45,13 +51,16 @@ function Field({
           ref={inputRef}
           value={value}
           onChangeText={onChange}
-          placeholder={label}
+          placeholder={placeholder ?? label}
+          keyboardType={keyboard}
           placeholderTextColor={ios.tertiary}
           secureTextEntry={secure}
           autoCapitalize="none"
           autoCorrect={false}
           autoComplete={autoComplete}
-          textContentType={autoComplete === 'password' ? 'password' : 'username'}
+          textContentType={
+            ({ password: 'password', 'new-password': 'newPassword', email: 'emailAddress', 'given-name': 'givenName', 'family-name': 'familyName', username: 'username' } as const)[autoComplete ?? 'username']
+          }
           returnKeyType={returnKey}
           onSubmitEditing={onSubmit}
           onFocus={() => setFocus(true)}
@@ -77,10 +86,19 @@ export default function Login() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [mode, setMode] = useState<'login' | 'signup'>('login');
+  const [first, setFirst] = useState('');
+  const [last, setLast] = useState('');
+  const [email, setEmail] = useState('');
+  const [pass2, setPass2] = useState('');
   const [info, setInfo] = useState('');
   const shake = useSharedValue(0);
   const shakeStyle = useAnimatedStyle(() => ({ transform: [{ translateX: shake.value }] }));
-  const canSubmit = user.trim().length >= 3 && pass.length >= 6 && !busy;
+  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+  const canSubmit =
+    !busy &&
+    (mode === 'login'
+      ? user.trim().length >= 3 && pass.length >= 6
+      : first.trim().length >= 1 && last.trim().length >= 1 && emailOk && pass.length >= 6 && pass2.length >= 6);
 
   const enter = (name: string) => {
     h.success();
@@ -105,28 +123,39 @@ export default function Login() {
     setBusy(true);
     setError('');
     setInfo('');
-    const name = user.trim();
-    const email = usernameToEmail(name);
     try {
+      let name = user.trim();
       if (mode === 'signup') {
-        const { data, error: e } = await supabase.auth.signUp({ email, password: pass, options: { data: { username: name, display_name: name } } });
-        if (e) return fail(e.message.includes('already') ? 'ชื่อผู้ใช้นี้มีผู้ใช้แล้ว' : `สมัครไม่สำเร็จ: ${e.message}`);
+        if (pass !== pass2) return fail('รหัสผ่านทั้งสองช่องไม่ตรงกัน');
+        name = `${first.trim()} ${last.trim()}`;
+        const { data, error: e } = await supabase.auth.signUp({
+          email: email.trim().toLowerCase(),
+          password: pass,
+          options: { data: { first_name: first.trim(), last_name: last.trim(), display_name: name } },
+        });
+        if (e) return fail(e.message.toLowerCase().includes('already') ? 'อีเมลนี้สมัครไว้แล้ว ลองเข้าสู่ระบบ' : `สมัครไม่สำเร็จ: ${e.message}`);
         if (!data.session) {
           setBusy(false);
           setMode('login');
-          setInfo('สร้างบัญชีแล้ว แต่ระบบยังต้องยืนยันอีเมล — ผู้ดูแลต้องปิด Confirm email ใน Supabase');
+          setUser(email.trim());
+          setInfo('สร้างบัญชีแล้ว กรุณายืนยันอีเมลก่อนเข้าสู่ระบบ');
           return;
         }
       } else {
-        const { error: e } = await supabase.auth.signInWithPassword({ email, password: pass });
+        // ช่องเดียวรับได้ทั้งอีเมลและชื่อผู้ใช้
+        const login = name.includes('@') ? name.toLowerCase() : usernameToEmail(name);
+        const { data, error: e } = await supabase.auth.signInWithPassword({ email: login, password: pass });
         if (e) {
           setPass('');
-          return fail(e.message.toLowerCase().includes('invalid') ? 'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง' : `เข้าสู่ระบบไม่สำเร็จ: ${e.message}`);
+          return fail(e.message.toLowerCase().includes('invalid') ? 'อีเมล/ชื่อผู้ใช้ หรือรหัสผ่านไม่ถูกต้อง' : `เข้าสู่ระบบไม่สำเร็จ: ${e.message}`);
         }
+        const md = data.user?.user_metadata ?? {};
+        if (md.first_name) name = `${md.first_name} ${md.last_name ?? ''}`.trim();
+        else if (md.username) name = md.username;
       }
       await reloadCloud();
       enter(name);
-    } catch (e: any) {
+    } catch {
       fail(`เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ ตรวจสอบอินเทอร์เน็ต`);
     }
   };
@@ -146,25 +175,38 @@ export default function Login() {
         <Animated.View entering={FadeInUp.delay(100).duration(500)} style={[styles.sheet, { paddingBottom: insets.bottom + 20 }]}>
           <T v="h1" style={{ fontWeight: '700' }}>{mode === 'login' ? 'ยินดีต้อนรับ' : 'สร้างบัญชีใหม่'}</T>
           <T v="callout" color={ios.secondary} style={{ marginTop: 2 }}>
-            {mode === 'login' ? 'เข้าสู่ระบบเพื่อดูแลผู้ป่วยและภูมิปัญญาของคุณ' : 'ตั้งชื่อผู้ใช้และรหัสผ่าน (อย่างน้อย 6 ตัว)'}
+            {mode === 'login' ? 'เข้าสู่ระบบเพื่อดูแลผู้ป่วยและภูมิปัญญาของคุณ' : 'สมัครสมาชิกเพื่อใช้งานคลังสมุนไพร ภูมิปัญญา และครูปัญญา AI'}
           </T>
 
           <Animated.View style={[{ gap: 14, marginTop: 22 }, shakeStyle]}>
-            <Field
-              icon="person.fill"
-              label="ชื่อผู้ใช้"
-              value={user}
-              onChange={(v) => {
-                setUser(v);
-                setError('');
-              }}
-              returnKey="next"
-              onSubmit={() => passRef.current?.focus()}
-              autoComplete="username"
-            />
+            {mode === 'signup' ? (
+              <>
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  <Field half icon="person.fill" label="ชื่อ" placeholder="ชื่อจริง" value={first} onChange={(v) => { setFirst(v); setError(''); }} autoComplete="given-name" returnKey="next" />
+                  <Field half icon="person.fill" label="นามสกุล" placeholder="นามสกุล" value={last} onChange={(v) => { setLast(v); setError(''); }} autoComplete="family-name" returnKey="next" />
+                </View>
+                <Field icon="envelope.fill" label="อีเมล" placeholder="name@example.com" keyboard="email-address" value={email} onChange={(v) => { setEmail(v); setError(''); }} autoComplete="email" returnKey="next" />
+              </>
+            ) : (
+              <Field
+                icon="person.fill"
+                label="อีเมล หรือชื่อผู้ใช้"
+                placeholder="อีเมล หรือชื่อผู้ใช้"
+                keyboard="email-address"
+                value={user}
+                onChange={(v) => {
+                  setUser(v);
+                  setError('');
+                }}
+                returnKey="next"
+                onSubmit={() => passRef.current?.focus()}
+                autoComplete="username"
+              />
+            )}
             <Field
               icon="lock.fill"
-              label="รหัสผ่าน"
+              label={mode === 'signup' ? 'ตั้งรหัสผ่าน (อย่างน้อย 6 ตัว)' : 'รหัสผ่าน'}
+              placeholder="รหัสผ่าน"
               value={pass}
               onChange={(v) => {
                 setPass(v);
@@ -172,15 +214,32 @@ export default function Login() {
               }}
               secure={!show}
               inputRef={passRef}
-              returnKey="go"
-              onSubmit={submit}
-              autoComplete="password"
+              returnKey={mode === 'signup' ? 'next' : 'go'}
+              onSubmit={mode === 'signup' ? undefined : submit}
+              autoComplete={mode === 'signup' ? 'new-password' : 'password'}
               right={
                 <PressableScale haptic="select" hitSlop={control.hitSlop} onPress={() => setShow((x) => !x)} style={styles.eye} accessibilityLabel={show ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน'}>
                   <Sym name={show ? 'eye.slash' : 'eye'} size={17} color={ios.secondary} />
                 </PressableScale>
               }
             />
+            {mode === 'signup' ? (
+              <Field
+                icon="lock.fill"
+                label="ยืนยันรหัสผ่าน"
+                placeholder="กรอกรหัสผ่านอีกครั้ง"
+                value={pass2}
+                onChange={(v) => {
+                  setPass2(v);
+                  setError('');
+                }}
+                secure={!show}
+                returnKey="go"
+                onSubmit={submit}
+                autoComplete="new-password"
+                right={pass2 ? <Sym name={pass2 === pass ? 'checkmark.circle.fill' : 'xmark.circle.fill'} size={17} color={pass2 === pass ? palette.primary : palette.coral} /> : undefined}
+              />
+            ) : null}
           </Animated.View>
 
           <View style={styles.row}>

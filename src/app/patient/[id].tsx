@@ -1,5 +1,6 @@
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
+import { PractitionerGate } from '../../components/PractitionerGate';
 import { Linking, ScrollView, Share, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn, LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -85,7 +86,7 @@ function VisitRow({ v, open, onToggle }: { v: MB5Visit; open: boolean; onToggle:
   );
 }
 
-export default function PatientDetail() {
+function PatientDetailInner() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { patients, logOpen } = useApp();
   const p = patients.find((x) => x.id === id) ?? patients[0];
@@ -191,3 +192,11 @@ const styles = StyleSheet.create({
   no: { width: 32, height: 32, borderRadius: 16, backgroundColor: palette.primarySoft, alignItems: 'center', justifyContent: 'center' },
   detail: { paddingLeft: 60, paddingRight: 16, paddingBottom: 14, gap: 10 },
 });
+
+export default function PatientDetail() {
+  return (
+    <PractitionerGate>
+      <PatientDetailInner />
+    </PractitionerGate>
+  );
+}
