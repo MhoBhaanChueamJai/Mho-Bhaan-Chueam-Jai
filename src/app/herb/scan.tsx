@@ -159,7 +159,7 @@ export default function HerbScan() {
       {/* ผลลัพธ์ */}
       {state === 'done' && res && g ? (
         <View style={[styles.modalWrap, { bottom: insets.bottom + 10 }]}>
-          <Glass tint="rgba(255,255,255,0.62)" style={styles.modal}>
+          <Glass tint="rgba(255,255,255,0.62)" style={[styles.modal, { maxHeight: H * 0.74 }]}>
           <ScrollView style={{ flexShrink: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 6 }}>
             <View style={styles.resHead}>
               <Image source={herb ? herb.image : { uri: photo ?? undefined }} style={styles.resImg} contentFit="cover" />
