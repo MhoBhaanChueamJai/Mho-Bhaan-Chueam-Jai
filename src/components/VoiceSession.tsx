@@ -209,12 +209,15 @@ export function VoiceSession({ scribe, initialOptions, title, opening, topics, h
     }
   };
 
-  // วงจรสนทนา
-  useEffect(() => {
-    alive.current = true;
-    (async () => {
-      hist.current = [{ role: 'ai', text: opening }];
-      await speak(opening);
+  /** วงจรสนทนาถาม-ตอบ (เริ่มใหม่ได้เมื่อกลับจากโหมดฟังบทสนทนา/ตรวจทาน) */
+  const runLoop = async (first: string) => {
+      alive.current = true;
+      manualStop.current = false;
+      hist.current.push({ role: 'ai', text: first });
+      setAiText(first);
+      setUserText('');
+      setPhase('speaking');
+      await speak(first);
       let misses = 0;
       while (alive.current) {
         setPhase('listening');
@@ -263,7 +266,12 @@ export function VoiceSession({ scribe, initialOptions, title, opening, topics, h
         }
       }
       setPhase('done');
-    })();
+  };
+
+  // เริ่มวงจรสนทนา
+  useEffect(() => {
+    hist.current = [];
+    runLoop(opening);
     return () => {
       scribing.current = false;
       stopAll();
@@ -400,6 +408,21 @@ export function VoiceSession({ scribe, initialOptions, title, opening, topics, h
     setMode('review');
   };
 
+  /** กลับไปโหมดถาม-ตอบ: หยุดฟัง/ปิดหน้าตรวจทาน แล้วคุยต่อจากหัวข้อที่ยังขาด */
+  const backToChat = async () => {
+    h.select();
+    Keyboard.dismiss();
+    scribing.current = false;
+    scribePause.current = false;
+    setPaused(false);
+    await rec.stop().catch(() => {});
+    await wait(500);
+    setMode('chat');
+    const missing = topics.find((t) => !has(dataRef.current, t.key));
+    const first = missing ? `กลับมาคุยต่อนะครับ ขอถามเรื่อง${missing.label}ต่อเลยนะครับ` : 'กลับมาคุยต่อนะครับ ข้อมูลครบแล้ว อยากแก้หรือเพิ่มเรื่องไหน บอกได้เลยครับ';
+    runLoop(first);
+  };
+
   const setField = (k: string, v: string) => {
     const next = { ...dataRef.current, [k]: v };
     dataRef.current = next;
@@ -425,6 +448,11 @@ export function VoiceSession({ scribe, initialOptions, title, opening, topics, h
         {scribe && mode === 'chat' ? (
           <GlassCircle label="ฟังบทสนทนา" onPress={startScribe} tint="rgba(255,255,255,0.12)">
             <Sym name="ear" size={19} color="#FFFFFF" />
+          </GlassCircle>
+        ) : mode === 'scribe' || mode === 'review' ? (
+          // กลับโหมดถาม-ตอบเดิม
+          <GlassCircle label="กลับโหมดถาม-ตอบ" onPress={backToChat} tint="rgba(255,255,255,0.12)">
+            <Sym name="bubble.left.and.bubble.right.fill" size={17} color="#FFFFFF" />
           </GlassCircle>
         ) : (
           <View style={{ width: 44 }} />
