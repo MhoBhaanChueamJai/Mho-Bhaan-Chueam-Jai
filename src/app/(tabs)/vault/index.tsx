@@ -1,38 +1,40 @@
-import { router } from 'expo-router';
-import { BookHeart, CircleCheck, EllipsisVertical, Mic, Plus, ScrollText } from '../../components/icons';
+import { Stack, router } from 'expo-router';
+import { BookHeart, CircleCheck, EllipsisVertical, Mic, ScrollText } from '../../../components/icons';
 import React, { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { SearchButton } from '../../components/SearchShell';
-import { Backdrop, Badge, Button, Card, Chip, IconTile, PressableScale, RoundButton, T, TopScrim } from '../../components/ui';
-import { legacy } from '../../data/mock';
-import { useApp } from '../../store/app';
-import { elevation, palette, radius, space } from '../../theme';
+import { Sym, ios } from '../../../components/ios';
+import { Badge, Button, Card, Chip, HeaderButton, IconTile, PressableScale, T } from '../../../components/ui';
+import { legacy } from '../../../data/mock';
+import { useApp } from '../../../store/app';
+import { elevation, palette, radius, space } from '../../../theme';
 
 const FILTERS = ['ทั้งหมด', 'เสียงเล่า', 'สแกนตำรา', 'รอตรวจทาน'] as const;
-const TONES = ['lime', 'lavender', 'peach', 'cyan'] as const;
 
 export default function Vault() {
-  const insets = useSafeAreaInsets();
   const { wisdoms } = useApp();
   const [f, setF] = useState<(typeof FILTERS)[number]>('ทั้งหมด');
   const recorded = legacy.recorded + (wisdoms.length - 3);
   const list = wisdoms.filter((w) => (f === 'ทั้งหมด' ? true : f === 'รอตรวจทาน' ? !w.verified : w.source === f));
 
   return (
-    <View style={{ flex: 1 }}>
-      <Backdrop />
-      <ScrollView contentContainerStyle={{ paddingTop: insets.top + 12, paddingHorizontal: space.xl, paddingBottom: 140 }} showsVerticalScrollIndicator={false} keyboardDismissMode="on-drag">
-        {/* ปุ่มเพิ่ม + ค้นหามุมขวาบน → ค้นหาเปิดหน้าแบบยืดออก */}
-        <View style={styles.topBtns}>
-          <RoundButton label="เพิ่มภูมิปัญญา" size={44} onPress={() => router.push({ pathname: '/capture', params: { mode: 'wisdom' } })}>
-            <Plus size={22} color={palette.white} />
-          </RoundButton>
-          <SearchButton label="ค้นหาภูมิปัญญา" onPress={() => router.push('/wisdom/search')} />
-        </View>
-        <T v="hero" style={{ paddingRight: 108 }}>คลังภูมิปัญญา</T>
-        <T v="callout" color={palette.inkSoft}>สมุดข่อยดิจิทัลของคุณหมอ</T>
+    <>
+      <Stack.Screen
+        options={{
+          headerRight: () => (
+            <View style={{ flexDirection: 'row', gap: 4 }}>
+              <HeaderButton label="ค้นหาภูมิปัญญา" onPress={() => router.push('/wisdom/search')}>
+                <Sym name="magnifyingglass" size={20} color={palette.primary} weight="semibold" />
+              </HeaderButton>
+              <HeaderButton label="เพิ่มภูมิปัญญา" onPress={() => router.push({ pathname: '/capture', params: { mode: 'wisdom' } })}>
+                <Sym name="plus" size={20} color={palette.primary} weight="semibold" />
+              </HeaderButton>
+            </View>
+          ),
+        }}
+      />
+      <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={{ paddingTop: 4, paddingHorizontal: space.xl, paddingBottom: 140 }} showsVerticalScrollIndicator={false} keyboardDismissMode="on-drag">
+        <T v="callout" color={ios.secondary} style={{ paddingHorizontal: 4 }}>สมุดข่อยดิจิทัลของคุณหมอ</T>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -space.xl, marginTop: space.xl - 20, marginBottom: -20 }} contentContainerStyle={{ gap: 8, paddingHorizontal: space.xl, paddingVertical: 28 }}>
           {FILTERS.map((x) => (
@@ -43,7 +45,7 @@ export default function Vault() {
 
         {/* สรุปแบบการ์ด Total records ใน ref */}
         <Animated.View entering={FadeInDown.springify().damping(18)} style={{ marginTop: space.xl }}>
-          <Card tone="cyan" style={styles.row}>
+          <Card style={styles.row}>
             <IconTile size={56}>
               <BookHeart size={28} color={palette.teal} />
             </IconTile>
@@ -60,7 +62,7 @@ export default function Vault() {
         <View style={{ marginTop: space.md, gap: space.md }}>
           {list.map((w, i) => (
             <Animated.View key={w.id} entering={FadeInDown.delay(80 + i * 70).springify().damping(18)} layout={LinearTransition.springify()}>
-              <Card tone={TONES[i % TONES.length]} onPress={() => router.push(`/wisdom/${w.id}`)} style={styles.row}>
+              <Card onPress={() => router.push(`/wisdom/${w.id}`)} style={styles.row}>
                 <IconTile size={56}>
                   {w.source === 'สแกนตำรา' ? <ScrollText size={30} color={palette.orange} /> : <Mic size={30} color={palette.primary} />}
                 </IconTile>
@@ -99,13 +101,11 @@ export default function Vault() {
           </View>
         </Animated.View>
       </ScrollView>
-      <TopScrim height={insets.top} />
-    </View>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  topBtns: { position: 'absolute', right: 0, top: 2, zIndex: 2, flexDirection: 'row', gap: 8 },
   row: { flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.md, minHeight: 88 },
   topBadge: { position: 'absolute', top: 12, right: 12 },
   info: { marginTop: space.xxl, backgroundColor: palette.surface, borderRadius: radius.lg, padding: space.xl, alignItems: 'center' },

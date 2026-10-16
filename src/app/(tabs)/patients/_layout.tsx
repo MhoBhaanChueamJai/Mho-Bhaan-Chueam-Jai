@@ -1,23 +1,11 @@
 import { Stack } from 'expo-router';
 import React from 'react';
-import { Platform } from 'react-native';
-import { palette } from '../../../theme';
+import { tabStackOptions } from '../../../components/tabStack';
 
-/** Stack ของแท็บผู้ป่วย — Large Title แบบ native */
-export default function PatientsStack() {
+/** Stack ของแท็บ — หัวหน้าจอมาตรฐาน (Large Title) ชุดเดียวกันทุกแท็บ */
+export default function TabStack() {
   return (
-    <Stack
-      screenOptions={{
-        headerLargeTitle: true,
-        // เว็บไม่มี large title แบบ native → ใช้แถบหัวทึบ ไม่ทับเนื้อหา
-        headerTransparent: Platform.OS === 'ios',
-        headerShadowVisible: false,
-        headerLargeTitleShadowVisible: false,
-        headerTintColor: palette.primary,
-        headerStyle: { backgroundColor: palette.bg },
-        contentStyle: { backgroundColor: palette.bg },
-      }}
-    >
+    <Stack screenOptions={tabStackOptions}>
       <Stack.Screen name="index" options={{ title: 'ผู้ป่วย' }} />
     </Stack>
   );

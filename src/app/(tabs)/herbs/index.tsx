@@ -1,17 +1,15 @@
 import { Image } from 'expo-image';
-import { router } from 'expo-router';
-import { ShieldCheck } from '../../components/icons';
+import { Stack, router } from 'expo-router';
+import { ShieldCheck } from '../../../components/icons';
 import React, { useMemo, useState } from 'react';
 import { FlatList, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { SearchButton } from '../../components/SearchShell';
-import { Backdrop, Button, Chip, PressableScale, T, TopScrim } from '../../components/ui';
-import { herbs, tastes, tasteTone } from '../../data/herbs';
-import { elevation, palette, radius, space } from '../../theme';
+import { Sym, ios } from '../../../components/ios';
+import { Button, Chip, HeaderButton, PressableScale, T } from '../../../components/ui';
+import { herbs, tastes, tasteTone } from '../../../data/herbs';
+import { elevation, palette, radius, space } from '../../../theme';
 
 export default function Herbs() {
-  const insets = useSafeAreaInsets();
   const [taste, setTaste] = useState<string>('ทั้งหมด');
 
   const list = useMemo(
@@ -23,24 +21,29 @@ export default function Herbs() {
   );
 
   return (
-    <View style={{ flex: 1 }}>
-      <Backdrop />
+    <>
+      <Stack.Screen
+        options={{
+          headerRight: () => (
+            <HeaderButton label="ค้นหาสมุนไพร" onPress={() => router.push('/herb/search')}>
+              <Sym name="magnifyingglass" size={20} color={palette.primary} weight="semibold" />
+            </HeaderButton>
+          ),
+        }}
+      />
       <FlatList
+        contentInsetAdjustmentBehavior="automatic"
+        style={{ backgroundColor: palette.bg }}
         data={list}
         keyExtractor={(h) => h.id}
         numColumns={2}
         columnWrapperStyle={{ gap: space.md }}
-        contentContainerStyle={{ paddingHorizontal: space.xl, paddingTop: insets.top + 12, paddingBottom: 140, gap: space.md }}
+        contentContainerStyle={{ paddingHorizontal: space.xl, paddingTop: 4, paddingBottom: 140, gap: space.md }}
         showsVerticalScrollIndicator={false}
         keyboardDismissMode="on-drag"
         ListHeaderComponent={
           <View style={{ marginBottom: space.sm }}>
-            {/* ปุ่มค้นหามุมขวาบน → เปิดหน้าค้นหาแบบยืดออก (ตำแหน่งเดียวกับแถบค้นหา) */}
-            <View style={{ position: 'absolute', right: 0, top: 2, zIndex: 2 }}>
-              <SearchButton label="ค้นหาสมุนไพร" onPress={() => router.push('/herb/search')} />
-            </View>
-            <T v="hero" style={{ paddingRight: 56 }}>คลังสมุนไพร</T>
-            <T v="callout" color={palette.inkSoft}>{herbs.length} ชนิด · อ้างอิงบัญชียาหลักแห่งชาติ</T>
+            <T v="callout" color={ios.secondary} style={{ paddingHorizontal: 4 }}>{herbs.length} ชนิด · อ้างอิงบัญชียาหลักแห่งชาติ</T>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -space.xl, marginTop: space.lg - 20, marginBottom: -20 }} contentContainerStyle={{ gap: 8, paddingHorizontal: space.xl, paddingVertical: 28 }}>
               {tastes.map((t) => (
                 <Chip key={t} label={t === 'ทั้งหมด' ? 'ทั้งหมด' : `รส${t}`} active={taste === t} onPress={() => setTaste(t)} />
@@ -79,8 +82,7 @@ export default function Herbs() {
           );
         }}
       />
-      <TopScrim height={insets.top} />
-    </View>
+    </>
   );
 }
 

@@ -271,7 +271,8 @@ export function IconBubble({ children, size = 64, bg = palette.surface, style }:
 
 /** ไอคอนในสี่เหลี่ยมมนขาว (แบบการ์ดพาสเทลใน ref) */
 export function IconTile({ children, size = 64 }: { children: React.ReactNode; size?: number }) {
-  return <View style={{ width: size, height: size, borderRadius: 18, backgroundColor: palette.surface, alignItems: 'center', justifyContent: 'center' }}>{children}</View>;
+  // ไอคอนบนการ์ดขาว → พื้นเขียวอ่อน (Design system: icon tile)
+  return <View style={{ width: size, height: size, borderRadius: 18, backgroundColor: palette.primarySoft, alignItems: 'center', justifyContent: 'center' }}>{children}</View>;
 }
 
 /* ───────────── Avatar (ตัวอักษร + จุดออนไลน์) ───────────── */
@@ -372,7 +373,7 @@ export function TopScrim({ height }: { height: number }) {
   return (
     <LinearGradient
       pointerEvents="none"
-      colors={['rgba(255,255,255,1)', 'rgba(255,255,255,0.9)', 'rgba(255,255,255,0)']}
+      colors={['rgba(242,248,245,1)', 'rgba(242,248,245,0.9)', 'rgba(242,248,245,0)']} // สีเดียวกับ palette.bg
       locations={[0, 0.6, 1]}
       style={{ position: 'absolute', top: 0, left: 0, right: 0, height: height + 18 }}
     />
