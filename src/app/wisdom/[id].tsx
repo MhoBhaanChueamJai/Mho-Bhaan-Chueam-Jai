@@ -312,13 +312,13 @@ export default function WisdomDetail() {
                   <T v="caption" color={palette.primaryDeep} style={{ flex: 1, fontWeight: '600' }}>{ingNotes.join(' · ')}</T>
                 </View>
               ) : null}
-              {/* การ์ดตัวยา 2 คอลัมน์: รูป/ไอคอน · ชื่อ · ปริมาณ */}
+              {/* รายการตัวยา: รูป/ไอคอน · ชื่อ · ปริมาณ คั่นด้วยเส้นบาง */}
               <View style={styles.ingGrid}>
                 {ingRows.map((x, i) => {
                   const h = herbOf(x);
                   const { name, amount } = splitAmount(x);
                   const tile = (
-                    <View style={styles.tile}>
+                    <View style={[styles.tile, i > 0 && styles.tileSep]}>
                       {h ? (
                         <Image source={h.image} style={styles.tileImg} contentFit="cover" />
                       ) : (
@@ -327,9 +327,10 @@ export default function WisdomDetail() {
                         </View>
                       )}
                       <View style={{ flex: 1, gap: 1 }}>
-                        <T v="subhead" numberOfLines={3} style={{ fontWeight: '600' }}>{name}</T>
+                        <T v="body" style={{ fontWeight: '600' }}>{name}</T>
                         {amount ? <T v="caption" color={palette.primaryDeep} style={{ fontWeight: '700' }}>{amount}</T> : null}
                       </View>
+                      {h ? <Sym name="chevron.right" size={12} color={ios.tertiary} weight="semibold" /> : null}
                     </View>
                   );
                   return h ? (
@@ -468,10 +469,11 @@ const styles = StyleSheet.create({
   ingName: { flexShrink: 1 },
   leader: { flex: 1, minWidth: 12, height: 1, marginTop: 8, borderBottomWidth: 1, borderStyle: 'dotted', borderColor: 'rgba(60,60,67,0.22)' },
   ingAmt: { fontWeight: '600', color: palette.ink },
-  ingSummary: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', marginBottom: 12, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999, backgroundColor: palette.primarySoft },
-  ingGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  tileWrap: { width: '48.5%' },
-  tile: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 58, paddingHorizontal: 10, paddingVertical: 9, borderRadius: 14, borderCurve: 'continuous', backgroundColor: palette.bg },
+  ingSummary: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
+  ingGrid: {},
+  tileWrap: {},
+  tile: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 56, paddingVertical: 10 },
+  tileSep: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: ios.separator },
   tileImg: { width: 32, height: 32, borderRadius: 16 },
   tileIcon: { width: 32, height: 32, borderRadius: 16, backgroundColor: palette.primarySoft, alignItems: 'center', justifyContent: 'center' },
   useRow: { gap: 6 },
