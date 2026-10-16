@@ -20,7 +20,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated, { Easing, FadeIn, FadeInDown, ZoomIn, useAnimatedStyle, useDerivedValue, useSharedValue, withDelay, withRepeat, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 import { BlurMask, Canvas, RoundedRect, SweepGradient, vec } from '@shopify/react-native-skia';
-import { AIBorder, AIFlower, AIGlow, AI_COLORS } from '../components/Orb';
+import { AIFlower, AIGlow, AI_COLORS } from '../components/Orb';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Sym } from '../components/ios';
 import { Button, PressableScale, T, useHaptic } from '../components/ui';
@@ -351,9 +351,12 @@ export default function IdScan() {
                   <SweepGradient c={vec(AURA_PAD + cw / 2, AURA_PAD + ch / 2)} colors={AI_COLORS} transform={auraRot} origin={vec(AURA_PAD + cw / 2, AURA_PAD + ch / 2)} />
                   <BlurMask blur={28} style="normal" />
                 </RoundedRect>
+                {/* ขอบรุ้งคม รอบบัตร (วาดในผืนผ้าใบเดียวกับออร่า จึงไม่มีขอบโดนตัด) */}
+                <RoundedRect x={AURA_PAD - 1} y={AURA_PAD - 1} width={cw + 2} height={ch + 2} r={CARD_R + 1} style="stroke" strokeWidth={2.5}>
+                  <SweepGradient c={vec(AURA_PAD + cw / 2, AURA_PAD + ch / 2)} colors={AI_COLORS} transform={auraRot} origin={vec(AURA_PAD + cw / 2, AURA_PAD + ch / 2)} />
+                </RoundedRect>
               </Canvas>
             </Animated.View>
-            {stage !== 'error' ? <AIBorder width={cw} height={ch} radius={CARD_R} stroke={2} /> : null}
             <View style={styles.cardClip}>
               <Image source={{ uri: shot }} style={StyleSheet.absoluteFill} contentFit="cover" />
               {/* เคลือบรุ้งโฮโลแกรม: ไล่สีจางทั้งใบ + แถบแสงรุ้งวาววิ่งพาด */}
