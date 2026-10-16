@@ -4,6 +4,7 @@
  * แท็บด้านล่างสลับโหมด: สแกน | รหัส (กรอกรหัสแชร์ 8 ตัวในหน้านี้เลย)
  */
 import SegmentedControl from '@react-native-segmented-control/segmented-control';
+import { BlurView } from 'expo-blur';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -33,6 +34,7 @@ export default function ScanQr() {
     if (m === mode) return;
     h.select();
     setMode(m);
+    if (m === 'code') setTorch(false);
     if (m === 'code') setTimeout(() => input.current?.focus(), 250);
     else input.current?.blur();
   };
@@ -108,6 +110,9 @@ export default function ScanQr() {
       ) : (
         // โหมดกรอกรหัส: ม่านทึบ + ช่องรหัส 8 ตัว (ABCD-EFGH)
         <Animated.View entering={FadeIn.duration(220)} exiting={FadeOut.duration(150)} style={[StyleSheet.absoluteFill, styles.codePage, { paddingTop: insets.top + 110 }]}>
+          {/* เบลอภาพกล้องด้านหลัง */}
+          <BlurView intensity={70} tint="dark" style={StyleSheet.absoluteFill} />
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.35)' }]} />
           {/* แตะพื้นที่ว่างเพื่อปิดคีย์บอร์ด */}
           <Pressable style={StyleSheet.absoluteFill} onPress={() => Keyboard.dismiss()} accessibilityLabel="ปิดคีย์บอร์ด" />
           <Sym name="number" size={30} color="#7CF0A8" />
@@ -142,9 +147,11 @@ export default function ScanQr() {
         <PressableScale onPress={() => router.back()} style={styles.round} accessibilityLabel="ปิด">
           <Sym name="xmark" size={18} color="#FFFFFF" weight="semibold" />
         </PressableScale>
-        <PressableScale onPress={() => setTorch((x) => !x)} style={[styles.round, torch && { backgroundColor: '#FFFFFF' }]} accessibilityLabel="ไฟฉาย">
-          <Sym name={torch ? 'flashlight.on.fill' : 'flashlight.off.fill'} size={18} color={torch ? '#000000' : '#FFFFFF'} />
-        </PressableScale>
+        {mode === 'scan' ? (
+          <PressableScale onPress={() => setTorch((x) => !x)} style={[styles.round, torch && { backgroundColor: '#FFFFFF' }]} accessibilityLabel="ไฟฉาย">
+            <Sym name={torch ? 'flashlight.on.fill' : 'flashlight.off.fill'} size={18} color={torch ? '#000000' : '#FFFFFF'} />
+          </PressableScale>
+        ) : null}
       </View>
 
       {/* แท็บสลับโหมดแบบ iOS (UISegmentedControl) — อยู่กับที่ คีย์บอร์ดเลื่อนขึ้นมาทับได้ */}
@@ -183,7 +190,7 @@ const styles = StyleSheet.create({
   round: { width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' },
   bottom: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
   seg: { width: 240, height: 36 },
-  codePage: { backgroundColor: 'rgba(0,0,0,0.88)', alignItems: 'center', paddingHorizontal: 24 },
+  codePage: { alignItems: 'center', paddingHorizontal: 24 },
   boxes: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 28 },
   box: { width: 36, height: 48, borderRadius: 10, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.22)', alignItems: 'center', justifyContent: 'center' },
   boxOn: { borderColor: '#7CF0A8' },
