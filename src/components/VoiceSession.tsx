@@ -301,6 +301,17 @@ export function VoiceSession({ initialOptions, title, opening, topics, has, turn
   };
 
   const got = topics.filter((t) => has(data, t.key));
+  /** แตะชิป: ใส่/เอาคำนั้นออกจากช่องพิมพ์ (คั่นด้วยจุลภาค) แล้วส่งจากช่องพิมพ์ */
+  const togglePick = (o: string) => {
+    const on = picked.includes(o);
+    setPicked((x) => (on ? x.filter((y) => y !== o) : [...x, o]));
+    setDraft((d) => {
+      const parts = d.split(',').map((x) => x.trim()).filter(Boolean);
+      const next = on ? parts.filter((x) => x !== o) : [...parts, o];
+      return next.join(', ');
+    });
+  };
+
   /** ส่งคำตอบที่พิมพ์/เลือก: ถ้าครูปัญญากำลังพูดอยู่ ให้หยุดพูดแล้วใช้คำตอบนี้ทันที */
   const sendTyped = (text?: string) => {
     const t = (text ?? draft).trim();
@@ -365,7 +376,7 @@ export function VoiceSession({ initialOptions, title, opening, topics, has, turn
               {options.map((o) => {
                 const on = picked.includes(o);
                 return (
-                  <PressableScale key={o} haptic="select" scaleTo={0.95} onPress={() => setPicked((x) => (on ? x.filter((y) => y !== o) : [...x, o]))} accessibilityRole="checkbox" accessibilityState={{ checked: on }} accessibilityLabel={o}>
+                  <PressableScale key={o} haptic="select" scaleTo={0.95} onPress={() => togglePick(o)} accessibilityRole="checkbox" accessibilityState={{ checked: on }} accessibilityLabel={o}>
                     {/* ชิป Liquid Glass (เลือกแล้ว = กระจกอมเขียว ขอบเขียว) */}
                     <Glass tint={on ? 'rgba(124,240,168,0.28)' : 'rgba(255,255,255,0.08)'} style={[styles.opt, on && styles.optOn]}>
                       {on ? <Sym name="checkmark" size={12} color="#7CF0A8" weight="bold" /> : null}
@@ -375,14 +386,6 @@ export function VoiceSession({ initialOptions, title, opening, topics, has, turn
                 );
               })}
             </View>
-            {picked.length ? (
-              <PressableScale haptic="press" onPress={() => sendTyped(picked.join(', '))} accessibilityLabel="ส่งตัวเลือก">
-                <Glass tint="rgba(124,240,168,0.55)" style={styles.optSend}>
-                  <T v="bodyStrong" color="#FFFFFF">ส่งคำตอบ ({picked.length})</T>
-                  <Sym name="arrow.up" size={15} color="#FFFFFF" weight="bold" />
-                </Glass>
-              </PressableScale>
-            ) : null}
           </Animated.View>
         ) : null}
         {userText ? (
@@ -446,7 +449,6 @@ const styles = StyleSheet.create({
   opts: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8 },
   opt: { flexDirection: 'row', alignItems: 'center', gap: 5, minHeight: 40, paddingHorizontal: 14, borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.3)' },
   optOn: { borderColor: '#7CF0A8', borderWidth: 1 },
-  optSend: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 44, paddingHorizontal: 20, borderRadius: 22, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.5)' },
   darkDock: { position: 'absolute', left: 24, right: 24, gap: 8, padding: 8, borderRadius: 32, borderCurve: 'continuous', backgroundColor: 'rgba(28,30,29,0.96)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.22)', boxShadow: '0px 10px 30px rgba(0,0,0,0.6)' },
   typeRow: { flexDirection: 'row', alignItems: 'center', gap: 8, height: 50, paddingLeft: 16, paddingRight: 6, borderRadius: 25, backgroundColor: '#FFFFFF' },
   typeInput: { flex: 1, fontSize: 17, color: '#1F2A24', height: '100%' },
