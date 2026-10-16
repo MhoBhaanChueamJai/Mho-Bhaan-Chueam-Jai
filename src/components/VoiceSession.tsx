@@ -553,17 +553,15 @@ export function VoiceSession({ scribe, initialOptions, title, opening, topics, h
       </View>
 
       {/* ข้อมูลที่ได้แล้ว */}
-      {kbOpen ? null : <View style={[styles.chips, { bottom: insets.bottom + (got.length === topics.length ? 170 : 110) }]}>
-        {topics.map((t) => {
-          const ok = got.includes(t);
-          return (
-            <View key={t.key} style={[styles.chip, ok && styles.chipOk]}>
-              {ok ? <Sym name="checkmark" size={11} color="#04150E" weight="bold" /> : null}
-              <T v="caption" color={ok ? '#04150E' : 'rgba(255,255,255,0.55)'} style={{ fontWeight: ok ? '700' : '400' }}>{t.label}</T>
-            </View>
-          );
-        })}
-      </View>}
+      {/* ความคืบหน้า: จุดตามจำนวนหัวข้อ (ได้ข้อมูลแล้ว = จุดเขียวยาว) */}
+      {kbOpen ? null : (
+        <View style={[styles.dots, { bottom: insets.bottom + (mode === 'chat' && got.length === topics.length ? 168 : 108) }]} accessibilityLabel={`ได้ข้อมูลแล้ว ${got.length} จาก ${topics.length} หัวข้อ`}>
+          {topics.map((t) => {
+            const ok = got.includes(t);
+            return <View key={t.key} style={[styles.pDot, ok && styles.pDotOn]} />;
+          })}
+        </View>
+      )}
       </>
       )}
 
@@ -662,7 +660,7 @@ const styles = StyleSheet.create({
   statusPill: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14, paddingHorizontal: 14, paddingVertical: 6, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.1)' },
   liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#FF5A5A' },
   userBubble: { marginTop: 14, marginHorizontal: 32, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.1)' },
-  chips: { position: 'absolute', left: 16, right: 16, flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 6 },
-  chip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.08)' },
-  chipOk: { backgroundColor: '#7CF0A8' },
+  dots: { position: 'absolute', left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 7 },
+  pDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.22)' },
+  pDotOn: { width: 20, backgroundColor: '#7CF0A8' },
 });
