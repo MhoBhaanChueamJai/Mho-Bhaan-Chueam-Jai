@@ -8,7 +8,7 @@ import { AppIcon, Group, IOSCard, Row, SectionTitle, Sym, ios } from '../../../c
 import { AISphere } from '../../../components/AISphere';
 import { Avatar, HeaderButton, PressableScale, T } from '../../../components/ui';
 import { noticesFrom } from '../../../lib/notices';
-import { TODAY, avatarFor, avatars, doctor, lastVisit, legacy, thaiDate } from '../../../data/mock';
+import { TODAY, avatarFor, avatars, doctor, lastVisit, thaiDate } from '../../../data/mock';
 import { visitSortKey } from '../../../data/tones';
 import { useApp } from '../../../store/app';
 import { palette } from '../../../theme';
@@ -50,6 +50,7 @@ export default function Home() {
   const recent = [...patients].sort((a, b) => visitSortKey(lastVisit(b)?.date) - visitSortKey(lastVisit(a)?.date)).slice(0, 3);
   const name = settings.username && settings.username !== 'somchai' ? settings.username : doctor.short;
   const notices = noticesFrom(patients, wisdoms, isPractitioner);
+  const pendingW = wisdoms.filter((w) => !w.verified).length;
   const unread = notices.filter((n) => !settings.readNotices?.includes(n.id)).length;
   // เข้าหน้านี้ทุกครั้ง → นับรอบ (ให้กระดิ่งสั่นเมื่อมีที่ยังไม่อ่าน)
   const [visit, setVisit] = useState(0);
@@ -148,14 +149,17 @@ export default function Home() {
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
               <AppIcon name="books.vertical.fill" bg="#8A6A44" size={40} />
               <View style={{ flex: 1 }}>
-                <T v="title">บันทึกแล้ว {legacy.recorded} จาก {legacy.goal} เรื่อง</T>
-                <T v="subhead" color={ios.secondary}>เสียงเล่ารวม {legacy.minutes} นาที · ศิษย์ {legacy.apprentices} คน</T>
+                <T v="title">บันทึกแล้ว {wisdoms.length} เรื่อง</T>
+                <T v="subhead" color={ios.secondary}>{pendingW ? `รอตรวจทาน ${pendingW} เรื่อง` : 'ตรวจทานครบทุกเรื่องแล้ว'}</T>
               </View>
               <Sym name="chevron.right" size={14} color={ios.tertiary} weight="semibold" />
             </View>
-            <View style={styles.track}>
-              <View style={[styles.fillBar, { width: `${(legacy.recorded / legacy.goal) * 100}%` }]} />
-            </View>
+            {/* แถบ = สัดส่วนที่ตรวจทานแล้ว */}
+            {wisdoms.length ? (
+              <View style={styles.track}>
+                <View style={[styles.fillBar, { width: `${((wisdoms.length - pendingW) / wisdoms.length) * 100}%` }]} />
+              </View>
+            ) : null}
           </IOSCard>
         </Animated.View>
       </ScrollView>

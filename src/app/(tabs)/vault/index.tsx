@@ -14,7 +14,7 @@ import { CircleIcon } from '../../../components/ListRow';
 import { Sym, ios } from '../../../components/ios';
 import { HeaderButton, PressableScale, T } from '../../../components/ui';
 import { herbs } from '../../../data/herbs';
-import { legacy, type Wisdom } from '../../../data/mock';
+import { type Wisdom } from '../../../data/mock';
 import { useApp } from '../../../store/app';
 import { elevation, palette } from '../../../theme';
 
@@ -77,7 +77,6 @@ function Feature({ w, i }: { w: Wisdom; i: number }) {
 
 export default function Vault() {
   const { wisdoms } = useApp();
-  const recorded = legacy.recorded + Math.max(0, wisdoms.length - 3);
   const list = wisdoms;
   const count = (k: Wisdom['kind']) => wisdoms.filter((w) => w.kind === k).length;
 
@@ -117,7 +116,7 @@ export default function Vault() {
         </View>
 
         <Animated.View entering={FadeInDown.duration(420)}>
-          <T v="h1" color="#FFFFFF" style={styles.title}>บันทึกแล้ว {recorded} เรื่อง</T>
+          <T v="h1" color="#FFFFFF" style={styles.title}>บันทึกแล้ว {wisdoms.length} เรื่อง</T>
           <T v="callout" color="rgba(255,255,255,0.78)">ตำรับยา วิธีรักษา คาถา และตำราโบราณของคุณหมอ</T>
         </Animated.View>
 
