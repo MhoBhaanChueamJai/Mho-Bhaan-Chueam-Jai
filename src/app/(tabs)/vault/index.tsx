@@ -85,16 +85,24 @@ export default function Vault() {
     <>
     <Stack.Screen
       options={{
+        // iOS: ปุ่มบนแถบเครื่องมือแบบ native (Liquid Glass) — ปุ่มเพิ่มแยกเป็นก้อนเดียว (สีเด่น) อยู่หน้า ค้นหา · สแกน QR
+        unstable_headerRightItems: () => [
+          { type: 'button', label: 'เพิ่ม', icon: { type: 'sfSymbol', name: 'plus' }, variant: 'prominent', tintColor: palette.primary, onPress: () => router.push('/wisdom/new'), accessibilityLabel: 'เพิ่มภูมิปัญญา' },
+          { type: 'spacing', spacing: 12 },
+          { type: 'button', label: 'ค้นหา', icon: { type: 'sfSymbol', name: 'magnifyingglass' }, tintColor: palette.primary, onPress: () => router.push('/wisdom/search'), accessibilityLabel: 'ค้นหาภูมิปัญญา' },
+          { type: 'button', label: 'สแกนรับตำรา', icon: { type: 'sfSymbol', name: 'qrcode.viewfinder' }, tintColor: palette.primary, onPress: () => router.push('/wisdom/scan-qr'), accessibilityLabel: 'สแกนคิวอาร์โค้ดรับตำรา' },
+        ],
+        // เว็บ/แพลตฟอร์มอื่น
         headerRight: () => (
           <View style={{ flexDirection: 'row', gap: 4 }}>
+            <HeaderButton label="เพิ่มภูมิปัญญา" onPress={() => router.push('/wisdom/new')}>
+              <Sym name="plus" size={20} color={palette.primary} weight="semibold" />
+            </HeaderButton>
             <HeaderButton label="ค้นหาภูมิปัญญา" onPress={() => router.push('/wisdom/search')}>
               <Sym name="magnifyingglass" size={20} color={palette.primary} weight="semibold" />
             </HeaderButton>
             <HeaderButton label="สแกนคิวอาร์โค้ดรับตำรา" onPress={() => router.push('/wisdom/scan-qr')}>
               <Sym name="qrcode.viewfinder" size={20} color={palette.primary} weight="semibold" />
-            </HeaderButton>
-            <HeaderButton label="เพิ่มภูมิปัญญา" onPress={() => router.push('/wisdom/new')}>
-              <Sym name="plus" size={20} color={palette.primary} weight="semibold" />
             </HeaderButton>
           </View>
         ),
