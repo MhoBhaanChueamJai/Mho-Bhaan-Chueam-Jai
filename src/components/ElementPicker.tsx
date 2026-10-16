@@ -222,13 +222,14 @@ export function ElementPicker({ value, onChange }: { value: El | null; onChange:
       {ORDER.map((el) => {
         const on = value === el;
         return (
-          <PressableScale key={el} haptic="select" scaleTo={0.94} onPress={() => onChange(el)} style={{ flex: 1 }} accessibilityRole="radio" accessibilityState={{ selected: on }} accessibilityLabel={`ธาตุ${el}`}>
-            <View style={[styles.cellShadow, on && { boxShadow: `0px 8px 22px ${TINT[el]}55` }]}>
-              <Glass interactive tint={on ? `${TINT[el]}26` : 'rgba(255,255,255,0.55)'} style={[styles.cell, { borderColor: on ? TINT[el] : 'rgba(255,255,255,0.9)' }]}>
-                <ElementIcon el={el} active={on} />
-                <T v="subhead" color={on ? TINT[el] : palette.ink} style={{ fontWeight: on ? '700' : '500', marginTop: 2 }}>{el}</T>
+          <PressableScale key={el} haptic="select" scaleTo={0.94} onPress={() => onChange(el)} style={styles.item} accessibilityRole="radio" accessibilityState={{ selected: on }} accessibilityLabel={`ธาตุ${el}`}>
+            {/* ปุ่มวงกลม Liquid Glass ใส่ไอคอน · ชื่อธาตุอยู่นอกวง */}
+            <View style={[styles.circleShadow, on && { boxShadow: `0px 8px 20px ${TINT[el]}66` }]}>
+              <Glass interactive tint={on ? `${TINT[el]}2E` : 'rgba(255,255,255,0.6)'} style={[styles.circle, { borderColor: on ? TINT[el] : 'rgba(255,255,255,0.95)' }]}>
+                <ElementIcon el={el} active={on} size={50} />
               </Glass>
             </View>
+            <T v="subhead" color={on ? TINT[el] : palette.ink} style={{ fontWeight: on ? '700' : '500', marginTop: 8 }}>{el}</T>
           </PressableScale>
         );
       })}
@@ -237,7 +238,8 @@ export function ElementPicker({ value, onChange }: { value: El | null; onChange:
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', gap: 10 },
-  cellShadow: { borderRadius: 22, boxShadow: '0px 2px 6px rgba(0,0,0,0.06), 0px 8px 20px rgba(0,0,0,0.05)' },
-  cell: { alignItems: 'center', paddingTop: 10, paddingBottom: 10, borderRadius: 22, borderCurve: 'continuous', borderWidth: 1.5 },
+  row: { flexDirection: 'row', justifyContent: 'space-between' },
+  item: { flex: 1, alignItems: 'center' },
+  circleShadow: { width: 68, height: 68, borderRadius: 34, boxShadow: '0px 2px 6px rgba(0,0,0,0.06), 0px 8px 20px rgba(0,0,0,0.06)' },
+  circle: { width: 68, height: 68, borderRadius: 34, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5 },
 });
