@@ -9,8 +9,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useRef, useState } from 'react';
-import { KeyboardAvoidingView, Platform, StyleSheet, TextInput, View } from 'react-native';
-import Animated, { FadeIn, FadeInDown, useDerivedValue, useSharedValue, withTiming } from 'react-native-reanimated';
+import { StyleSheet, TextInput, View } from 'react-native';
+import Animated, { FadeIn, FadeInDown, useAnimatedKeyboard, useAnimatedStyle, useDerivedValue, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { synthesize, transcribe } from '../api/ai';
 import { rmsLevel, useVoiceRecorder } from './audio';
@@ -62,6 +62,8 @@ export function VoiceSession({ title, opening, topics, has, turn, closing, confi
   const stopSpeaking = useRef<(() => void) | null>(null);
   const [draft, setDraft] = useState('');
   const [kbOpen, setKbOpen] = useState(false);
+  const kb = useAnimatedKeyboard();
+  const dockLift = useAnimatedStyle(() => ({ transform: [{ translateY: -Math.max(0, kb.height.value - 16) }] }));
   const player = useRef<AudioPlayer | null>(null);
   const speakLevel = useSharedValue(0);
   // เสียงไมค์ (อัปเดตทุก 80ms) → ทำให้นุ่มก่อนส่งให้ดอกไม้
@@ -307,7 +309,7 @@ export function VoiceSession({ title, opening, topics, has, turn, closing, confi
   const status = phase === 'speaking' ? 'ครูปัญญากำลังพูด' : phase === 'listening' ? 'กำลังฟัง… พูดได้เลย' : phase === 'thinking' ? 'กำลังคิด…' : doneLabel;
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.page}>
+    <View style={styles.page}>
       <StatusBar style="light" />
       <LinearGradient colors={['#000000', '#050B08', '#000000']} style={StyleSheet.absoluteFill} />
       <AIGlow active={phase === 'listening' || phase === 'speaking'} />
@@ -353,7 +355,7 @@ export function VoiceSession({ title, opening, topics, has, turn, closing, confi
       </View>
 
       {/* ข้อมูลที่ได้แล้ว */}
-      <View style={[styles.chips, { bottom: insets.bottom + (got.length === topics.length ? 170 : 110) }]}>
+      {kbOpen ? null : <View style={[styles.chips, { bottom: insets.bottom + (got.length === topics.length ? 170 : 110) }]}>
         {topics.map((t) => {
           const ok = got.includes(t);
           return (
@@ -363,8 +365,10 @@ export function VoiceSession({ title, opening, topics, has, turn, closing, confi
             </View>
           );
         })}
-      </View>
+      </View>}
 
+      {/* แถบลอยยกขึ้นตามคีย์บอร์ด (ส่วนอื่นของหน้าอยู่ที่เดิม) */}
+      <Animated.View pointerEvents="box-none" style={[StyleSheet.absoluteFill, dockLift]}>
       <GlassDock style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
         {/* พิมพ์ตอบแทนการพูดได้ */}
         <View style={styles.typeRow}>
@@ -392,7 +396,8 @@ export function VoiceSession({ title, opening, topics, has, turn, closing, confi
           </Animated.View>
         ) : null}
       </GlassDock>
-    </KeyboardAvoidingView>
+      </Animated.View>
+    </View>
   );
 }
 
