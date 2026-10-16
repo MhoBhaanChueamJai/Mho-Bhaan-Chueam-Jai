@@ -111,10 +111,10 @@ export function KeynoteIntro({ width, height, inset = 0 }: { width: number; heig
 
   return (
     <View style={{ width, height: height + inset, overflow: 'hidden' }}>
-      <LinearGradient colors={['#071A11', '#0E3524', '#0B2A1C']} locations={[0, 0.55, 1]} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={['#04150E', '#0A3A27', '#072A1C']} locations={[0, 0.55, 1]} style={StyleSheet.absoluteFill} />
       <Canvas style={StyleSheet.absoluteFill}>
         <Circle cx={cx} cy={cy + inset} r={bloomR} opacity={bloomO}>
-          <RadialGradient c={vec(cx, cy + inset)} r={width * 0.8} colors={['rgba(94,214,150,0.55)', 'rgba(46,125,87,0.25)', 'rgba(14,53,36,0)']} />
+          <RadialGradient c={vec(cx, cy + inset)} r={width * 0.8} colors={['rgba(80,220,150,0.55)', 'rgba(20,144,92,0.28)', 'rgba(14,53,36,0)']} />
           <BlurMask blur={30} style="normal" />
         </Circle>
       </Canvas>

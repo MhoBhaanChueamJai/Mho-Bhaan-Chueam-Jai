@@ -14,7 +14,7 @@ import { PressableScale, T } from './ui';
 import { iconTier, palette } from '../theme';
 
 export const ios = {
-  fill: '#F2F3F0', // secondarySystemBackground (โทนสมุนไพรอ่อนมาก)
+  fill: '#EEF6F2', // secondarySystemBackground (โทนสมุนไพรอ่อนมาก)
   separator: 'rgba(60,60,67,0.16)',
   label: '#111813',
   secondary: 'rgba(60,67,62,0.62)',

@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import React, { useRef, useState } from 'react';
-import { Keyboard, Pressable, ScrollView, StyleSheet, TextInput, View, useWindowDimensions } from 'react-native';
+import { Image, Keyboard, Pressable, ScrollView, StyleSheet, TextInput, View, useWindowDimensions } from 'react-native';
 import Animated, { FadeIn, FadeInUp, LinearTransition, useAnimatedKeyboard, useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Sym, ios } from '../components/ios';
@@ -8,6 +8,8 @@ import { KeynoteIntro } from '../components/Intro';
 import { Button, PressableScale, T, useHaptic } from '../components/ui';
 import { supabase, usernameToEmail } from '../lib/supabase';
 import { PRIVACY_VERSION } from './privacy';
+
+const APP_ICON = require('../../assets/icon.png');
 import { useApp } from '../store/app';
 import { control, palette } from '../theme';
 
@@ -190,10 +192,24 @@ export default function Login() {
 
   const body = (
     <>
-        <T v="h1" style={{ fontWeight: '700' }}>{mode === 'login' ? 'ยินดีต้อนรับ' : 'สร้างบัญชีใหม่'}</T>
-        <T v="callout" color={ios.secondary} style={{ marginTop: 2 }}>
-          {mode === 'login' ? 'เข้าสู่ระบบด้วยอีเมลหรือชื่อผู้ใช้' : 'สมัครฟรี ใช้คลังสมุนไพร ภูมิปัญญา และครูปัญญา AI'}
-        </T>
+        {signup ? (
+          // หัว sheet สมัคร: ปุ่มปิด + ไอคอนแอป + หัวข้อกึ่งกลาง
+          <View style={{ alignItems: 'center' }}>
+            <PressableScale haptic="select" onPress={toggle} style={styles.close} accessibilityLabel="ปิด">
+              <Sym name="xmark" size={13} color={ios.secondary} weight="bold" />
+            </PressableScale>
+            <Image source={APP_ICON} style={styles.appIcon} />
+            <T v="h1" center style={{ fontWeight: '700', marginTop: 14 }}>สร้างบัญชีใหม่</T>
+            <T v="callout" color={ios.secondary} center style={{ marginTop: 4, maxWidth: 300 }}>
+              สมัครฟรี ใช้คลังสมุนไพร ภูมิปัญญา และครูปัญญา AI ได้ทันที
+            </T>
+          </View>
+        ) : (
+          <>
+            <T v="h1" style={{ fontWeight: '700' }}>ยินดีต้อนรับ</T>
+            <T v="callout" color={ios.secondary} style={{ marginTop: 2 }}>เข้าสู่ระบบด้วยอีเมลหรือชื่อผู้ใช้</T>
+          </>
+        )}
 
         {/* ช่องกรอก */}
         <Animated.View style={[styles.group, shakeStyle]}>
@@ -301,14 +317,16 @@ export default function Login() {
             <T v="callout" color={palette.primary}>ลืมรหัสผ่าน?</T>
           </PressableScale>
         ) : (
-          <T v="caption" color={ios.tertiary} center style={styles.note}>
-            สมาชิกใช้งานได้ทุกส่วน ยกเว้นการรักษาผู้ป่วย ซึ่งต้องยืนยันตัวตนหมอพื้นบ้านก่อน
-          </T>
+          <View style={styles.note}>
+            <Sym name="info.circle" size={14} color={ios.tertiary} />
+            <T v="caption" color={ios.tertiary}>
+              การรักษาผู้ป่วยต้องยืนยันตัวตนหมอพื้นบ้านเพิ่มภายหลัง
+            </T>
+          </View>
         )}
 
         {/* สลับโหมด: เส้นคั่น + ข้อความ ไม่แย่งความเด่นจากปุ่มหลัก */}
-        {signup ? <View style={{ flex: 1, minHeight: 16 }} /> : null}
-        <View style={styles.divider} />
+        {signup ? <View style={{ flex: 1, minHeight: 12 }} /> : <View style={styles.divider} />}
         <PressableScale haptic="select" onPress={toggle} style={styles.alt}>
           <T v="callout" color={ios.secondary} center>
             {mode === 'login' ? 'ยังไม่มีบัญชีเข้าใช้งานใช่ไหม? ' : 'มีบัญชีอยู่แล้วใช่ไหม? '}
@@ -360,14 +378,16 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#071A11', overflow: 'hidden' },
   sheet: { position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: '#FFFFFF', borderTopLeftRadius: 32, borderTopRightRadius: 32, borderCurve: 'continuous', paddingHorizontal: 24, paddingTop: 28 },
   group: { marginTop: 20, gap: 12 },
-  field: { flexDirection: 'row', alignItems: 'center', gap: 10, height: 54, borderRadius: 27, paddingLeft: 18, paddingRight: 6, backgroundColor: '#F4F4F7', borderWidth: 1.5, borderColor: 'transparent' },
+  field: { flexDirection: 'row', alignItems: 'center', gap: 10, height: 54, borderRadius: 27, paddingLeft: 18, paddingRight: 6, backgroundColor: palette.mint, borderWidth: 1.5, borderColor: 'transparent' },
   fieldFocus: { backgroundColor: '#FFFFFF', borderColor: palette.primary },
   input: { flex: 1, fontSize: 17, color: palette.ink, height: '100%' },
   eye: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   msg: { minHeight: 30, justifyContent: 'center', paddingHorizontal: 4 },
   error: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   link: { alignSelf: 'center', minHeight: 44, justifyContent: 'center', paddingHorizontal: 12, marginTop: 2 },
-  note: { minHeight: 44, marginTop: 6, paddingHorizontal: 12 },
+  close: { position: 'absolute', right: 0, top: 0, width: 30, height: 30, borderRadius: 15, backgroundColor: '#F0F0F3', alignItems: 'center', justifyContent: 'center' },
+  appIcon: { width: 64, height: 64, borderRadius: 15, marginTop: 8 },
+  note: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, minHeight: 36, marginTop: 4 },
   consent: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 16, paddingHorizontal: 4 },
   check: { width: 24, height: 24, borderRadius: 7, borderWidth: 1.5, borderColor: 'rgba(60,60,67,0.3)', alignItems: 'center', justifyContent: 'center' },
   checkOn: { backgroundColor: palette.primary, borderColor: palette.primary },

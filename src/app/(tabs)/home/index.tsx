@@ -15,7 +15,7 @@ const enter = (i: number) => FadeInDown.delay(30 + i * 50).springify().damping(2
 
 /** เครื่องมือ — ไอคอนสี่เหลี่ยมมนสีทึบแบบแอป Apple */
 const TOOLS = [
-  { title: 'เล่าอาการ', sub: 'AI กรอก ม.บ.5', sym: 'waveform', bg: '#2E7D57', go: () => router.push({ pathname: '/capture', params: { mode: 'patient' } }) },
+  { title: 'เล่าอาการ', sub: 'AI กรอก ม.บ.5', sym: 'waveform', bg: palette.primary, go: () => router.push({ pathname: '/capture', params: { mode: 'patient' } }) },
   { title: 'สแกนตำรา', sub: 'สมุดข่อย ใบลาน', sym: 'doc.text.viewfinder', bg: '#D9921A', go: () => router.push('/scan') },
   { title: 'ถ่ายทอดตำรับ', sub: 'เก็บให้ลูกหลาน', sym: 'book.closed.fill', bg: '#C2564B', go: () => router.push({ pathname: '/capture', params: { mode: 'wisdom' } }) },
   { title: 'สมุนไพร', sub: '12 ชนิด', sym: 'leaf.fill', bg: '#4E9A3E', go: () => router.push('/herbs') },

@@ -18,20 +18,22 @@ import { Platform } from 'react-native';
 export const palette = {
   // 60 — Canvas (พื้นขาว)
   bg: '#FFFFFF',
-  bgDeep: '#EEF0EC',
+  bgDeep: '#E1EDE8',
   surface: '#FFFFFF',
-  clay: '#F7F8F4',
+  clay: '#F0F8F5',
   // 30 — Ink + การ์ดพาสเทลโทนสมุนไพร
   ink: '#1F2A24',
   inkSoft: '#5E6B63',
   inkMute: '#99A29B',
   line: 'rgba(31,42,36,0.08)',
   // 10 — เขียวใบยา (สีหลัก)
-  primary: '#2E7D57',
-  primaryDeep: '#1F5E40',
-  primarySoft: '#E1EFE6',
+  // โทนเขียวมรกตสด อ้างอิง Dribbble "Gardening App UI Design – Grow Smarter with Nature"
+  primary: '#14905C',
+  primaryDeep: '#0B6E45',
+  primarySoft: '#E3F2EA',
+  mint: '#F0F8F5', // พื้นเขียวมิ้นต์อ่อน (ช่องกรอก / การ์ดรอง)
   // พาสเทล
-  cyan: '#D9ECE4', // เขียวเซจ
+  cyan: '#E1EDE8', // เขียวเซจ
   lime: '#E7EDC8', // ใบตองอ่อน
   lavender: '#F1E8D6', // ครีมข้าว
   peach: '#F7E1D3', // ดินเผาอ่อน

@@ -204,7 +204,7 @@ export function Button({
     <PressableScale
       haptic="press"
       onPress={disabled ? undefined : onPress}
-      style={[styles.btn, { backgroundColor: map.bg, opacity: disabled ? 0.45 : 1 }, kind === 'primary' && elevation.glow, kind === 'secondary' && elevation.e1, style]}
+      style={[styles.btn, { backgroundColor: map.bg, opacity: disabled ? 0.45 : 1 }, kind === 'primary' && !disabled && elevation.glow, kind === 'secondary' && elevation.e1, style]}
     >
       {icon}
       <T v="bodyStrong" color={map.fg}>

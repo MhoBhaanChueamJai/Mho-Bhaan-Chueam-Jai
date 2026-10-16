@@ -10,6 +10,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withSequence, withSpring, w
 import { Sym } from './ios';
 import { PressableScale, useHaptic } from './ui';
 import { PIN_LENGTH } from '../store/security';
+import { palette } from '../theme';
 
 export type PinPadHandle = { shake: () => void };
 
@@ -43,7 +44,7 @@ export const PinPad = React.forwardRef<
 >(function PinPad({ value, onChange, onComplete, light, leftAction }, ref) {
   const h = useHaptic();
   const color = light ? '#FFFFFF' : '#14201A';
-  const dotColor = light ? '#FFFFFF' : '#2E7D57';
+  const dotColor = light ? '#FFFFFF' : palette.primary;
   const x = useSharedValue(0);
   const shakeSt = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }] }));
   useImperativeHandle(ref, () => ({

@@ -41,7 +41,7 @@ import { palette } from '../theme';
 export type OrbState = 'idle' | 'listening' | 'thinking' | 'speaking';
 
 /** สเปกตรัม AI โทนสมุนไพร: ใบยา → ใบเตย → ขมิ้น → ดินเผา → อัญชัน */
-export const AI_COLORS = ['#2E7D57', '#2AB08F', '#E0B030', '#E07A4F', '#7A5CC8', '#2E7D57'];
+export const AI_COLORS = ['#14905C', '#2AB08F', '#E0B030', '#E07A4F', '#7A5CC8', '#14905C'];
 
 function useClock(duration: number) {
   const t = useSharedValue(0);
@@ -202,7 +202,7 @@ export function AIShimmer({ height = 16, width = '100%', radius = 8 }: { height?
   return (
     <View style={{ height, width, borderRadius: radius, backgroundColor: palette.bgDeep, overflow: 'hidden' }}>
       <Animated.View style={[{ position: 'absolute', top: 0, bottom: 0, width: 300 }, st]}>
-        <LinearGradient colors={['rgba(46,125,87,0)', 'rgba(46,125,87,0.28)', 'rgba(224,176,48,0.3)', 'rgba(224,176,48,0)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ flex: 1 }} />
+        <LinearGradient colors={['rgba(20,144,92,0)', 'rgba(20,144,92,0.28)', 'rgba(224,176,48,0.3)', 'rgba(224,176,48,0)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ flex: 1 }} />
       </Animated.View>
     </View>
   );

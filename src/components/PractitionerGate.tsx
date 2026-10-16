@@ -61,6 +61,6 @@ const styles = StyleSheet.create({
   badge: { width: 64, height: 64, borderRadius: 32, backgroundColor: palette.primarySoft, alignItems: 'center', justifyContent: 'center' },
   list: { alignSelf: 'stretch', gap: 10, marginTop: 24 },
   li: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  compact: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#F2F3F0', borderRadius: 18, padding: 14 },
+  compact: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: palette.mint, borderRadius: 18, padding: 14 },
   badgeSm: { width: 36, height: 36, borderRadius: 18, backgroundColor: palette.primarySoft, alignItems: 'center', justifyContent: 'center' },
 });
