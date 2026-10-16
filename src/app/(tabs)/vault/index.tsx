@@ -1,19 +1,18 @@
 /**
  * แท็บคลังภูมิปัญญา — สมุดข่อยดิจิทัลของคุณหมอ
- * Hero (การ์ด): พื้นหลังสันหนังสือ/ตำราเรียงบนหิ้ง (เบลอ) + ชื่อหน้า + KPI จำนวนตามประเภท · ปุ่มไอคอน Liquid Glass (สแกน QR รับตำรา · เพิ่ม) มุมขวาบน
+ * Hero (การ์ด): พื้นหลังสันหนังสือ/ตำราเรียงบนหิ้ง (เบลอ) + ชื่อหน้า + KPI จำนวนตามประเภท · แถบเครื่องมือบนหัวจอ: สแกน QR รับตำรา · เพิ่ม
  * → เรื่องล่าสุด (การ์ดภาพใหญ่เลื่อนแนวนอน) → รายการทั้งหมด
  */
 import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
+import { Stack, router } from 'expo-router';
 import React from 'react';
 import { ScrollView, StyleSheet, View, type ImageSourcePropType } from 'react-native';
 import Animated, { FadeIn, FadeInDown, LinearTransition } from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CircleIcon } from '../../../components/ListRow';
 import { Sym, ios } from '../../../components/ios';
-import { GlassCircle, PressableScale, T } from '../../../components/ui';
+import { HeaderButton, PressableScale, T } from '../../../components/ui';
 import { herbs } from '../../../data/herbs';
 import { legacy, type Wisdom } from '../../../data/mock';
 import { useApp } from '../../../store/app';
@@ -78,15 +77,29 @@ function Feature({ w, i }: { w: Wisdom; i: number }) {
 
 export default function Vault() {
   const { wisdoms } = useApp();
-  const insets = useSafeAreaInsets();
   const recorded = legacy.recorded + Math.max(0, wisdoms.length - 3);
   const list = wisdoms;
   const count = (k: Wisdom['kind']) => wisdoms.filter((w) => w.kind === k).length;
 
   return (
-    <ScrollView contentInsetAdjustmentBehavior="never" style={{ backgroundColor: palette.bg }} contentContainerStyle={{ paddingBottom: 130 }} showsVerticalScrollIndicator={false}>
+    <>
+    <Stack.Screen
+      options={{
+        headerRight: () => (
+          <View style={{ flexDirection: 'row', gap: 4 }}>
+            <HeaderButton label="สแกนคิวอาร์โค้ดรับตำรา" onPress={() => router.push('/wisdom/scan-qr')}>
+              <Sym name="qrcode.viewfinder" size={20} color={palette.primary} weight="semibold" />
+            </HeaderButton>
+            <HeaderButton label="เพิ่มภูมิปัญญา" onPress={() => router.push('/wisdom/new')}>
+              <Sym name="plus" size={20} color={palette.primary} weight="semibold" />
+            </HeaderButton>
+          </View>
+        ),
+      }}
+    />
+    <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={{ paddingTop: 4, paddingBottom: 130 }} showsVerticalScrollIndicator={false}>
       {/* ── Hero: สันหนังสือบนหิ้ง (เบลอ) ── */}
-      <View style={[styles.heroWrap, { marginTop: insets.top + 8 }, elevation.e3]}>
+      <View style={[styles.heroWrap, elevation.e3]}>
       <View style={styles.hero}>
         <Image source={COVER.shelf} style={StyleSheet.absoluteFill} contentFit="cover" />
         <BlurView intensity={18} tint="dark" style={StyleSheet.absoluteFill} />
@@ -97,20 +110,11 @@ export default function Vault() {
             <Sym name="books.vertical.fill" size={13} color="#F3D9A4" />
             <T v="subhead" color="#F3D9A4" style={{ fontWeight: '600' }}>สมุดข่อยดิจิทัล</T>
           </View>
-          {/* ปุ่มไอคอน Liquid Glass: สแกน QR รับตำรา · เพิ่มภูมิปัญญา */}
-          <View style={{ flexDirection: 'row', gap: 10 }}>
-            <GlassCircle label="สแกนคิวอาร์โค้ดรับตำรา" onPress={() => router.push('/wisdom/scan-qr')} tint="rgba(255,255,255,0.14)">
-              <Sym name="qrcode.viewfinder" size={19} color="#FFFFFF" />
-            </GlassCircle>
-            <GlassCircle label="เพิ่มภูมิปัญญา" onPress={() => router.push('/wisdom/new')} tint="rgba(255,255,255,0.14)">
-              <Sym name="plus" size={20} color="#FFFFFF" weight="semibold" />
-            </GlassCircle>
-          </View>
         </View>
 
         <Animated.View entering={FadeInDown.duration(420)}>
-          <T v="hero" color="#FFFFFF" style={styles.title}>คลังภูมิปัญญา</T>
-          <T v="callout" color="rgba(255,255,255,0.78)">ตำรับยา วิธีรักษา และตำราโบราณ · บันทึกแล้ว {recorded} เรื่อง</T>
+          <T v="h1" color="#FFFFFF" style={styles.title}>บันทึกแล้ว {recorded} เรื่อง</T>
+          <T v="callout" color="rgba(255,255,255,0.78)">ตำรับยา วิธีรักษา คาถา และตำราโบราณของคุณหมอ</T>
         </Animated.View>
 
         {/* KPI: จำนวนตามประเภทตำรา (แสดงผลอย่างเดียว) */}
@@ -179,6 +183,7 @@ export default function Vault() {
         </View>
       )}
     </ScrollView>
+    </>
   );
 }
 
