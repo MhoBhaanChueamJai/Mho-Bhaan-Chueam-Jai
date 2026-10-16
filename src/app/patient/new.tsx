@@ -246,12 +246,8 @@ function NewPatientInner() {
 
       {/* ปุ่มบันทึกแบบแถบลอย (GlassDock) */}
       <GlassDock>
-          <View style={{ flex: 1, paddingLeft: 6 }}>
-            <T v="subhead" style={{ fontWeight: '600' }} numberOfLines={1}>{f.name.trim() || 'ยังไม่ได้กรอกชื่อ'}</T>
-            <T v="caption" color={ios.secondary} numberOfLines={1}>{canSave ? `${f.sex}${f.age ? ` · ${f.age} ปี` : ''}${f.village ? ` · ${f.village}` : ''}` : 'กรอกชื่อเพื่อบันทึก'}</T>
-          </View>
-          <Button label="บันทึก" disabled={!canSave} onPress={save} style={{ height: 48, paddingHorizontal: 26 }} />
-        </GlassDock>
+        <Button label="บันทึกผู้ป่วย" disabled={!canSave} onPress={save} style={{ flex: 1, height: 52 }} />
+      </GlassDock>
     </KeyboardAvoidingView>
   );
 }
