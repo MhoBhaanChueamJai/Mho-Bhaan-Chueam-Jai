@@ -15,7 +15,7 @@ import { Button, GlassDock, HeaderButton, T, useHaptic } from '../../components/
 import { takeIdScanResult, type IdCardData } from '../../lib/idScan';
 import { ageFrom, elementFromMonth, toISO } from '../../lib/birth';
 import { DateField, Dropdown } from '../../components/FormPickers';
-import { ElementPicker } from '../../components/ElementPicker';
+import { ElementInsight, ElementPicker } from '../../components/ElementPicker';
 import { formatAddress, parseAddress } from '../../lib/address';
 import type { Patient } from '../../data/mock';
 import { useApp } from '../../store/app';
@@ -334,6 +334,7 @@ function NewPatientInner() {
               setElPicked(true);
             }}
           />
+          {elPicked ? <ElementInsight el={f.element} age={birthISO ? ageFrom(birthISO) : Number(f.age) || undefined} /> : null}
         </Section>
 
         <Section title="สุขภาพ" icon="heart.fill" footer="ใช้ตรวจความปลอดภัยของสมุนไพรกับผู้ป่วย">
