@@ -135,7 +135,7 @@ export default function Vault() {
 
 const styles = StyleSheet.create({
   empty: { marginHorizontal: 16, marginTop: 10, alignItems: 'center', paddingVertical: 28, gap: 6, backgroundColor: palette.surface, borderRadius: 20, borderCurve: 'continuous' },
-  bookShadow: { borderRadius: 8, boxShadow: '0px 10px 18px rgba(20,40,30,0.22), 0px 2px 4px rgba(20,40,30,0.18)' },
+  bookShadow: {},
   shelf: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 16, rowGap: 22, paddingHorizontal: 20, marginTop: 14 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingLeft: 20, paddingRight: 16, marginBottom: 14 },
   heroWrap: { marginHorizontal: 16, borderRadius: 30, borderCurve: 'continuous', backgroundColor: '#14261c' },
