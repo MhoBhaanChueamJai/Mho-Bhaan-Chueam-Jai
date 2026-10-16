@@ -75,7 +75,10 @@ export async function identifyHerb(uri: string): Promise<ScanResult> {
       const name = String(c?.name ?? '').trim();
       if (!name) return;
       const key = findHerb(name)?.id ?? norm(name);
-      const conf = Math.max(0, Math.min(100, Number(c?.confidence) || 0)) * (1 - rank * 0.15);
+      // บางครั้งโมเดลตอบความมั่นใจเป็น 0–1 (เช่น 0.95) → แปลงเป็น 0–100
+      let raw = Number(c?.confidence) || 0;
+      if (raw > 0 && raw <= 1) raw *= 100;
+      const conf = Math.max(0, Math.min(100, raw)) * (1 - rank * 0.15);
       const cur = score.get(key) ?? { name, sci: String(c?.sci ?? ''), clues: String(c?.clues ?? ''), sum: 0, n: 0 };
       cur.sum += conf;
       cur.n += 1;

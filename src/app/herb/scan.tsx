@@ -1,5 +1,5 @@
 /**
- * สแกนหาสมุนไพร — เปิดกล้อง ถ่าย (หรือเลือกรูป) → ครูปัญญาดูภาพ → แผ่นผลลัพธ์
+ * สแกนหาสมุนไพร — เปิดกล้อง ถ่าย (หรือเลือกรูป) → ครูปัญญาดูภาพ → กล่องลอยกระจกขาวขุ่น (liquid glass) แสดงผล
  * ผลอันดับ 1 + อันดับใกล้เคียงกดสลับได้ · ตรงกับคลัง = ข้อมูลในคลัง (รส ธาตุ สรรพคุณ วิธีใช้ ข้อควรระวัง) + ปุ่มดูเต็ม
  * ไม่มีในคลัง = ข้อมูลจากครูปัญญา พร้อมคำเตือนให้ตรวจสอบ
  */
@@ -10,10 +10,10 @@ import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
-import Animated, { Easing, FadeIn, FadeOut, SlideInDown, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, FadeIn, FadeOut, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Sym, ios } from '../../components/ios';
-import { Button, PressableScale, T, useHaptic } from '../../components/ui';
+import { Button, Glass, PressableScale, T, useHaptic } from '../../components/ui';
 import { tasteTone } from '../../data/herbs';
 import { identifyHerb, type ScanResult } from '../../lib/herbScan';
 import { elementColor, palette } from '../../theme';
@@ -144,21 +144,23 @@ export default function HerbScan() {
 
       {/* อ่านไม่ได้ */}
       {state === 'error' ? (
-        <Animated.View entering={SlideInDown.duration(300)} style={[styles.sheet, { paddingBottom: insets.bottom + 16 }]}>
+        <View style={[styles.modalWrap, { bottom: insets.bottom + 10 }]}>
+          <Glass tint="rgba(255,255,255,0.62)" style={styles.modal}>
           <View style={{ alignItems: 'center', paddingVertical: 10 }}>
             <Sym name="leaf.circle" size={38} color={palette.coral} />
             <T v="title" center style={{ marginTop: 10 }}>{res && !res.isPlant ? 'ไม่พบพืชในภาพ' : 'ดูภาพไม่สำเร็จ'}</T>
             <T v="subhead" color={ios.secondary} center style={{ marginTop: 4 }}>ลองถ่ายใกล้ขึ้น ให้เห็นใบหรือเหง้าชัดๆ ในที่แสงพอ</T>
           </View>
           <Button label="ถ่ายใหม่" icon={<Sym name="camera.fill" size={17} color="#FFFFFF" />} onPress={reset} style={{ height: 52, marginTop: 14 }} />
-        </Animated.View>
+          </Glass>
+        </View>
       ) : null}
 
       {/* ผลลัพธ์ */}
       {state === 'done' && res && g ? (
-        <Animated.View entering={SlideInDown.duration(320)} style={[styles.sheet, { maxHeight: H * 0.72, paddingBottom: insets.bottom + 16 }]}>
-          <View style={styles.grabber} />
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 6 }}>
+        <View style={[styles.modalWrap, { bottom: insets.bottom + 10 }]}>
+          <Glass tint="rgba(255,255,255,0.62)" style={styles.modal}>
+          <ScrollView style={{ flexShrink: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 6 }}>
             <View style={styles.resHead}>
               <Image source={herb ? herb.image : { uri: photo ?? undefined }} style={styles.resImg} contentFit="cover" />
               <View style={{ flex: 1, gap: 2 }}>
@@ -200,7 +202,7 @@ export default function HerbScan() {
                   <View style={[styles.pill, { backgroundColor: elementColor[herb.element].bg }]}>
                     <T v="caption" color={elementColor[herb.element].fg} style={{ fontWeight: '700' }}>{elementColor[herb.element].label}</T>
                   </View>
-                  <View style={[styles.pill, { backgroundColor: palette.bg }]}>
+                  <View style={[styles.pill, { backgroundColor: 'rgba(255,255,255,0.7)' }]}>
                     <T v="caption" color={palette.inkSoft} style={{ fontWeight: '600' }}>ใช้ {herb.part}</T>
                   </View>
                 </View>
@@ -231,7 +233,8 @@ export default function HerbScan() {
               <Button label="ถามครูปัญญา" icon={<Sym name="sparkles" size={16} color="#FFFFFF" />} onPress={() => router.replace({ pathname: '/assistant', params: { q: `${g.name} มีสรรพคุณและวิธีใช้ตามการแพทย์แผนไทยอย่างไร ข้อควรระวังมีอะไรบ้าง` } })} style={{ flex: 1.4, height: 52 }} />
             )}
           </View>
-        </Animated.View>
+          </Glass>
+        </View>
       ) : null}
     </View>
   );
@@ -276,14 +279,14 @@ const styles = StyleSheet.create({
   controls: { position: 'absolute', left: 32, right: 32, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   shutter: { width: 78, height: 78, borderRadius: 39, borderWidth: 4, borderColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
   shutterIn: { width: 62, height: 62, borderRadius: 31, backgroundColor: '#FFFFFF' },
-  sheet: { position: 'absolute', left: 8, right: 8, bottom: 8, backgroundColor: palette.surface, borderRadius: 36, borderCurve: 'continuous', paddingHorizontal: 20, paddingTop: 10 },
-  grabber: { alignSelf: 'center', width: 38, height: 5, borderRadius: 3, backgroundColor: 'rgba(60,60,67,0.25)', marginBottom: 14 },
+  modalWrap: { position: 'absolute', left: 12, right: 12, borderRadius: 38, borderCurve: 'continuous', boxShadow: '0px 18px 48px rgba(0,0,0,0.35)' },
+  modal: { borderRadius: 38, borderCurve: 'continuous', paddingHorizontal: 20, paddingTop: 20, paddingBottom: 18 },
   resHead: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   resImg: { width: 76, height: 76, borderRadius: 20, borderCurve: 'continuous', backgroundColor: palette.bgDeep },
   confRow: { flexDirection: 'row', gap: 6 },
   conf: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999 },
   alts: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginTop: 14 },
-  alt: { paddingHorizontal: 12, height: 32, justifyContent: 'center', borderRadius: 16, backgroundColor: palette.bg, borderWidth: 1, borderColor: ios.separator },
+  alt: { paddingHorizontal: 12, height: 32, justifyContent: 'center', borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.6)', borderWidth: 1, borderColor: 'rgba(60,60,67,0.12)' },
   altOn: { backgroundColor: palette.primary, borderColor: 'transparent' },
   pills: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 14 },
   pill: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999 },
