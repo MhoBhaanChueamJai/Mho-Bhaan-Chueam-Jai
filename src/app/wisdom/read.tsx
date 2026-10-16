@@ -19,14 +19,36 @@ import { COVERS, COVER_RATIO } from '../../components/BookCover';
 import { KindIcon } from '../../components/KindIcon';
 import { Sym } from '../../components/ios';
 import { GlassCircle, T, useHaptic } from '../../components/ui';
-import { KIND_FORM, bookPages, splitMethod } from '../../lib/wisdomKinds';
+import { KIND_FORM, plainText, splitMethod } from '../../lib/wisdomKinds';
 import { useApp } from '../../store/app';
 
 const PAPER = '#F5ECD9';
 const INK = '#3A2C1C';
 const ORIGIN_RE = /\n*(ได้รับสืบทอดจาก|แหล่งที่มา):\s*(.+)$/;
 
-type Page = { kind: 'cover' } | { kind: 'title' } | { kind: 'refs' } | { kind: 'text'; heading?: string; text: string } | { kind: 'list'; heading: string; items: string[]; numbered?: boolean };
+/** แบ่งข้อความต่อเนื่องเป็นหน้า (ไม่ยึดการแบ่งหน้าตอนบันทึก) — ตัดที่จบย่อหน้าก่อน ไม่ได้ค่อยตัดที่วรรค
+ * cont = หน้านี้เริ่มกลางย่อหน้า (ไม่เยื้องบรรทัดแรก) */
+function paginate(text: string, max: number): { text: string; cont: boolean }[] {
+  const out: { text: string; cont: boolean }[] = [];
+  let rest = text.trim();
+  let cont = false;
+  while (rest.length > max) {
+    const slice = rest.slice(0, max);
+    let cut = slice.lastIndexOf('\n\n');
+    const atPara = cut >= max * 0.6;
+    if (!atPara) {
+      cut = Math.max(slice.lastIndexOf('\n'), slice.lastIndexOf(' '));
+      if (cut < max * 0.5) cut = max;
+    }
+    out.push({ text: rest.slice(0, cut).trim(), cont });
+    cont = !atPara && rest[cut] !== '\n';
+    rest = rest.slice(cut).trim();
+  }
+  if (rest) out.push({ text: rest, cont });
+  return out;
+}
+
+type Page = { kind: 'cover' } | { kind: 'title' } | { kind: 'refs' } | { kind: 'text'; heading?: string; text: string; cont?: boolean } | { kind: 'list'; heading: string; items: string[]; numbered?: boolean };
 
 /** ── พลิกหน้าแบบกระดาษม้วน (page curl) ──
  * ดัดแปลงหลักการจาก react-native-pagecurl (MIT, github.com/Onedayago/react-native-pagecurl):
@@ -87,16 +109,17 @@ export default function ReadBook() {
   const [rx, ry, rw, rh] = cover.rect;
   const coverTitle = { left: (W - imgW) / 2 + rx * imgW, top: (SH - imgH) / 2 + ry * imgH, width: rw * imgW, height: rh * imgH };
   // ตัวอักษรต่อหน้า ตามขนาดกระดาษจริงของเครื่อง (บรรทัด × ตัวอักษรต่อบรรทัด เผื่อหัวข้อ)
-  const perPage = Math.round(Math.floor((SH - padTop - padBottom - 50) / 32) * ((W - 56) / 7.5) * 0.78);
+  // จำนวนบรรทัดที่ลงได้ (เผื่อหัวข้อ/ช่องไฟย่อหน้า) × ตัวอักษรต่อบรรทัด (ฟอนต์ 17 ราว 8.6pt ต่อตัว) เผื่อไว้ 12%
+  const perPage = Math.round((Math.floor((SH - padTop - padBottom - 46) / 32) - 1) * ((W - 56) / 8.6) * 0.88);
   const pages = useMemo<Page[]>(() => {
     const out: Page[] = [{ kind: 'cover' }, { kind: 'title' }];
     const heading = kf.summary.big ? kf.summary.label : 'เนื้อหา';
-    bookPages(body, perPage).forEach((t, i) => out.push({ kind: 'text', heading: i === 0 ? heading : undefined, text: t }));
+    paginate(plainText(body), perPage).forEach((t, i) => out.push({ kind: 'text', heading: i === 0 ? heading : undefined, text: t.text, cont: t.cont }));
     if (w.ingredients?.length) out.push({ kind: 'list', heading: kf.ingredients?.label ?? 'ตัวยา', items: w.ingredients });
     if (w.method && !kf.method.hidden) {
       const { steps, extra } = splitMethod(w.kind, w.method);
       if (kf.method.steps && steps.length > 1) out.push({ kind: 'list', heading: kf.method.label, items: steps, numbered: true });
-      else bookPages(steps.join('\n'), perPage).forEach((t, i) => out.push({ kind: 'text', heading: i === 0 ? kf.method.label : undefined, text: t }));
+      else paginate(steps.join('\n'), perPage).forEach((t, i) => out.push({ kind: 'text', heading: i === 0 ? kf.method.label : undefined, text: t.text, cont: t.cont }));
       if (extra && kf.extra) out.push({ kind: 'text', heading: kf.extra.label, text: extra });
     }
     if (w.caution) out.push({ kind: 'text', heading: kf.caution.label, text: w.caution });
@@ -406,7 +429,7 @@ export default function ReadBook() {
             {item.text.split(/\n{2,}/).map((para, j) => {
               const chant = w.kind === 'คาถา/พิธี' && (item.heading ?? kf.summary.label) === kf.summary.label;
               // ย่อหน้าแบบหนังสือ: เยื้องบรรทัดแรก (ยกเว้นรายการ/บทคาถา/หน้าที่ต่อจากหน้าก่อน)
-              const indent = !chant && !/^\s*(?:[•\-*]|\d+[.)])/.test(para) && (j > 0 || !!item.heading);
+              const indent = !chant && !/^\s*(?:[•\-*]|\d+[.)])/.test(para) && (j > 0 || !item.cont);
               return (
                 <Text key={j} style={[styles.body, F.r, chant && styles.chant, j > 0 && { marginTop: 10 }]}>
                   {indent ? '\u2003\u2003' : ''}
