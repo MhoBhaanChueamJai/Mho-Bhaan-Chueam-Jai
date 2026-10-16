@@ -67,6 +67,8 @@ type Ctx = {
   update: (patch: Partial<Settings>) => void;
   wisdoms: Wisdom[];
   addWisdom: (w: Wisdom) => void;
+  /** แก้ข้อมูลตำรา (เช่น ยืนยันว่าตรวจทานแล้ว) */
+  updateWisdom: (id: string, patch: Partial<Wisdom>) => void;
   patients: Patient[];
   /** เพิ่มการรักษาครั้งใหม่ (ครั้งที่ n+1) ลงทะเบียนการรักษา ม.บ.5 ของผู้ป่วย */
   addVisit: (pid: string, visit: Omit<MB5Visit, 'no'>) => number;
@@ -196,6 +198,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       ready,
       update: (patch) => setSettings((s) => ({ ...s, ...patch })),
       wisdoms,
+      updateWisdom: (id, patch) => {
+        setWisdoms((list) =>
+          list.map((x) => {
+            if (x.id !== id) return x;
+            const next = { ...x, ...patch };
+            push(() => cloud.saveWisdom(next));
+            return next;
+          }),
+        );
+      },
       addWisdom: (w) => {
         setWisdoms((list) => [w, ...list]);
         push(() => cloud.saveWisdom(w));
