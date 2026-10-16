@@ -2,6 +2,7 @@
  * สแกนคิวอาร์โค้ดรับตำราจากเพื่อน — เปิดกล้องทันที กรอบสี่เหลี่ยมกลางจอ
  * เจอรหัสแชร์ → ไปหน้ารับตำรา (ดูตัวอย่างก่อนเก็บเข้าคลัง)
  * แท็บด้านล่างสลับโหมด: สแกน | รหัส (กรอกรหัสแชร์ 8 ตัวในหน้านี้เลย)
+ * สแกนเจอ/กรอกครบ 8 ตัว → อ่านรหัสอัตโนมัติ → เด้งแผ่นล่าง (bottom sheet) แสดงปก ชื่อ ผู้แชร์ ประเภท เนื้อหา 5 บรรทัด + ปุ่มเพิ่มลงคลัง
  */
 import SegmentedControl from '@react-native-segmented-control/segmented-control';
 import { BlurView } from 'expo-blur';
@@ -10,12 +11,18 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useRef, useState } from 'react';
-import { Keyboard, Pressable, StyleSheet, TextInput, View, useWindowDimensions } from 'react-native';
-import Animated, { Easing, FadeIn, FadeOut, useAnimatedKeyboard, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
+import { ActivityIndicator, Keyboard, Pressable, StyleSheet, TextInput, View, useWindowDimensions } from 'react-native';
+import Animated, { Easing, FadeIn, FadeOut, SlideInDown, SlideOutDown, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Sym } from '../../components/ios';
 import { Button, PressableScale, T, useHaptic } from '../../components/ui';
-import { cleanCode, codeFromScan } from '../../lib/wisdomShare';
+import { BookCover } from '../../components/BookCover';
+import { KindIcon } from '../../components/KindIcon';
+import type { Wisdom } from '../../data/mock';
+import { plainText } from '../../lib/wisdomKinds';
+import { cleanCode, codeFromScan, fetchShare, type ReceivedShare } from '../../lib/wisdomShare';
+import { useApp } from '../../store/app';
+import { palette } from '../../theme';
 
 export default function ScanQr() {
   const insets = useSafeAreaInsets();
@@ -28,9 +35,6 @@ export default function ScanQr() {
   const [mode, setMode] = useState<'scan' | 'code'>('scan');
   const [code, setCode] = useState('');
   const input = useRef<TextInput>(null);
-  // แท็บและปุ่มยกขึ้นตามคีย์บอร์ด (โหมดกรอกรหัส)
-  const kb = useAnimatedKeyboard();
-  const lift = useAnimatedStyle(() => ({ transform: [{ translateY: -Math.max(0, kb.height.value - (insets.bottom + 24 + 36 + 16) + 12) }] }));
   const switchMode = (m: 'scan' | 'code') => {
     if (m === mode) return;
     h.select();
@@ -39,10 +43,55 @@ export default function ScanQr() {
     if (m === 'code') setTimeout(() => input.current?.focus(), 250);
     else input.current?.blur();
   };
-  const submit = () => {
-    if (code.length < 8) return;
+  // ── อ่านรหัสอัตโนมัติ → แผ่นล่างแสดงตัวอย่างตำรา ──
+  const { addWisdom, wisdoms } = useApp();
+  const [sheet, setSheet] = useState<null | { code: string; state: 'loading' | 'error' | 'ok'; got?: ReceivedShare; err?: string; savedId?: string }>(null);
+  const look = async (c: string) => {
+    Keyboard.dismiss();
+    setSheet({ code: c, state: 'loading' });
+    try {
+      const got = await fetchShare(c);
+      if (!got) {
+        h.warn();
+        setSheet({ code: c, state: 'error', err: 'ไม่พบตำราจากรหัสนี้ หรือรหัสหมดอายุแล้ว' });
+      } else {
+        h.success();
+        setSheet({ code: c, state: 'ok', got });
+      }
+    } catch {
+      h.warn();
+      setSheet({ code: c, state: 'error', err: 'เชื่อมต่อไม่ได้ ลองใหม่อีกครั้ง' });
+    }
+  };
+  const closeSheet = () => {
+    setSheet(null);
+    done.current = false;
+    if (mode === 'code') {
+      setCode('');
+      setTimeout(() => input.current?.focus(), 250);
+    }
+  };
+  useEffect(() => {
+    if (mode === 'code' && code.length === 8 && !sheet) look(code);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [code, mode]);
+  const save = () => {
+    if (!sheet?.got) return;
+    const g = sheet.got;
+    const t = new Date();
+    const id = `w${Date.now()}`;
+    addWisdom({
+      ...g.wisdom,
+      id,
+      source: 'เพื่อนแชร์',
+      sharedBy: g.fromName,
+      shareCode: cleanCode(sheet.code),
+      date: `${t.getDate()}/${t.getMonth() + 1}/${t.getFullYear() + 543}`,
+      summary: g.wisdom.summary ?? '',
+      verified: false,
+    });
     h.success();
-    router.replace({ pathname: '/wisdom/receive', params: { code } });
+    setSheet({ ...sheet, savedId: id });
   };
   const size = Math.min(W - 96, 300);
   const fx = (W - size) / 2, fy = H * 0.42 - size / 2;
@@ -66,8 +115,7 @@ export default function ScanQr() {
       return;
     }
     done.current = true;
-    h.success();
-    router.replace({ pathname: '/wisdom/receive', params: { code } });
+    look(code);
   };
 
   if (!perm) return <View style={styles.page} />;
@@ -137,7 +185,7 @@ export default function ScanQr() {
             autoCorrect={false}
             keyboardType="ascii-capable"
             returnKeyType="done"
-            onSubmitEditing={submit}
+            onSubmitEditing={() => code.length === 8 && look(code)}
             style={styles.hiddenInput}
             accessibilityLabel="รหัสรับตำรา"
           />
@@ -165,11 +213,61 @@ export default function ScanQr() {
           style={styles.seg}
         />
       </View>
-      {/* ปุ่มรับตำรา: ลอยเหนือคีย์บอร์ด */}
-      {mode === 'code' ? (
-        <Animated.View entering={FadeIn.duration(200)} style={[styles.bottom, { bottom: insets.bottom + 24 + 36 + 16, paddingHorizontal: 24 }, lift]}>
-          <Button label="รับตำรา" icon={<Sym name="tray.and.arrow.down.fill" size={17} color="#04150E" />} disabled={code.length < 8} onPress={submit} style={{ alignSelf: 'stretch', height: 52, backgroundColor: '#7CF0A8' }} />
-        </Animated.View>
+
+      {/* แผ่นล่าง: ตัวอย่างตำราที่ได้รับ */}
+      {sheet ? (
+        <>
+          <Animated.View entering={FadeIn.duration(200)} exiting={FadeOut.duration(180)} style={[StyleSheet.absoluteFill, styles.backdrop]}>
+            <Pressable style={StyleSheet.absoluteFill} onPress={closeSheet} accessibilityLabel="ปิด" />
+          </Animated.View>
+          <Animated.View entering={SlideInDown.springify().damping(18).mass(0.8)} exiting={SlideOutDown.duration(220)} style={[styles.sheet, { paddingBottom: insets.bottom + 16 }]}>
+            <View style={styles.grabber} />
+            {sheet.state === 'loading' ? (
+              <View style={styles.sheetCenter}>
+                <ActivityIndicator color={palette.primary} />
+                <T v="subhead" color={palette.inkSoft} style={{ marginTop: 10 }}>กำลังอ่านรหัส {sheet.code.slice(0, 4)}-{sheet.code.slice(4)}…</T>
+              </View>
+            ) : sheet.state === 'error' ? (
+              <View style={styles.sheetCenter}>
+                <Sym name="exclamationmark.circle.fill" size={30} color={palette.coral} />
+                <T v="title" center style={{ marginTop: 10 }}>{sheet.err}</T>
+                <Button kind="secondary" label="ลองรหัสอื่น" onPress={closeSheet} style={{ alignSelf: 'stretch', height: 52, marginTop: 18 }} />
+              </View>
+            ) : sheet.got ? (
+              (() => {
+                const g = sheet.got;
+                const pw = { ...g.wisdom, id: 'preview', source: 'เพื่อนแชร์', date: '', verified: true, summary: g.wisdom.summary ?? '' } as Wisdom;
+                const dup = wisdoms.some((x) => x.title === g.wisdom.title && x.sharedBy === g.fromName);
+                return (
+                  <View style={{ gap: 16 }}>
+                    <View style={styles.sheetHead}>
+                      <BookCover w={pw} width={92} />
+                      <View style={{ flex: 1, gap: 6 }}>
+                        <View style={styles.kindPill}>
+                          <KindIcon kind={g.wisdom.kind} size={12} color={palette.primaryDeep} />
+                          <T v="caption" color={palette.primaryDeep} style={{ fontWeight: '700' }}>{g.wisdom.kind}</T>
+                        </View>
+                        <T v="h3" numberOfLines={3}>{g.wisdom.title}</T>
+                        <View style={styles.byRow}>
+                          <Sym name="person.crop.circle.fill" size={14} color={palette.inkSoft} />
+                          <T v="subhead" color={palette.inkSoft} numberOfLines={1} style={{ flex: 1 }}>เพิ่มโดย {g.fromName}</T>
+                        </View>
+                      </View>
+                    </View>
+                    {g.wisdom.summary ? (
+                      <T v="body" color={palette.inkSoft} numberOfLines={5}>{plainText(g.wisdom.summary).replace(/\n*(ได้รับสืบทอดจาก|แหล่งที่มา):.*$/, '').trim()}</T>
+                    ) : null}
+                    {sheet.savedId ? (
+                      <Button label="เปิดดูในคลัง" icon={<Sym name="book.fill" size={17} color="#FFFFFF" />} onPress={() => router.replace(`/wisdom/${sheet.savedId}`)} style={{ height: 52 }} />
+                    ) : (
+                      <Button label={dup ? 'มีในคลังแล้ว · เพิ่มอีกครั้ง' : 'เพิ่มลงคลัง'} icon={<Sym name="plus" size={17} color="#FFFFFF" weight="semibold" />} onPress={save} style={{ height: 52 }} />
+                    )}
+                  </View>
+                );
+              })()
+            ) : null}
+          </Animated.View>
+        </>
       ) : null}
     </View>
   );
@@ -191,6 +289,13 @@ const styles = StyleSheet.create({
   round: { width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' },
   bottom: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
   seg: { width: 240, height: 36 },
+  backdrop: { backgroundColor: 'rgba(0,0,0,0.45)' },
+  sheet: { position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: palette.surface, borderTopLeftRadius: 30, borderTopRightRadius: 30, borderCurve: 'continuous', paddingHorizontal: 20, paddingTop: 10 },
+  grabber: { alignSelf: 'center', width: 38, height: 5, borderRadius: 3, backgroundColor: 'rgba(60,60,67,0.25)', marginBottom: 16 },
+  sheetCenter: { alignItems: 'center', paddingVertical: 24 },
+  sheetHead: { flexDirection: 'row', gap: 16, alignItems: 'center' },
+  kindPill: { flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999, backgroundColor: palette.primarySoft },
+  byRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   codePage: { alignItems: 'center', paddingHorizontal: 24 },
   boxes: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 28 },
   box: { width: 36, height: 48, borderRadius: 10, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.22)', alignItems: 'center', justifyContent: 'center' },
