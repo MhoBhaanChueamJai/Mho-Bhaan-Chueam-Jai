@@ -284,14 +284,12 @@ export default function Login() {
           </T>
         )}
 
-        {/* สลับโหมด */}
-        <View style={styles.or}>
-          <View style={styles.orLine} />
-          <T v="caption" color={ios.tertiary}>{mode === 'login' ? 'ยังไม่มีบัญชี' : 'มีบัญชีแล้ว'}</T>
-          <View style={styles.orLine} />
-        </View>
+        {/* สลับโหมด: เป็นข้อความ ไม่แย่งความเด่นจากปุ่มหลัก */}
         <PressableScale haptic="select" onPress={toggle} style={styles.alt}>
-          <T v="bodyStrong" color={palette.primary}>{mode === 'login' ? 'สมัครสมาชิกใหม่' : 'เข้าสู่ระบบ'}</T>
+          <T v="callout" color={ios.secondary} center>
+            {mode === 'login' ? 'ยังไม่มีบัญชีเข้าใช้งานใช่ไหม? ' : 'มีบัญชีอยู่แล้วใช่ไหม? '}
+            <T v="callout" color={palette.primary} style={{ fontWeight: '700' }}>{mode === 'login' ? 'สมัครบัญชี' : 'เข้าสู่ระบบ'}</T>
+          </T>
         </PressableScale>
       </Animated.View>
     </View>
@@ -302,7 +300,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#071A11', overflow: 'hidden' },
   sheet: { position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: '#FFFFFF', borderTopLeftRadius: 32, borderTopRightRadius: 32, borderCurve: 'continuous', paddingHorizontal: 24, paddingTop: 28 },
   group: { marginTop: 20, gap: 12 },
-  field: { flexDirection: 'row', alignItems: 'center', gap: 10, height: 54, borderRadius: 16, borderCurve: 'continuous', paddingLeft: 16, paddingRight: 6, backgroundColor: '#F4F4F7', borderWidth: 1.5, borderColor: 'transparent' },
+  field: { flexDirection: 'row', alignItems: 'center', gap: 10, height: 54, borderRadius: 27, paddingLeft: 18, paddingRight: 6, backgroundColor: '#F4F4F7', borderWidth: 1.5, borderColor: 'transparent' },
   fieldFocus: { backgroundColor: '#FFFFFF', borderColor: palette.primary },
   input: { flex: 1, fontSize: 17, color: palette.ink, height: '100%' },
   eye: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
@@ -310,7 +308,5 @@ const styles = StyleSheet.create({
   error: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   link: { alignSelf: 'center', minHeight: 44, justifyContent: 'center', paddingHorizontal: 12, marginTop: 2 },
   note: { minHeight: 44, marginTop: 6, paddingHorizontal: 12 },
-  or: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 6 },
-  orLine: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: ios.separator },
-  alt: { height: 50, borderRadius: 25, marginTop: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: palette.primarySoft },
+  alt: { alignSelf: 'center', minHeight: 44, justifyContent: 'center', paddingHorizontal: 12, marginTop: 8 },
 });
