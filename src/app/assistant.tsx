@@ -1,4 +1,5 @@
 import { Stack, useLocalSearchParams } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import Animated, { FadeIn, FadeInUp, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
@@ -6,7 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SYSTEM_PROMPT, chat, transcribe, type ChatMsg } from '../api/ai';
 import { dialectHint, dialectSpeakStyle } from '../lib/dialect';
 import { useSpeaker, useVoiceRecorder } from '../components/audio';
-import { Group, Row, Sym, ios } from '../components/ios';
+import { Sym } from '../components/ios';
 import { SoftShadow, Waveform } from '../components/Orb';
 import { AISphere } from '../components/AISphere';
 import { Glass, HeaderBack, PressableScale, T, useHaptic } from '../components/ui';
@@ -108,19 +109,20 @@ export default function Assistant() {
   const status = busy ? 'กำลังคิด…' : tts.speaking ? 'กำลังพูด…' : rec.isRecording ? 'กำลังฟัง…' : 'พร้อมช่วยคุณหมอ';
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: palette.bg }}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: DARK }}>
+      <StatusBar style="light" />
       <Stack.Screen
         options={{
           headerShown: true,
           headerTransparent: false,
-          headerStyle: { backgroundColor: palette.bg },
+          headerStyle: { backgroundColor: DARK },
           headerShadowVisible: false,
           headerBackVisible: false,
-          headerLeft: () => <HeaderBack fallback="/home" color={palette.primary} />,
+          headerLeft: () => <HeaderBack fallback="/home" color={MINT} />,
           headerTitle: () => (
             <View style={{ alignItems: 'center' }}>
-              <T v="title">ครูปัญญา</T>
-              <T v="micro" color={busy || rec.isRecording ? palette.primary : ios.secondary}>{status}</T>
+              <T v="title" color="#FFFFFF">ครูปัญญา</T>
+              <T v="micro" color={busy || rec.isRecording ? MINT : 'rgba(255,255,255,0.55)'}>{status}</T>
             </View>
           ),
         }}
@@ -133,21 +135,28 @@ export default function Assistant() {
         keyboardDismissMode="interactive"
         showsVerticalScrollIndicator={false}
       >
+        {/* ก้อนแสงครูปัญญา: ใหญ่ตอนยังไม่คุย · เล็กติดด้านบนเมื่อเริ่มคุย — ตอบสนองเสียงพูด/ตอนคิด */}
+        <View style={{ alignItems: 'center', paddingTop: msgs.length ? 0 : 12 }}>
+          <AISphere size={msgs.length ? 90 : 190} active={busy || tts.speaking || rec.isRecording} level={(tts.speaking ? tts.level : rec.level) as any} />
+        </View>
         {msgs.length === 0 && (
-          <Animated.View entering={FadeIn.duration(250)}>
-            <View style={{ alignItems: 'center', paddingTop: 8 }}>
-              <AISphere size={120} active={busy} />
-              <T v="h2" center style={{ marginTop: 4 }}>ถามอะไรก็ได้ครับ</T>
-              <T v="callout" center color={ios.secondary} style={{ marginTop: 4, maxWidth: 300 }}>
-                สมุนไพร ตำรับยา ธาตุเจ้าเรือน หรือความปลอดภัยของยา
-              </T>
-            </View>
-            <T v="caption" color={ios.secondary} style={{ marginTop: 28, marginBottom: 8, paddingHorizontal: 16 }}>คำถามแนะนำ</T>
-            <Group inset={52}>
+          <Animated.View entering={FadeIn.duration(300)}>
+            <T v="h2" color="#FFFFFF" center style={{ marginTop: 8 }}>ถามอะไรก็ได้ครับ</T>
+            <T v="callout" center color="rgba(255,255,255,0.6)" style={{ marginTop: 6, alignSelf: 'center', maxWidth: 300 }}>
+              สมุนไพร ตำรับยา ธาตุเจ้าเรือน หรือความปลอดภัยของยา
+            </T>
+            <T v="subhead" color="rgba(255,255,255,0.5)" style={{ marginTop: 32, marginBottom: 10, marginLeft: 4 }}>คำถามแนะนำ</T>
+            <View style={{ gap: 10 }}>
               {SUGGEST.map((s) => (
-                <Row key={s.q} icon={<Sym name={s.sym} size={20} color={palette.primary} />} title={s.q} onPress={() => send(s.q)} />
+                <PressableScale key={s.q} haptic="select" scaleTo={0.98} onPress={() => send(s.q)} style={styles.suggest} accessibilityLabel={s.q}>
+                  <View style={styles.suggestIcon}>
+                    <Sym name={s.sym} size={17} color={MINT} />
+                  </View>
+                  <T v="body" color="#FFFFFF" style={{ flex: 1 }}>{s.q}</T>
+                  <Sym name="arrow.up.right" size={13} color="rgba(255,255,255,0.4)" weight="semibold" />
+                </PressableScale>
               ))}
-            </Group>
+            </View>
           </Animated.View>
         )}
 
@@ -160,8 +169,8 @@ export default function Assistant() {
             </Animated.View>
           ) : (
             <Animated.View key={m.id} entering={FadeInUp.duration(220)} style={{ alignItems: 'flex-start' }}>
-              <View style={[styles.bubble, styles.ai, m.failed && { backgroundColor: palette.coralSoft }]}>
-                <T v="body">{m.content}</T>
+              <View style={[styles.bubble, styles.ai, m.failed && { backgroundColor: 'rgba(217,83,74,0.25)' }]}>
+                <T v="body" color="#FFFFFF">{m.content}</T>
               </View>
               {!m.failed && (
                 <PressableScale
@@ -174,8 +183,8 @@ export default function Assistant() {
                   }}
                   style={styles.listen}
                 >
-                  <Sym name={speakingId === m.id ? 'stop.fill' : 'speaker.wave.2.fill'} size={17} color={palette.primary} />
-                  <T v="caption" color={palette.primary} style={{ fontWeight: '600' }}>{speakingId === m.id ? 'หยุด' : 'ฟังคำตอบ'}</T>
+                  <Sym name={speakingId === m.id ? 'stop.fill' : 'speaker.wave.2.fill'} size={17} color={MINT} />
+                  <T v="caption" color={MINT} style={{ fontWeight: '600' }}>{speakingId === m.id ? 'หยุด' : 'ฟังคำตอบ'}</T>
                 </PressableScale>
               )}
             </Animated.View>
@@ -188,20 +197,20 @@ export default function Assistant() {
       <View style={[styles.floatWrap, { paddingBottom: Math.max(insets.bottom, 12) }]} pointerEvents="box-none">
         <View onLayout={(e) => setBarW(e.nativeEvent.layout.width)}>
           <SoftShadow width={barW} height={barH} radius={barH / 2} blur={16} offsetY={6} />
-          <Glass interactive style={styles.bar} tint="rgba(255,255,255,0.7)">
+          <Glass interactive style={styles.bar} tint="rgba(255,255,255,0.12)">
             <View onLayout={(e) => setBarH(e.nativeEvent.layout.height)} style={styles.barInner}>
-              <PressableScale haptic="none" onPress={toggleMic} style={[styles.round, { backgroundColor: rec.isRecording ? palette.coral : palette.primarySoft }]} accessibilityLabel={rec.isRecording ? 'หยุดพูด' : 'พูด'}>
-                <Sym name={rec.isRecording ? 'stop.fill' : 'mic.fill'} size={20} color={rec.isRecording ? palette.white : palette.primary} />
+              <PressableScale haptic="none" onPress={toggleMic} style={[styles.round, { backgroundColor: rec.isRecording ? palette.coral : 'rgba(124,240,168,0.16)' }]} accessibilityLabel={rec.isRecording ? 'หยุดพูด' : 'พูด'}>
+                <Sym name={rec.isRecording ? 'stop.fill' : 'mic.fill'} size={20} color={rec.isRecording ? palette.white : MINT} />
               </PressableScale>
               {rec.isRecording ? (
                 <View style={{ flex: 1, height: control.field, flexDirection: 'row', alignItems: 'center', overflow: 'hidden' }}>
                   <Waveform level={rec.level} bars={16} />
                 </View>
               ) : (
-                <TextInput value={text} onChangeText={setText} placeholder="ถามครูปัญญา" placeholderTextColor={ios.tertiary} multiline style={styles.input} />
+                <TextInput value={text} onChangeText={setText} placeholder="ถามครูปัญญา" placeholderTextColor="rgba(255,255,255,0.4)" multiline style={styles.input} />
               )}
               <PressableScale haptic="press" onPress={() => send(text)} disabled={!text.trim()} accessibilityLabel="ส่ง" style={[styles.round, { backgroundColor: text.trim() ? palette.primary : 'transparent' }]}>
-                <Sym name="arrow.up" size={20} color={text.trim() ? palette.white : ios.tertiary} weight="bold" />
+                <Sym name="arrow.up" size={20} color={text.trim() ? palette.white : 'rgba(255,255,255,0.35)'} weight="bold" />
               </PressableScale>
             </View>
           </Glass>
@@ -217,7 +226,7 @@ function Dot({ d }: { d: number }) {
     y.value = withDelay(d, withRepeat(withSequence(withTiming(-4, { duration: 280 }), withTiming(0, { duration: 280 })), -1));
   }, [d, y]);
   const st = useAnimatedStyle(() => ({ transform: [{ translateY: y.value }] }));
-  return <Animated.View style={[{ width: 8, height: 8, borderRadius: 4, backgroundColor: ios.secondary }, st]} />;
+  return <Animated.View style={[{ width: 8, height: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.6)' }, st]} />;
 }
 function Typing() {
   return (
@@ -229,14 +238,20 @@ function Typing() {
   );
 }
 
+/** ธีมมืดเหมือนหน้าโหมดเสียง (ก้อนแสง AI เด่นบนพื้นดำ) */
+const DARK = '#000000';
+const MINT = '#7CF0A8';
+
 const styles = StyleSheet.create({
   bubble: { maxWidth: '82%', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 20, borderCurve: 'continuous' },
   user: { backgroundColor: palette.primary, borderBottomRightRadius: 6 },
-  ai: { backgroundColor: ios.fill, borderBottomLeftRadius: 6 },
+  ai: { backgroundColor: 'rgba(255,255,255,0.1)', borderBottomLeftRadius: 6 },
+  suggest: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 60, paddingHorizontal: 14, paddingVertical: 12, borderRadius: 20, borderCurve: 'continuous', backgroundColor: 'rgba(255,255,255,0.07)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.14)' },
+  suggestIcon: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(124,240,168,0.14)', alignItems: 'center', justifyContent: 'center' },
   listen: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 6, marginLeft: 6, height: 28 },
   round: { width: control.field, height: control.field, borderRadius: control.field / 2, alignItems: 'center', justifyContent: 'center' },
   floatWrap: { position: 'absolute', left: 12, right: 12, bottom: 0 },
   bar: { borderRadius: 30 },
   barInner: { flexDirection: 'row', alignItems: 'flex-end', gap: 6, padding: 4 },
-  input: { flex: 1, maxHeight: 120, fontSize: 17, color: palette.ink, paddingTop: 11, paddingBottom: 11, paddingHorizontal: 4 },
+  input: { flex: 1, maxHeight: 120, fontSize: 17, color: '#FFFFFF', paddingTop: 11, paddingBottom: 11, paddingHorizontal: 4 },
 });
