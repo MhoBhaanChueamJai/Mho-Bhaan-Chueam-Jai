@@ -31,6 +31,8 @@ import { palette } from '../theme';
 const CARD_RATIO = 85.6 / 54;
 /** มุมโค้งบัตรจริง 3.18 มม. → สัดส่วนกับความกว้าง */
 const CARD_R = 14;
+/** พื้นที่เผื่อรอบบัตรให้ออร่าเบลอจางหมด (≥ 3× blur) */
+const AURA_PAD = 110;
 
 export default function IdScan() {
   const insets = useSafeAreaInsets();
@@ -105,7 +107,7 @@ export default function IdScan() {
   });
   const sheenSt = useAnimatedStyle(() => ({ transform: [{ translateX: -cw * 0.9 + sheen.value * cw * 2.2 }, { rotate: '22deg' }] }));
   const backSt = useAnimatedStyle(() => ({ opacity: back.value }));
-  const auraSt = useAnimatedStyle(() => ({ opacity: aura.value * out.value }));
+  const auraSt = useAnimatedStyle(() => ({ opacity: aura.value * out.value * 0.75 }));
   const auraRot = useDerivedValue(() => [{ rotate: spin.value * Math.PI * 2 }]);
 
   const done = async ({ card, full, start, mime = 'image/jpeg' }: { card: string; full: string; start?: { x: number; y: number; w: number; h: number }; mime?: string }) => {
@@ -153,7 +155,7 @@ export default function IdScan() {
   // ข้อความขั้นตอนระหว่างอ่าน
   useEffect(() => {
     if (!shot || stage !== 'reading') return;
-    const t = setInterval(() => setStep((x) => (x + 1) % READ_STEPS.length), 1100);
+    const t = setInterval(() => setStep((x) => Math.min(x + 1, READ_STEPS.length - 1)), 1200);
     return () => clearInterval(t);
   }, [shot, stage]);
 
@@ -342,11 +344,12 @@ export default function IdScan() {
 
           <Animated.View style={[{ position: 'absolute', left: cx, top: cy, width: cw, height: ch }, flySt]}>
             {/* ออร่ารุ้งหมุนหลังบัตร */}
-            <Animated.View pointerEvents="none" style={[{ position: 'absolute', left: -60, top: -60, width: cw + 120, height: ch + 120 }, auraSt]}>
+            {/* ผืนผ้าใบใหญ่กว่าบัตรมาก (AURA_PAD) ให้แสงเบลอจางหายหมดก่อนถึงขอบ — ไม่เห็นเส้นตัด */}
+            <Animated.View pointerEvents="none" style={[{ position: 'absolute', left: -AURA_PAD, top: -AURA_PAD, width: cw + AURA_PAD * 2, height: ch + AURA_PAD * 2 }, auraSt]}>
               <Canvas style={{ flex: 1 }}>
-                <RoundedRect x={50} y={50} width={cw + 20} height={ch + 20} r={22}>
-                  <SweepGradient c={vec((cw + 120) / 2, (ch + 120) / 2)} colors={AI_COLORS} transform={auraRot} origin={vec((cw + 120) / 2, (ch + 120) / 2)} />
-                  <BlurMask blur={34} style="normal" />
+                <RoundedRect x={AURA_PAD + 6} y={AURA_PAD + 6} width={cw - 12} height={ch - 12} r={CARD_R}>
+                  <SweepGradient c={vec(AURA_PAD + cw / 2, AURA_PAD + ch / 2)} colors={AI_COLORS} transform={auraRot} origin={vec(AURA_PAD + cw / 2, AURA_PAD + ch / 2)} />
+                  <BlurMask blur={28} style="normal" />
                 </RoundedRect>
               </Canvas>
             </Animated.View>
@@ -370,19 +373,30 @@ export default function IdScan() {
 
           <View style={[styles.readBox, { top: cy + ch + 48 }]}>
             {stage === 'reading' ? (
-              <Animated.View entering={FadeInDown.delay(250).springify()} style={styles.aiPill}>
-                <AIFlower size={30} active />
-                <View>
-                  <T v="title" color="#FFFFFF">ครูปัญญากำลังอ่านข้อมูล</T>
-                  <T v="subhead" color="rgba(255,255,255,0.75)">{READ_STEPS[step]}…</T>
+              <Animated.View entering={FadeInDown.delay(300).springify()} style={{ alignItems: 'center' }}>
+                <AIFlower size={44} active />
+                <T v="h3" color="#FFFFFF" center style={{ marginTop: 10 }}>ครูปัญญากำลังอ่านบัตร</T>
+                {/* ขั้นตอนเป็นเส้นทาง: ผ่านแล้ว ✓ · กำลังทำ (เรือง) · ยังไม่ถึง (จาง) */}
+                <View style={styles.steps}>
+                  {READ_STEPS.map((t, i) => {
+                    const st = i < step ? 'done' : i === step ? 'now' : 'todo';
+                    return (
+                      <View key={t} style={styles.stepItem}>
+                        <View style={[styles.stepDot, st === 'done' && styles.stepDone, st === 'now' && styles.stepNow]}>
+                          {st === 'done' ? <Sym name="checkmark" size={10} color="#04150E" weight="bold" /> : null}
+                        </View>
+                        <T v="caption" color={st === 'todo' ? 'rgba(255,255,255,0.4)' : '#FFFFFF'} style={{ fontWeight: st === 'now' ? '700' : '400' }}>{t}</T>
+                      </View>
+                    );
+                  })}
                 </View>
               </Animated.View>
             ) : stage === 'done' ? (
-              <Animated.View entering={ZoomIn.springify()} style={styles.aiPill}>
+              <Animated.View entering={ZoomIn.springify()} style={{ alignItems: 'center', gap: 10 }}>
                 <View style={styles.okBadge}>
-                  <Sym name="checkmark" size={18} color="#FFFFFF" weight="bold" />
+                  <Sym name="checkmark" size={24} color="#FFFFFF" weight="bold" />
                 </View>
-                <T v="title" color="#FFFFFF">อ่านข้อมูลเรียบร้อย</T>
+                <T v="h3" color="#FFFFFF">อ่านข้อมูลเรียบร้อย</T>
               </Animated.View>
             ) : (
               <Animated.View entering={FadeIn} style={{ alignItems: 'center', gap: 12, alignSelf: 'stretch' }}>
@@ -401,7 +415,7 @@ export default function IdScan() {
   );
 }
 
-const READ_STEPS = ['อ่านชื่อ-สกุล', 'อ่านวันเดือนปีเกิด', 'อ่านที่อยู่', 'ตรวจทานข้อมูล'];
+const READ_STEPS = ['ชื่อ-สกุล', 'วันเกิด', 'ที่อยู่', 'ตรวจทาน'];
 const C = 28;
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: '#000000' },
@@ -420,7 +434,12 @@ const styles = StyleSheet.create({
   aiPill: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: 18, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.14)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.35)' },
   readBox: { position: 'absolute', left: 32, right: 32, alignItems: 'center' },
   aiRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  okBadge: { width: 30, height: 30, borderRadius: 15, backgroundColor: '#34C759', alignItems: 'center', justifyContent: 'center' },
+  steps: { flexDirection: 'row', gap: 14, marginTop: 14 },
+  stepItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  stepDot: { width: 14, height: 14, borderRadius: 7, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.35)', alignItems: 'center', justifyContent: 'center' },
+  stepDone: { backgroundColor: '#7CF0A8', borderColor: '#7CF0A8' },
+  stepNow: { borderColor: '#7CF0A8', backgroundColor: 'rgba(124,240,168,0.25)', boxShadow: '0px 0px 8px rgba(124,240,168,0.9)' },
+  okBadge: { width: 52, height: 52, borderRadius: 26, backgroundColor: '#34C759', alignItems: 'center', justifyContent: 'center' },
   pill: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 999, backgroundColor: 'rgba(0,0,0,0.45)' },
   ring: { position: 'absolute', width: 72, height: 72, borderRadius: 12, borderWidth: 2, borderColor: '#FFD60A' },
   top: { position: 'absolute', left: 16, right: 16, flexDirection: 'row', justifyContent: 'space-between' },
