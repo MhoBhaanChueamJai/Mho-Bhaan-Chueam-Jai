@@ -7,9 +7,8 @@ import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
-import { MenuView } from '@react-native-menu/menu';
 import React, { useEffect, useRef, useState } from 'react';
-import { Alert, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown, FadeInUp, FadeOut, useAnimatedRef, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSpeaker } from '../../components/audio';
@@ -17,7 +16,7 @@ import { BookCover, COVERS } from '../../components/BookCover';
 import { KindIcon } from '../../components/KindIcon';
 import { CircleIcon } from '../../components/ListRow';
 import { Sym, ios } from '../../components/ios';
-import { GlassDock, HeaderBack, HeaderButton, PressableScale, T, useHaptic } from '../../components/ui';
+import { Glass, HeaderBack, HeaderButton, PressableScale, T, useHaptic } from '../../components/ui';
 import { fetchLatestShared } from '../../lib/wisdomShare';
 import { herbs, manuscriptImage } from '../../data/herbs';
 import { doctor } from '../../data/mock';
@@ -138,12 +137,14 @@ export default function WisdomDetail() {
         },
       ],
     );
+  const [menuOpen, setMenuOpen] = useState(false);
   const menu = [
-    { id: 'share', title: 'แชร์ให้เพื่อน', image: 'qrcode' },
-    ...(isShared ? [] : [{ id: 'edit', title: 'แก้ไข', image: 'pencil' }]),
-    { id: 'delete', title: isShared ? 'ลบออกจากคลังของฉัน' : 'ลบ', image: 'trash', attributes: { destructive: true } },
+    { id: 'share', title: 'แชร์ให้เพื่อน', image: 'qrcode', destructive: false },
+    ...(isShared ? [] : [{ id: 'edit', title: 'แก้ไข', image: 'pencil', destructive: false }]),
+    { id: 'delete', title: isShared ? 'ลบออกจากคลังของฉัน' : 'ลบ', image: 'trash', destructive: true },
   ];
   const onMenu = (id: string) => {
+    setMenuOpen(false);
     if (id === 'share') share();
     else if (id === 'edit') router.push({ pathname: '/wisdom/new', params: { id: w.id } });
     else if (id === 'delete') confirmDelete();
@@ -168,11 +169,9 @@ export default function WisdomDetail() {
               <HeaderButton label={readIdx !== null ? 'หยุดอ่านออกเสียง' : 'อ่านออกเสียงให้ฟัง'} onPress={toggleRead}>
                 <Sym name={readIdx !== null ? 'stop.fill' : 'headphones'} size={19} color={readIdx !== null ? palette.primary : palette.ink} weight="semibold" />
               </HeaderButton>
-              <MenuView title={w.title} shouldOpenOnLongPress={false} themeVariant="light" actions={menu as any} onPressAction={({ nativeEvent }) => onMenu(nativeEvent.event)}>
-                <View style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }} accessibilityRole="button" accessibilityLabel="เพิ่มเติม">
-                  <Sym name="ellipsis" size={19} color={palette.ink} weight="semibold" />
-                </View>
-              </MenuView>
+              <HeaderButton label="เพิ่มเติม" onPress={() => setMenuOpen((o) => !o)}>
+                <Sym name="ellipsis" size={19} color={palette.ink} weight="semibold" />
+              </HeaderButton>
             </View>
           ),
         }}
@@ -289,26 +288,44 @@ export default function WisdomDetail() {
         </View>
       </Animated.ScrollView>
 
-      {/* แถบกำลังอ่านออกเสียง (เปิดจากปุ่มหูฟังบนแถบเครื่องมือ) */}
+      {/* เมนูเพิ่มเติม: กระจกฝ้าลอยใต้ปุ่ม ⋯ (มีไอคอน) · แตะที่ว่างเพื่อปิด */}
+      {menuOpen ? (
+        <>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setMenuOpen(false)} accessibilityLabel="ปิดเมนู" />
+          <Animated.View entering={FadeIn.duration(160)} exiting={FadeOut.duration(120)} style={[styles.menuWrap, { top: insets.top + 50 }]}>
+            <Glass interactive tint="rgba(255,255,255,0.72)" style={styles.menu}>
+              {menu.map((m, i) => (
+                <View key={m.id}>
+                  {i ? <View style={styles.menuSep} /> : null}
+                  <PressableScale haptic="select" scaleTo={0.98} onPress={() => onMenu(m.id)} style={styles.menuRow} accessibilityLabel={m.title}>
+                    <T v="body" color={m.destructive ? palette.coral : palette.ink} style={{ flex: 1 }}>{m.title}</T>
+                    <Sym name={m.image as any} size={18} color={m.destructive ? palette.coral : palette.ink} />
+                  </PressableScale>
+                </View>
+              ))}
+            </Glass>
+          </Animated.View>
+        </>
+      ) : null}
+
+      {/* แถบกำลังอ่านออกเสียง (เปิดจากปุ่มหูฟังบนแถบเครื่องมือ) — กระจกฝ้าลอยเหนือเนื้อหา */}
       {readIdx !== null ? (
-        <Animated.View entering={FadeIn.duration(220)} exiting={FadeOut.duration(180)} style={StyleSheet.absoluteFill} pointerEvents="box-none">
-          <GlassDock>
-            <View style={styles.readBar}>
-              <View style={styles.readIcon}>
-                <Sym name="speaker.wave.2.fill" size={16} color="#FFFFFF" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <T v="caption" color={ios.secondary}>กำลังอ่านให้ฟัง · {readIdx + 1}/{sections.length}</T>
-                <T v="title" numberOfLines={1}>{sections[readIdx]?.label}</T>
-              </View>
-              <PressableScale haptic="select" onPress={() => setReadIdx((i) => (i !== null && i + 1 < sections.length ? i + 1 : i))} style={styles.readBtn} accessibilityLabel="หัวข้อถัดไป">
-                <Sym name="forward.fill" size={16} color={palette.ink} />
-              </PressableScale>
-              <PressableScale haptic="press" onPress={toggleRead} style={[styles.readBtn, { backgroundColor: palette.primary }]} accessibilityLabel="หยุดอ่าน">
-                <Sym name="stop.fill" size={15} color="#FFFFFF" />
-              </PressableScale>
+        <Animated.View entering={FadeIn.duration(220)} exiting={FadeOut.duration(180)} style={[styles.readWrap, { bottom: insets.bottom ? 24 : 16 }, elevation.e3]}>
+          <Glass interactive tint="rgba(255,255,255,0.78)" style={styles.readBar}>
+            <View style={styles.readIcon}>
+              <Sym name="speaker.wave.2.fill" size={16} color="#FFFFFF" />
             </View>
-          </GlassDock>
+            <View style={{ flex: 1 }}>
+              <T v="caption" color={ios.secondary} numberOfLines={1}>กำลังอ่านให้ฟัง · {readIdx + 1}/{sections.length}</T>
+              <T v="title" numberOfLines={1}>{sections[readIdx]?.label}</T>
+            </View>
+            <PressableScale haptic="select" onPress={() => setReadIdx((i) => (i !== null && i + 1 < sections.length ? i + 1 : i))} style={styles.readBtn} accessibilityLabel="หัวข้อถัดไป">
+              <Sym name="forward.fill" size={16} color={palette.ink} />
+            </PressableScale>
+            <PressableScale haptic="press" onPress={toggleRead} style={[styles.readBtn, { backgroundColor: palette.primary }]} accessibilityLabel="หยุดอ่าน">
+              <Sym name="stop.fill" size={15} color="#FFFFFF" />
+            </PressableScale>
+          </Glass>
         </Animated.View>
       ) : null}
     </View>
@@ -318,7 +335,12 @@ export default function WisdomDetail() {
 const styles = StyleSheet.create({
   hero: { alignItems: 'center', paddingBottom: 26 },
   reading: { borderWidth: 2, borderColor: palette.primary, boxShadow: '0px 0px 0px 4px rgba(20,144,92,0.15), 0px 8px 20px rgba(20,60,40,0.12)' },
-  readBar: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12, paddingLeft: 8, paddingRight: 4, height: 52 },
+  readWrap: { position: 'absolute', left: 24, right: 24, borderRadius: 32 },
+  readBar: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingLeft: 10, paddingRight: 10, height: 64, borderRadius: 32 },
+  menuWrap: { position: 'absolute', right: 16, width: 250, borderRadius: 22, boxShadow: '0px 16px 40px rgba(0,0,0,0.22)' },
+  menu: { borderRadius: 22, paddingVertical: 4 },
+  menuRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 18, height: 50 },
+  menuSep: { height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(0,0,0,0.12)', marginLeft: 18 },
   readIcon: { width: 36, height: 36, borderRadius: 18, backgroundColor: palette.primary, alignItems: 'center', justifyContent: 'center' },
   readBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.06)', alignItems: 'center', justifyContent: 'center' },
   coverWrap: { transform: [{ rotate: '-2deg' }] },
