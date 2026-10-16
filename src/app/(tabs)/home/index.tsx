@@ -44,7 +44,7 @@ export default function Home() {
           ),
           headerRight: () => (
             <HeaderButton label={`แจ้งเตือน ${notices.length} รายการ`} onPress={() => router.push('/notifications')}>
-              <Sym name="bell" size={20} color={palette.ink} weight="semibold" />
+              <Image source={require('../../../../assets/icons/bell.png')} style={{ width: 22, height: 22 }} tintColor={palette.ink} />
               {notices.length ? <View style={styles.dot} /> : null}
             </HeaderButton>
           ),
