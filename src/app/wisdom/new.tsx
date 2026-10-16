@@ -58,37 +58,36 @@ const PAGE_CHARS = 520;
 const PAPER = '#F7F0E0';
 const INK = '#3A2C1C';
 
-/** หน้ากระดาษยาว 1 หน้า = 1 หน้าหนังสือ — ตัวอักษรขนาดเดียวกับหน้าอ่าน จะเห็นว่าเต็มหน้าเมื่อไร */
-function PaperPage({ n, value, onChange, onRemove, height }: { n: number; value: string; onChange: (v: string) => void; onRemove?: () => void; height: number }) {
+/** ช่องเขียน 1 หน้า (ช่องกรอกปกติ สูงราว 1 หน้าหนังสือ) + ตัวนับตัวอักษร */
+function PageField({ n, value, onChange, onRemove, height }: { n: number; value: string; onChange: (v: string) => void; onRemove?: () => void; height: number }) {
   const [focus, setFocus] = useState(false);
   const len = value.trim().length;
   const over = len > PAGE_CHARS;
   return (
-    <View style={[styles.sheet, { minHeight: height }, focus && styles.sheetFocus]}>
-      <View style={styles.sheetGutter} />
+    <View style={{ gap: 6 }}>
+      <View style={styles.pageHead}>
+        <T v="subhead" color={ios.secondary} style={{ fontWeight: '600', marginLeft: 4 }}>หน้า {n}</T>
+        {onRemove ? (
+          <PressableScale haptic="select" onPress={onRemove} hitSlop={8} accessibilityLabel={`ลบหน้า ${n}`}>
+            <Sym name="minus.circle.fill" size={20} color={ios.tertiary} />
+          </PressableScale>
+        ) : null}
+      </View>
       <TextInput
         value={value}
         onChangeText={onChange}
         placeholder={n === 1 ? 'เริ่มเขียนได้เลย…' : `หน้า ${n}`}
-        placeholderTextColor="rgba(58,44,28,0.35)"
+        placeholderTextColor={ios.tertiary}
         onFocus={() => setFocus(true)}
         onBlur={() => setFocus(false)}
         multiline
         scrollEnabled={false}
-        style={[styles.sheetInput, { minHeight: height - 46 }]}
+        style={[styles.input, styles.inputBig, { minHeight: height }, focus && styles.inputFocus]}
         accessibilityLabel={`หน้า ${n}`}
       />
-      <View style={styles.sheetFoot}>
-        <T v="caption" color={over ? '#B26A12' : 'rgba(58,44,28,0.45)'}>
-          {over ? `เกิน 1 หน้า · ครูปัญญาจะแบ่งหน้าให้` : `${len}/${PAGE_CHARS}`}
-        </T>
-        <T v="caption" color="rgba(58,44,28,0.5)" style={{ fontWeight: '700' }}>— {n} —</T>
-        {onRemove ? (
-          <PressableScale haptic="select" onPress={onRemove} hitSlop={8} accessibilityLabel={`ลบหน้า ${n}`}>
-            <Sym name="trash" size={15} color="rgba(58,44,28,0.45)" />
-          </PressableScale>
-        ) : <View style={{ width: 15 }} />}
-      </View>
+      <T v="caption" color={over ? '#B26A12' : ios.tertiary} style={{ alignSelf: 'flex-end', marginRight: 6 }}>
+        {over ? 'เกิน 1 หน้า · ครูปัญญาจะแบ่งหน้าให้' : `${len}/${PAGE_CHARS}`}
+      </T>
     </View>
   );
 }
@@ -343,7 +342,7 @@ function NewWisdomInner() {
         <Section title="เขียนตำรา" icon="pencil.and.scribble" footer={WRITE_HINT[kind]} right={<T v="caption" color={ios.secondary}>{draft.length} หน้า</T>}>
           {draft.map((pg, i) => (
             <Animated.View key={i} layout={SMOOTH} entering={FadeIn.duration(200)}>
-              <PaperPage n={i + 1} value={pg} onChange={setPage(i)} height={sheetH} onRemove={draft.length > 1 ? () => setDraft((d) => d.filter((_, j) => j !== i)) : undefined} />
+              <PageField n={i + 1} value={pg} onChange={setPage(i)} height={sheetH} onRemove={draft.length > 1 ? () => setDraft((d) => d.filter((_, j) => j !== i)) : undefined} />
             </Animated.View>
           ))}
           <PressableScale haptic="select" scaleTo={0.97} onPress={() => setDraft((d) => [...d, ''])} style={styles.addRow} accessibilityLabel="เพิ่มหน้า">
@@ -386,10 +385,9 @@ const styles = StyleSheet.create({
   kindIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: palette.primarySoft, alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
   kindCheck: { position: 'absolute', top: 12, right: 12 },
   sheet: { backgroundColor: PAPER, borderRadius: 6, borderTopRightRadius: 14, borderBottomRightRadius: 14, borderWidth: 1.5, borderColor: 'rgba(120,90,40,0.18)', overflow: 'hidden', paddingLeft: 26, paddingRight: 20, paddingTop: 22 },
-  sheetFocus: { borderColor: palette.primary },
   sheetGutter: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 12, backgroundColor: 'rgba(90,60,20,0.07)' },
-  sheetInput: { fontSize: 18.5, lineHeight: 33, color: INK, textAlignVertical: 'top', padding: 0 },
   sheetText: { flex: 1, fontSize: 18.5, lineHeight: 33 },
+  pageHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   sheetFoot: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', height: 46 },
   addRow: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 999, backgroundColor: palette.primarySoft },
   busy: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center' },
