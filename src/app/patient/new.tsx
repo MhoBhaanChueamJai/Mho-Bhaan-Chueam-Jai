@@ -328,9 +328,6 @@ function NewPatientInner() {
           </View>
 
           <Field label="โทรศัพท์" value={f.phone} onChange={set('phone')} placeholder="08X-XXX-XXXX" keyboard="phone-pad" />
-        </Section>
-
-        <Section title="ที่อยู่" icon="house.fill">
           <Field label="ที่อยู่" value={f.address} onChange={set('address')} placeholder="เช่น 12 หมู่ 4 บ้านป่าไผ่ ต.ดอนแก้ว อ.แม่ริม จ.เชียงใหม่" multiline />
         </Section>
 
