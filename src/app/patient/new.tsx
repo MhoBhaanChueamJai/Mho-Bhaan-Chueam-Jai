@@ -260,11 +260,7 @@ function NewPatientInner() {
             <Sym name="sparkles" size={14} color={palette.primary} />
             <T v="caption" color={palette.primary} style={{ flex: 1 }}>{aiNote}</T>
           </Animated.View>
-        ) : (
-          <T v="callout" color={ios.secondary} style={{ paddingHorizontal: 4 }}>
-            กรอกเอง หรือใช้ปุ่มมุมขวาบน: พูดให้ AI กรอก หรือสแกนบัตรประชาชน
-          </T>
-        )}
+        ) : null}
 
         <Section title="ข้อมูลผู้ป่วย" icon="person.fill">
           <Field label="ชื่อ-สกุล" value={f.name} onChange={set('name')} placeholder="เช่น นางบุญมา ศรีคำ" />
