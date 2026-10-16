@@ -19,7 +19,7 @@ const KIND: Record<Wisdom['kind'], { icon: string; color: string }> = {
   'คาถา/พิธี': { icon: 'sparkles', color: '#8A5CD0' },
   ตำราโบราณ: { icon: 'scroll.fill', color: '#B07A2A' },
 };
-const SOURCE_ICON: Record<Wisdom['source'], string> = { เสียงเล่า: 'waveform', สแกนตำรา: 'doc.viewfinder', พิมพ์เอง: 'pencil' };
+const SOURCE_ICON: Record<Wisdom['source'], string> = { เสียงเล่า: 'waveform', สแกนตำรา: 'doc.viewfinder', พิมพ์เอง: 'pencil', เพื่อนแชร์: 'person.2.fill' };
 
 export default function Vault() {
   const { wisdoms } = useApp();
@@ -39,6 +39,9 @@ export default function Vault() {
             <View style={{ flexDirection: 'row', gap: 4 }}>
               <HeaderButton label="ค้นหาภูมิปัญญา" onPress={() => router.push('/wisdom/search')}>
                 <Sym name="magnifyingglass" size={20} color={palette.primary} weight="semibold" />
+              </HeaderButton>
+              <HeaderButton label="รับตำราจากเพื่อน" onPress={() => router.push('/wisdom/receive')}>
+                <Sym name="tray.and.arrow.down" size={20} color={palette.primary} weight="semibold" />
               </HeaderButton>
               <HeaderButton label="เพิ่มภูมิปัญญา" onPress={() => router.push('/wisdom/new')}>
                 <Sym name="plus" size={20} color={palette.primary} weight="semibold" />
@@ -95,7 +98,7 @@ export default function Vault() {
                     <T v="subhead" color={ios.secondary} numberOfLines={1}>{w.summary}</T>
                     <View style={styles.meta}>
                       <Sym name={SOURCE_ICON[w.source] as any} size={11} color={ios.tertiary} />
-                      <T v="caption" color={ios.tertiary}>{w.source} · {w.date}</T>
+                      <T v="caption" color={ios.tertiary} numberOfLines={1} style={{ flexShrink: 1 }}>{w.sharedBy ? `จาก ${w.sharedBy}` : w.source} · {w.date}</T>
                       {w.verified ? null : (
                         <View style={styles.pending}>
                           <T v="micro" color="#C27A12" style={{ fontWeight: '700' }}>รอตรวจทาน</T>
@@ -117,6 +120,15 @@ export default function Vault() {
             <View style={{ flex: 1 }}>
               <T v="title">เล่าให้ครูปัญญาบันทึก</T>
               <T v="subhead" color={ios.secondary}>พูดเล่าตำรับ ครูปัญญาจดและจัดหมวดให้</T>
+            </View>
+            <Sym name="chevron.right" size={13} color={ios.tertiary} weight="semibold" />
+          </PressableScale>
+          <View style={styles.sep} />
+          <PressableScale scaleTo={0.98} haptic="select" onPress={() => router.push('/wisdom/receive')} style={styles.row} accessibilityLabel="รับตำราจากเพื่อน">
+            <CircleIcon name="tray.and.arrow.down.fill" color="#3B7DD8" size={48} />
+            <View style={{ flex: 1 }}>
+              <T v="title">รับตำราจากเพื่อน</T>
+              <T v="subhead" color={ios.secondary}>กรอกรหัสแชร์ที่เพื่อนหมอส่งมา</T>
             </View>
             <Sym name="chevron.right" size={13} color={ios.tertiary} weight="semibold" />
           </PressableScale>

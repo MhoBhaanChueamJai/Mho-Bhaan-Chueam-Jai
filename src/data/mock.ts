@@ -270,7 +270,9 @@ export type Wisdom = {
   id: string;
   title: string;
   kind: 'ตำรับยา' | 'วิธีรักษา' | 'คาถา/พิธี' | 'ตำราโบราณ';
-  source: 'เสียงเล่า' | 'สแกนตำรา' | 'พิมพ์เอง';
+  source: 'เสียงเล่า' | 'สแกนตำรา' | 'พิมพ์เอง' | 'เพื่อนแชร์';
+  /** ชื่อหมอที่แชร์ตำรานี้มาให้ (source = เพื่อนแชร์) */
+  sharedBy?: string;
   date: string;
   minutes?: number;
   summary: string;

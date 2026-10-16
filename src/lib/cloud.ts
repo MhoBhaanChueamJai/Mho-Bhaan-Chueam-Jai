@@ -61,6 +61,8 @@ const wisdomToRow = (w: Wisdom) => ({
   indication: w.indication ?? null,
   caution: w.caution ?? null,
   verified: w.verified,
+  // ส่งเฉพาะเมื่อมีค่า (ใช้ได้แม้ฐานข้อมูลยังไม่มีคอลัมน์นี้)
+  ...(w.sharedBy ? { shared_by: w.sharedBy } : {}),
 });
 const rowToWisdom = (r: any): Wisdom => ({
   id: r.id,
@@ -75,6 +77,7 @@ const rowToWisdom = (r: any): Wisdom => ({
   indication: r.indication ?? undefined,
   caution: r.caution ?? undefined,
   verified: !!r.verified,
+  sharedBy: r.shared_by ?? undefined,
 });
 
 const check = <T,>(r: { data: T | null; error: any }) => {

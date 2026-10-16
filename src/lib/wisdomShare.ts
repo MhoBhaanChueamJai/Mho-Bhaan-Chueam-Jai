@@ -1,0 +1,50 @@
+/**
+ * แชร์ตำรา/ภูมิปัญญาให้เพื่อนหมอ — สร้างรหัสแชร์ (Supabase: wisdom_shares) แล้วส่งผ่าน LINE/ข้อความ
+ * เพื่อนเปิดลิงก์ หรือกรอกรหัสในหน้า "รับตำราจากเพื่อน" → ดูตัวอย่าง → เก็บเข้าคลังของตัวเอง
+ */
+import { Share } from 'react-native';
+import type { Wisdom } from '../data/mock';
+import { supabase } from './supabase';
+
+/** ตัวอักษรที่อ่าน/พูดไม่สับสน (ไม่มี 0 O 1 I L) */
+const ABC = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+const newCode = () => Array.from({ length: 8 }, () => ABC[Math.floor(Math.random() * ABC.length)]).join('');
+/** แสดงรหัสเป็น ABCD-EFGH ให้อ่านง่าย */
+export const prettyCode = (c: string) => `${c.slice(0, 4)}-${c.slice(4)}`;
+export const cleanCode = (c: string) => c.toUpperCase().replace(/[^A-Z0-9]/g, '');
+
+const WEB = 'https://mhobhaanchueamjai.github.io/Mho-Bhaan-Chueam-Jai';
+
+/** ส่วนของตำราที่แชร์ (ไม่ส่ง id / สถานะตรวจทานของเรา) */
+export type SharedWisdom = Pick<Wisdom, 'title' | 'kind' | 'summary' | 'ingredients' | 'method' | 'indication' | 'caution'>;
+export type ReceivedShare = { fromName: string; wisdom: SharedWisdom; createdAt: string };
+
+export async function createShare(w: Wisdom, fromName: string): Promise<string> {
+  const payload: SharedWisdom = { title: w.title, kind: w.kind, summary: w.summary, ingredients: w.ingredients, method: w.method, indication: w.indication, caution: w.caution };
+  // รหัสชนกันได้ยากมาก แต่ลองใหม่ไม่เกิน 3 ครั้งถ้าซ้ำ
+  for (let i = 0; i < 3; i++) {
+    const code = newCode();
+    const { error } = await supabase.from('wisdom_shares').insert({ code, from_name: fromName, payload });
+    if (!error) return code;
+    if (error.code !== '23505') throw error;
+  }
+  throw new Error('สร้างรหัสแชร์ไม่สำเร็จ');
+}
+
+export async function fetchShare(code: string): Promise<ReceivedShare | null> {
+  const { data, error } = await supabase.rpc('get_wisdom_share', { p_code: cleanCode(code) });
+  if (error) throw error;
+  const r = Array.isArray(data) ? data[0] : data;
+  if (!r?.payload) return null;
+  return { fromName: r.from_name ?? 'เพื่อนหมอ', wisdom: r.payload as SharedWisdom, createdAt: r.created_at };
+}
+
+/** สร้างรหัส แล้วเปิดเมนูแชร์ของระบบ (LINE, ข้อความ, AirDrop ฯลฯ) */
+export async function shareWisdom(w: Wisdom, fromName: string) {
+  const code = await createShare(w, fromName);
+  const pretty = prettyCode(code);
+  await Share.share({
+    message: `📜 ${fromName} แชร์ตำรา "${w.title}" ให้คุณ\n\nเปิดแอปหมอบ้านเชื่อมใจ → คลังภูมิ → รับตำราจากเพื่อน แล้วกรอกรหัส\n${pretty}\n\nหรือเปิดลิงก์: ${WEB}/wisdom/receive?code=${code}\n(รหัสใช้ได้ 30 วัน)`,
+  });
+  return code;
+}

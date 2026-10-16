@@ -10,6 +10,7 @@ const Native =
     ? requireOptionalNativeModule<{
         detect(uri: string): Promise<CardRect | null>;
         extract(uri: string, hint: { x: number; y: number; width: number; height: number } | null): Promise<ExtractedCard | null>;
+        extractDoc(uri: string): Promise<ExtractedCard | null>;
       }>('CardDetect')
     : null;
 
@@ -31,6 +32,16 @@ export async function extractCard(uri: string, hint?: { x: number; y: number; wi
   if (!Native) return null;
   try {
     return await Native.extract(uri, hint ?? null);
+  } catch {
+    return null;
+  }
+}
+
+/** ตำรา/เอกสาร: ตัดพอดีขอบกระดาษ + ดัดให้ตรง (สัดส่วนใดก็ได้) */
+export async function extractDoc(uri: string): Promise<ExtractedCard | null> {
+  if (!Native?.extractDoc) return null;
+  try {
+    return await Native.extractDoc(uri);
   } catch {
     return null;
   }
