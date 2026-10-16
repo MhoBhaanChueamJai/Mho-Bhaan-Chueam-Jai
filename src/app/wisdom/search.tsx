@@ -52,7 +52,7 @@ export default function WisdomSearch() {
               </View>
               <View style={{ flex: 1, gap: 3 }}>
                 <Hi text={w.title} q={q.trim()} bold />
-                <Hi text={w.summary} q={q.trim()} v="caption" color={ios.secondary} />
+                <Hi text={w.summary} q={q.trim()} v="subhead" color={ios.secondary} />
                 <T v="micro" color={ios.tertiary}>
                   {w.kind} · {w.source} · {w.date}
                   {w.verified ? '' : ' · รอตรวจทาน'}

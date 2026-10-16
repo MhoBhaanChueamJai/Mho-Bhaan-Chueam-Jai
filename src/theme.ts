@@ -62,14 +62,27 @@ export const font = {
 } as Record<string, string | undefined>;
 
 /** Type scale ตาม Apple HIG (Dynamic Type ของระบบปรับให้อัตโนมัติ) */
+/**
+ * ระดับตัวอักษร (Type scale) ตาม Apple HIG — ใช้ "ตามบทบาท" ไม่เลือกขนาดเอง
+ *   hero      34 หัวหน้าจอ (Large Title) — ทุกแท็บเท่ากัน
+ *   h1 / h2   28 / 22 หัวข้อเด่นกลางจอ (หน้ารายละเอียด, หน้าว่าง, ผลลัพธ์)
+ *   h3        20 หัวข้อส่วน (Section header) เช่น "ผู้ป่วยวันนี้" "เครื่องมือ"
+ *   title     17 ตัวหนา — ชื่อในการ์ด/รายการ
+ *   body      17 เนื้อหา, callout 16 คำอธิบายใต้หัวหน้าจอ / ปุ่มข้อความ
+ *   subhead   15 บรรทัดรองในการ์ด (คำอธิบาย อาการ สรรพคุณ)
+ *   caption   13 ข้อมูลกำกับ (วันที่ เวลา จำนวน)
+ *   micro     12 ตัวหนา — ป้าย/แท็ก
+ */
 export const type = {
   hero: { size: 34, line: 44, weight: '700' }, // Large Title
-  h1: { size: 28, line: 36, weight: '600' }, // Title 1
-  h2: { size: 22, line: 30, weight: '600' }, // Title 2
+  h1: { size: 28, line: 36, weight: '700' }, // Title 1
+  h2: { size: 22, line: 30, weight: '700' }, // Title 2
+  h3: { size: 20, line: 27, weight: '700' }, // Title 3 — หัวข้อส่วน
   title: { size: 17, line: 24, weight: '600' }, // Headline
   body: { size: 17, line: 25, weight: '400' }, // Body
   bodyStrong: { size: 17, line: 25, weight: '600' },
   callout: { size: 16, line: 23, weight: '400' }, // Callout
+  subhead: { size: 15, line: 21, weight: '400' }, // Subheadline
   caption: { size: 13, line: 18, weight: '400' }, // Footnote
   micro: { size: 12, line: 16, weight: '600' }, // Caption 1
 } as const;
@@ -84,22 +97,21 @@ export const touch = { min: 56 };
 
 
 /**
- * ระดับเงา (Elevation) — ใช้ชุดเดียวทั้งแอป
- * หลักการ: แสงมาจากด้านบนจุดเดียว → เงาตกลงล่างเสมอ, สีเงาเป็นโทนเขียวเข้ม (ไม่ใช้ดำ/เทา) ให้กลืนกับธีม
- * ยิ่งชิ้นอยู่ "สูง" (ใกล้ผู้ใช้) เงายิ่งเลื่อนลง กว้างขึ้น และเข้มขึ้นเล็กน้อย
+ * ระดับเงา (Elevation) แบบ iOS — ใช้ชุดเดียวทั้งแอป
+ * หลักการ (ตาม UIKit/HIG): เงาสีดำโปร่งมาก แสงจากด้านบน → เงาตกลงล่างนิดเดียว นุ่มและแทบมองไม่เห็นขอบ
+ * ปุ่มของ iOS แบนไม่มีเงา — เงาใช้แยก "ชั้น" ของพื้นผิวเท่านั้น
  *   e1 พัก   — การ์ด/รายการที่วางบนพื้น (ส่วนใหญ่ของแอป)
  *   e2 ลอย   — ตัวควบคุมที่ลอยเหนือเนื้อหา: ช่องค้นหา ปุ่มวงกลม
  *   e3 ซ้อน  — ชั้นบนสุด: sheet, popover
- *   glow    — เฉพาะปุ่มหลักสีเขียว (เงาสีเดียวกับปุ่ม)
  */
-const SH = 'rgba(11, 61, 38,';
 export const elevation = {
-  e1: { boxShadow: `0px 1px 2px ${SH} 0.05), 0px 4px 14px ${SH} 0.07)` },
-  e2: { boxShadow: `0px 2px 4px ${SH} 0.06), 0px 8px 22px ${SH} 0.11)` },
-  e3: { boxShadow: `0px 4px 8px ${SH} 0.06), 0px 18px 40px ${SH} 0.16)` },
-  glow: { boxShadow: '0px 6px 16px rgba(20, 144, 92, 0.28)' },
+  e1: { boxShadow: '0px 1px 3px rgba(0, 0, 0, 0.06), 0px 4px 12px rgba(0, 0, 0, 0.04)' },
+  e2: { boxShadow: '0px 2px 6px rgba(0, 0, 0, 0.08), 0px 8px 20px rgba(0, 0, 0, 0.06)' },
+  e3: { boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.08), 0px 16px 40px rgba(0, 0, 0, 0.12)' },
+  /** ปุ่มหลักแบบ iOS: แบน ไม่มีเงา */
+  glow: {},
   /** การ์ด = e1 */
-  card: { boxShadow: `0px 1px 2px ${SH} 0.05), 0px 4px 14px ${SH} 0.07)` },
+  card: { boxShadow: '0px 1px 3px rgba(0, 0, 0, 0.06), 0px 4px 12px rgba(0, 0, 0, 0.04)' },
 } as const;
 
 /** การ์ด clay: พื้นสว่างกว่าฉากเล็กน้อย + ขอบไฮไลต์ขาว */

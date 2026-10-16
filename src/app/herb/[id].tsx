@@ -63,7 +63,7 @@ export default function HerbDetail() {
           </Animated.View>
 
           <Animated.View entering={FadeInDown.delay(220).springify()}>
-            <T v="h2" style={styles.h}>สรรพคุณ</T>
+            <T v="h3" style={styles.h}>สรรพคุณ</T>
             <View style={{ gap: space.sm }}>
               {herb.uses.map((u) => (
                 <View key={u} style={styles.use}>
@@ -75,14 +75,14 @@ export default function HerbDetail() {
           </Animated.View>
 
           <Animated.View entering={FadeInDown.delay(280).springify()}>
-            <T v="h2" style={styles.h}>วิธีใช้</T>
+            <T v="h3" style={styles.h}>วิธีใช้</T>
             <Card tone="cyan">
               <T v="body">{herb.howto}</T>
             </Card>
           </Animated.View>
 
           <Animated.View entering={FadeInDown.delay(340).springify()}>
-            <T v="h2" style={styles.h}>ข้อควรระวัง</T>
+            <T v="h3" style={styles.h}>ข้อควรระวัง</T>
             <View style={styles.warn}>
               <AlertTriangle size={24} color={palette.coral} />
               <T v="body" style={{ flex: 1 }}>{herb.caution}</T>

@@ -50,7 +50,7 @@ export function IOSCard({ children, style, onPress, containerStyle }: { children
 export function SectionTitle({ title, action, onAction }: { title: string; action?: string; onAction?: () => void }) {
   return (
     <View style={styles.sectionTitle}>
-      <T v="title" style={{ fontSize: 20, lineHeight: 26, fontWeight: '700' }}>{title}</T>
+      <T v="h3">{title}</T>
       {action ? (
         <PressableScale onPress={onAction} haptic="select" style={{ paddingVertical: 4, paddingLeft: 12 }}>
           <T v="callout" color={palette.primary}>{action}</T>
@@ -98,7 +98,7 @@ export function Row({
       {icon}
       <View style={{ flex: 1 }}>
         <T v="body" numberOfLines={1}>{title}</T>
-        {subtitle ? <T v="caption" color={ios.secondary} numberOfLines={2}>{subtitle}</T> : null}
+        {subtitle ? <T v="subhead" color={ios.secondary} numberOfLines={2}>{subtitle}</T> : null}
       </View>
       {value ? <T v="callout" color={ios.secondary}>{value}</T> : null}
       {chevron && onPress ? <Sym name="chevron.right" size={14} color={ios.tertiary} weight="semibold" /> : null}

@@ -126,7 +126,7 @@ function PatientDetailInner() {
         {/* ส่วนบนแบบ Contacts */}
         <View style={styles.hero}>
           <Avatar name={p.name} src={avatars[p.id]} size={96} />
-          <T v="h1" center style={{ marginTop: 10, fontWeight: '700' }}>{p.name}</T>
+          <T v="h1" center style={{ marginTop: 10 }}>{p.name}</T>
           <T v="callout" color={ios.secondary} center>
             {p.sex} · {p.age} ปี · {el.label}
           </T>

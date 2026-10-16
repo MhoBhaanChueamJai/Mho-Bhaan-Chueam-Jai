@@ -21,7 +21,7 @@ import { control, elevation, palette } from '../../theme';
 const SUG_ICON: Record<Suggestion['icon'], any> = { clock: 'clock.arrow.circlepath', person: 'person.fill', calendar: 'calendar', sparkles: 'sparkles', stethoscope: 'stethoscope' };
 
 /** ไฮไลต์คำที่ค้นในข้อความ */
-function Hi({ text, q, v = 'body', color = ios.label, bold }: { text: string; q: string; v?: 'body' | 'caption'; color?: string; bold?: boolean }) {
+function Hi({ text, q, v = 'body', color = ios.label, bold }: { text: string; q: string; v?: 'body' | 'subhead' | 'caption'; color?: string; bold?: boolean }) {
   if (!q) return <T v={v} color={color} numberOfLines={1} style={bold ? { fontWeight: '600' } : undefined}>{text}</T>;
   const i = text.toLowerCase().indexOf(q.toLowerCase());
   if (i < 0) return <T v={v} color={color} numberOfLines={1} style={bold ? { fontWeight: '600' } : undefined}>{text}</T>;
@@ -203,11 +203,11 @@ function PatientSearchInner() {
                           <T v="micro" color={st.fg}>{p.status}</T>
                         </View>
                       </View>
-                      <T v="caption" color={ios.secondary}>{p.sex} · {p.age} ปี · ธาตุ{p.element}</T>
+                      <T v="subhead" color={ios.secondary}>{p.sex} · {p.age} ปี · ธาตุ{p.element}</T>
                       <View style={styles.diag}>
                         <Sym name="stethoscope" size={13} color={palette.primary} />
                         <View style={{ flex: 1 }}>
-                          <Hi text={v ? v.diagnosis : 'ยังไม่มีการรักษา'} q={q.trim()} v="caption" color={ios.label} />
+                          <Hi text={v ? v.diagnosis : 'ยังไม่มีการรักษา'} q={q.trim()} v="subhead" color={ios.label} />
                         </View>
                       </View>
                     </View>

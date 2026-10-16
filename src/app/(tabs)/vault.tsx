@@ -31,7 +31,7 @@ export default function Vault() {
           </RoundButton>
           <SearchButton label="ค้นหาภูมิปัญญา" onPress={() => router.push('/wisdom/search')} />
         </View>
-        <T v="h1" style={{ paddingRight: 108 }}>คลังภูมิปัญญา</T>
+        <T v="hero" style={{ paddingRight: 108 }}>คลังภูมิปัญญา</T>
         <T v="callout" color={palette.inkSoft}>สมุดข่อยดิจิทัลของคุณหมอ</T>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -space.xl, marginTop: space.xl - 20, marginBottom: -20 }} contentContainerStyle={{ gap: 8, paddingHorizontal: space.xl, paddingVertical: 28 }}>
@@ -49,7 +49,7 @@ export default function Vault() {
             </IconTile>
             <View style={{ flex: 1 }}>
               <T v="title">บันทึกแล้ว {recorded} เรื่อง</T>
-              <T v="caption" color={palette.inkSoft}>เสียงเล่ารวม {legacy.minutes} นาที · ศิษย์ {legacy.apprentices} คน</T>
+              <T v="subhead" color={palette.inkSoft}>เสียงเล่ารวม {legacy.minutes} นาที · ศิษย์ {legacy.apprentices} คน</T>
             </View>
             <View style={styles.topBadge}>
               <Badge label="สำรองแล้ว" />
@@ -66,7 +66,7 @@ export default function Vault() {
                 </IconTile>
                 <View style={{ flex: 1 }}>
                   <T v="title" numberOfLines={2}>{w.title}</T>
-                  <T v="caption" color={palette.inkSoft}>
+                  <T v="subhead" color={palette.inkSoft}>
                     {w.source} · {w.date}
                     {w.verified ? '' : ' · รอตรวจทาน'}
                   </T>
@@ -105,7 +105,7 @@ export default function Vault() {
 }
 
 const styles = StyleSheet.create({
-  topBtns: { position: 'absolute', right: 0, top: -4, zIndex: 2, flexDirection: 'row', gap: 8 },
+  topBtns: { position: 'absolute', right: 0, top: 2, zIndex: 2, flexDirection: 'row', gap: 8 },
   row: { flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.md, minHeight: 88 },
   topBadge: { position: 'absolute', top: 12, right: 12 },
   info: { marginTop: space.xxl, backgroundColor: palette.surface, borderRadius: radius.lg, padding: space.xl, alignItems: 'center' },

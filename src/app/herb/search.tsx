@@ -50,7 +50,7 @@ export default function HerbSearch() {
                 <Image source={h.image} style={{ width: 64, height: 64, borderRadius: 14 }} contentFit="cover" />
                 <View style={{ flex: 1, gap: 3 }}>
                   <Hi text={h.name} q={q.trim()} bold />
-                  <Hi text={use} q={q.trim()} v="caption" color={ios.secondary} />
+                  <Hi text={use} q={q.trim()} v="subhead" color={ios.secondary} />
                   <View style={{ alignSelf: 'flex-start', paddingHorizontal: 9, paddingVertical: 2, borderRadius: 999, backgroundColor: tone.bg, marginTop: 2 }}>
                     <T v="micro" color={tone.fg}>รส{h.taste}</T>
                   </View>

@@ -43,7 +43,7 @@ export function PinShell({
         </View>
         <Animated.View entering={FadeIn.duration(250)} style={styles.head}>
           {hero}
-          <T v="h2" color="#FFFFFF" center style={{ marginTop: 14, fontWeight: '700' }}>{title}</T>
+          <T v="h2" color="#FFFFFF" center style={{ marginTop: 14 }}>{title}</T>
           {subtitle ? (
             <T v="callout" color="rgba(255,255,255,0.82)" center style={{ marginTop: 4, maxWidth: 300 }}>{subtitle}</T>
           ) : null}

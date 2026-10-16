@@ -36,10 +36,10 @@ export default function Herbs() {
         ListHeaderComponent={
           <View style={{ marginBottom: space.sm }}>
             {/* ปุ่มค้นหามุมขวาบน → เปิดหน้าค้นหาแบบยืดออก (ตำแหน่งเดียวกับแถบค้นหา) */}
-            <View style={{ position: 'absolute', right: 0, top: -4, zIndex: 2 }}>
+            <View style={{ position: 'absolute', right: 0, top: 2, zIndex: 2 }}>
               <SearchButton label="ค้นหาสมุนไพร" onPress={() => router.push('/herb/search')} />
             </View>
-            <T v="h1" style={{ paddingRight: 56 }}>คลังสมุนไพร</T>
+            <T v="hero" style={{ paddingRight: 56 }}>คลังสมุนไพร</T>
             <T v="callout" color={palette.inkSoft}>{herbs.length} ชนิด · อ้างอิงบัญชียาหลักแห่งชาติ</T>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -space.xl, marginTop: space.lg - 20, marginBottom: -20 }} contentContainerStyle={{ gap: 8, paddingHorizontal: space.xl, paddingVertical: 28 }}>
               {tastes.map((t) => (
@@ -69,7 +69,7 @@ export default function Herbs() {
                 </View>
                 <View style={{ padding: space.sm, paddingTop: space.sm, gap: 4 }}>
                   <T v="title" numberOfLines={1}>{item.name}</T>
-                  <T v="caption" color={palette.inkSoft} numberOfLines={1}>{item.uses[0]}</T>
+                  <T v="subhead" color={palette.inkSoft} numberOfLines={1}>{item.uses[0]}</T>
                   <View style={[styles.taste, { backgroundColor: tone.bg }]}>
                     <T v="micro" color={tone.fg}>รส{item.taste}</T>
                   </View>

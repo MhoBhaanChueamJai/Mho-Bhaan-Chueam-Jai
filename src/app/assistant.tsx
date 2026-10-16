@@ -141,7 +141,7 @@ export default function Assistant() {
           <Animated.View entering={FadeIn.duration(250)}>
             <View style={{ alignItems: 'center', paddingTop: 8 }}>
               <AIFlower size={120} active={busy} />
-              <T v="h2" center style={{ marginTop: 4, fontWeight: '700' }}>ถามอะไรก็ได้ครับ</T>
+              <T v="h2" center style={{ marginTop: 4 }}>ถามอะไรก็ได้ครับ</T>
               <T v="callout" center color={ios.secondary} style={{ marginTop: 4, maxWidth: 300 }}>
                 สมุนไพร ตำรับยา ธาตุเจ้าเรือน หรือความปลอดภัยของยา
               </T>

@@ -179,12 +179,12 @@ function PatientsInner() {
                         <PressableScale scaleTo={0.97} onPress={() => router.push(`/patient/${p.id}`)} style={[styles.card, elevation.e1]} accessibilityLabel={p.name}>
                           <Avatar name={p.name} src={avatars[p.id]} size={48} />
                           <View style={{ flex: 1 }}>
-                            <T v="body" numberOfLines={1} style={{ fontWeight: '600' }}>{p.name}</T>
+                            <T v="title" numberOfLines={1}>{p.name}</T>
                             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                               <Sym name="clock" size={13} color={ios.secondary} />
                               <T v="caption" color={ios.secondary}>{a.start} – {a.end} น.</T>
                             </View>
-                            <T v="caption" color={palette.primary} numberOfLines={1}>{a.what}</T>
+                            <T v="subhead" color={palette.primary} numberOfLines={1}>{a.what}</T>
                           </View>
                           <PressableScale haptic="select" onPress={() => Linking.openURL(`tel:${p.phone.replace(/[^0-9]/g, '')}`)} style={styles.phone} accessibilityLabel={`โทร ${p.name}`}>
                             <Sym name="phone.fill" size={17} color={palette.primary} />
@@ -224,8 +224,8 @@ function PatientsInner() {
                       <View style={styles.pTop}>
                         <Avatar name={p.name} src={avatars[p.id]} size={52} online={p.status === 'นัดวันนี้'} />
                         <View style={{ flex: 1 }}>
-                          <T v="body" style={{ fontWeight: '600' }}>{p.name}</T>
-                          <T v="caption" color={ios.secondary}>{p.sex} · {p.age} ปี · ธาตุ{p.element}</T>
+                          <T v="title">{p.name}</T>
+                          <T v="subhead" color={ios.secondary}>{p.sex} · {p.age} ปี · ธาตุ{p.element}</T>
                         </View>
                         <View style={[styles.status, { backgroundColor: st.bg }]}>
                           <T v="micro" color={st.fg}>{p.status}</T>
@@ -235,7 +235,7 @@ function PatientsInner() {
                       <View style={{ gap: 6 }}>
                         <View style={styles.pLine}>
                           <Sym name="stethoscope" size={15} color={palette.primary} />
-                          <T v="callout" style={{ flex: 1 }}>{v ? v.diagnosis : 'ยังไม่มีการรักษา'}</T>
+                          <T v="subhead" style={{ flex: 1 }}>{v ? v.diagnosis : 'ยังไม่มีการรักษา'}</T>
                         </View>
                         <View style={styles.pMeta}>
                           {v ? (

@@ -13,7 +13,7 @@ import { PressableScale, T } from './ui';
 import { control, elevation, palette } from '../theme';
 
 /** ไฮไลต์คำที่ค้นในข้อความ */
-export function Hi({ text, q, v = 'body', color = ios.label, bold }: { text: string; q: string; v?: 'body' | 'caption'; color?: string; bold?: boolean }) {
+export function Hi({ text, q, v = 'body', color = ios.label, bold }: { text: string; q: string; v?: 'body' | 'subhead' | 'caption'; color?: string; bold?: boolean }) {
   const st = bold ? { fontWeight: '600' as const } : undefined;
   const i = q ? text.toLowerCase().indexOf(q.toLowerCase()) : -1;
   if (i < 0) return <T v={v} color={color} numberOfLines={1} style={st}>{text}</T>;

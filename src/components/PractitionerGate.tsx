@@ -25,8 +25,8 @@ export function VerifyPrompt({ compact }: { compact?: boolean }) {
           <Sym name="lock.fill" size={15} color={palette.primary} />
         </View>
         <View style={{ flex: 1 }}>
-          <T v="body" style={{ fontWeight: '600' }}>ยืนยันตัวตนหมอพื้นบ้าน</T>
-          <T v="caption" color={ios.secondary}>ปลดล็อกการรักษาและบันทึกข้อมูลผู้ป่วย</T>
+          <T v="title">ยืนยันตัวตนหมอพื้นบ้าน</T>
+          <T v="subhead" color={ios.secondary}>ปลดล็อกการรักษาและบันทึกข้อมูลผู้ป่วย</T>
         </View>
         <Sym name="chevron.right" size={13} color={ios.tertiary} weight="semibold" />
       </PressableScale>
@@ -38,7 +38,7 @@ export function VerifyPrompt({ compact }: { compact?: boolean }) {
         <View style={styles.badge}>
           <Sym name="lock.fill" size={26} color={palette.primary} />
         </View>
-        <T v="h2" center style={{ marginTop: 18, fontWeight: '700' }}>สำหรับหมอพื้นบ้านที่ได้รับการรับรอง</T>
+        <T v="h2" center style={{ marginTop: 18 }}>สำหรับหมอพื้นบ้านที่ได้รับการรับรอง</T>
         <T v="callout" color={ios.secondary} center style={{ marginTop: 8 }}>
           การรักษาและบันทึกข้อมูลผู้ป่วยใช้ได้หลังยืนยันตัวตนด้วยเลขที่หนังสือรับรองการเป็นหมอพื้นบ้าน
         </T>

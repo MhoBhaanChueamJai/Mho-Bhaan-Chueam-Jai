@@ -101,7 +101,7 @@ export default function Verify() {
           <View style={styles.okBadge}>
             <Sym name="checkmark.seal.fill" size={28} color="#FFFFFF" />
           </View>
-          <T v="h1" center style={{ marginTop: 16, fontWeight: '700' }}>ยืนยันตัวตนสำเร็จ</T>
+          <T v="h1" center style={{ marginTop: 16 }}>ยืนยันตัวตนสำเร็จ</T>
           <T v="callout" color={ios.secondary} center style={{ marginTop: 6 }}>พบข้อมูลในทะเบียนหมอพื้นบ้านที่ได้รับการรับรอง{'\n'}กรมการแพทย์แผนไทยและการแพทย์ทางเลือก</T>
         </Animated.View>
         <Animated.View entering={FadeInDown.delay(120).duration(400)} style={styles.card}>

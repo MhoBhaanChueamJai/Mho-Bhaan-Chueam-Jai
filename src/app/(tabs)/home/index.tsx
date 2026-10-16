@@ -56,7 +56,7 @@ export default function Home() {
             </View>
             <View style={{ flex: 1 }}>
               <T v="title">ถามครูปัญญา</T>
-              <T v="caption" color={ios.secondary}>สมุนไพร ตำรับยา หรือความปลอดภัยของยา</T>
+              <T v="subhead" color={ios.secondary}>สมุนไพร ตำรับยา หรือความปลอดภัยของยา</T>
             </View>
             <PressableScale haptic="press" onPress={() => router.push('/capture')} style={styles.mic} accessibilityLabel="พูดกับครูปัญญา">
               <Sym name="mic.fill" size={20} color="#FFFFFF" />
@@ -71,7 +71,7 @@ export default function Home() {
           <Group>
             <View style={styles.progressRow}>
               <View style={{ flex: 1 }}>
-                <T v="h1" style={{ fontWeight: '700' }}>
+                <T v="h1">
                   {done}
                   <T v="title" color={ios.secondary}> / {today.length} ราย</T>
                 </T>
@@ -115,7 +115,7 @@ export default function Home() {
                 <AppIcon name={t.sym} bg={t.bg} size={40} />
                 <View>
                   <T v="title">{t.title}</T>
-                  <T v="caption" color={ios.secondary}>{t.sub}</T>
+                  <T v="subhead" color={ios.secondary}>{t.sub}</T>
                 </View>
               </IOSCard>
             ))}
@@ -130,7 +130,7 @@ export default function Home() {
               <AppIcon name="books.vertical.fill" bg="#8A6A44" size={40} />
               <View style={{ flex: 1 }}>
                 <T v="title">บันทึกแล้ว {legacy.recorded} จาก {legacy.goal} เรื่อง</T>
-                <T v="caption" color={ios.secondary}>เสียงเล่ารวม {legacy.minutes} นาที · ศิษย์ {legacy.apprentices} คน</T>
+                <T v="subhead" color={ios.secondary}>เสียงเล่ารวม {legacy.minutes} นาที · ศิษย์ {legacy.apprentices} คน</T>
               </View>
               <Sym name="chevron.right" size={14} color={ios.tertiary} weight="semibold" />
             </View>

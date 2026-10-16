@@ -190,7 +190,7 @@ export default function Login() {
 
   const body = (
     <>
-        <T v="h1" style={{ fontWeight: '700' }}>{mode === 'login' ? 'ยินดีต้อนรับ' : 'สร้างบัญชีใหม่'}</T>
+        <T v="h1">{mode === 'login' ? 'ยินดีต้อนรับ' : 'สร้างบัญชีใหม่'}</T>
         <T v="callout" color={ios.secondary} style={{ marginTop: 2 }}>
           {mode === 'login' ? 'เข้าสู่ระบบด้วยอีเมลหรือชื่อผู้ใช้' : 'สมัครฟรี ใช้คลังสมุนไพร ภูมิปัญญา และครูปัญญา AI'}
         </T>

@@ -27,7 +27,7 @@ export default function AskTab() {
   return (
     <View style={styles.page}>
       <AIFlower size={110} active />
-      <T v="h2" center style={{ marginTop: 8, fontWeight: '700' }}>ครูปัญญา</T>
+      <T v="h2" center style={{ marginTop: 8 }}>ครูปัญญา</T>
       <T v="callout" center color={palette.inkSoft} style={{ marginTop: 4 }}>ผู้ช่วย AI สำหรับหมอพื้นบ้าน</T>
       <Button label="เริ่มคุยกับครูปัญญา" onPress={() => router.push('/assistant')} style={{ marginTop: 24, alignSelf: 'stretch' }} />
     </View>
