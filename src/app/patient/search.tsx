@@ -150,51 +150,46 @@ function PatientSearchInner() {
             {searching ? `พบ ${results.length} ราย` : `ผู้ป่วยทั้งหมด ${patients.length} ราย`}
           </T>
 
-          <View style={{ gap: 10 }}>
-            {results.map((p, i) => {
-              const v = lastVisit(p);
-              const st = statusTone[p.status];
-              return (
-                <Animated.View key={p.id} entering={FadeInDown.delay(Math.min(i, 8) * 40).duration(260)}>
-                  <PressableScale
-                    scaleTo={0.98}
-                    haptic="select"
-                    onPress={() => {
-                      Keyboard.dismiss();
-                      if (q.trim()) logSearch(q);
-                      router.replace(`/patient/${p.id}`);
-                    }}
-                    style={[styles.card, elevation.e1]}
-                    accessibilityLabel={p.name}
-                  >
-                    {/* รูปพร้อมวงสีตามสถานะ */}
-                    <View style={[styles.ring, { borderColor: st.fg }]}>
-                      <Avatar name={p.name} src={avatars[p.id]} size={50} />
-                    </View>
-                    <View style={{ flex: 1, gap: 2 }}>
-                      <View style={styles.nameRow}>
-                        <View style={{ flex: 1 }}>
-                          <Hi text={p.name} q={q.trim()} bold />
-                        </View>
-                        <View style={[styles.status, { backgroundColor: st.bg }]}>
-                          <View style={[styles.statusDot, { backgroundColor: st.fg }]} />
-                          <T v="micro" color={st.fg}>{p.status}</T>
+          {/* รายชื่อแบบ iOS: การ์ดขาวใบเดียว แถวคั่นด้วยเส้นบาง */}
+          {results.length ? (
+            <View style={[styles.list, elevation.e1]}>
+              {results.map((p, i) => {
+                const v = lastVisit(p);
+                const st = statusTone[p.status];
+                return (
+                  <Animated.View key={p.id} entering={FadeInDown.delay(Math.min(i, 8) * 40).duration(260)}>
+                    {i ? <View style={styles.sep} /> : null}
+                    <PressableScale
+                      scaleTo={0.98}
+                      haptic="select"
+                      onPress={() => {
+                        Keyboard.dismiss();
+                        if (q.trim()) logSearch(q);
+                        router.replace(`/patient/${p.id}`);
+                      }}
+                      style={styles.row}
+                      accessibilityLabel={`${p.name} ${p.status}`}
+                    >
+                      {/* รูป + จุดสถานะมุมล่างขวา */}
+                      <View>
+                        <Avatar name={p.name} src={avatars[p.id]} size={52} />
+                        <View style={[styles.dot, { backgroundColor: st.fg }]} />
+                      </View>
+                      <View style={{ flex: 1, gap: 1 }}>
+                        <Hi text={p.name} q={q.trim()} bold />
+                        <Hi text={v ? v.diagnosis : 'ยังไม่มีการรักษา'} q={q.trim()} v="subhead" color={ios.secondary} />
+                        <View style={styles.meta}>
+                          <T v="caption" color={st.fg} style={{ fontWeight: '600' }}>{p.status}</T>
+                          <T v="caption" color={ios.tertiary}>· {p.sex} {p.age} ปี · ธาตุ{p.element}</T>
                         </View>
                       </View>
-                      <T v="subhead" color={ios.secondary}>{p.sex} · {p.age} ปี · ธาตุ{p.element}</T>
-                      <View style={styles.diag}>
-                        <Sym name="stethoscope" size={13} color={palette.primary} />
-                        <View style={{ flex: 1 }}>
-                          <Hi text={v ? v.diagnosis : 'ยังไม่มีการรักษา'} q={q.trim()} v="subhead" color={ios.label} />
-                        </View>
-                      </View>
-                    </View>
-                    <Sym name="chevron.right" size={13} color={ios.tertiary} weight="semibold" />
-                  </PressableScale>
-                </Animated.View>
-              );
-            })}
-          </View>
+                      <Sym name="chevron.right" size={13} color={ios.tertiary} weight="semibold" />
+                    </PressableScale>
+                  </Animated.View>
+                );
+              })}
+            </View>
+          ) : null}
 
           {searching && !results.length ? (
             <Animated.View entering={FadeIn} style={styles.empty}>
@@ -218,12 +213,11 @@ const styles = StyleSheet.create({
   cancelWrap: { position: 'absolute', right: 8 },
   cancel: { height: control.icon, paddingHorizontal: 8, justifyContent: 'center' },
   sec: { paddingHorizontal: 4, marginBottom: 8, marginTop: 16 },
-  status: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 9, paddingVertical: 3, borderRadius: 999 },
-  statusDot: { width: 6, height: 6, borderRadius: 3 },
-  card: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: palette.surface, borderRadius: 20, borderCurve: 'continuous', padding: 12, paddingRight: 14 },
-  ring: { padding: 2.5, borderRadius: 999, borderWidth: 2 },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  diag: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4, backgroundColor: palette.mint, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 5, alignSelf: 'flex-start', maxWidth: '100%' },
+  list: { backgroundColor: palette.surface, borderRadius: 20, borderCurve: 'continuous' },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 12, paddingLeft: 14, paddingRight: 16, minHeight: 76 },
+  sep: { height: StyleSheet.hairlineWidth, backgroundColor: ios.separator, marginLeft: 80 },
+  dot: { position: 'absolute', right: 0, bottom: 1, width: 14, height: 14, borderRadius: 7, borderWidth: 2.5, borderColor: palette.surface },
+  meta: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
   empty: { alignItems: 'center', paddingVertical: 40, gap: 2 },
 });
 
