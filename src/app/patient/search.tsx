@@ -9,14 +9,12 @@ import { Keyboard, ScrollView, StyleSheet, TextInput, View, useWindowDimensions 
 import Animated, { Easing, FadeIn, FadeInDown, interpolate, runOnJS, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Sym, ios } from '../../components/ios';
-import { Avatar, Chip, PressableScale, T } from '../../components/ui';
-import { avatars, lastVisit, type Patient } from '../../data/mock';
+import { Avatar, PressableScale, T } from '../../components/ui';
+import { avatars, lastVisit } from '../../data/mock';
 import { statusTone } from '../../data/tones';
 import { useApp } from '../../store/app';
 import { control, palette } from '../../theme';
 
-const SUGGEST = ['ปวดเข่า', 'ท้องอืด', 'หลังคลอด', 'นอนไม่หลับ', 'ความดัน'];
-const STATUS: Patient['status'][] = ['นัดวันนี้', 'ติดตามอาการ', 'ส่งต่อ รพ.สต.', 'หายดี'];
 
 /** ไฮไลต์คำที่ค้นในข้อความ */
 function Hi({ text, q, v = 'body', color = ios.label, bold }: { text: string; q: string; v?: 'body' | 'caption'; color?: string; bold?: boolean }) {
@@ -38,7 +36,6 @@ export default function PatientSearch() {
   const { patients } = useApp();
   const input = useRef<TextInput>(null);
   const [q, setQ] = useState('');
-  const [status, setStatus] = useState<Patient['status'] | null>(null);
 
   // 0 = ปุ่มวงกลม, 1 = ช่องค้นหาเต็มแถว
   const open = useSharedValue(0);
@@ -70,13 +67,12 @@ export default function PatientSearch() {
   const results = useMemo(() => {
     const k = q.trim().toLowerCase();
     return patients.filter((p) => {
-      if (status && p.status !== status) return false;
       if (!k) return true;
       const v = lastVisit(p);
       return [p.name, p.phone, p.chronic, v?.diagnosis, v?.symptoms, p.address.village].filter(Boolean).join(' ').toLowerCase().includes(k);
     });
-  }, [patients, q, status]);
-  const searching = !!q.trim() || !!status;
+  }, [patients, q]);
+  const searching = !!q.trim();
 
   return (
     <View style={[styles.page, { paddingTop: insets.top + 8 }]}>
@@ -111,28 +107,10 @@ export default function PatientSearch() {
 
       <Animated.View style={[{ flex: 1 }, bodySt]}>
         <ScrollView keyboardDismissMode="on-drag" keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 40 }} showsVerticalScrollIndicator={false}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -16 }} contentContainerStyle={{ gap: 8, paddingHorizontal: 16, paddingVertical: 14 }}>
-            {STATUS.map((s) => (
-              <Chip key={s} label={s} active={status === s} onPress={() => setStatus(status === s ? null : s)} />
-            ))}
-          </ScrollView>
 
-          {!searching ? (
-            <Animated.View entering={FadeIn}>
-              <T v="caption" color={ios.secondary} style={styles.sec}>ค้นหาบ่อย</T>
-              <View style={styles.suggest}>
-                {SUGGEST.map((s) => (
-                  <PressableScale key={s} haptic="select" onPress={() => setQ(s)} style={styles.sItem}>
-                    <Sym name="magnifyingglass" size={13} color={ios.secondary} />
-                    <T v="callout">{s}</T>
-                  </PressableScale>
-                ))}
-              </View>
-              <T v="caption" color={ios.secondary} style={[styles.sec, { marginTop: 22 }]}>ผู้ป่วยทั้งหมด {patients.length} ราย</T>
-            </Animated.View>
-          ) : (
-            <T v="caption" color={ios.secondary} style={styles.sec}>พบ {results.length} ราย</T>
-          )}
+          <T v="caption" color={ios.secondary} style={styles.sec}>
+            {searching ? `พบ ${results.length} ราย` : `ผู้ป่วยทั้งหมด ${patients.length} ราย`}
+          </T>
 
           <View style={styles.group}>
             {results.map((p, i) => {
@@ -184,9 +162,7 @@ const styles = StyleSheet.create({
   clear: { width: 30, height: 30, alignItems: 'center', justifyContent: 'center' },
   cancelWrap: { position: 'absolute', right: 8 },
   cancel: { height: control.icon, paddingHorizontal: 8, justifyContent: 'center' },
-  sec: { paddingHorizontal: 4, marginBottom: 8 },
-  suggest: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  sItem: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 36, paddingHorizontal: 14, borderRadius: 18, backgroundColor: '#F1F3EF' },
+  sec: { paddingHorizontal: 4, marginBottom: 8, marginTop: 16 },
   group: { backgroundColor: palette.surface, borderRadius: 18, borderCurve: 'continuous', overflow: 'hidden' },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 10, minHeight: 64 },
   sep: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: ios.separator },
