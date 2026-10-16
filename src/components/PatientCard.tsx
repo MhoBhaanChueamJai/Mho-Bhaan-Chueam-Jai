@@ -87,9 +87,11 @@ export function PatientCard({ p, avatar }: { p: Patient; avatar: number }) {
   return (
     <View style={{ height: ch + 20, alignItems: 'center' }}>
       <PressableScale haptic="press" scaleTo={0.98} onPress={toggle} accessibilityLabel={flipped ? 'พลิกกลับด้านหน้าบัตร' : 'พลิกดูธาตุเจ้าเรือน'}>
-        <Animated.View style={[{ width: cw, height: ch }, styles.cardShadow, tiltSt]}>
+        <Animated.View style={[{ width: cw, height: ch }, tiltSt]}>
           {/* ── ด้านหน้า ── */}
-          <Animated.View style={[styles.face, frontSt]}>
+          {/* เงาอยู่ที่แต่ละหน้า หมุนไปพร้อมบัตร (ไม่เหลือเงาค้างเป็นบัตรซ้อน) */}
+          <Animated.View style={[styles.faceOuter, frontSt]}>
+          <View style={styles.face}>
             <LinearGradient colors={['#FFFFFF', '#F2FAF6', '#E3F2EA']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
             {/* ลายวงจาง + แถบโฮโลแกรม */}
             <View style={[styles.ring, { width: ch * 1.3, height: ch * 1.3, right: -ch * 0.45, top: -ch * 0.35 }]} />
@@ -132,10 +134,12 @@ export function PatientCard({ p, avatar }: { p: Patient; avatar: number }) {
               <Sym name="arrow.triangle.2.circlepath" size={11} color="rgba(31,42,36,0.4)" />
             </View>
             <Glare />
+          </View>
           </Animated.View>
 
           {/* ── ด้านหลัง: ธาตุเจ้าเรือน ── */}
-          <Animated.View style={[styles.face, backSt]}>
+          <Animated.View style={[styles.faceOuter, backSt]}>
+          <View style={styles.face}>
             <LinearGradient colors={['#04150E', '#0B3B28', '#062218']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
             <View style={[styles.ring, { width: ch * 1.2, height: ch * 1.2, left: -ch * 0.5, bottom: -ch * 0.5, borderColor: 'rgba(124,240,168,0.06)' }]} />
             <View style={styles.backBody}>
@@ -165,6 +169,7 @@ export function PatientCard({ p, avatar }: { p: Patient; avatar: number }) {
               </View>
             </View>
             <Glare />
+          </View>
           </Animated.View>
         </Animated.View>
       </PressableScale>
@@ -173,9 +178,8 @@ export function PatientCard({ p, avatar }: { p: Patient; avatar: number }) {
 }
 
 const styles = StyleSheet.create({
-  // เงาเดียว นุ่ม (ไม่ซ้อน)
-  cardShadow: { borderRadius: 24, boxShadow: '0px 10px 24px rgba(11,61,38,0.14)' },
-  face: { ...StyleSheet.absoluteFillObject, borderRadius: 24, borderCurve: 'continuous', overflow: 'hidden', backfaceVisibility: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.8)' },
+  faceOuter: { ...StyleSheet.absoluteFillObject, borderRadius: 24, backfaceVisibility: 'hidden', boxShadow: '0px 10px 24px rgba(11,61,38,0.14)' },
+  face: { flex: 1, borderRadius: 24, borderCurve: 'continuous', overflow: 'hidden', backfaceVisibility: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.8)' },
   glare: { position: 'absolute' },
   ring: { position: 'absolute', borderRadius: 999, borderWidth: 18, borderColor: 'rgba(20,144,92,0.06)' },
   holo: { position: 'absolute', left: 0, right: 0, top: 48, height: 3 },
