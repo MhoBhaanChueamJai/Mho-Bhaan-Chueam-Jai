@@ -7,8 +7,9 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { AISphere } from '../components/AISphere';
 import { useSpeaker } from '../components/audio';
-import { Sym, ios } from '../components/ios';
+import { Sym } from '../components/ios';
 import { PressableScale, T } from '../components/ui';
+import { CircleIcon, ListRow, ListSection, PAGE_PAD } from '../components/ListRow';
 import { DIALECTS, type Dialect } from '../lib/dialect';
 import { useApp } from '../store/app';
 import { elevation, palette } from '../theme';
@@ -30,7 +31,7 @@ export default function AISettings() {
   const preview = () => (tts.speaking ? tts.stop() : tts.speak(GREETING[dialect]));
 
   return (
-    <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 48 }}>
+    <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingTop: 8, paddingBottom: 56 }}>
       {/* ก้อนแสงครูปัญญา */}
       <Animated.View entering={FadeInDown.springify().damping(20)} style={[styles.hero, elevation.e2]}>
         <AISphere size={170} active={tts.speaking} level={tts.level} />
@@ -43,36 +44,25 @@ export default function AISettings() {
       </Animated.View>
 
       {/* ภาษาพูด */}
-      <Animated.View entering={FadeInDown.delay(60).springify().damping(20)}>
-        <T v="h3" style={styles.secTitle}>ภาษาพูด</T>
-        <View style={[styles.card, elevation.e1]}>
-          {DIALECTS.map((d, i) => {
-            const on = dialect === d.id;
-            return (
-              <PressableScale
-                key={d.id}
-                haptic="select"
-                scaleTo={0.99}
-                onPress={() => {
-                  update({ dialect: d.id });
-                  tts.stop();
-                }}
-                style={[styles.row, i < DIALECTS.length - 1 && styles.sep]}
-                accessibilityRole="radio"
-                accessibilityState={{ selected: on }}
-                accessibilityLabel={d.label}
-              >
-                <View style={{ flex: 1 }}>
-                  <T v="body" color={on ? palette.primaryDeep : ios.label} style={{ fontWeight: on ? '600' : '400' }}>{d.label}</T>
-                  <T v="caption" color={ios.secondary}>{d.note}</T>
-                </View>
-                {on ? <Sym name="checkmark" size={17} color={palette.primary} weight="bold" /> : null}
-              </PressableScale>
-            );
-          })}
-        </View>
-        <T v="caption" color={ios.secondary} style={styles.footer}>ครูปัญญาจะฟังและเข้าใจภาษาที่เลือกได้แม่นขึ้น กดทดลองฟังเสียงเพื่อฟังคำทักทายในภาษานั้น</T>
-      </Animated.View>
+      <ListSection i={1} title="ภาษาพูด" footer="ครูปัญญาจะฟังและเข้าใจภาษาที่เลือกได้แม่นขึ้น กดทดลองฟังเสียงเพื่อฟังคำทักทายในภาษานั้น">
+        {DIALECTS.map((d, i) => {
+          const on = dialect === d.id;
+          return (
+            <ListRow
+              key={d.id}
+              icon={<CircleIcon name="bubble.left.and.bubble.right.fill" color={['#14905C', '#D9921A', '#7A5CC8', '#2A8C7A'][i]} />}
+              title={d.label}
+              subtitle={d.note}
+              onPress={() => {
+                update({ dialect: d.id });
+                tts.stop();
+              }}
+              right={on ? <Sym name="checkmark.circle.fill" size={24} color={palette.primary} /> : <View style={styles.radio} />}
+              last={i === DIALECTS.length - 1}
+            />
+          );
+        })}
+      </ListSection>
     </ScrollView>
   );
 }
@@ -81,9 +71,5 @@ const styles = StyleSheet.create({
   hero: { marginTop: 8, borderRadius: 26, borderCurve: 'continuous', backgroundColor: '#05090A', alignItems: 'center', paddingTop: 18, paddingBottom: 20, paddingHorizontal: 20, overflow: 'hidden' },
   listen: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 16, height: 46, paddingHorizontal: 22, borderRadius: 23, backgroundColor: 'rgba(255,255,255,0.14)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.4)' },
   listenOn: { backgroundColor: '#7CF0A8' },
-  secTitle: { marginTop: 26, marginBottom: 10, marginLeft: 4 },
-  card: { backgroundColor: palette.surface, borderRadius: 20, borderCurve: 'continuous' },
-  row: { flexDirection: 'row', alignItems: 'center', minHeight: 60, paddingHorizontal: 16, paddingVertical: 10 },
-  sep: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: ios.separator },
-  footer: { marginTop: 8, paddingHorizontal: 6 },
+  radio: { width: 24, height: 24, borderRadius: 12, borderWidth: 1.5, borderColor: 'rgba(60,60,67,0.25)' },
 });

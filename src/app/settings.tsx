@@ -6,9 +6,10 @@
 import { Stack, router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Alert, ScrollView, Share, StyleSheet, Switch, View } from 'react-native';
-import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSpeaker } from '../components/audio';
-import { AppIcon, Sym, ios } from '../components/ios';
+import { CircleIcon, ListRow, ListSection, PAGE_PAD } from '../components/ListRow';
+import { Sym, ios } from '../components/ios';
 import { Avatar, HeaderBack, PressableScale, T, useHaptic } from '../components/ui';
 import { avatars, doctor, doctorTypes, fullAddress } from '../data/mock';
 import { TYPE_LABEL } from './verify';
@@ -17,41 +18,9 @@ import { AISphere } from '../components/AISphere';
 import { supabase } from '../lib/supabase';
 import { useApp } from '../store/app';
 import { authenticateBiometric, biometricInfo, clearPin } from '../store/security';
-import { control, elevation, palette } from '../theme';
+import { elevation, palette } from '../theme';
 
 const enter = (i: number) => FadeInDown.delay(40 + i * 50).springify().damping(20);
-
-/** แถวรายการในการ์ด (แบบหน้า Settings ของ iPhone) */
-function Row({ icon, title, value, right, onPress, last, danger, chevron }: { icon?: React.ReactNode; title: string; value?: string; right?: React.ReactNode; onPress?: () => void; last?: boolean; danger?: boolean; chevron?: boolean }) {
-  const body = (
-    <View style={styles.row}>
-      {icon}
-      <View style={[styles.rowMain, !last && styles.sep]}>
-        <T v="body" color={danger ? palette.coral : ios.label} style={{ flex: 1 }} numberOfLines={1}>{title}</T>
-        {value ? <T v="subhead" color={ios.secondary}>{value}</T> : null}
-        {right}
-        {chevron ? <Sym name="chevron.right" size={13} color={ios.tertiary} weight="semibold" /> : null}
-      </View>
-    </View>
-  );
-  return onPress ? (
-    <PressableScale onPress={onPress} scaleTo={0.99} haptic="select">
-      {body}
-    </PressableScale>
-  ) : (
-    body
-  );
-}
-
-function Section({ title, footer, children, i }: { title: string; footer?: string; children: React.ReactNode; i: number }) {
-  return (
-    <Animated.View entering={enter(i)} layout={LinearTransition.springify().damping(20)} style={{ marginTop: 26 }}>
-      <T v="h3" style={styles.secTitle}>{title}</T>
-      {children}
-      {footer ? <T v="caption" color={ios.secondary} style={styles.secFooter}>{footer}</T> : null}
-    </Animated.View>
-  );
-}
 
 export default function Settings() {
   const { settings, update, patients, wisdoms, resetData, setUnlocked, profile, isPractitioner } = useApp();
@@ -64,7 +33,6 @@ export default function Settings() {
   const h = useHaptic();
   const type = doctorTypes.find((d) => d.key === settings.doctorType) ?? doctorTypes[0];
   const dialect = settings.dialect ?? 'central';
-  const types = isPractitioner ? (profile?.healer_types?.length ? profile.healer_types.map((t) => TYPE_LABEL[t] ?? t).join(' · ') : type.label) : null;
 
   const exportAll = () => {
     const text = patients
@@ -124,91 +92,71 @@ export default function Settings() {
   return (
     <>
       <Stack.Screen options={{ headerLeft: () => <HeaderBack fallback="/home" color={palette.primary} /> }} />
-      <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 56 }} showsVerticalScrollIndicator={false}>
-        {/* ── โปรไฟล์ ── */}
+      <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingTop: 8, paddingBottom: 64 }} showsVerticalScrollIndicator={false}>
+        {/* ── โปรไฟล์: แถวบัญชีแบบ iPhone (รูปซ้าย · ชื่อ/อีเมล/สถานะ · ลูกศร) กดเพื่อดูข้อมูลส่วนตัว ── */}
         <Animated.View entering={enter(0)}>
-        <PressableScale haptic="select" scaleTo={0.98} onPress={() => router.push('/profile')} style={[styles.card, styles.profile, elevation.e1]} accessibilityLabel="ดูข้อมูลส่วนตัว">
-          <View style={styles.profileMore}>
-            <T v="caption" color={palette.primary} style={{ fontWeight: '600' }}>ข้อมูลส่วนตัว</T>
-            <Sym name="chevron.right" size={11} color={palette.primary} weight="semibold" />
-          </View>
-          <View style={styles.avatarRing}>
-            <Avatar name={displayName} src={avatars.doctor} size={84} />
-          </View>
-          <T v="h2" center style={{ marginTop: 12 }}>{displayName}</T>
-          {profile?.email ? <T v="subhead" color={ios.secondary} center>{profile.email}</T> : null}
-          <View style={[styles.badge, { backgroundColor: isPractitioner ? palette.primarySoft : '#FBEFD9' }]}>
-            <Sym name={isPractitioner ? 'checkmark.seal.fill' : 'person.fill'} size={14} color={isPractitioner ? palette.primary : palette.orange} />
-            <T v="subhead" color={isPractitioner ? palette.primaryDeep : '#8A5A10'} style={{ fontWeight: '600' }}>
-              {isPractitioner ? 'หมอพื้นบ้านที่ได้รับการรับรอง' : 'สมาชิกทั่วไป'}
-            </T>
-          </View>
-          {isPractitioner ? (
-            <View style={styles.certBox}>
-              {types ? <T v="subhead" center>{types}</T> : null}
-              <T v="caption" color={ios.secondary} center>
-                {profile?.cert_number ? `เลขที่ ${profile.cert_number}${profile.cert_province ? ` · ${profile.cert_province}` : ''}${profile.cert_expiry ? ` · หมดอายุ ${profile.cert_expiry}` : ''}` : doctor.license}
-              </T>
+          <PressableScale haptic="select" scaleTo={0.98} onPress={() => router.push('/profile')} style={[styles.card, styles.profile, elevation.e1]} accessibilityLabel="ดูข้อมูลส่วนตัว">
+            <View style={styles.avatarRing}>
+              <Avatar name={displayName} src={avatars.doctor} size={68} />
             </View>
-          ) : (
-            <PressableScale haptic="press" onPress={() => router.push('/verify')} style={styles.verifyBtn} accessibilityLabel="ยืนยันตัวตนหมอพื้นบ้าน">
-              <Sym name="person.badge.shield.checkmark.fill" size={18} color="#FFFFFF" />
-              <T v="bodyStrong" color="#FFFFFF">ยืนยันตัวตนหมอพื้นบ้าน</T>
-            </PressableScale>
-          )}
-        </PressableScale>
-        </Animated.View>
-
-        {/* ── ตั้งค่า AI (หน้าของตัวเอง) ── */}
-        <Section i={1} title="ครูปัญญา AI">
-          <View style={[styles.card, elevation.e1]}>
-            <Row
-              icon={<View style={styles.aiIcon}><AISphere size={30} active={false} /></View>}
-              title="ตั้งค่า AI"
-              value={DIALECTS.find((d) => d.id === dialect)?.label}
-              onPress={() => router.push('/ai-settings')}
-              chevron
-              last
-            />
-          </View>
-        </Section>
-
-        {/* ── ความปลอดภัย ── */}
-        <Section
-          i={2}
-          title="ความปลอดภัย"
-          footer={settings.pinEnabled || settings.faceIdEnabled ? 'กลับมาหลังออกจากแอปเกิน 1 นาที ต้องปลดล็อกก่อนใช้งาน' : 'ตั้งรหัส PIN หรือ Face ID เพื่อป้องกันข้อมูลผู้ป่วย'}
-        >
-          <View style={[styles.card, elevation.e1]}>
-            <Row icon={<AppIcon name="lock.shield.fill" bg={palette.primary} />} title="รหัส PIN" right={<Switch value={settings.pinEnabled} onValueChange={togglePin} trackColor={{ true: palette.primary }} />} />
-            {settings.pinEnabled ? <Row icon={<AppIcon name="key.fill" bg="#5E6B63" />} title="เปลี่ยนรหัส PIN" onPress={() => router.push({ pathname: '/pin-setup', params: { mode: 'change' } })} chevron /> : null}
-            <Row
-              icon={<AppIcon name={bio.icon} bg="#2A8C7A" />}
-              title={bio.label}
-              value={bio.available ? undefined : 'ไม่พร้อมใช้งาน'}
-              last
-              right={bio.available ? <Switch value={settings.faceIdEnabled} onValueChange={toggleFace} trackColor={{ true: palette.primary }} /> : undefined}
-            />
-          </View>
-        </Section>
-
-        {/* ── ข้อมูล ── */}
-        <Section i={3} title="ข้อมูล" footer={`ผู้ป่วย ${patients.length} ราย · ภูมิปัญญา ${wisdoms.length} เรื่อง`}>
-          <View style={[styles.card, elevation.e1]}>
-            <Row icon={<AppIcon name="square.and.arrow.up" bg={palette.primary} />} title="ส่งออกข้อมูลผู้ป่วย" onPress={exportAll} chevron />
-            <Row icon={<AppIcon name="hand.raised.fill" bg="#007AFF" />} title="นโยบายความเป็นส่วนตัว" onPress={() => router.push('/privacy')} chevron last />
-          </View>
-        </Section>
-
-        {/* ── ออกจากระบบ ── */}
-        <Animated.View entering={enter(4)}>
-          <PressableScale onPress={logout} scaleTo={0.98} haptic="press" style={[styles.card, styles.logout, elevation.e1]} accessibilityLabel="ออกจากระบบ">
-            <Sym name="rectangle.portrait.and.arrow.right" size={18} color={palette.coral} />
-            <T v="bodyStrong" color={palette.coral}>ออกจากระบบ</T>
+            <View style={{ flex: 1, gap: 3 }}>
+              <T v="title" numberOfLines={1} style={{ fontSize: 19, lineHeight: 26 }}>{displayName}</T>
+              {profile?.email ? <T v="subhead" color={ios.secondary} numberOfLines={1}>{profile.email}</T> : null}
+              <View style={[styles.badge, { backgroundColor: isPractitioner ? palette.primarySoft : '#FBEFD9' }]}>
+                <Sym name={isPractitioner ? 'checkmark.seal.fill' : 'person.fill'} size={12} color={isPractitioner ? palette.primary : palette.orange} />
+                <T v="caption" color={isPractitioner ? palette.primaryDeep : '#8A5A10'} style={{ fontWeight: '700' }}>
+                  {isPractitioner ? 'หมอพื้นบ้านที่ได้รับการรับรอง' : 'สมาชิกทั่วไป'}
+                </T>
+              </View>
+            </View>
+            <Sym name="chevron.right" size={14} color={ios.tertiary} weight="semibold" />
           </PressableScale>
         </Animated.View>
 
-        <T v="caption" color={ios.tertiary} center style={{ marginTop: 20, paddingHorizontal: 24 }}>
+        {/* สมาชิกทั่วไป: ชวนยืนยันตัวตน */}
+        {!isPractitioner ? (
+          <ListSection i={1}>
+            <ListRow icon={<CircleIcon name="person.badge.shield.checkmark.fill" color={palette.orange} />} title="ยืนยันตัวตนหมอพื้นบ้าน" subtitle="เพื่อใช้งานการรักษาและบันทึกข้อมูลผู้ป่วย" onPress={() => router.push('/verify')} chevron last />
+          </ListSection>
+        ) : null}
+
+        {/* ── ครูปัญญา AI ── */}
+        <ListSection i={1} title="ครูปัญญา AI">
+          <ListRow
+            icon={<View style={styles.aiIcon}><AISphere size={42} active={false} /></View>}
+            title="ตั้งค่า AI"
+            subtitle={`ภาษาพูด: ${DIALECTS.find((d) => d.id === dialect)?.label ?? 'ภาษากลาง'}`}
+            onPress={() => router.push('/ai-settings')}
+            chevron
+            last
+          />
+        </ListSection>
+
+        {/* ── ความปลอดภัย ── */}
+        <ListSection i={2} title="ความปลอดภัย" footer={settings.pinEnabled || settings.faceIdEnabled ? 'กลับมาหลังออกจากแอปเกิน 1 นาที ต้องปลดล็อกก่อนใช้งาน' : 'ตั้งรหัส PIN หรือ Face ID เพื่อป้องกันข้อมูลผู้ป่วย'}>
+          <ListRow icon={<CircleIcon name="lock.fill" color={palette.primary} />} title="รหัส PIN" subtitle={settings.pinEnabled ? 'เปิดอยู่' : 'ยังไม่ได้ตั้ง'} right={<Switch value={settings.pinEnabled} onValueChange={togglePin} trackColor={{ true: palette.primary }} />} />
+          {settings.pinEnabled ? <ListRow icon={<CircleIcon name="key.fill" color="#5E6B63" />} title="เปลี่ยนรหัส PIN" onPress={() => router.push({ pathname: '/pin-setup', params: { mode: 'change' } })} chevron /> : null}
+          <ListRow
+            icon={<CircleIcon name={bio.icon} color="#2A8C7A" />}
+            title={bio.label}
+            subtitle={bio.available ? 'ปลดล็อกแอปด้วยใบหน้า' : 'ไม่พร้อมใช้งานบนเครื่องนี้'}
+            last
+            right={bio.available ? <Switch value={settings.faceIdEnabled} onValueChange={toggleFace} trackColor={{ true: palette.primary }} /> : undefined}
+          />
+        </ListSection>
+
+        {/* ── ข้อมูล ── */}
+        <ListSection i={3} title="ข้อมูล">
+          <ListRow icon={<CircleIcon name="square.and.arrow.up" color="#3B7DD8" />} title="ส่งออกข้อมูลผู้ป่วย" subtitle={`ผู้ป่วย ${patients.length} ราย · ภูมิปัญญา ${wisdoms.length} เรื่อง`} onPress={exportAll} chevron />
+          <ListRow icon={<CircleIcon name="hand.raised.fill" color="#7A5CC8" />} title="นโยบายความเป็นส่วนตัว" onPress={() => router.push('/privacy')} chevron last />
+        </ListSection>
+
+        {/* ── ออกจากระบบ ── */}
+        <ListSection i={4}>
+          <ListRow icon={<CircleIcon name="rectangle.portrait.and.arrow.right" color={palette.coral} />} title="ออกจากระบบ" danger onPress={logout} last />
+        </ListSection>
+
+        <T v="caption" color={ios.tertiary} center style={{ marginTop: 28, paddingHorizontal: 24, lineHeight: 20 }}>
           หมอบ้านเชื่อมใจ เวอร์ชัน 1.0{'\n'}คำแนะนำจากครูปัญญาเป็นข้อมูลเบื้องต้น ไม่ใช่การวินิจฉัยแทนแพทย์
         </T>
       </ScrollView>
@@ -217,18 +165,9 @@ export default function Settings() {
 }
 
 const styles = StyleSheet.create({
-  card: { backgroundColor: palette.surface, borderRadius: 20, borderCurve: 'continuous' },
-  profile: { alignItems: 'center', paddingVertical: 22, paddingHorizontal: 18, marginTop: 8 },
-  profileMore: { position: 'absolute', top: 14, right: 14, flexDirection: 'row', alignItems: 'center', gap: 3 },
-  avatarRing: { padding: 4, borderRadius: 999, backgroundColor: palette.primarySoft },
-  badge: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999 },
-  certBox: { marginTop: 12, alignSelf: 'stretch', backgroundColor: palette.mint, borderRadius: 14, paddingVertical: 10, paddingHorizontal: 12, gap: 2 },
-  verifyBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14, height: 48, paddingHorizontal: 20, borderRadius: 24, backgroundColor: palette.primary },
-  secTitle: { marginBottom: 10, marginLeft: 4 },
-  secFooter: { paddingHorizontal: 6, marginTop: 8 },
-  aiIcon: { width: 30, height: 30, borderRadius: 8, backgroundColor: '#05090A', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
-  row: { flexDirection: 'row', alignItems: 'center', paddingLeft: 16, gap: 14 },
-  rowMain: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: control.row, paddingRight: 16, paddingVertical: 8 },
-  sep: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: ios.separator },
-  logout: { marginTop: 26, minHeight: 54, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  card: { backgroundColor: palette.surface, borderRadius: 22, borderCurve: 'continuous' },
+  profile: { flexDirection: 'row', alignItems: 'center', gap: 16, paddingVertical: 20, paddingHorizontal: 18 },
+  avatarRing: { padding: 3, borderRadius: 999, backgroundColor: palette.primarySoft },
+  badge: { flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'flex-start', marginTop: 4, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
+  aiIcon: { width: 42, height: 42, borderRadius: 21, backgroundColor: '#05090A', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
 });
