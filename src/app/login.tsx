@@ -167,8 +167,8 @@ export default function Login() {
   return (
     <View style={styles.root}>
       {/* ── ส่วนบน: อินโทรเปิดตัวแอปแบบ keynote ── */}
-      <Pressable onPress={Keyboard.dismiss} accessible={false} style={{ height: heroH, paddingTop: insets.top }}>
-        <KeynoteIntro width={width} height={heroH - insets.top} />
+      <Pressable onPress={Keyboard.dismiss} accessible={false} style={{ height: heroH }}>
+        <KeynoteIntro width={width} height={heroH - insets.top} inset={insets.top} />
       </Pressable>
 
       {/* ── ส่วนล่าง: กรอกข้อมูลเข้าสู่ระบบ ── */}

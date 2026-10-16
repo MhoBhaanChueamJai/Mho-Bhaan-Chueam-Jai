@@ -63,7 +63,8 @@ function Phone({ t, src, w, h, from, x, rotY, z, delay }: { t: SharedValue<numbe
   );
 }
 
-export function KeynoteIntro({ width, height }: { width: number; height: number }) {
+/** inset = ความสูง status bar: พื้นหลังลากเต็มถึงขอบบน ส่วนเนื้อหาเลื่อนลงพ้นแถบ */
+export function KeynoteIntro({ width, height, inset = 0 }: { width: number; height: number; inset?: number }) {
   const t = useSharedValue(0);
   useEffect(() => {
     t.value = withRepeat(withTiming(1, { duration: LOOP, easing: Easing.linear }), -1, false);
@@ -109,15 +110,15 @@ export function KeynoteIntro({ width, height }: { width: number; height: number 
   const phonesTop = height * 0.22;
 
   return (
-    <View style={{ width, height, overflow: 'hidden' }}>
+    <View style={{ width, height: height + inset, overflow: 'hidden' }}>
       <LinearGradient colors={['#071A11', '#0E3524', '#0B2A1C']} locations={[0, 0.55, 1]} style={StyleSheet.absoluteFill} />
       <Canvas style={StyleSheet.absoluteFill}>
-        <Circle cx={cx} cy={cy} r={bloomR} opacity={bloomO}>
-          <RadialGradient c={vec(cx, cy)} r={width * 0.8} colors={['rgba(94,214,150,0.55)', 'rgba(46,125,87,0.25)', 'rgba(14,53,36,0)']} />
+        <Circle cx={cx} cy={cy + inset} r={bloomR} opacity={bloomO}>
+          <RadialGradient c={vec(cx, cy + inset)} r={width * 0.8} colors={['rgba(94,214,150,0.55)', 'rgba(46,125,87,0.25)', 'rgba(14,53,36,0)']} />
           <BlurMask blur={30} style="normal" />
         </Circle>
       </Canvas>
-
+      <View style={{ position: 'absolute', top: inset, left: 0, width, height }}>
       {/* ไอคอน + แสงวาบ */}
       <Animated.View style={[styles.center, { top: cy - 52 }, iconSt]}>
         <View style={styles.iconWrap}>
@@ -145,6 +146,7 @@ export function KeynoteIntro({ width, height }: { width: number; height: number 
       <Animated.View style={[styles.center, { bottom: 40 }, capSt]}>
         <Text style={styles.caption}>พูด · บันทึก · ดูแล  ในแอปเดียว</Text>
       </Animated.View>
+      </View>
     </View>
   );
 }
