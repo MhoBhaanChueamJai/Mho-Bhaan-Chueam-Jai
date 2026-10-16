@@ -164,7 +164,7 @@ herbs ไม่เกิน 3 รายการ รายการอื่น�
         );
         setStep(3);
         setPatient(r);
-        if (settings.autoSpeak) tts.speak(`กรอกแบบ ม.บ.5 ให้แล้วครับ ${r.summary} วินิจฉัยเบื้องต้นว่า ${r.visit.diagnosis} ${r.cautions[0] ?? ''}`);
+        if (settings.autoSpeak) tts.speak(`บันทึกการรักษาให้แล้วครับ ${r.summary} วินิจฉัยเบื้องต้นว่า ${r.visit.diagnosis} ${r.cautions[0] ?? ''}`);
       } else {
         const r = await chatJSON<WisdomResult>(
           [
@@ -454,7 +454,7 @@ herbs ไม่เกิน 3 รายการ รายการอื่น�
           ) : (
             <View style={{ flex: 1, flexDirection: 'row', gap: 8 }}>
               <Button style={{ flex: 1 }} kind="secondary" label="เล่าเพิ่ม" icon={<Mic size={20} color={palette.primary} />} onPress={continueInterview} />
-              <Button style={{ flex: 1.4 }} label={saved ? 'บันทึกแล้ว' : 'บันทึก ม.บ.5'} kind={saved ? 'secondary' : 'primary'} icon={<Check size={20} color={saved ? palette.primary : palette.white} />} onPress={saved ? undefined : saveMB5} />
+              <Button style={{ flex: 1.4 }} label={saved ? 'บันทึกแล้ว' : 'บันทึกการรักษา'} kind={saved ? 'secondary' : 'primary'} icon={<Check size={20} color={saved ? palette.primary : palette.white} />} onPress={saved ? undefined : saveMB5} />
             </View>
           )}
           <PressableScale onPress={() => { setTranscript(''); setPatient(null); setWisdom(null); setSaved(false); autoStarted.current = false; setStage('listening'); }} style={styles.sideBtn} accessibilityLabel="เริ่มใหม่">
@@ -505,7 +505,7 @@ function PatientView({ r }: { r: PatientResult }) {
   const v = r.visit;
   return (
     <>
-      <Section i={0} title="แบบ ม.บ.5 · ข้อมูลทั่วไป" icon={<Stethoscope size={20} color={palette.primary} />}>
+      <Section i={0} title="ข้อมูลผู้ป่วย" icon={<Stethoscope size={20} color={palette.primary} />}>
         <MB5Row label="ชื่อ-สกุล" value={g.name} />
         <MB5Row label="เพศ / อายุ" value={[g.sex, g.age && `${String(g.age).replace(/[^0-9]/g, '')} ปี`].filter(Boolean).join(' / ')} />
         <MB5Row label="ที่อยู่" value={g.address} />
@@ -514,7 +514,7 @@ function PatientView({ r }: { r: PatientResult }) {
         <MB5Row label="การแพ้ยา/อาหาร" value={g.allergies} />
         <MB5Row label="น้ำหนัก / ส่วนสูง" value={[g.weight && `${String(g.weight).replace(/[^0-9.]/g, '')} กก.`, g.height && `${String(g.height).replace(/[^0-9.]/g, '')} ซม.`].filter(Boolean).join(' / ')} />
       </Section>
-      <Section i={1} title="แบบ ม.บ.5 · ทะเบียนการรักษา" icon={<Check size={20} color={palette.primary} />}>
+      <Section i={1} title="การรักษาครั้งนี้" icon={<Check size={20} color={palette.primary} />}>
         <MB5Row label="ว/ด/ป" value={new Date().toLocaleDateString('th-TH')} />
         <MB5Row label="อาการเจ็บป่วย" value={v.symptoms} />
         <MB5Row label="ตรวจร่างกาย" value={v.exam} />
@@ -540,7 +540,7 @@ function PatientView({ r }: { r: PatientResult }) {
         {r.cautions.map((a) => <Bullet key={a} text={a} />)}
         {r.redFlags.map((a) => <Bullet key={a} text={`ส่งต่อทันที: ${a}`} color={palette.coral} />)}
       </Section>
-      <Section i={4} title="ครูปัญญาขอข้อมูลเพิ่มให้ครบ ม.บ.5" tint={palette.violet} icon={<HelpCircle size={20} color={palette.violet} />}>
+      <Section i={4} title="ครูปัญญาขอข้อมูลเพิ่ม" tint={palette.violet} icon={<HelpCircle size={20} color={palette.violet} />}>
         {r.askMore.map((a) => <Bullet key={a} text={a} />)}
         <T v="caption" color={palette.inkMute} style={{ marginTop: 6 }}>แตะ “เล่าเพิ่ม” เพื่อเติมข้อมูลที่ยังขาด</T>
       </Section>

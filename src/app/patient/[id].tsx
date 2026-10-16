@@ -14,7 +14,7 @@ import { elementColor, palette } from '../../theme';
 /** ข้อความสำหรับส่งออก (รูปแบบทะเบียนการรักษาของกรมการแพทย์แผนไทยฯ) */
 function exportText(p: Patient) {
   const head = [
-    'ทะเบียนการรักษา ประวัติการรักษา และผลการรักษาผู้ป่วย (แบบ ม.บ.5)',
+    'ทะเบียนการรักษา ประวัติการรักษา และผลการรักษาผู้ป่วย',
     '',
     `ชื่อ-สกุล ${p.name}  เพศ ${p.sex}  อายุ ${p.age} ปี`,
     `ที่อยู่ ${fullAddress(p.address)}`,
@@ -101,7 +101,8 @@ function PatientDetailInner() {
   const st = statusTone[p.status];
   const bmi = p.weight && p.height ? p.weight / (p.height / 100) ** 2 : 0;
   const share = () => Share.share({ message: exportText(p), title: p.name });
-  const record = () => router.push({ pathname: '/capture', params: { mode: 'patient', pid: p.id } });
+  // บันทึกการรักษาด้วยเสียง (ครูปัญญาถามทีละเรื่อง)
+  const record = () => router.push({ pathname: '/patient/visit', params: { pid: p.id } });
 
   return (
     <>
