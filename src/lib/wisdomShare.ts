@@ -48,3 +48,18 @@ export async function shareWisdom(w: Wisdom, fromName: string) {
   });
   return code;
 }
+
+/** ข้อความใน QR: ลิงก์เปิดแอปพร้อมรหัส (สแกนด้วยกล้องในแอป หรือกล้องมือถือก็ได้) */
+export const qrPayload = (code: string) => `suebsan://wisdom/receive?code=${code}`;
+/** อ่านรหัสจากข้อความที่สแกนได้ (ลิงก์ หรือรหัสเปล่า) */
+export function codeFromScan(data: string): string | null {
+  const m = data.match(/[?&]code=([A-Za-z0-9-]+)/);
+  const c = cleanCode(m ? m[1] : data);
+  return c.length === 8 ? c : null;
+}
+/** แชร์ต่อผ่านแอปอื่น (LINE ฯลฯ) ด้วยรหัสที่สร้างแล้ว */
+export async function shareCodeText(title: string, fromName: string, code: string) {
+  await Share.share({
+    message: `📜 ${fromName} แชร์ตำรา "${title}" ให้คุณ\n\nเปิดแอปหมอบ้านเชื่อมใจ → คลังภูมิ → สแกนรับตำรา หรือกรอกรหัส\n${prettyCode(code)}\n\nหรือเปิดลิงก์: ${WEB}/wisdom/receive?code=${code}\n(รหัสใช้ได้ 30 วัน)`,
+  });
+}

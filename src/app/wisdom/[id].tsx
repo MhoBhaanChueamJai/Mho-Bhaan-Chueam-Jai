@@ -1,14 +1,13 @@
 import { Image } from 'expo-image';
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { AlertTriangle, BadgeCheck, Volume2, VolumeX } from '../../components/icons';
-import React, { useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, View } from 'react-native';
+import React from 'react';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSpeaker } from '../../components/audio';
 import { Backdrop, Badge, Button, Card, GlassDock, HeaderBack, HeaderButton, T } from '../../components/ui';
 import { Sym } from '../../components/ios';
-import { shareWisdom } from '../../lib/wisdomShare';
 import { manuscriptImage } from '../../data/herbs';
 import { doctor } from '../../data/mock';
 import { useApp } from '../../store/app';
@@ -16,24 +15,12 @@ import { palette, radius, space } from '../../theme';
 
 export default function WisdomDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { wisdoms, profile } = useApp();
-  const [sharing, setSharing] = useState(false);
+  const { wisdoms } = useApp();
   const w = wisdoms.find((x) => x.id === id) ?? wisdoms[0];
   const insets = useSafeAreaInsets();
   const tts = useSpeaker();
-  /** แชร์ให้เพื่อนหมอ: สร้างรหัสแชร์ แล้วเปิดเมนูแชร์ของระบบ */
-  const share = async () => {
-    if (sharing) return;
-    setSharing(true);
-    try {
-      const me = profile?.display_name || [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || doctor.name;
-      await shareWisdom(w, me);
-    } catch {
-      Alert.alert('แชร์ไม่สำเร็จ', 'ตรวจสอบการเชื่อมต่ออินเทอร์เน็ต แล้วลองใหม่อีกครั้ง');
-    } finally {
-      setSharing(false);
-    }
-  };
+  /** แชร์ให้เพื่อนหมอ: เปิดหน้าคิวอาร์โค้ด (เพื่อนสแกนรับ) + ส่งต่อทาง LINE ได้ */
+  const share = () => router.push({ pathname: '/wisdom/share', params: { id: w.id } });
   const read = [w.title, w.summary, w.ingredients?.join(' '), w.method, w.caution].filter(Boolean).join(' ');
 
   return (
@@ -42,7 +29,7 @@ export default function WisdomDetail() {
       <Stack.Screen options={{ headerShown: true, title: w.kind, headerTransparent: true, headerShadowVisible: false, headerTintColor: palette.primary, headerBackVisible: false, headerLeft: () => <HeaderBack fallback="/vault" color={palette.primary} />,
           headerRight: () => (
             <HeaderButton label="แชร์ตำราให้เพื่อน" onPress={share}>
-              {sharing ? <ActivityIndicator color={palette.primary} /> : <Sym name="square.and.arrow.up" size={19} color={palette.primary} weight="semibold" />}
+              <Sym name="qrcode" size={19} color={palette.primary} weight="semibold" />
             </HeaderButton>
           ),
         }}

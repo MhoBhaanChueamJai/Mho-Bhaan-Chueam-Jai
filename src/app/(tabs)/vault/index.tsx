@@ -1,17 +1,20 @@
 /**
  * แท็บคลังภูมิปัญญา — สมุดข่อยดิจิทัลของคุณหมอ
- * บนสุด: การ์ดภาพใหญ่เลื่อนแนวนอน (เรื่องล่าสุด) → ปุ่มลัดวงกลม 3 ปุ่ม (เล่าด้วยเสียง · สแกนตำรา · รับจากเพื่อน)
- * → รายการทั้งหมด (ไอคอนวงกลมตามประเภท)
+ * Hero: พื้นหลังสันหนังสือ/ตำราเรียงบนหิ้ง (เบลอ) + ชื่อหน้า + ชิปประเภทตำรา (กรองรายการ) + ปุ่มเพิ่ม · สแกน QR รับตำรา
+ * → เรื่องล่าสุด (การ์ดภาพใหญ่เลื่อนแนวนอน) → รายการทั้งหมด
  */
+import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Stack, router } from 'expo-router';
-import React from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { setStatusBarStyle } from 'expo-status-bar';
+import React, { useCallback, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, View, type ImageSourcePropType } from 'react-native';
-import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeInDown, LinearTransition } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CircleIcon } from '../../../components/ListRow';
 import { Sym, ios } from '../../../components/ios';
-import { HeaderButton, PressableScale, T } from '../../../components/ui';
+import { PressableScale, T } from '../../../components/ui';
 import { herbs } from '../../../data/herbs';
 import { legacy, type Wisdom } from '../../../data/mock';
 import { useApp } from '../../../store/app';
@@ -23,9 +26,11 @@ const KIND: Record<Wisdom['kind'], { icon: string; color: string }> = {
   'คาถา/พิธี': { icon: 'sparkles', color: '#8A5CD0' },
   ตำราโบราณ: { icon: 'scroll.fill', color: '#B07A2A' },
 };
+const KINDS = Object.keys(KIND) as Wisdom['kind'][];
 const SOURCE_ICON: Record<Wisdom['source'], string> = { เสียงเล่า: 'waveform', สแกนตำรา: 'doc.viewfinder', พิมพ์เอง: 'pencil', เพื่อนแชร์: 'person.2.fill' };
 
 const COVER = {
+  shelf: require('../../../../assets/vault/shelf.jpg'),
   hands: require('../../../../assets/vault/hands.jpg'),
   herbs: require('../../../../assets/vault/herbs.jpg'),
   manuscript: require('../../../../assets/vault/manuscript.jpg'),
@@ -40,15 +45,9 @@ function coverOf(w: Wisdom): ImageSourcePropType {
   return h ? h.image : COVER.hands;
 }
 
-const ACTIONS = [
-  { label: 'เล่าด้วยเสียง', icon: 'mic.fill', color: palette.primary, go: '/wisdom/voice' },
-  { label: 'สแกนตำรา', icon: 'doc.viewfinder', color: '#B07A2A', go: '/scan' },
-  { label: 'รับจากเพื่อน', icon: 'tray.and.arrow.down.fill', color: '#3B7DD8', go: '/wisdom/receive' },
-] as const;
-
 function Feature({ w, i }: { w: Wisdom; i: number }) {
   return (
-    <Animated.View entering={FadeInDown.delay(60 + i * 60).duration(380)}>
+    <Animated.View entering={FadeInDown.delay(40 + i * 50).duration(340)}>
       <PressableScale scaleTo={0.97} haptic="select" onPress={() => router.push(`/wisdom/${w.id}`)} style={[styles.feature, elevation.e2]} accessibilityLabel={w.title}>
         <View style={styles.featureClip}>
           <Image source={coverOf(w)} style={StyleSheet.absoluteFill} contentFit="cover" transition={250} />
@@ -80,106 +79,152 @@ function Feature({ w, i }: { w: Wisdom; i: number }) {
 
 export default function Vault() {
   const { wisdoms } = useApp();
+  const insets = useSafeAreaInsets();
+  const [kind, setKind] = useState<Wisdom['kind'] | 'all'>('all');
   const recorded = legacy.recorded + Math.max(0, wisdoms.length - 3);
-  const latest = wisdoms.slice(0, 6);
+  const list = useMemo(() => (kind === 'all' ? wisdoms : wisdoms.filter((w) => w.kind === kind)), [wisdoms, kind]);
+  const count = (k: Wisdom['kind']) => wisdoms.filter((w) => w.kind === k).length;
+
+  // แถบสถานะตัวอักษรขาวบน Hero (คืนค่าเมื่อออกจากแท็บ)
+  useFocusEffect(
+    useCallback(() => {
+      setStatusBarStyle('light');
+      return () => setStatusBarStyle('dark');
+    }, []),
+  );
 
   return (
-    <>
-      <Stack.Screen
-        options={{
-          headerRight: () => (
-            <View style={{ flexDirection: 'row', gap: 4 }}>
-              <HeaderButton label="ค้นหาภูมิปัญญา" onPress={() => router.push('/wisdom/search')}>
-                <Sym name="magnifyingglass" size={20} color={palette.primary} weight="semibold" />
-              </HeaderButton>
-              <HeaderButton label="เพิ่มภูมิปัญญา" onPress={() => router.push('/wisdom/new')}>
-                <Sym name="plus" size={20} color={palette.primary} weight="semibold" />
-              </HeaderButton>
-            </View>
-          ),
-        }}
-      />
-      <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
-        <T v="callout" color={ios.secondary} style={styles.sub}>สมุดข่อยดิจิทัล · บันทึกแล้ว {recorded} เรื่อง</T>
+    <ScrollView contentInsetAdjustmentBehavior="never" style={{ backgroundColor: palette.bg }} contentContainerStyle={{ paddingBottom: 130 }} showsVerticalScrollIndicator={false}>
+      {/* ── Hero: สันหนังสือบนหิ้ง (เบลอ) ── */}
+      <View style={[styles.hero, { paddingTop: insets.top + 10 }]}>
+        <Image source={COVER.shelf} style={StyleSheet.absoluteFill} contentFit="cover" />
+        <BlurView intensity={18} tint="dark" style={StyleSheet.absoluteFill} />
+        <LinearGradient colors={['rgba(6,20,13,0.55)', 'rgba(6,20,13,0.35)', 'rgba(6,20,13,0.88)']} locations={[0, 0.4, 1]} style={StyleSheet.absoluteFill} />
 
-        {/* เรื่องล่าสุด: การ์ดภาพใหญ่เลื่อนแนวนอน (เงาไม่โดนตัด: เผื่อ padding ในแถบเลื่อน) */}
-        {latest.length ? (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} decelerationRate="fast" snapToInterval={CARD_W + 14} snapToAlignment="start" contentContainerStyle={styles.rail} style={styles.railBox}>
-            {latest.map((w, i) => (
+        <View style={styles.heroTop}>
+          <View style={styles.eyebrow}>
+            <Sym name="books.vertical.fill" size={13} color="#F3D9A4" />
+            <T v="subhead" color="#F3D9A4" style={{ fontWeight: '600' }}>สมุดข่อยดิจิทัล</T>
+          </View>
+          <PressableScale haptic="select" onPress={() => router.push('/wisdom/search')} style={styles.glassBtn} accessibilityLabel="ค้นหาภูมิปัญญา">
+            <BlurView intensity={30} tint="light" style={StyleSheet.absoluteFill} />
+            <Sym name="magnifyingglass" size={18} color="#FFFFFF" weight="semibold" />
+          </PressableScale>
+        </View>
+
+        <Animated.View entering={FadeInDown.duration(420)}>
+          <T v="hero" color="#FFFFFF" style={styles.title}>คลังภูมิปัญญา</T>
+          <T v="callout" color="rgba(255,255,255,0.78)">ตำรับยา วิธีรักษา และตำราโบราณ · บันทึกแล้ว {recorded} เรื่อง</T>
+        </Animated.View>
+
+        {/* ชิปประเภทตำรา (กรองรายการด้านล่าง) */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsBox} contentContainerStyle={styles.chips}>
+          {(['all', ...KINDS] as const).map((k) => {
+            const on = kind === k;
+            const n = k === 'all' ? wisdoms.length : count(k);
+            return (
+              <PressableScale key={k} haptic="select" scaleTo={0.95} onPress={() => setKind(k)} style={[styles.chip, on && styles.chipOn]} accessibilityLabel={k === 'all' ? 'ทั้งหมด' : k} accessibilityState={{ selected: on }}>
+                {on ? null : <BlurView intensity={24} tint="light" style={StyleSheet.absoluteFill} />}
+                {k === 'all' ? null : <Sym name={KIND[k].icon as any} size={13} color={on ? KIND[k].color : '#FFFFFF'} />}
+                <T v="subhead" color={on ? palette.ink : '#FFFFFF'} style={{ fontWeight: '600' }}>{k === 'all' ? 'ทั้งหมด' : k}</T>
+                <T v="caption" color={on ? ios.secondary : 'rgba(255,255,255,0.7)'}>{n}</T>
+              </PressableScale>
+            );
+          })}
+        </ScrollView>
+
+        {/* ปุ่มหลัก: เพิ่ม · สแกน QR รับตำราจากเพื่อน */}
+        <View style={styles.heroBtns}>
+          <PressableScale haptic="press" onPress={() => router.push('/wisdom/new')} style={[styles.btn, styles.btnMain]} accessibilityLabel="เพิ่มภูมิปัญญา">
+            <Sym name="plus" size={17} color={palette.primaryDeep} weight="bold" />
+            <T v="bodyStrong" color={palette.primaryDeep}>เพิ่มภูมิปัญญา</T>
+          </PressableScale>
+          <PressableScale haptic="press" onPress={() => router.push('/wisdom/scan-qr')} style={[styles.btn, styles.btnGlass]} accessibilityLabel="สแกนคิวอาร์โค้ดรับตำรา">
+            <BlurView intensity={30} tint="light" style={StyleSheet.absoluteFill} />
+            <Sym name="qrcode.viewfinder" size={18} color="#FFFFFF" />
+            <T v="bodyStrong" color="#FFFFFF">สแกนรับตำรา</T>
+          </PressableScale>
+        </View>
+      </View>
+
+      {/* ── เรื่องล่าสุด ── */}
+      {list.length ? (
+        <>
+          <View style={styles.secHead}>
+            <T v="h3">{kind === 'all' ? 'ล่าสุด' : kind}</T>
+          </View>
+          <ScrollView key={kind} horizontal showsHorizontalScrollIndicator={false} decelerationRate="fast" snapToInterval={CARD_W + 14} snapToAlignment="start" contentContainerStyle={styles.rail}>
+            {list.slice(0, 6).map((w, i) => (
               <Feature key={w.id} w={w} i={i} />
             ))}
           </ScrollView>
-        ) : null}
+        </>
+      ) : null}
 
-        {/* ปุ่มลัดวงกลม */}
-        <Animated.View entering={FadeIn.delay(200).duration(300)} style={styles.actions}>
-          {ACTIONS.map((a) => (
-            <PressableScale key={a.label} scaleTo={0.94} haptic="select" onPress={() => router.push(a.go)} style={styles.action} accessibilityLabel={a.label}>
-              <View style={[styles.actionCircle, elevation.e1]}>
-                <CircleIcon name={a.icon} color={a.color} size={56} />
-              </View>
-              <T v="subhead" style={{ fontWeight: '600' }}>{a.label}</T>
-            </PressableScale>
+      {/* ── รายการทั้งหมด ── */}
+      <View style={[styles.secHead, { marginTop: 14 }]}>
+        <T v="h3">ทั้งหมด</T>
+        <T v="subhead" color={ios.secondary}>{list.length} เรื่อง</T>
+      </View>
+      {list.length ? (
+        <Animated.View key={kind} layout={LinearTransition.duration(260)} style={[styles.list, elevation.e1]}>
+          {list.map((w, i) => (
+            <Animated.View key={w.id} entering={FadeIn.delay(i * 35).duration(200)}>
+              {i ? <View style={styles.sep} /> : null}
+              <PressableScale scaleTo={0.98} haptic="select" onPress={() => router.push(`/wisdom/${w.id}`)} style={styles.row} accessibilityLabel={`${w.title} ${w.kind}`}>
+                <CircleIcon name={KIND[w.kind]?.icon ?? 'book.closed.fill'} color={KIND[w.kind]?.color ?? palette.primary} size={48} />
+                <View style={{ flex: 1, gap: 1 }}>
+                  <T v="title" numberOfLines={2}>{w.title}</T>
+                  <View style={styles.meta}>
+                    <Sym name={SOURCE_ICON[w.source] as any} size={11} color={ios.tertiary} />
+                    <T v="caption" color={ios.tertiary} numberOfLines={1} style={{ flexShrink: 1 }}>{w.sharedBy ? `จาก ${w.sharedBy}` : w.source} · {w.date}</T>
+                    {w.verified ? null : (
+                      <View style={styles.pending}>
+                        <T v="micro" color="#C27A12" style={{ fontWeight: '700' }}>รอตรวจทาน</T>
+                      </View>
+                    )}
+                  </View>
+                </View>
+                <Sym name="chevron.right" size={13} color={ios.tertiary} weight="semibold" />
+              </PressableScale>
+            </Animated.View>
           ))}
         </Animated.View>
-
-        <View style={styles.listHead}>
-          <T v="h3">ภูมิปัญญาทั้งหมด</T>
-          <T v="subhead" color={ios.secondary}>{wisdoms.length} เรื่อง</T>
+      ) : (
+        <View style={[styles.list, elevation.e1, { alignItems: 'center', paddingVertical: 28, gap: 6 }]}>
+          <Sym name="book.closed" size={28} color={ios.tertiary} />
+          <T v="callout" color={ios.secondary}>ยังไม่มี{kind === 'all' ? 'ภูมิปัญญา' : kind} กด “เพิ่มภูมิปัญญา” ได้เลย</T>
         </View>
-        {wisdoms.length ? (
-          <View style={[styles.list, elevation.e1]}>
-            {wisdoms.map((w, i) => (
-              <Animated.View key={w.id} entering={FadeIn.delay(i * 40).duration(200)}>
-                {i ? <View style={styles.sep} /> : null}
-                <PressableScale scaleTo={0.98} haptic="select" onPress={() => router.push(`/wisdom/${w.id}`)} style={styles.row} accessibilityLabel={`${w.title} ${w.kind}`}>
-                  <CircleIcon name={KIND[w.kind]?.icon ?? 'book.closed.fill'} color={KIND[w.kind]?.color ?? palette.primary} size={48} />
-                  <View style={{ flex: 1, gap: 1 }}>
-                    <T v="title" numberOfLines={2}>{w.title}</T>
-                    <View style={styles.meta}>
-                      <Sym name={SOURCE_ICON[w.source] as any} size={11} color={ios.tertiary} />
-                      <T v="caption" color={ios.tertiary} numberOfLines={1} style={{ flexShrink: 1 }}>{w.sharedBy ? `จาก ${w.sharedBy}` : w.source} · {w.date}</T>
-                      {w.verified ? null : (
-                        <View style={styles.pending}>
-                          <T v="micro" color="#C27A12" style={{ fontWeight: '700' }}>รอตรวจทาน</T>
-                        </View>
-                      )}
-                    </View>
-                  </View>
-                  <Sym name="chevron.right" size={13} color={ios.tertiary} weight="semibold" />
-                </PressableScale>
-              </Animated.View>
-            ))}
-          </View>
-        ) : (
-          <View style={[styles.list, elevation.e1, { alignItems: 'center', paddingVertical: 28, gap: 6 }]}>
-            <Sym name="book.closed" size={28} color={ios.tertiary} />
-            <T v="callout" color={ios.secondary}>ยังไม่มีภูมิปัญญา เริ่มจากเล่าให้ครูปัญญาฟังได้เลย</T>
-          </View>
-        )}
-      </ScrollView>
-    </>
+      )}
+    </ScrollView>
   );
 }
 
 const CARD_W = 272;
 const styles = StyleSheet.create({
-  page: { paddingTop: 4, paddingBottom: 130 },
-  sub: { paddingHorizontal: 20, marginBottom: 6 },
-  railBox: { marginHorizontal: 0 },
-  rail: { paddingHorizontal: 16, paddingTop: 10, paddingBottom: 22, gap: 14 },
-  feature: { width: CARD_W, height: 340, borderRadius: 26, borderCurve: 'continuous', backgroundColor: palette.surface },
+  hero: { paddingHorizontal: 20, paddingBottom: 22, borderBottomLeftRadius: 32, borderBottomRightRadius: 32, borderCurve: 'continuous', overflow: 'hidden', backgroundColor: '#14261c' },
+  heroTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 },
+  eyebrow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  glassBtn: { width: 42, height: 42, borderRadius: 21, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.45)' },
+  title: { marginBottom: 4 },
+  chipsBox: { marginHorizontal: -20, marginTop: 18 },
+  chips: { paddingHorizontal: 20, gap: 8 },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 38, paddingHorizontal: 14, borderRadius: 19, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.4)' },
+  chipOn: { backgroundColor: '#FFFFFF', borderColor: '#FFFFFF' },
+  heroBtns: { flexDirection: 'row', gap: 10, marginTop: 18 },
+  btn: { flex: 1, height: 50, borderRadius: 25, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, overflow: 'hidden' },
+  btnMain: { backgroundColor: '#FFFFFF' },
+  btnGlass: { borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.5)' },
+  secHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', paddingHorizontal: 20, marginTop: 24, marginBottom: 2 },
+  rail: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 22, gap: 14 },
+  feature: { width: CARD_W, height: 320, borderRadius: 26, borderCurve: 'continuous', backgroundColor: palette.surface },
   featureClip: { flex: 1, borderRadius: 26, borderCurve: 'continuous', overflow: 'hidden' },
   featureTop: { position: 'absolute', top: 14, left: 14, right: 14, flexDirection: 'row', justifyContent: 'space-between' },
   kindPill: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.92)' },
   pendingPill: { paddingHorizontal: 9, paddingVertical: 5, borderRadius: 999, backgroundColor: 'rgba(253,240,220,0.95)' },
   featureText: { position: 'absolute', left: 18, right: 18, bottom: 18 },
   featureMeta: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 10 },
-  actions: { flexDirection: 'row', justifyContent: 'space-around', marginHorizontal: 16, marginTop: 2 },
-  action: { alignItems: 'center', gap: 8, width: 100 },
-  actionCircle: { width: 72, height: 72, borderRadius: 36, backgroundColor: palette.surface, alignItems: 'center', justifyContent: 'center' },
-  listHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', paddingHorizontal: 20, marginTop: 28, marginBottom: 12 },
-  list: { marginHorizontal: 16, backgroundColor: palette.surface, borderRadius: 20, borderCurve: 'continuous' },
+  list: { marginHorizontal: 16, marginTop: 10, backgroundColor: palette.surface, borderRadius: 20, borderCurve: 'continuous' },
   row: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 12, paddingLeft: 14, paddingRight: 16, minHeight: 76 },
   sep: { height: StyleSheet.hairlineWidth, backgroundColor: ios.separator, marginLeft: 76 },
   meta: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
