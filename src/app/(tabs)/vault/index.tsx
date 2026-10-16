@@ -11,6 +11,7 @@ import React from 'react';
 import { ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { BookCover } from '../../../components/BookCover';
+import { KindIcon } from '../../../components/KindIcon';
 import { Sym, ios } from '../../../components/ios';
 import { HeaderButton, PressableScale, T } from '../../../components/ui';
 import { type Wisdom } from '../../../data/mock';
@@ -100,7 +101,7 @@ export default function Vault() {
             <Animated.View key={k} entering={FadeInDown.delay(120 + i * 60).duration(380)} style={styles.kpi}>
               <BlurView intensity={26} tint="light" style={StyleSheet.absoluteFill} />
               <View style={[styles.kpiIcon, { backgroundColor: `${KIND[k].color}` }]}>
-                <Sym name={KIND[k].icon as any} size={13} color="#FFFFFF" />
+                <KindIcon kind={k} size={15} color="#FFFFFF" />
               </View>
               <T v="h2" color="#FFFFFF" style={{ marginTop: 8 }}>{count(k)}</T>
               <T v="micro" color="rgba(255,255,255,0.82)" numberOfLines={1} style={{ fontWeight: '600' }}>{k}</T>

@@ -7,6 +7,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View, type KeyboardTypeOptions } from 'react-native';
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { PractitionerGate } from '../../components/PractitionerGate';
+import { KindIcon } from '../../components/KindIcon';
 import { Sym, ios } from '../../components/ios';
 import { Button, GlassDock, HeaderButton, PressableScale, T, useHaptic } from '../../components/ui';
 import { KINDS, onWisdomResult, takeWisdomResult, type WisdomResult } from '../../lib/wisdomTalk';
@@ -15,13 +16,6 @@ import { useApp } from '../../store/app';
 import { elevation, palette } from '../../theme';
 
 const SMOOTH = LinearTransition.duration(280);
-
-const KIND_ICON: Record<Wisdom['kind'], string> = {
-  ตำรับยา: 'leaf.fill',
-  วิธีรักษา: 'hand.raised.fill',
-  'คาถา/พิธี': 'sparkles',
-  ตำราโบราณ: 'scroll.fill',
-};
 
 type Form = { title: string; kind: Wisdom['kind']; ingredients: string; method: string; indication: string; caution: string; origin: string; summary: string };
 const EMPTY: Form = { title: '', kind: 'ตำรับยา', ingredients: '', method: '', indication: '', caution: '', origin: '', summary: '' };
@@ -156,7 +150,7 @@ function NewWisdomInner() {
                 const on = f.kind === k;
                 return (
                   <PressableScale key={k} haptic="select" scaleTo={0.96} onPress={() => setF((x) => ({ ...x, kind: k }))} style={[styles.kind, on && styles.kindOn]} accessibilityLabel={k} accessibilityState={{ selected: on }}>
-                    <Sym name={KIND_ICON[k] as any} size={16} color={on ? palette.white : palette.primary} />
+                    <KindIcon kind={k} size={18} color={on ? palette.white : palette.primary} />
                     <T v="callout" color={on ? palette.white : palette.ink} style={{ fontWeight: '600' }}>{k}</T>
                   </PressableScale>
                 );
