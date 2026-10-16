@@ -1,16 +1,15 @@
 /**
  * ตัวเลือกในฟอร์มแบบ native iOS 26 (Design system: ป้ายอยู่ด้านบน ช่องแคปซูลพื้นมิ้นต์)
  * - Dropdown: เมนูดึงลง UIMenu ของระบบ (@react-native-menu/menu)
- * - DateField: แคปซูลเหมือนช่องอื่น กดแล้วปฏิทินลอยใต้ช่องแบบ popover (ปฏิทิน พ.ศ. ตาม locale th-TH)
+ * - DateField: แคปซูลเหมือนช่องอื่น + UIDatePicker compact ของ iOS 26 จริง (ปฏิทิน พ.ศ. ตาม locale th-TH)
  */
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { MenuView } from '@react-native-menu/menu';
-import React, { useRef, useState } from 'react';
-import { Modal, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
-import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
+import React from 'react';
+import { StyleSheet, View } from 'react-native';
 import { Sym, ios } from './ios';
-import { Glass, PressableScale, T } from './ui';
-import { elevation, palette } from '../theme';
+import { T } from './ui';
+import { palette } from '../theme';
 
 function Label({ text }: { text: string }) {
   return <T v="subhead" color={ios.secondary} style={styles.label}>{text}</T>;
@@ -40,64 +39,40 @@ const TH_MONTHS = ['มกราคม', 'กุมภาพันธ์', 'ม�
 export const thaiDateLong = (d: Date) => `${d.getDate()} ${TH_MONTHS[d.getMonth()]} ${d.getFullYear() + 543}`;
 
 /**
- * วันที่: แคปซูลเหมือนช่องอื่น (แสดง "14 เมษายน 2542") กดแล้วปฏิทินลอยใต้ช่อง
- * แบบ popover ของ iOS (compact) — เลือกวันแล้วปิดเอง, แตะนอกกรอบเพื่อปิด
+ * วันที่: หน้าตาเป็นแคปซูลเหมือนช่องอื่น แต่ตัวที่รับการแตะคือ UIDatePicker แบบ compact ของ iOS 26 จริง
+ * (วางทับทั้งช่องแบบโปร่งใส ขยายให้คลุมทั้งแคปซูล) → แตะแล้วเปิดป๊อปโอเวอร์ Liquid Glass ของระบบ
  */
 export function DateField({ label, value, onChange, flex, placeholder = 'เลือกวันที่', fallback = new Date(1960, 0, 1) }: { label: string; value: Date | null; onChange: (d: Date) => void; flex?: number; placeholder?: string; fallback?: Date }) {
-  const ref = useRef<View>(null);
-  const { width: W, height: H } = useWindowDimensions();
-  const [at, setAt] = useState<{ x: number; y: number; up: boolean } | null>(null);
-  const PW = Math.min(W - 24, 360);
-  const PH = 360;
-  const show = () =>
-    ref.current?.measureInWindow((x, y, w, h) => {
-      const up = y + h + PH + 40 > H; // ที่ด้านล่างไม่พอ → เปิดขึ้นด้านบน
-      setAt({ x: Math.max(12, Math.min(x, W - PW - 12)), y: up ? y - PH - 8 : y + h + 8, up });
-    });
   return (
     <View style={flex ? { flex } : undefined}>
       <Label text={label} />
-      <View ref={ref} collapsable={false}>
-        <PressableScale haptic="select" scaleTo={1} onPress={show} style={[styles.box, at && styles.boxOn]} accessibilityRole="button" accessibilityLabel={`${label} ${value ? thaiDateLong(value) : placeholder}`}>
-          <T v="body" color={value ? palette.ink : ios.tertiary} style={{ flex: 1 }} numberOfLines={1}>{value ? thaiDateLong(value) : placeholder}</T>
-          <Sym name="calendar" size={16} color={palette.primary} />
-        </PressableScale>
+      <View style={styles.box} accessibilityRole="button" accessibilityLabel={`${label} ${value ? thaiDateLong(value) : placeholder}`}>
+        <T v="body" color={value ? palette.ink : ios.tertiary} style={{ flex: 1 }} numberOfLines={1}>{value ? thaiDateLong(value) : placeholder}</T>
+        <Sym name="calendar" size={16} color={palette.primary} />
+        {/* ปุ่ม compact ของระบบ (มองไม่เห็น) คลุมทั้งช่อง */}
+        <View style={styles.native} pointerEvents="box-none">
+          <DateTimePicker
+            value={value ?? fallback}
+            mode="date"
+            display="compact"
+            locale="th-TH"
+            maximumDate={new Date()}
+            minimumDate={new Date(1900, 0, 1)}
+            accentColor={palette.primary}
+            themeVariant="light"
+            onChange={(e, d) => e.type === 'set' && d && onChange(d)}
+            style={styles.nativePicker}
+          />
+        </View>
       </View>
-      <Modal visible={!!at} transparent animationType="none" onRequestClose={() => setAt(null)}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={() => setAt(null)} />
-        {at ? (
-          <Animated.View entering={FadeIn.duration(150)} exiting={FadeOut.duration(120)} style={[styles.pop, elevation.e3, { left: at.x, top: at.y, width: PW }]}>
-            {/* พื้นหลัง Liquid Glass แบบ popover ของระบบ */}
-            <Glass tint="rgba(255,255,255,0.35)" style={[StyleSheet.absoluteFill, { borderRadius: 24 }]} />
-            {/* locale th-TH → ปฏิทินพุทธศักราช */}
-            <DateTimePicker
-              value={value ?? fallback}
-              mode="date"
-              display="inline"
-              locale="th-TH"
-              maximumDate={new Date()}
-              minimumDate={new Date(1900, 0, 1)}
-              accentColor={palette.primary}
-              themeVariant="light"
-              onChange={(e, d) => {
-                if (!d) return;
-                const prev = value ?? fallback;
-                onChange(d);
-                // แตะเลือกวัน (เลขวันเปลี่ยน) → ปิดเอง · เปลี่ยนเดือน/ปีจากหัวปฏิทิน (เลขวันเท่าเดิม) → ยังเปิดอยู่
-                if (d.getDate() !== prev.getDate()) setTimeout(() => setAt(null), 250);
-              }}
-              style={{ width: PW - 16, alignSelf: 'center' }}
-            />
-          </Animated.View>
-        ) : null}
-      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   label: { marginBottom: 6, marginLeft: 4, fontWeight: '600' },
-  pop: { position: 'absolute', borderRadius: 24, borderCurve: 'continuous', paddingVertical: 8 },
-  boxOn: { backgroundColor: palette.surface, borderColor: palette.primary },
+  native: { ...StyleSheet.absoluteFillObject, overflow: 'hidden', borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
+  // ขยายปุ่ม compact ให้คลุมทั้งแคปซูล และโปร่งใสเกือบหมด (ยังรับการแตะได้)
+  nativePicker: { width: 140, height: 40, opacity: 0.02, transform: [{ scaleX: 2.4 }, { scaleY: 1.6 }] },
   box: { height: 52, borderRadius: 26, paddingHorizontal: 18, backgroundColor: palette.mint, flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1.5, borderColor: 'transparent' },
 });
