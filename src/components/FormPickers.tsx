@@ -9,7 +9,7 @@ import React, { useRef, useState } from 'react';
 import { Modal, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { Sym, ios } from './ios';
-import { PressableScale, T } from './ui';
+import { Glass, PressableScale, T } from './ui';
 import { elevation, palette } from '../theme';
 
 function Label({ text }: { text: string }) {
@@ -67,6 +67,8 @@ export function DateField({ label, value, onChange, flex, placeholder = 'เล�
         <Pressable style={StyleSheet.absoluteFill} onPress={() => setAt(null)} />
         {at ? (
           <Animated.View entering={FadeIn.duration(150)} exiting={FadeOut.duration(120)} style={[styles.pop, elevation.e3, { left: at.x, top: at.y, width: PW }]}>
+            {/* พื้นหลัง Liquid Glass แบบ popover ของระบบ */}
+            <Glass tint="rgba(255,255,255,0.35)" style={[StyleSheet.absoluteFill, { borderRadius: 24 }]} />
             {/* locale th-TH → ปฏิทินพุทธศักราช */}
             <DateTimePicker
               value={value ?? fallback}
@@ -95,7 +97,7 @@ export function DateField({ label, value, onChange, flex, placeholder = 'เล�
 
 const styles = StyleSheet.create({
   label: { marginBottom: 6, marginLeft: 4, fontWeight: '600' },
-  pop: { position: 'absolute', backgroundColor: palette.surface, borderRadius: 24, borderCurve: 'continuous', paddingVertical: 8 },
+  pop: { position: 'absolute', borderRadius: 24, borderCurve: 'continuous', paddingVertical: 8 },
   boxOn: { backgroundColor: palette.surface, borderColor: palette.primary },
   box: { height: 52, borderRadius: 26, paddingHorizontal: 18, backgroundColor: palette.mint, flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1.5, borderColor: 'transparent' },
 });
