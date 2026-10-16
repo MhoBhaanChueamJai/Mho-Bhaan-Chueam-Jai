@@ -25,6 +25,7 @@ const MAP: Record<string, keyof typeof Ionicons.glyphMap> = {
   'checkmark.shield.fill': 'shield-checkmark',
   'chevron.down': 'chevron-down',
   'chevron.left': 'chevron-back',
+  'chevron.up.chevron.down': 'chevron-expand',
   'chevron.right': 'chevron-forward',
   'chevron.up': 'chevron-up',
   clock: 'time-outline',

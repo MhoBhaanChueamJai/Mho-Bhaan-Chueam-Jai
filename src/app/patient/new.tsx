@@ -15,6 +15,7 @@ import { Button, GlassDock, HeaderButton, PressableScale, T, useHaptic } from '.
 import { takeIdScanResult, type IdCardData } from '../../lib/idScan';
 import { ageFrom, elementFromMonth, toISO } from '../../lib/birth';
 import { DateField, Dropdown } from '../../components/FormPickers';
+import { formatAddress, parseAddress } from '../../lib/address';
 import type { Patient } from '../../data/mock';
 import { useApp } from '../../store/app';
 import { elevation, palette } from '../../theme';
@@ -34,6 +35,7 @@ type Form = {
   district: string;
   province: string;
   phone: string;
+  address: string; // ที่อยู่ช่องเดียว
   chronic: string;
   allergies: string;
   weight: string;
@@ -52,10 +54,11 @@ const EMPTY: Form = {
   houseNo: '',
   moo: '',
   village: '',
-  subdistrict: 'ดอนแก้ว',
-  district: 'แม่ริม',
-  province: 'เชียงใหม่',
+  subdistrict: '',
+  district: '',
+  province: '',
   phone: '',
+  address: '',
   chronic: '',
   allergies: '',
   weight: '',
@@ -81,7 +84,7 @@ function splitPrefix(full: string): { prefix: string; name: string } {
 const SAMPLE = 'นางสมศรี คำมา อายุหกสิบแปด บ้านเลขที่สิบสอง หมู่สี่ บ้านป่าไผ่ เบอร์ศูนย์แปดเก้า หนึ่งสองสาม สี่ห้าหกเจ็ด เป็นเบาหวาน แพ้ยาเพนนิซิลลิน หนักห้าสิบห้า สูงร้อยห้าสิบ';
 
 /** ช่องกรอก: ป้ายด้านบน + ช่องแคปซูลพื้นมิ้นต์ (โฟกัส = พื้นขาว ขอบเขียว) */
-function Field({ label, value, onChange, placeholder, keyboard, flex }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; keyboard?: KeyboardTypeOptions; flex?: number }) {
+function Field({ label, value, onChange, placeholder, keyboard, flex, multiline }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; keyboard?: KeyboardTypeOptions; flex?: number; multiline?: boolean }) {
   const [focus, setFocus] = useState(false);
   return (
     <View style={flex ? { flex } : undefined}>
@@ -94,7 +97,8 @@ function Field({ label, value, onChange, placeholder, keyboard, flex }: { label:
         keyboardType={keyboard}
         onFocus={() => setFocus(true)}
         onBlur={() => setFocus(false)}
-        style={[styles.input, focus && styles.inputFocus]}
+        multiline={multiline}
+        style={[styles.input, multiline && styles.inputMulti, focus && styles.inputFocus]}
         accessibilityLabel={label}
       />
     </View>
@@ -189,6 +193,8 @@ function NewPatientInner() {
             }
           } else (next as any)[k] = k === 'sex' ? (v.includes('ชาย') ? 'ชาย' : 'หญิง') : v;
         });
+        const addr = formatAddress(next);
+        if (addr) next.address = addr;
         return next;
       });
       setAiNote('');
@@ -210,6 +216,8 @@ function NewPatientInner() {
         if (v) (next as any)[k] = v;
       });
       if (r.sex) next.sex = String(r.sex).includes('ชาย') ? 'ชาย' : 'หญิง';
+      const addr = formatAddress(next);
+      if (addr) next.address = addr;
       if (r.name) {
         const sp = splitPrefix(r.name);
         next.name = sp.name;
@@ -243,7 +251,7 @@ function NewPatientInner() {
       sex: f.sex,
       age: num(f.age),
       birthDate: birthISO ?? undefined,
-      address: { houseNo: f.houseNo, moo: f.moo, village: f.village, subdistrict: f.subdistrict, district: f.district, province: f.province },
+      address: parseAddress(f.address),
       phone: f.phone || '-',
       chronic: f.chronic || 'ไม่มี',
       allergies: f.allergies || 'ไม่มี',
@@ -325,16 +333,7 @@ function NewPatientInner() {
         </Section>
 
         <Section title="ที่อยู่" icon="house.fill">
-          <View style={styles.row2}>
-            <Field label="บ้านเลขที่" value={f.houseNo} onChange={set('houseNo')} placeholder="เลขที่" flex={2} />
-            <Field label="หมู่" value={f.moo} onChange={set('moo')} placeholder="0" keyboard="number-pad" flex={1} />
-          </View>
-          <Field label="หมู่บ้าน" value={f.village} onChange={set('village')} placeholder="เช่น บ้านหนองบัว" />
-          <View style={styles.row2}>
-            <Field label="ตำบล" value={f.subdistrict} onChange={set('subdistrict')} flex={1} />
-            <Field label="อำเภอ" value={f.district} onChange={set('district')} flex={1} />
-          </View>
-          <Field label="จังหวัด" value={f.province} onChange={set('province')} />
+          <Field label="ที่อยู่" value={f.address} onChange={set('address')} placeholder="เช่น 12 หมู่ 4 บ้านป่าไผ่ ต.ดอนแก้ว อ.แม่ริม จ.เชียงใหม่" multiline />
         </Section>
 
         <Section title="สุขภาพ" icon="heart.fill" footer="ใช้ตรวจความปลอดภัยของสมุนไพรกับผู้ป่วย">
@@ -368,6 +367,7 @@ const styles = StyleSheet.create({
   cardIcon: { width: 30, height: 30, borderRadius: 9, backgroundColor: palette.primarySoft, alignItems: 'center', justifyContent: 'center' },
   label: { marginBottom: 6, marginLeft: 4, fontWeight: '600' },
   input: { height: 52, borderRadius: 26, paddingHorizontal: 18, backgroundColor: palette.mint, fontSize: 17, color: palette.ink, borderWidth: 1.5, borderColor: 'transparent' },
+  inputMulti: { height: undefined, minHeight: 76, borderRadius: 22, paddingTop: 14, paddingBottom: 14, textAlignVertical: 'top' },
   inputFocus: { backgroundColor: palette.surface, borderColor: palette.primary },
   row2: { flexDirection: 'row', gap: 10 },
   choices: { flexDirection: 'row', gap: 8 },
