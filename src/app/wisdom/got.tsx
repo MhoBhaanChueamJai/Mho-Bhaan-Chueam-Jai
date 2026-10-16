@@ -1,21 +1,26 @@
 /**
- * แผ่นล่างแบบ iOS (formSheet) — ตัวอย่างตำราที่ได้จากรหัส/คิวอาร์ (เปิดจากหน้าสแกนรับตำรา)
- * ปกหนังสือ · ชื่อ · ผู้แชร์ · ประเภท · เนื้อหาไม่เกิน 5 บรรทัด · ปุ่มเพิ่มลงคลัง
- * ความสูงพอดีเนื้อหา (sheetAllowedDetents: fitToContents) ดึงลงเพื่อปิด
+ * การ์ดลอยแบบตอนจับคู่อุปกรณ์ Apple (proximity card) — ตัวอย่างตำราที่ได้จากรหัส/คิวอาร์
+ * การ์ดเว้นขอบจอ มุมโค้งตามมุมจอ เนื้อหาจัดกลาง: ปกหนังสือใหญ่ · ชื่อ · ผู้แชร์/ประเภท · เนื้อหา 5 บรรทัด · ปุ่มเพิ่มลงคลัง
+ * แตะพื้นหลัง / ปุ่ม ✕ / ปัดลง เพื่อปิด
  */
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, { FadeIn, FadeOut, runOnJS, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BookCover } from '../../components/BookCover';
 import { KindIcon } from '../../components/KindIcon';
 import { Sym } from '../../components/ios';
-import { Button, T, useHaptic } from '../../components/ui';
+import { Button, PressableScale, T, useHaptic } from '../../components/ui';
 import type { Wisdom } from '../../data/mock';
 import { plainText } from '../../lib/wisdomKinds';
 import { cachedShare, cleanCode, fetchShare, type ReceivedShare } from '../../lib/wisdomShare';
 import { useApp } from '../../store/app';
 import { palette } from '../../theme';
+
+const CARD_MARGIN = 8;
+const CARD_RADIUS = 52; // ใกล้เคียงมุมจอ iPhone รุ่นใหม่
 
 export default function GotWisdom() {
   const { code: raw } = useLocalSearchParams<{ code: string }>();
@@ -56,61 +61,81 @@ export default function GotWisdom() {
     setTimeout(() => router.push(`/wisdom/${savedId}`), 50);
   };
 
-  const pad = { paddingBottom: insets.bottom + 12 };
-  if (err) {
-    return (
-      <View style={[styles.page, styles.center, pad]}>
-        <Sym name="exclamationmark.circle.fill" size={30} color={palette.coral} />
-        <T v="title" center style={{ marginTop: 10 }}>{err}</T>
-        <Button kind="secondary" label="ลองรหัสอื่น" onPress={() => router.back()} style={{ alignSelf: 'stretch', height: 52, marginTop: 18 }} />
-      </View>
-    );
-  }
-  if (!got) {
-    return (
-      <View style={[styles.page, styles.center, pad]}>
-        <ActivityIndicator color={palette.primary} />
-      </View>
-    );
-  }
+  // ── การ์ดเลื่อนขึ้นจากล่าง (สปริง) · ปัดลงเพื่อปิด ──
+  const y = useSharedValue(600);
+  useEffect(() => {
+    y.value = withSpring(0, { damping: 22, stiffness: 220, mass: 0.9 });
+  }, [y]);
+  const close = () => {
+    y.value = withTiming(700, { duration: 220 }, () => runOnJS(router.back)());
+  };
+  const pan = Gesture.Pan()
+    .onUpdate((e) => {
+      y.value = Math.max(-20, e.translationY * (e.translationY < 0 ? 0.2 : 1));
+    })
+    .onEnd((e) => {
+      if (e.translationY > 110 || e.velocityY > 800) {
+        y.value = withTiming(700, { duration: 200 }, () => runOnJS(router.back)());
+      } else y.value = withSpring(0, { damping: 22, stiffness: 220 });
+    });
+  const cardSt = useAnimatedStyle(() => ({ transform: [{ translateY: y.value }] }));
 
-  const w = got.wisdom;
-  const preview = { ...w, id: 'preview', source: 'เพื่อนแชร์', date: '', verified: true, summary: w.summary ?? '' } as Wisdom;
-  const dup = wisdoms.some((x) => x.title === w.title && x.sharedBy === got.fromName);
-  const body = plainText(w.summary).replace(/\n*(ได้รับสืบทอดจาก|แหล่งที่มา):.*$/, '').trim();
+  const w = got?.wisdom;
+  const preview = w ? ({ ...w, id: 'preview', source: 'เพื่อนแชร์', date: '', verified: true, summary: w.summary ?? '' } as Wisdom) : null;
+  const dup = !!w && wisdoms.some((x) => x.title === w.title && x.sharedBy === got?.fromName);
+  const body = w ? plainText(w.summary).replace(/\n*(ได้รับสืบทอดจาก|แหล่งที่มา):.*$/, '').trim() : '';
+
   return (
-    <View style={[styles.page, pad]}>
-      <View style={styles.head}>
-        <BookCover w={preview} width={92} />
-        <View style={{ flex: 1, gap: 6 }}>
-          <View style={styles.kindPill}>
-            <KindIcon kind={w.kind} size={12} color={palette.primaryDeep} />
-            <T v="caption" color={palette.primaryDeep} style={{ fontWeight: '700' }}>{w.kind}</T>
-          </View>
-          <T v="h3" numberOfLines={3}>{w.title}</T>
-          <View style={styles.byRow}>
-            <Sym name="person.crop.circle.fill" size={14} color={palette.inkSoft} />
-            <T v="subhead" color={palette.inkSoft} numberOfLines={1} style={{ flex: 1 }}>เพิ่มโดย {got.fromName}</T>
-          </View>
-        </View>
-      </View>
-      {body ? (
-        <T v="body" color={palette.inkSoft} numberOfLines={5} style={{ marginTop: 16 }}>{body}</T>
-      ) : null}
-      {savedId ? (
-        <Button label="เปิดดูในคลัง" icon={<Sym name="book.fill" size={17} color="#FFFFFF" />} onPress={openSaved} style={styles.btn} />
-      ) : (
-        <Button label={dup ? 'มีในคลังแล้ว · เพิ่มอีกครั้ง' : 'เพิ่มลงคลัง'} icon={<Sym name="plus" size={17} color="#FFFFFF" weight="semibold" />} onPress={save} style={styles.btn} />
-      )}
+    <View style={StyleSheet.absoluteFill}>
+      <Animated.View entering={FadeIn.duration(220)} exiting={FadeOut.duration(200)} style={[StyleSheet.absoluteFill, styles.backdrop]}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={close} accessibilityLabel="ปิด" />
+      </Animated.View>
+      <GestureDetector gesture={pan}>
+        <Animated.View style={[styles.card, { bottom: Math.max(CARD_MARGIN, insets.bottom > 0 ? CARD_MARGIN : 16) }, cardSt]}>
+          <PressableScale onPress={close} style={styles.x} accessibilityLabel="ปิด" hitSlop={8}>
+            <Sym name="xmark" size={14} color={palette.inkSoft} weight="bold" />
+          </PressableScale>
+          {err ? (
+            <View style={styles.center}>
+              <Sym name="exclamationmark.circle.fill" size={44} color={palette.coral} />
+              <T v="h3" center style={{ marginTop: 14 }}>{err}</T>
+              <Button kind="secondary" label="ลองรหัสอื่น" onPress={close} style={styles.btn} />
+            </View>
+          ) : !got || !w || !preview ? (
+            <View style={[styles.center, { paddingVertical: 60 }]}>
+              <ActivityIndicator color={palette.primary} />
+            </View>
+          ) : (
+            <View style={styles.center}>
+              <BookCover w={preview} width={124} />
+              <T v="h2" center numberOfLines={2} style={{ marginTop: 22 }}>{w.title}</T>
+              <View style={styles.meta}>
+                <KindIcon kind={w.kind} size={12} color={palette.primaryDeep} />
+                <T v="subhead" color={palette.primaryDeep} style={{ fontWeight: '600' }}>{w.kind}</T>
+                <T v="subhead" color={palette.inkSoft}>·</T>
+                <T v="subhead" color={palette.inkSoft} numberOfLines={1} style={{ flexShrink: 1 }}>เพิ่มโดย {got.fromName}</T>
+              </View>
+              {body ? (
+                <T v="callout" color={palette.inkSoft} center numberOfLines={5} style={{ marginTop: 12 }}>{body}</T>
+              ) : null}
+              {savedId ? (
+                <Button label="เปิดดูในคลัง" icon={<Sym name="book.fill" size={17} color="#FFFFFF" />} onPress={openSaved} style={styles.btn} />
+              ) : (
+                <Button label={dup ? 'มีในคลังแล้ว · เพิ่มอีกครั้ง' : 'เพิ่มลงคลัง'} onPress={save} style={styles.btn} />
+              )}
+            </View>
+          )}
+        </Animated.View>
+      </GestureDetector>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  page: { backgroundColor: palette.surface, paddingHorizontal: 20, paddingTop: 28 },
-  center: { alignItems: 'center', paddingVertical: 36 },
-  head: { flexDirection: 'row', gap: 16, alignItems: 'center' },
-  kindPill: { flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999, backgroundColor: palette.primarySoft },
-  byRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  btn: { height: 52, marginTop: 18 },
+  backdrop: { backgroundColor: 'rgba(0,0,0,0.4)' },
+  card: { position: 'absolute', left: CARD_MARGIN, right: CARD_MARGIN, backgroundColor: palette.surface, borderRadius: CARD_RADIUS, borderCurve: 'continuous', paddingHorizontal: 26, paddingTop: 34, paddingBottom: 26, boxShadow: '0px 20px 50px rgba(0,0,0,0.35)' },
+  x: { position: 'absolute', top: 18, right: 18, width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(118,118,128,0.14)', alignItems: 'center', justifyContent: 'center', zIndex: 2 },
+  center: { alignItems: 'center' },
+  meta: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 8, maxWidth: '100%' },
+  btn: { alignSelf: 'stretch', height: 54, borderRadius: 27, marginTop: 24 },
 });
