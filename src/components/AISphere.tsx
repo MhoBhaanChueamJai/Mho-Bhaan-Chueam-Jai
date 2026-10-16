@@ -1,6 +1,6 @@
 /**
  * ทรงกลม AI (อ้างอิง Dribbble "Sphere — AI Voice Assistant") — วาดด้วย shader (Skia SkSL)
- * ลูกแก้วมืด ขอบเรืองแสงสี (fresnel) + ริบบิ้นแสงพลิ้วอยู่ข้างใน สีไล่เปลี่ยนตามเวลา
+ * ลูกแก้วมืด ขอบเรืองแสงสี (fresnel) + ริบบิ้นแสงพลิ้วอยู่ข้างใน สีไล่เฉดหมุนวงล้อสีต่อเนื่อง
  * level (0..1) = ระดับเสียง AI/ไมค์ → ริบบิ้นหนาขึ้น คลื่นแรงขึ้น ขอบสว่างขึ้น
  */
 import { Canvas, Fill, Shader, Skia } from '@shopify/react-native-skia';
@@ -51,13 +51,6 @@ half4 main(float2 fc) {
 
 const FX = Skia.RuntimeEffect.Make(SPHERE_SKSL);
 
-/** ชุดสีที่ไล่เปลี่ยนวนไป: ม่วงชมพู→ส้ม · น้ำเงิน→ม่วง · เขียวมรกต→ทอง (โทนแอป) */
-const THEMES: [number, number, number][][] = [
-  [[0.85, 0.22, 0.85], [1.0, 0.18, 0.32], [1.0, 0.62, 0.18]],
-  [[0.15, 0.45, 1.0], [0.55, 0.25, 1.0], [1.0, 0.25, 0.85]],
-  [[0.1, 0.75, 0.55], [0.2, 0.85, 0.75], [0.95, 0.78, 0.25]],
-];
-
 export function AISphere({ size = 200, level, active = true }: { size?: number; level?: SharedValue<number>; active?: boolean }) {
   const t = useSharedValue(0);
   const zero = useSharedValue(0);
@@ -71,16 +64,22 @@ export function AISphere({ size = 200, level, active = true }: { size?: number; 
   useFrameCallback((f) => {
     t.value += ((f.timeSincePreviousFrame ?? 16) / 1000) * (speed.value + 2.4 * e.value);
   });
+  // สีไล่เฉดแบบหมุนวงล้อสี (HSV): ผ่านสีสดเสมอ ไม่หม่น · 3 สีห่างกัน 45° ให้ริบบิ้นไล่เฉดในตัว
+  const hue = useSharedValue(300);
+  useFrameCallback((f) => {
+    hue.value = (hue.value + ((f.timeSincePreviousFrame ?? 16) / 1000) * (9 + 14 * e.value)) % 360;
+  });
   const uniforms = useDerivedValue(() => {
-    // สีไล่เปลี่ยนนุ่มๆ ทุก ~8 วิ
-    const ph = (t.value / 8) % THEMES.length;
-    const i = Math.floor(ph);
-    const f = ph - i;
-    const s = f * f * (3 - 2 * f);
-    const A = THEMES[i];
-    const B = THEMES[(i + 1) % THEMES.length];
-    const mixC = (j: number) => [0, 1, 2].map((q) => A[j][q] + (B[j][q] - A[j][q]) * s);
-    return { res: [size, size], t: t.value, e: e.value, c1: mixC(0), c2: mixC(1), c3: mixC(2) };
+    const hsv = (h: number, sat: number, v: number) => {
+      const c = v * sat;
+      const hh = (((h % 360) + 360) % 360) / 60;
+      const x = c * (1 - Math.abs((hh % 2) - 1));
+      const m = v - c;
+      const [r, g, b] = hh < 1 ? [c, x, 0] : hh < 2 ? [x, c, 0] : hh < 3 ? [0, c, x] : hh < 4 ? [0, x, c] : hh < 5 ? [x, 0, c] : [c, 0, x];
+      return [r + m, g + m, b + m];
+    };
+    const h = hue.value;
+    return { res: [size, size], t: t.value, e: e.value, c1: hsv(h, 0.78, 1), c2: hsv(h + 45, 0.85, 1), c3: hsv(h + 95, 0.8, 1) };
   });
   if (!FX) return <View style={{ width: size, height: size }} />;
   return (
