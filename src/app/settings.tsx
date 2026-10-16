@@ -109,12 +109,16 @@ export default function Settings() {
               <T v="title" numberOfLines={1} style={{ fontSize: 19, lineHeight: 26 }}>{displayName}</T>
               {profile?.email ? <T v="subhead" color={ios.secondary} numberOfLines={1}>{profile.email}</T> : null}
               <View style={styles.badges}>
-                {(healers.length ? healers : ['สมาชิกทั่วไป']).map((label) => (
-                  <View key={label} style={[styles.badge, { backgroundColor: isPractitioner ? palette.primarySoft : '#FBEFD9' }]}>
-                    <Sym name={isPractitioner ? 'checkmark.seal.fill' : 'person.fill'} size={11} color={isPractitioner ? palette.primary : palette.orange} />
-                    <T v="caption" color={isPractitioner ? palette.primaryDeep : '#8A5A10'} style={{ fontWeight: '700' }}>{label}</T>
+                {/* แสดงประเภทแรก + จำนวนที่เหลือ (ดูทั้งหมดในหน้าข้อมูลส่วนตัว) */}
+                <View style={[styles.badge, { backgroundColor: isPractitioner ? palette.primarySoft : '#FBEFD9' }]}>
+                  <Sym name={isPractitioner ? 'checkmark.seal.fill' : 'person.fill'} size={11} color={isPractitioner ? palette.primary : palette.orange} />
+                  <T v="caption" color={isPractitioner ? palette.primaryDeep : '#8A5A10'} style={{ fontWeight: '700' }}>{healers[0] ?? 'สมาชิกทั่วไป'}</T>
+                </View>
+                {healers.length > 1 ? (
+                  <View style={[styles.badge, { backgroundColor: palette.primarySoft }]}>
+                    <T v="caption" color={palette.primaryDeep} style={{ fontWeight: '700' }}>+{healers.length - 1}</T>
                   </View>
-                ))}
+                ) : null}
               </View>
             </View>
             <Sym name="chevron.right" size={14} color={ios.tertiary} weight="semibold" />
