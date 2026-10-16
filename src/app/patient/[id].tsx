@@ -1,5 +1,5 @@
 import { Stack, router, useLocalSearchParams } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Linking, ScrollView, Share, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn, LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -87,8 +87,13 @@ function VisitRow({ v, open, onToggle }: { v: MB5Visit; open: boolean; onToggle:
 
 export default function PatientDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { patients } = useApp();
+  const { patients, logOpen } = useApp();
   const p = patients.find((x) => x.id === id) ?? patients[0];
+  // บันทึกว่าเปิดดูผู้ป่วยคนนี้ (ให้ครูปัญญาแนะนำคำค้นได้แม่นขึ้น)
+  useEffect(() => {
+    if (p?.id) logOpen(p.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [p?.id]);
   const insets = useSafeAreaInsets();
   const [openNo, setOpenNo] = useState<number | null>(p.visits[0]?.no ?? null);
   const el = elementColor[p.element];

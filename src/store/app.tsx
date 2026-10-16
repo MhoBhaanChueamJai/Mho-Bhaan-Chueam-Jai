@@ -32,6 +32,10 @@ const defaults: Settings = {
   faceIdEnabled: false,
 };
 
+/** บันทึกพฤติกรรมการค้นหา (เก็บในเครื่อง ใช้ให้ AI เดาสิ่งที่จะค้น) */
+export type SearchLog = { q: string; at: number }[];
+export type OpenLog = { pid: string; at: number }[];
+
 type Ctx = {
   settings: Settings;
   ready: boolean;
@@ -48,6 +52,10 @@ type Ctx = {
   /** ปลดล็อกแล้วในรอบการใช้งานนี้ (ไม่บันทึก — เปิดแอปใหม่ต้องปลดล็อกอีกครั้ง) */
   unlocked: boolean;
   setUnlocked: (v: boolean) => void;
+  searchLog: SearchLog;
+  openLog: OpenLog;
+  logSearch: (q: string) => void;
+  logOpen: (pid: string) => void;
 };
 
 const AppCtx = createContext<Ctx>(null as any);
@@ -58,6 +66,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [wisdoms, setWisdoms] = useState<Wisdom[]>(seedWisdoms);
   const [patients, setPatients] = useState<Patient[]>(seedPatients);
   const [unlocked, setUnlocked] = useState(false);
+  const [searchLog, setSearchLog] = useState<SearchLog>([]);
+  const [openLog, setOpenLog] = useState<OpenLog>([]);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -68,14 +78,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (saved.settings) setSettings({ ...defaults, ...saved.settings });
         if (saved.wisdoms?.length) setWisdoms(saved.wisdoms);
         if (saved.patients?.length && saved.patients[0].visits) setPatients(saved.patients);
+        if (saved.searchLog) setSearchLog(saved.searchLog);
+        if (saved.openLog) setOpenLog(saved.openLog);
       })
       .catch(() => {})
       .finally(() => setReady(true));
   }, []);
 
   useEffect(() => {
-    if (ready) AsyncStorage.setItem(KEY, JSON.stringify({ settings, wisdoms, patients })).catch(() => {});
-  }, [settings, wisdoms, patients, ready]);
+    if (ready) AsyncStorage.setItem(KEY, JSON.stringify({ settings, wisdoms, patients, searchLog, openLog })).catch(() => {});
+  }, [settings, wisdoms, patients, searchLog, openLog, ready]);
 
   const value = useMemo<Ctx>(
     () => ({
@@ -98,12 +110,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       },
       unlocked,
       setUnlocked,
+      searchLog,
+      openLog,
+      logSearch: (q) => {
+        const k = q.trim();
+        if (k.length < 2) return;
+        setSearchLog((l) => [{ q: k, at: Date.now() }, ...l.filter((x) => x.q !== k)].slice(0, 30));
+      },
+      logOpen: (pid) => setOpenLog((l) => [{ pid, at: Date.now() }, ...l].slice(0, 50)),
       resetData: () => {
         setPatients(seedPatients);
         setWisdoms(seedWisdoms);
       },
     }),
-    [settings, wisdoms, patients, ready, unlocked],
+    [settings, wisdoms, patients, ready, unlocked, searchLog, openLog],
   );
   return <AppCtx.Provider value={value}>{children}</AppCtx.Provider>;
 }

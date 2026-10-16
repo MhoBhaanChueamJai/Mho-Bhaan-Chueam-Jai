@@ -5,16 +5,19 @@
  */
 import { router } from 'expo-router';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Keyboard, ScrollView, StyleSheet, TextInput, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Keyboard, ScrollView, StyleSheet, TextInput, View, useWindowDimensions } from 'react-native';
 import Animated, { Easing, FadeIn, FadeInDown, interpolate, runOnJS, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Sym, ios } from '../../components/ios';
 import { Avatar, PressableScale, T } from '../../components/ui';
 import { avatars, lastVisit } from '../../data/mock';
 import { statusTone } from '../../data/tones';
+import { aiSuggestions, ruleSuggestions, type Suggestion } from '../../lib/searchSuggest';
 import { useApp } from '../../store/app';
 import { control, elevation, palette } from '../../theme';
 
+
+const SUG_ICON: Record<Suggestion['icon'], any> = { clock: 'clock.arrow.circlepath', person: 'person.fill', calendar: 'calendar', sparkles: 'sparkles', stethoscope: 'stethoscope' };
 
 /** ไฮไลต์คำที่ค้นในข้อความ */
 function Hi({ text, q, v = 'body', color = ios.label, bold }: { text: string; q: string; v?: 'body' | 'caption'; color?: string; bold?: boolean }) {
@@ -33,7 +36,27 @@ function Hi({ text, q, v = 'body', color = ios.label, bold }: { text: string; q:
 export default function PatientSearch() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const { patients } = useApp();
+  const { patients, searchLog, openLog, logSearch } = useApp();
+  const [sugs, setSugs] = useState<Suggestion[]>(() => ruleSuggestions(patients, searchLog, openLog));
+  const [aiState, setAiState] = useState<'loading' | 'ai' | 'rule'>('loading');
+
+  // ให้ครูปัญญาวิเคราะห์พฤติกรรม (แสดงคำแนะนำจากกฎไปก่อนระหว่างรอ)
+  useEffect(() => {
+    let alive = true;
+    aiSuggestions(patients, searchLog, openLog)
+      .then((r) => {
+        if (!alive) return;
+        if (r.length) {
+          setSugs(r);
+          setAiState('ai');
+        } else setAiState('rule');
+      })
+      .catch(() => alive && setAiState('rule'));
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const input = useRef<TextInput>(null);
   const [q, setQ] = useState('');
 
@@ -88,6 +111,7 @@ export default function PatientSearch() {
               placeholder="ชื่อ อาการ หรือเบอร์โทร"
               placeholderTextColor={ios.tertiary}
               returnKeyType="search"
+              onSubmitEditing={() => logSearch(q)}
               style={styles.input}
               accessibilityLabel="ค้นหาผู้ป่วย"
             />
@@ -108,6 +132,45 @@ export default function PatientSearch() {
       <Animated.View style={[{ flex: 1 }, bodySt]}>
         <ScrollView keyboardDismissMode="on-drag" keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 40 }} showsVerticalScrollIndicator={false}>
 
+          {!searching && sugs.length ? (
+            <Animated.View entering={FadeIn.duration(250)} style={[styles.aiCard, elevation.e1]}>
+              <View style={styles.aiHead}>
+                <View style={styles.aiBadge}>
+                  <Sym name="sparkles" size={13} color="#FFFFFF" />
+                </View>
+                <T v="callout" style={{ fontWeight: '700', flex: 1 }}>ครูปัญญาแนะนำ</T>
+                {aiState === 'loading' ? (
+                  <ActivityIndicator size="small" color={palette.primary} />
+                ) : (
+                  <T v="micro" color={ios.tertiary}>{aiState === 'ai' ? 'วิเคราะห์จากการใช้งานของคุณ' : 'จากการใช้งานล่าสุด'}</T>
+                )}
+              </View>
+              {sugs.map((s, i) => (
+                <Animated.View key={s.q + i} entering={FadeInDown.delay(i * 50).duration(220)}>
+                  <PressableScale
+                    haptic="select"
+                    scaleTo={0.98}
+                    onPress={() => {
+                      setQ(s.q);
+                      logSearch(s.q);
+                    }}
+                    style={[styles.sugRow, i > 0 && styles.sugSep]}
+                    accessibilityLabel={`ค้นหา ${s.q}`}
+                  >
+                    <View style={styles.sugIcon}>
+                      <Sym name={SUG_ICON[s.icon]} size={15} color={palette.primary} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <T v="body" style={{ fontWeight: '600' }} numberOfLines={1}>{s.q}</T>
+                      {s.why ? <T v="caption" color={ios.secondary} numberOfLines={1}>{s.why}</T> : null}
+                    </View>
+                    <Sym name="arrow.up.left" size={13} color={ios.tertiary} />
+                  </PressableScale>
+                </Animated.View>
+              ))}
+            </Animated.View>
+          ) : null}
+
           <T v="caption" color={ios.secondary} style={styles.sec}>
             {searching ? `พบ ${results.length} ราย` : `ผู้ป่วยทั้งหมด ${patients.length} ราย`}
           </T>
@@ -123,6 +186,7 @@ export default function PatientSearch() {
                     haptic="select"
                     onPress={() => {
                       Keyboard.dismiss();
+                      if (q.trim()) logSearch(q);
                       router.replace(`/patient/${p.id}`);
                     }}
                     style={[styles.card, elevation.e1]}
@@ -179,6 +243,12 @@ const styles = StyleSheet.create({
   cancelWrap: { position: 'absolute', right: 8 },
   cancel: { height: control.icon, paddingHorizontal: 8, justifyContent: 'center' },
   sec: { paddingHorizontal: 4, marginBottom: 8, marginTop: 16 },
+  aiCard: { backgroundColor: palette.surface, borderRadius: 20, borderCurve: 'continuous', paddingVertical: 6, marginTop: 14 },
+  aiHead: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingTop: 8, paddingBottom: 6 },
+  aiBadge: { width: 24, height: 24, borderRadius: 8, backgroundColor: palette.primary, alignItems: 'center', justifyContent: 'center' },
+  sugRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 9, minHeight: control.row },
+  sugSep: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: ios.separator, marginLeft: 0 },
+  sugIcon: { width: 32, height: 32, borderRadius: 16, backgroundColor: palette.primarySoft, alignItems: 'center', justifyContent: 'center' },
   status: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 9, paddingVertical: 3, borderRadius: 999 },
   statusDot: { width: 6, height: 6, borderRadius: 3 },
   card: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: palette.surface, borderRadius: 20, borderCurve: 'continuous', padding: 12, paddingRight: 14 },
