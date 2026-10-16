@@ -82,6 +82,7 @@ const MAP: Record<string, keyof typeof Ionicons.glyphMap> = {
   waveform: 'pulse',
   'waveform.path.ecg': 'pulse',
   xmark: 'close',
+  'xmark.circle.fill': 'close-circle',
   'delete.left': 'backspace-outline',
   faceid: 'scan-outline',
   touchid: 'finger-print',

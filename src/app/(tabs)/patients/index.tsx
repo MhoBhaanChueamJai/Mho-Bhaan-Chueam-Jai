@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Linking, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { IOSCard, Sym, ios } from '../../../components/ios';
-import { Avatar, Chip, Hatch, HeaderButton, PressableScale, SearchBar, T } from '../../../components/ui';
+import { Avatar, Chip, Hatch, HeaderButton, PressableScale, T } from '../../../components/ui';
 import { TODAY, agenda, avatars, lastVisit } from '../../../data/mock';
 import { statusTone } from '../../../data/tones';
 import { useApp } from '../../../store/app';
@@ -106,12 +106,11 @@ export default function Patients() {
     if (view === 'all') setMode(1);
   }, [view]);
   const [day, setDay] = useState(TODAY);
-  const [q, setQ] = useState('');
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>('ทั้งหมด');
   const appts = agenda[key(day)] ?? [];
   const shown = useMemo(
-    () => patients.filter((p) => (filter === 'ทั้งหมด' || p.status === filter) && (!q || (p.name + (lastVisit(p)?.diagnosis ?? '') + (lastVisit(p)?.symptoms ?? '')).includes(q))),
-    [patients, q, filter],
+    () => patients.filter((p) => (filter === 'ทั้งหมด' || p.status === filter) && true),
+    [patients, filter],
   );
   const dayLabel = `${same(day, TODAY) ? 'วันนี้ · ' : ''}วัน${['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์'][day.getDay()]}ที่ ${day.getDate()} ${MONTHS[day.getMonth()]}`;
 
@@ -120,9 +119,14 @@ export default function Patients() {
       <Stack.Screen
         options={{
           headerRight: () => (
-            <HeaderButton label="เพิ่มผู้ป่วยใหม่" onPress={() => router.push('/patient/new')}>
-              <Sym name="plus" size={20} color={palette.primary} weight="semibold" />
-            </HeaderButton>
+            <View style={{ flexDirection: 'row', gap: 4 }}>
+              <HeaderButton label="ค้นหาผู้ป่วย" onPress={() => router.push('/patient/search')}>
+                <Sym name="magnifyingglass" size={20} color={palette.primary} weight="semibold" />
+              </HeaderButton>
+              <HeaderButton label="เพิ่มผู้ป่วยใหม่" onPress={() => router.push('/patient/new')}>
+                <Sym name="plus" size={20} color={palette.primary} weight="semibold" />
+              </HeaderButton>
+            </View>
           ),
         }}
       />
@@ -198,10 +202,9 @@ export default function Patients() {
           </Animated.View>
         ) : (
           <Animated.View key="all" entering={FadeIn.duration(200)}>
-            <SearchBar style={{ marginTop: 16 }} placeholder="ค้นหาชื่อ หรืออาการ" value={q} onChangeText={setQ} />
 
             {/* ตัวกรองสถานะ */}
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -16, marginTop: -8, marginBottom: -4 }} contentContainerStyle={{ gap: 8, paddingHorizontal: 16, paddingVertical: 20 }}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -16, marginTop: -4, marginBottom: -4 }} contentContainerStyle={{ gap: 8, paddingHorizontal: 16, paddingVertical: 20 }}>
               {FILTERS.map((f) => {
                 const n = f === 'ทั้งหมด' ? patients.length : patients.filter((p) => p.status === f).length;
                 return <Chip key={f} label={`${f} ${n}`} active={filter === f} onPress={() => setFilter(f)} />;

@@ -7,7 +7,7 @@ import { palette } from '../../theme';
 /**
  * แท็บบาร์ native ของ iOS 26 (Liquid Glass ของ Apple)
  * - แคปซูลกระจกเลื่อนตามแท็บที่เลือก, หดตัวเมื่อเลื่อนลง
- * - แท็บ "ครูปัญญา" ใช้ role="search" → แยกเป็นปุ่มกระจกวงกลมทางขวา
+ * - แท็บ "ครูปัญญา" (ไมค์) กดแล้วเปิดหน้าแชทเต็มจอ
  */
 export default function TabsLayout() {
   const { settings } = useApp();
@@ -31,7 +31,7 @@ export default function TabsLayout() {
         <Icon sf={{ default: 'books.vertical', selected: 'books.vertical.fill' }} />
         <Label>คลังภูมิ</Label>
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="ask" role="search">
+      <NativeTabs.Trigger name="ask">
         <Icon sf="mic.fill" />
         <Label>ครูปัญญา</Label>
       </NativeTabs.Trigger>

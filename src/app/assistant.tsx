@@ -8,6 +8,7 @@ import { useSpeaker, useVoiceRecorder } from '../components/audio';
 import { Group, Row, Sym, ios } from '../components/ios';
 import { AIFlower, SoftShadow, Waveform } from '../components/Orb';
 import { Glass, HeaderBack, HeaderButton, PressableScale, T, useHaptic } from '../components/ui';
+import { askLaunch } from '../lib/askLaunch';
 import { useApp } from '../store/app';
 import { control, palette } from '../theme';
 
@@ -72,7 +73,15 @@ export default function Assistant() {
     if (!tts.speaking) setSpeakingId(null);
   }, [tts.speaking]);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => () => tts.stop(), []);
+  useEffect(
+    () => () => {
+      tts.stop();
+      // ปิดหน้าแชท → แท็บไมค์รู้ว่าต้องพากลับหน้าหลัก
+      askLaunch.justClosed = true;
+      setTimeout(() => (askLaunch.justClosed = false), 1500);
+    },
+    [],
+  );
 
   const toggleMic = async () => {
     if (rec.isRecording) {
