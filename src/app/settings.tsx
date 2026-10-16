@@ -7,6 +7,7 @@ import { AppIcon, Sym, ios } from '../components/ios';
 import { Avatar, HeaderBack, PressableScale, T, useHaptic } from '../components/ui';
 import { avatars, doctor, doctorTypes, fullAddress } from '../data/mock';
 import { useApp } from '../store/app';
+import { authenticateBiometric, biometricInfo, clearPin } from '../store/security';
 import { control, palette } from '../theme';
 
 const SERVICES: { k: ServiceKey; label: string; sym: any; bg: string }[] = [
@@ -72,7 +73,11 @@ function Section({ title, footer, children }: { title?: string; footer?: string;
 }
 
 export default function Settings() {
-  const { settings, update, patients, wisdoms, resetData } = useApp();
+  const { settings, update, patients, wisdoms, resetData, setUnlocked } = useApp();
+  const [bio, setBio] = useState({ available: false, label: 'Face ID', icon: 'faceid' as 'faceid' | 'touchid' });
+  useEffect(() => {
+    biometricInfo().then(setBio);
+  }, []);
   const tts = useSpeaker();
   const h = useHaptic();
   const [status, setStatus] = useState<Record<ServiceKey, boolean> | null>(null);
@@ -119,6 +124,33 @@ export default function Settings() {
       },
     ]);
 
+  /** เปิด: ไปหน้าตั้ง PIN, ปิด: ถามยืนยันแล้วลบ PIN */
+  const togglePin = (on: boolean) => {
+    if (on) return router.push({ pathname: '/pin-setup', params: { mode: 'change' } });
+    Alert.alert('ปิดรหัส PIN?', settings.faceIdEnabled ? `ยังปลดล็อกด้วย ${bio.label} ได้ตามปกติ` : 'เปิดแอปครั้งถัดไปจะเข้าได้ทันทีโดยไม่ต้องปลดล็อก', [
+      { text: 'ยกเลิก', style: 'cancel' },
+      {
+        text: 'ปิด',
+        style: 'destructive',
+        onPress: async () => {
+          await clearPin();
+          update({ pinEnabled: false });
+          h.success();
+        },
+      },
+    ]);
+  };
+
+  /** เปิด: ยืนยันตัวตนด้วย Face ID ก่อน, ปิด: ปิดทันที */
+  const toggleFace = async (on: boolean) => {
+    if (!on) return update({ faceIdEnabled: false });
+    if (!bio.available) return Alert.alert(`ยังใช้ ${bio.label} ไม่ได้`, `ตั้งค่า ${bio.label} ใน การตั้งค่า ของ iPhone ก่อน`);
+    if (await authenticateBiometric(`เปิดใช้ ${bio.label} สำหรับหมอบ้านเชื่อมใจ`)) {
+      update({ faceIdEnabled: true });
+      h.success();
+    }
+  };
+
   const logout = () =>
     Alert.alert('ออกจากระบบ?', 'ข้อมูลที่บันทึกในเครื่องนี้จะถูกล้าง และต้องเข้าสู่ระบบใหม่ในครั้งถัดไป', [
       { text: 'ยกเลิก', style: 'cancel' },
@@ -128,7 +160,9 @@ export default function Settings() {
         onPress: () => {
           tts.stop();
           resetData();
-          update({ loggedIn: false, phone: '' });
+          clearPin();
+          update({ loggedIn: false, phone: '', pinEnabled: false, faceIdEnabled: false });
+          setUnlocked(false);
           h.success();
           router.dismissAll();
           router.replace('/login');
@@ -184,6 +218,31 @@ export default function Settings() {
                 ))}
               </View>
             }
+          />
+        </Section>
+
+        <Section
+          title="ความปลอดภัย"
+          footer={
+            settings.pinEnabled || settings.faceIdEnabled
+              ? 'เปิดแอปครั้งถัดไป หรือกลับมาหลังออกจากแอปเกิน 1 นาที ต้องปลดล็อกก่อนใช้งาน ไม่ต้องกรอกรหัสผ่านใหม่'
+              : 'ตั้งรหัส PIN หรือ Face ID เพื่อป้องกันข้อมูลผู้ป่วยเมื่อมีคนอื่นหยิบเครื่องไป'
+          }
+        >
+          <Row
+            icon={<AppIcon name="lock.shield.fill" bg={palette.primary} />}
+            title="รหัส PIN"
+            right={<Switch value={settings.pinEnabled} onValueChange={togglePin} trackColor={{ true: palette.primary }} />}
+          />
+          {settings.pinEnabled ? (
+            <Row icon={<AppIcon name="key.fill" bg="#5E6B63" />} title="เปลี่ยนรหัส PIN" onPress={() => router.push({ pathname: '/pin-setup', params: { mode: 'change' } })} chevron />
+          ) : null}
+          <Row
+            icon={<AppIcon name={bio.icon} bg="#2A8C7A" />}
+            title={bio.label}
+            value={bio.available ? undefined : 'ไม่พร้อมใช้งาน'}
+            last
+            right={bio.available ? <Switch value={settings.faceIdEnabled} onValueChange={toggleFace} trackColor={{ true: palette.primary }} /> : undefined}
           />
         </Section>
 

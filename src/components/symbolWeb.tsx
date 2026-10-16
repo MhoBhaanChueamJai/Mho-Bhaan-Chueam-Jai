@@ -82,6 +82,13 @@ const MAP: Record<string, keyof typeof Ionicons.glyphMap> = {
   waveform: 'pulse',
   'waveform.path.ecg': 'pulse',
   xmark: 'close',
+  'delete.left': 'backspace-outline',
+  faceid: 'scan-outline',
+  touchid: 'finger-print',
+  'lock.shield.fill': 'lock-closed',
+  'lock.open.fill': 'lock-open',
+  'key.fill': 'key',
+  'rectangle.portrait.and.arrow.right': 'log-out-outline',
 };
 
 export function WebSymbol({ name, size, color }: { name: string; size: number; color: string }) {

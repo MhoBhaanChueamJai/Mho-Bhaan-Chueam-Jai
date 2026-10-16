@@ -69,7 +69,7 @@ function Field({
 export default function Login() {
   const insets = useSafeAreaInsets();
   const { height, width } = useWindowDimensions();
-  const { settings, update } = useApp();
+  const { settings, update, setUnlocked } = useApp();
   const h = useHaptic();
   const passRef = useRef<TextInput>(null);
   const [user, setUser] = useState(settings.username);
@@ -84,8 +84,12 @@ export default function Login() {
   const enter = (name: string) => {
     h.success();
     update({ loggedIn: true, username: name });
-    router.replace('/home');
+    setUnlocked(true);
+    // ยังไม่ได้ตั้ง PIN → ชวนตั้ง PIN / Face ID ไว้ใช้ครั้งถัดไป
+    if (!settings.pinEnabled && !settings.faceIdEnabled) router.replace({ pathname: '/pin-setup', params: { mode: 'onboard' } });
+    else router.replace('/home');
   };
+
 
   const submit = () => {
     if (!canSubmit) return;

@@ -59,7 +59,8 @@
           "faceIDPermission": "ใช้ Face ID เพื่อเข้าสู่ระบบหมอบ้านเชื่อมใจอย่างรวดเร็ว"
         }
       ],
-      "expo-video"
+      "expo-video",
+      "expo-secure-store"
     ],
     "scheme": "suebsan",
     "experiments": {

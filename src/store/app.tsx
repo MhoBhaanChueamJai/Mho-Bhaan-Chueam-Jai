@@ -13,6 +13,10 @@ type Settings = {
   phone: string;
   /** ชื่อผู้ใช้ที่จำไว้ (ใช้กับ Face ID) */
   username: string;
+  /** ล็อกแอปด้วยรหัส PIN */
+  pinEnabled: boolean;
+  /** ปลดล็อกด้วย Face ID / Touch ID */
+  faceIdEnabled: boolean;
 };
 
 const defaults: Settings = {
@@ -24,6 +28,8 @@ const defaults: Settings = {
   loggedIn: false,
   phone: '',
   username: '',
+  pinEnabled: false,
+  faceIdEnabled: false,
 };
 
 type Ctx = {
@@ -39,6 +45,9 @@ type Ctx = {
   addPatient: (p: Omit<Patient, 'id' | 'visits'>, firstVisit?: Omit<MB5Visit, 'no'>) => string;
   /** ล้างข้อมูลที่บันทึกในเครื่อง กลับเป็นข้อมูลตัวอย่าง */
   resetData: () => void;
+  /** ปลดล็อกแล้วในรอบการใช้งานนี้ (ไม่บันทึก — เปิดแอปใหม่ต้องปลดล็อกอีกครั้ง) */
+  unlocked: boolean;
+  setUnlocked: (v: boolean) => void;
 };
 
 const AppCtx = createContext<Ctx>(null as any);
@@ -48,6 +57,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [settings, setSettings] = useState<Settings>(defaults);
   const [wisdoms, setWisdoms] = useState<Wisdom[]>(seedWisdoms);
   const [patients, setPatients] = useState<Patient[]>(seedPatients);
+  const [unlocked, setUnlocked] = useState(false);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -86,12 +96,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setPatients((list) => [{ ...p, id, visits: firstVisit ? [{ ...firstVisit, no: 1 }] : [] }, ...list]);
         return id;
       },
+      unlocked,
+      setUnlocked,
       resetData: () => {
         setPatients(seedPatients);
         setWisdoms(seedWisdoms);
       },
     }),
-    [settings, wisdoms, patients, ready],
+    [settings, wisdoms, patients, ready, unlocked],
   );
   return <AppCtx.Provider value={value}>{children}</AppCtx.Provider>;
 }
