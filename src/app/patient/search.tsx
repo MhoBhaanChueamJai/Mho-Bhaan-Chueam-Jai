@@ -36,14 +36,14 @@ function Hi({ text, q, v = 'body', color = ios.label, bold }: { text: string; q:
 export default function PatientSearch() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const { patients, searchLog, openLog, logSearch } = useApp();
-  const [sugs, setSugs] = useState<Suggestion[]>(() => ruleSuggestions(patients, searchLog, openLog));
+  const { patients, searchLog, openLog, logSearch, agenda } = useApp();
+  const [sugs, setSugs] = useState<Suggestion[]>(() => ruleSuggestions(patients, searchLog, openLog, agenda));
   const [aiState, setAiState] = useState<'loading' | 'ai' | 'rule'>('loading');
 
   // ให้ครูปัญญาวิเคราะห์พฤติกรรม (แสดงคำแนะนำจากกฎไปก่อนระหว่างรอ)
   useEffect(() => {
     let alive = true;
-    aiSuggestions(patients, searchLog, openLog)
+    aiSuggestions(patients, searchLog, openLog, agenda)
       .then((r) => {
         if (!alive) return;
         if (r.length) {
@@ -145,29 +145,25 @@ export default function PatientSearch() {
                   <T v="micro" color={ios.tertiary}>{aiState === 'ai' ? 'วิเคราะห์จากการใช้งานของคุณ' : 'จากการใช้งานล่าสุด'}</T>
                 )}
               </View>
-              {sugs.map((s, i) => (
-                <Animated.View key={s.q + i} entering={FadeInDown.delay(i * 50).duration(220)}>
-                  <PressableScale
-                    haptic="select"
-                    scaleTo={0.98}
-                    onPress={() => {
-                      setQ(s.q);
-                      logSearch(s.q);
-                    }}
-                    style={[styles.sugRow, i > 0 && styles.sugSep]}
-                    accessibilityLabel={`ค้นหา ${s.q}`}
-                  >
-                    <View style={styles.sugIcon}>
-                      <Sym name={SUG_ICON[s.icon]} size={15} color={palette.primary} />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <T v="body" style={{ fontWeight: '600' }} numberOfLines={1}>{s.q}</T>
-                      {s.why ? <T v="caption" color={ios.secondary} numberOfLines={1}>{s.why}</T> : null}
-                    </View>
-                    <Sym name="arrow.up.left" size={13} color={ios.tertiary} />
-                  </PressableScale>
-                </Animated.View>
-              ))}
+              <View style={styles.chips}>
+                {sugs.map((s, i) => (
+                  <Animated.View key={s.q + i} entering={FadeInDown.delay(i * 50).duration(220)}>
+                    <PressableScale
+                      haptic="select"
+                      scaleTo={0.95}
+                      onPress={() => {
+                        setQ(s.q);
+                        logSearch(s.q);
+                      }}
+                      style={styles.chip}
+                      accessibilityLabel={`ค้นหา ${s.q}${s.why ? ` (${s.why})` : ''}`}
+                    >
+                      <Sym name={SUG_ICON[s.icon]} size={14} color={palette.primary} />
+                      <T v="callout" color={palette.primaryDeep} style={{ fontWeight: '600' }} numberOfLines={1}>{s.q}</T>
+                    </PressableScale>
+                  </Animated.View>
+                ))}
+              </View>
             </Animated.View>
           ) : null}
 
@@ -246,9 +242,8 @@ const styles = StyleSheet.create({
   aiCard: { backgroundColor: palette.surface, borderRadius: 20, borderCurve: 'continuous', paddingVertical: 6, marginTop: 14 },
   aiHead: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingTop: 8, paddingBottom: 6 },
   aiBadge: { width: 24, height: 24, borderRadius: 8, backgroundColor: palette.primary, alignItems: 'center', justifyContent: 'center' },
-  sugRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 9, minHeight: control.row },
-  sugSep: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: ios.separator, marginLeft: 0 },
-  sugIcon: { width: 32, height: 32, borderRadius: 16, backgroundColor: palette.primarySoft, alignItems: 'center', justifyContent: 'center' },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 14, paddingTop: 4, paddingBottom: 10 },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 36, paddingHorizontal: 14, borderRadius: 18, backgroundColor: palette.primarySoft, maxWidth: 260 },
   status: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 9, paddingVertical: 3, borderRadius: 999 },
   statusDot: { width: 6, height: 6, borderRadius: 3 },
   card: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: palette.surface, borderRadius: 20, borderCurve: 'continuous', padding: 12, paddingRight: 14 },

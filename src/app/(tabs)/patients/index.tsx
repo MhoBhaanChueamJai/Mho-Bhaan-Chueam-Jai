@@ -5,7 +5,8 @@ import { Linking, ScrollView, StyleSheet, View, useWindowDimensions } from 'reac
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { IOSCard, Sym, ios } from '../../../components/ios';
 import { Avatar, Chip, Hatch, HeaderButton, PressableScale, T } from '../../../components/ui';
-import { TODAY, agenda, avatars, lastVisit } from '../../../data/mock';
+import { TODAY, avatars, lastVisit } from '../../../data/mock';
+import type { Agenda } from '../../../lib/cloud';
 import { statusTone } from '../../../data/tones';
 import { useApp } from '../../../store/app';
 import { control, elevation, palette } from '../../../theme';
@@ -23,7 +24,7 @@ const FUTURE_WEEKS = 12;
 const TH_M = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
 
 /** แถบวันที่เลื่อนทีละสัปดาห์ (อาทิตย์–เสาร์ พอดีหนึ่งหน้าจอ) */
-function WeekPager({ selected, onSelect }: { selected: Date; onSelect: (d: Date) => void }) {
+function WeekPager({ selected, onSelect, agenda }: { selected: Date; onSelect: (d: Date) => void; agenda: Agenda }) {
   const { width } = useWindowDimensions();
   const ref = useRef<ScrollView>(null);
   const base = addDays(startOfWeek(TODAY), -7 * PAST_WEEKS);
@@ -85,7 +86,7 @@ function WeekPager({ selected, onSelect }: { selected: Date; onSelect: (d: Date)
 const FILTERS = ['ทั้งหมด', 'นัดวันนี้', 'ติดตามอาการ', 'ส่งต่อ รพ.สต.', 'หายดี'] as const;
 const TH_SHORT = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
 /** นัดครั้งถัดไปของผู้ป่วย (ตั้งแต่วันนี้) */
-function nextAppt(pid: string) {
+function nextAppt(agenda: Agenda, pid: string) {
   const today = key(TODAY);
   const k = Object.keys(agenda)
     .filter((d) => d >= today && agenda[d].some((a) => a.pid === pid))
@@ -99,7 +100,7 @@ function nextAppt(pid: string) {
 const toMin = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
 
 export default function Patients() {
-  const { patients } = useApp();
+  const { patients, agenda } = useApp();
   const { view } = useLocalSearchParams<{ view?: string }>();
   const [mode, setMode] = useState(view === 'all' ? 1 : 0);
   useEffect(() => {
@@ -141,7 +142,7 @@ export default function Patients() {
         {mode === 0 ? (
           <Animated.View key="cal" entering={FadeIn.duration(200)}>
             <View style={{ marginTop: 8 }}>
-              <WeekPager selected={day} onSelect={setDay} />
+              <WeekPager selected={day} onSelect={setDay} agenda={agenda} />
             </View>
 
             <View style={styles.dayHead}>
@@ -215,7 +216,7 @@ export default function Patients() {
               {shown.map((p, i) => {
                 const st = statusTone[p.status];
                 const v = lastVisit(p);
-                const next = nextAppt(p.id);
+                const next = nextAppt(agenda, p.id);
                 return (
                   <Animated.View key={p.id} entering={FadeIn.delay(i * 40).duration(200)}>
                     <PressableScale scaleTo={0.98} onPress={() => router.push(`/patient/${p.id}`)} style={[styles.pcard, elevation.e1]} accessibilityLabel={p.name}>

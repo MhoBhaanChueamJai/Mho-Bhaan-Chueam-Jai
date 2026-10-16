@@ -1,7 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import type { ModelKey } from '../api/ai';
-import { patients as seedPatients, wisdoms as seedWisdoms, type MB5Visit, type Patient, type Wisdom } from '../data/mock';
+import { agenda as seedAgenda, patients as seedPatients, wisdoms as seedWisdoms, type MB5Visit, type Patient, type Wisdom } from '../data/mock';
+import * as cloud from '../lib/cloud';
+import type { Agenda } from '../lib/cloud';
+import { supabase } from '../lib/supabase';
 
 type Settings = {
   model: ModelKey;
@@ -56,6 +59,13 @@ type Ctx = {
   openLog: OpenLog;
   logSearch: (q: string) => void;
   logOpen: (pid: string) => void;
+  /** นัดหมายรายวัน (คีย์ YYYY-MM-DD) */
+  agenda: Agenda;
+  /** สถานะการเชื่อมต่อฐานข้อมูล */
+  sync: 'local' | 'syncing' | 'cloud' | 'error';
+  syncError: string;
+  /** โหลดข้อมูลจาก Supabase ใหม่ (เรียกหลังเข้าสู่ระบบ) */
+  reloadCloud: () => Promise<void>;
 };
 
 const AppCtx = createContext<Ctx>(null as any);
@@ -69,6 +79,60 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [searchLog, setSearchLog] = useState<SearchLog>([]);
   const [openLog, setOpenLog] = useState<OpenLog>([]);
   const [ready, setReady] = useState(false);
+  const [agenda, setAgenda] = useState<Agenda>(seedAgenda);
+  const [sync, setSync] = useState<Ctx['sync']>('local');
+  const [syncError, setSyncError] = useState('');
+  const [online, setOnline] = useState(false);
+
+  /** เขียนขึ้นคลาวด์แบบไม่บล็อก UI — ล้มเหลวก็ยังมีข้อมูลในเครื่อง */
+  const push = (fn: () => Promise<unknown>) => {
+    if (!online) return;
+    fn().catch((e) => {
+      setSync('error');
+      setSyncError(String(e?.message ?? e));
+    });
+  };
+
+  const reloadCloud = async () => {
+    const { data } = await supabase.auth.getSession();
+    if (!data.session) {
+      setOnline(false);
+      setSync('local');
+      return;
+    }
+    setSync('syncing');
+    try {
+      await cloud.seedIfEmpty();
+      const d = await cloud.loadAll();
+      setPatients(d.patients);
+      setWisdoms(d.wisdoms);
+      setAgenda(d.agenda);
+      setSearchLog(d.events.filter((x) => x.kind === 'search').map((x) => ({ q: x.value, at: x.at })).slice(0, 30));
+      setOpenLog(d.events.filter((x) => x.kind === 'open').map((x) => ({ pid: x.value, at: x.at })).slice(0, 50));
+      setOnline(true);
+      setSync('cloud');
+      setSyncError('');
+    } catch (e: any) {
+      // ยังไม่ได้สร้างตาราง / ไม่มีเน็ต → ใช้ข้อมูลในเครื่องต่อ
+      setOnline(false);
+      setSync('error');
+      setSyncError(String(e?.message ?? e));
+    }
+  };
+
+  // มี session ค้างจากครั้งก่อน → โหลดจากคลาวด์, ออกจากระบบ → กลับเป็นโหมดในเครื่อง
+  useEffect(() => {
+    if (!ready) return;
+    reloadCloud();
+    const { data } = supabase.auth.onAuthStateChange((ev) => {
+      if (ev === 'SIGNED_OUT') {
+        setOnline(false);
+        setSync('local');
+      }
+    });
+    return () => data.subscription.unsubscribe();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready]);
 
   useEffect(() => {
     AsyncStorage.getItem(KEY)
@@ -80,14 +144,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (saved.patients?.length && saved.patients[0].visits) setPatients(saved.patients);
         if (saved.searchLog) setSearchLog(saved.searchLog);
         if (saved.openLog) setOpenLog(saved.openLog);
+        if (saved.agenda) setAgenda(saved.agenda);
       })
       .catch(() => {})
       .finally(() => setReady(true));
   }, []);
 
   useEffect(() => {
-    if (ready) AsyncStorage.setItem(KEY, JSON.stringify({ settings, wisdoms, patients, searchLog, openLog })).catch(() => {});
-  }, [settings, wisdoms, patients, searchLog, openLog, ready]);
+    if (ready) AsyncStorage.setItem(KEY, JSON.stringify({ settings, wisdoms, patients, searchLog, openLog, agenda })).catch(() => {});
+  }, [settings, wisdoms, patients, searchLog, openLog, agenda, ready]);
 
   const value = useMemo<Ctx>(
     () => ({
@@ -95,17 +160,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       ready,
       update: (patch) => setSettings((s) => ({ ...s, ...patch })),
       wisdoms,
-      addWisdom: (w) => setWisdoms((list) => [w, ...list]),
+      addWisdom: (w) => {
+        setWisdoms((list) => [w, ...list]);
+        push(() => cloud.saveWisdom(w));
+      },
       patients,
       addVisit: (pid, visit) => {
         const p = patients.find((x) => x.id === pid);
         const no = (p?.visits[0]?.no ?? 0) + 1;
         setPatients((list) => list.map((x) => (x.id === pid ? { ...x, visits: [{ ...visit, no }, ...x.visits] } : x)));
+        push(() => cloud.saveVisit(pid, { ...visit, no }));
         return no;
       },
       addPatient: (p, firstVisit) => {
         const id = `p${Date.now()}`;
-        setPatients((list) => [{ ...p, id, visits: firstVisit ? [{ ...firstVisit, no: 1 }] : [] }, ...list]);
+        const np: Patient = { ...p, id, visits: firstVisit ? [{ ...firstVisit, no: 1 }] : [] };
+        setPatients((list) => [np, ...list]);
+        push(() => cloud.savePatient(np));
         return id;
       },
       unlocked,
@@ -116,14 +187,27 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const k = q.trim();
         if (k.length < 2) return;
         setSearchLog((l) => [{ q: k, at: Date.now() }, ...l.filter((x) => x.q !== k)].slice(0, 30));
+        push(() => cloud.logEvent('search', k));
       },
-      logOpen: (pid) => setOpenLog((l) => [{ pid, at: Date.now() }, ...l].slice(0, 50)),
+      logOpen: (pid) => {
+        setOpenLog((l) => [{ pid, at: Date.now() }, ...l].slice(0, 50));
+        push(() => cloud.logEvent('open', pid));
+      },
+      agenda,
+      sync,
+      syncError,
+      reloadCloud,
       resetData: () => {
         setPatients(seedPatients);
         setWisdoms(seedWisdoms);
+        setAgenda(seedAgenda);
+        setSearchLog([]);
+        setOpenLog([]);
+        push(() => cloud.resetCloud());
       },
     }),
-    [settings, wisdoms, patients, ready, unlocked, searchLog, openLog],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [settings, wisdoms, patients, ready, unlocked, searchLog, openLog, agenda, sync, syncError, online],
   );
   return <AppCtx.Provider value={value}>{children}</AppCtx.Provider>;
 }

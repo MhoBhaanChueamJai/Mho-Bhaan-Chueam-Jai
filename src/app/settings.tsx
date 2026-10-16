@@ -6,6 +6,7 @@ import { useSpeaker } from '../components/audio';
 import { AppIcon, Sym, ios } from '../components/ios';
 import { Avatar, HeaderBack, PressableScale, T, useHaptic } from '../components/ui';
 import { avatars, doctor, doctorTypes, fullAddress } from '../data/mock';
+import { supabase } from '../lib/supabase';
 import { useApp } from '../store/app';
 import { authenticateBiometric, biometricInfo, clearPin } from '../store/security';
 import { control, palette } from '../theme';
@@ -73,7 +74,7 @@ function Section({ title, footer, children }: { title?: string; footer?: string;
 }
 
 export default function Settings() {
-  const { settings, update, patients, wisdoms, resetData, setUnlocked } = useApp();
+  const { settings, update, patients, wisdoms, resetData, setUnlocked, sync, syncError, reloadCloud } = useApp();
   const [bio, setBio] = useState({ available: false, label: 'Face ID', icon: 'faceid' as 'faceid' | 'touchid' });
   useEffect(() => {
     biometricInfo().then(setBio);
@@ -161,6 +162,7 @@ export default function Settings() {
           tts.stop();
           resetData();
           clearPin();
+          supabase.auth.signOut().catch(() => {});
           update({ loggedIn: false, phone: '', pinEnabled: false, faceIdEnabled: false });
           setUnlocked(false);
           h.success();
@@ -273,6 +275,23 @@ export default function Settings() {
             );
           })}
           <Row icon={<AppIcon name="arrow.clockwise" bg="#8E8E93" />} title={checking ? 'กำลังตรวจสอบ…' : 'ตรวจสอบอีกครั้ง'} onPress={check} last />
+        </Section>
+
+        <Section
+          title="ฐานข้อมูล"
+          footer={sync === 'error' ? `เชื่อมต่อไม่สำเร็จ: ${syncError.slice(0, 120)} — ใช้ข้อมูลในเครื่องไปก่อน` : 'ข้อมูลผู้ป่วยซิงก์กับ Supabase และเก็บสำเนาในเครื่องไว้ใช้ตอนไม่มีเน็ต'}
+        >
+          <Row
+            icon={<AppIcon name="externaldrive.fill.badge.icloud" bg="#3B7DD8" />}
+            title="Supabase"
+            right={
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <View style={[styles.dot, { backgroundColor: sync === 'cloud' ? palette.online : sync === 'syncing' ? ios.tertiary : palette.coral }]} />
+                <T v="callout" color={ios.secondary}>{{ cloud: 'ซิงก์แล้ว', syncing: 'กำลังซิงก์', error: 'ขัดข้อง', local: 'ในเครื่อง' }[sync]}</T>
+              </View>
+            }
+          />
+          <Row icon={<AppIcon name="arrow.clockwise" bg="#8E8E93" />} title="ซิงก์ข้อมูลอีกครั้ง" onPress={() => reloadCloud()} last />
         </Section>
 
         <Section title="ข้อมูล" footer={`ผู้ป่วย ${patients.length} ราย · ภูมิปัญญา ${wisdoms.length} เรื่อง · เก็บในเครื่องนี้ตาม พ.ร.บ.คุ้มครองข้อมูลส่วนบุคคล`}>

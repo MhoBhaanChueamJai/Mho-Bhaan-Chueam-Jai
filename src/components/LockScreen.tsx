@@ -12,6 +12,7 @@ import { PinPad, type PinPadHandle } from './PinPad';
 import { HeroRing, PinShell } from './PinShell';
 import { Avatar, PressableScale, T, useHaptic } from './ui';
 import { avatars, doctor } from '../data/mock';
+import { supabase } from '../lib/supabase';
 import { useApp } from '../store/app';
 import { palette } from '../theme';
 import { MAX_ATTEMPTS, authenticateBiometric, biometricInfo, checkPin } from '../store/security';
@@ -43,6 +44,7 @@ export function LockScreen() {
   }, []);
 
   const logout = () => {
+    supabase.auth.signOut().catch(() => {});
     update({ loggedIn: false });
     setUnlocked(false);
     router.replace('/login');

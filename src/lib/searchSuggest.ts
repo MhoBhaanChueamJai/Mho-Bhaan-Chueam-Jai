@@ -5,7 +5,8 @@
  * ถ้า AI ไม่ตอบ ใช้กฎจากพฤติกรรมเดียวกันแทน
  */
 import { chatJSON } from '../api/ai';
-import { TODAY, agenda, lastVisit, type Patient } from '../data/mock';
+import { TODAY, lastVisit, type Patient } from '../data/mock';
+import type { Agenda } from './cloud';
 import type { OpenLog, SearchLog } from '../store/app';
 
 export type Suggestion = { q: string; why: string; icon: 'clock' | 'person' | 'calendar' | 'sparkles' | 'stethoscope' };
@@ -29,7 +30,7 @@ function topOpened(openLog: OpenLog, patients: Patient[], n = 3) {
 }
 
 /** คำแนะนำจากกฎ (สำรอง / แสดงทันทีระหว่างรอ AI) */
-export function ruleSuggestions(patients: Patient[], searchLog: SearchLog, openLog: OpenLog): Suggestion[] {
+export function ruleSuggestions(patients: Patient[], searchLog: SearchLog, openLog: OpenLog, agenda: Agenda): Suggestion[] {
   const out: Suggestion[] = [];
   const today = agenda[dayKey(TODAY)] ?? [];
   const next = today.find((a) => a.start >= `${String(new Date().getHours()).padStart(2, '0')}:00`) ?? today[0];
@@ -49,7 +50,7 @@ export function ruleSuggestions(patients: Patient[], searchLog: SearchLog, openL
 }
 
 /** ให้ AI วิเคราะห์พฤติกรรมแล้วเสนอคำค้น */
-export async function aiSuggestions(patients: Patient[], searchLog: SearchLog, openLog: OpenLog): Promise<Suggestion[]> {
+export async function aiSuggestions(patients: Patient[], searchLog: SearchLog, openLog: OpenLog, agenda: Agenda): Promise<Suggestion[]> {
   const today = (agenda[dayKey(TODAY)] ?? []).map((a) => {
     const p = patients.find((x) => x.id === a.pid);
     return p ? `${a.start} ${shortName(p.name)} (${a.what})` : '';
