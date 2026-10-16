@@ -28,7 +28,7 @@ export default function ScanQr() {
   const input = useRef<TextInput>(null);
   // แท็บและปุ่มยกขึ้นตามคีย์บอร์ด (โหมดกรอกรหัส)
   const kb = useAnimatedKeyboard();
-  const lift = useAnimatedStyle(() => ({ transform: [{ translateY: -Math.max(0, kb.height.value - insets.bottom - 8) }] }));
+  const lift = useAnimatedStyle(() => ({ transform: [{ translateY: -Math.max(0, kb.height.value - (insets.bottom + 24 + 36 + 16) + 12) }] }));
   const switchMode = (m: 'scan' | 'code') => {
     if (m === mode) return;
     h.select();
@@ -145,13 +145,8 @@ export default function ScanQr() {
         </PressableScale>
       </View>
 
-      <Animated.View style={[styles.bottom, { bottom: insets.bottom + 24 }, lift]}>
-        {mode === 'code' ? (
-          <Animated.View entering={FadeIn.duration(200)} style={{ alignSelf: 'stretch', paddingHorizontal: 24, marginBottom: 14 }}>
-            <Button label="รับตำรา" icon={<Sym name="tray.and.arrow.down.fill" size={17} color="#04150E" />} disabled={code.length < 8} onPress={submit} style={{ height: 52, backgroundColor: '#7CF0A8' }} />
-          </Animated.View>
-        ) : null}
-        {/* แท็บสลับโหมดแบบ iOS (UISegmentedControl) */}
+      {/* แท็บสลับโหมดแบบ iOS (UISegmentedControl) — อยู่กับที่ คีย์บอร์ดเลื่อนขึ้นมาทับได้ */}
+      <View style={[styles.bottom, { bottom: insets.bottom + 24 }]}>
         <SegmentedControl
           values={['สแกน', 'รหัส']}
           selectedIndex={mode === 'scan' ? 0 : 1}
@@ -159,7 +154,13 @@ export default function ScanQr() {
           appearance="dark"
           style={styles.seg}
         />
-      </Animated.View>
+      </View>
+      {/* ปุ่มรับตำรา: ลอยเหนือคีย์บอร์ด */}
+      {mode === 'code' ? (
+        <Animated.View entering={FadeIn.duration(200)} style={[styles.bottom, { bottom: insets.bottom + 24 + 36 + 16, paddingHorizontal: 24 }, lift]}>
+          <Button label="รับตำรา" icon={<Sym name="tray.and.arrow.down.fill" size={17} color="#04150E" />} disabled={code.length < 8} onPress={submit} style={{ alignSelf: 'stretch', height: 52, backgroundColor: '#7CF0A8' }} />
+        </Animated.View>
+      ) : null}
     </View>
   );
 }
