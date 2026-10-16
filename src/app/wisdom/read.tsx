@@ -263,11 +263,12 @@ export default function ReadBook() {
     return out;
   });
   // gradient ในพิกัดกระดาษ: จากเส้นพับ → ครึ่งวงม้วน (แสงเงา + หลังกระดาษ)
-  const g0 = useDerivedValue(() => ({ x: geo.value.cx, y: geo.value.cy }));
-  const g1 = useDerivedValue(() => ({ x: geo.value.cx + geo.value.ux * HC, y: geo.value.cy + geo.value.uy * HC }));
+  // ตอนกระดาษวางราบ (ไม่มีเส้นพับ) ต้องย้าย gradient ออกนอกหน้า ไม่งั้นจุดเริ่ม=จุดจบ → สีหลังกระดาษทับทั้งหน้า (กระพริบซีด)
+  const g0 = useDerivedValue(() => (geo.value.valid ? { x: geo.value.cx, y: geo.value.cy } : { x: Wp * 4, y: 0 }));
+  const g1 = useDerivedValue(() => (geo.value.valid ? { x: geo.value.cx + geo.value.ux * HC, y: geo.value.cy + geo.value.uy * HC } : { x: Wp * 5, y: 0 }));
   // เงาทอดบนหน้าล่าง เริ่มที่ขอบนอกของส่วนม้วน
-  const s0 = useDerivedValue(() => ({ x: geo.value.cx + geo.value.ux * R * 0.9, y: geo.value.cy + geo.value.uy * R * 0.9 }));
-  const s1 = useDerivedValue(() => ({ x: geo.value.cx + geo.value.ux * (R + 46), y: geo.value.cy + geo.value.uy * (R + 46) }));
+  const s0 = useDerivedValue(() => (geo.value.valid ? { x: geo.value.cx + geo.value.ux * R * 0.9, y: geo.value.cy + geo.value.uy * R * 0.9 } : { x: Wp * 4, y: 0 }));
+  const s1 = useDerivedValue(() => (geo.value.valid ? { x: geo.value.cx + geo.value.ux * (R + 46), y: geo.value.cy + geo.value.uy * (R + 46) } : { x: Wp * 5, y: 0 }));
   const baseDim = useDerivedValue(() => (geo.value.valid ? 0.22 * (1 - tt.value) : 0));
   // หน้าล่าง/แผ่นที่พลิก ตามทิศ (ไปหน้า: ล่าง=ถัดไป พลิก=ปัจจุบัน · ย้อน: ล่าง=ปัจจุบัน พลิก=ก่อนหน้า)
   const baseImg = useDerivedValue(() => (dir.value > 0 ? nv.value : cv.value) ?? cv.value);
