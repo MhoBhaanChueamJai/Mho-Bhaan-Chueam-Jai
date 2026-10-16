@@ -86,21 +86,58 @@ export async function transcribe(uri: string): Promise<string> {
   }, 60_000);
 }
 
-/** ข้อความ → ไฟล์เสียง (คืนค่า uri ในเครื่อง) */
-export async function synthesize(text: string, voice = 'female'): Promise<string> {
-  return withTimeout(async (signal) => {
-    const res = await fetch(`${ENDPOINTS.tts}/v1/audio/speech`, {
-      method: 'POST',
-      signal,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ input: text.slice(0, 600), voice, response_format: 'wav', speed: 0.95 }),
-    });
-    if (!res.ok) throw new Error(`TTS ${res.status}`);
-    const buf = new Uint8Array(await res.arrayBuffer());
-    const file = new File(Paths.cache, `tts-${Date.now()}.wav`);
-    file.write(buf);
-    return file.uri;
-  }, 90_000);
+/**
+ * เสียงของครูปัญญา — ล็อกเป็นเสียงเดียวทั้งแอป (ผู้ชายวัยกลางคน โทนทุ้มอบอุ่น)
+ * male_eugene: pitch เฉลี่ย ~103 Hz (ทดสอบเทียบกับ male / boga / kostas / takis)
+ */
+export const KRU_VOICE = 'male_eugene';
+
+/** เตรียมข้อความก่อนส่ง TTS: ขยาย "ๆ" (เซิร์ฟเวอร์ VoxCPM ล่มเมื่อเจอ ๆ) และตัดสัญลักษณ์ที่อ่านไม่ได้ */
+export function speakable(text: string, strict = false): string {
+  let t = text.replace(/[•*#_`>|~]/g, ' ').replace(/[“”"']/g, '');
+  if (t.includes('ๆ')) {
+    try {
+      const Seg = (Intl as any).Segmenter;
+      const words: string[] = Array.from(new Seg('th', { granularity: 'word' }).segment(t), (x: any) => x.segment);
+      const out: string[] = [];
+      words.forEach((w) => {
+        if (w.trim() === 'ๆ') {
+          const prev = [...out].reverse().find((x) => x.trim());
+          if (prev) out.push(prev);
+        } else out.push(w);
+      });
+      t = out.join('');
+    } catch {
+      t = t.replace(/ๆ/g, '');
+    }
+    t = t.replace(/ๆ/g, '');
+  }
+  if (strict) t = t.replace(/[^\u0E00-\u0E7Fa-zA-Z0-9\s.,?!]/g, ' ');
+  return t.replace(/\s+/g, ' ').trim();
+}
+
+/** ข้อความ → ไฟล์เสียง (คืนค่า uri ในเครื่อง) — ใช้เสียงครูปัญญาเสมอ */
+export async function synthesize(text: string, voice = KRU_VOICE): Promise<string> {
+  const call = (input: string) =>
+    withTimeout(async (signal) => {
+      const res = await fetch(`${ENDPOINTS.tts}/v1/audio/speech`, {
+        method: 'POST',
+        signal,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: 'voxcpm-thai', input: input.slice(0, 600), voice, response_format: 'wav', speed: 0.95 }),
+      });
+      if (!res.ok) throw new Error(`TTS ${res.status}`);
+      const buf = new Uint8Array(await res.arrayBuffer());
+      const file = new File(Paths.cache, `tts-${Date.now()}.wav`);
+      file.write(buf);
+      return file.uri;
+    }, 90_000);
+  try {
+    return await call(speakable(text));
+  } catch {
+    // ลองใหม่ด้วยข้อความที่ตัดสัญลักษณ์ทั้งหมดออก
+    return call(speakable(text, true));
+  }
 }
 
 /** ภาพตำรา/สมุดข่อย → ข้อความ */

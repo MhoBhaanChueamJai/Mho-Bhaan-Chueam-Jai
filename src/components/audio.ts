@@ -10,9 +10,8 @@ import {
   type RecordingOptions,
 } from 'expo-audio';
 import { useEffect, useRef, useState } from 'react';
-import { useSharedValue } from 'react-native-reanimated';
+import { useSharedValue, withTiming } from 'react-native-reanimated';
 import { synthesize } from '../api/ai';
-import { useApp } from '../store/app';
 
 /** WAV 16kHz mono — รูปแบบที่ ASR (Qwen3-ASR) รองรับ */
 const ASR_PRESET: RecordingOptions = {
@@ -61,9 +60,17 @@ export function useVoiceRecorder() {
   return { start, stop, level, isRecording: state.isRecording, durationMs: state.durationMillis };
 }
 
-/** พูดข้อความด้วย VoxCPM (ภาษาไทย) */
+/** PCM frames → ระดับเสียง 0..1 (RMS ปรับให้เห็นการขยับชัด) */
+export function rmsLevel(frames?: number[]): number {
+  if (!frames?.length) return 0;
+  let sum = 0;
+  for (let i = 0; i < frames.length; i += 2) sum += frames[i] * frames[i];
+  const rms = Math.sqrt(sum / Math.ceil(frames.length / 2));
+  return Math.min(1, rms * 4.5);
+}
+
+/** พูดข้อความด้วย VoxCPM (ภาษาไทย) — เสียงครูปัญญาเดียวทั้งแอป */
 export function useSpeaker() {
-  const { settings } = useApp();
   const player = useRef<AudioPlayer | null>(null);
   const [speaking, setSpeaking] = useState(false);
   const level = useSharedValue(0);
@@ -82,13 +89,18 @@ export function useSpeaker() {
     stop();
     setSpeaking(true);
     try {
-      const clean = text.replace(/[•*#]/g, ' ').replace(/\s+/g, ' ');
-      const uri = await synthesize(clean, settings.voice);
+      const uri = await synthesize(text);
       await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: false });
       const p = createAudioPlayer({ uri });
       player.current = p;
+      // ระดับเสียงจริงจากคลื่นเสียง (RMS) → ดอกไม้ AI ขยับตามจังหวะพูด
+      try {
+        p.setAudioSamplingEnabled(true);
+        p.addListener('audioSampleUpdate', (sm) => {
+          level.value = withTiming(rmsLevel(sm.channels[0]?.frames), { duration: 90 });
+        });
+      } catch {}
       p.addListener('playbackStatusUpdate', (s) => {
-        level.value = s.playing ? 0.35 + Math.random() * 0.5 : 0;
         if (s.didJustFinish) {
           setSpeaking(false);
           level.value = 0;

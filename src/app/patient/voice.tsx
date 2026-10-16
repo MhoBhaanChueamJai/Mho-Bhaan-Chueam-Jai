@@ -9,22 +9,20 @@ import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import Animated, { FadeIn, FadeInDown, useSharedValue } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeInDown, useDerivedValue, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { synthesize, transcribe } from '../../api/ai';
-import { useVoiceRecorder } from '../../components/audio';
+import { rmsLevel, useVoiceRecorder } from '../../components/audio';
 import { Sym } from '../../components/ios';
 import { AIFlower, AIGlow, Waveform } from '../../components/Orb';
 import { Button, GlassCircle, GlassDock, PressableScale, T, useHaptic } from '../../components/ui';
 import { OPENING, TOPICS, hasTopic, intakeTurn, setIntakeResult, type IntakeData, type Turn } from '../../lib/intake';
-import { useApp } from '../../store/app';
 
 type Phase = 'speaking' | 'listening' | 'thinking' | 'done';
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export default function VoiceIntake() {
   const insets = useSafeAreaInsets();
-  const { settings } = useApp();
   const h = useHaptic();
   const rec = useVoiceRecorder();
   const [phase, setPhase] = useState<Phase>('speaking');
@@ -37,6 +35,8 @@ export default function VoiceIntake() {
   const manualStop = useRef(false);
   const player = useRef<AudioPlayer | null>(null);
   const speakLevel = useSharedValue(0);
+  // เสียงไมค์ (อัปเดตทุก 80ms) → ทำให้นุ่มก่อนส่งให้ดอกไม้
+  const micLevel = useDerivedValue(() => withTiming(rec.level.value, { duration: 120 }));
 
   /** พูดแล้วรอจนจบ */
   const speak = (text: string) =>
@@ -45,19 +45,25 @@ export default function VoiceIntake() {
       const end = () => {
         if (finished) return;
         finished = true;
-        speakLevel.value = 0;
+        speakLevel.value = withTiming(0, { duration: 250 });
         player.current?.remove();
         player.current = null;
         resolve();
       };
       try {
-        const uri = await synthesize(text.replace(/[•*#]/g, ' '), settings.voice);
+        const uri = await synthesize(text);
         if (!alive.current) return end();
         await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: false });
         const p = createAudioPlayer({ uri });
         player.current = p;
+        // ดอกไม้ขยับตามระดับเสียงจริงของครูปัญญา (RMS จากคลื่นเสียง) แบบนุ่มนวล
+        try {
+          p.setAudioSamplingEnabled(true);
+          p.addListener('audioSampleUpdate', (sm) => {
+            speakLevel.value = withTiming(rmsLevel(sm.channels[0]?.frames), { duration: 90 });
+          });
+        } catch {}
         p.addListener('playbackStatusUpdate', (s) => {
-          speakLevel.value = s.playing ? 0.35 + Math.random() * 0.5 : 0;
           if (s.didJustFinish) end();
         });
         p.play();
@@ -173,7 +179,7 @@ export default function VoiceIntake() {
 
   const useData = () => {
     alive.current = false;
-    setIntakeResult(dataRef.current);
+    setIntakeResult({ ...dataRef.current });
     h.success();
     router.back();
   };
@@ -205,7 +211,7 @@ export default function VoiceIntake() {
           }}
           accessibilityLabel={phase === 'listening' ? 'ส่งคำตอบ' : 'ครูปัญญา'}
         >
-          <AIFlower size={190} active={phase !== 'done'} level={phase === 'listening' ? rec.level : speakLevel} />
+          <AIFlower size={190} active={phase !== 'done'} level={(phase === 'listening' ? micLevel : speakLevel) as any} />
         </PressableScale>
         <View style={styles.statusPill}>
           {phase === 'listening' ? <View style={styles.liveDot} /> : null}
@@ -214,7 +220,7 @@ export default function VoiceIntake() {
         </View>
         {phase === 'listening' ? (
           <View style={{ width: 180, marginTop: 10 }}>
-            <Waveform level={rec.level} bars={20} />
+            <Waveform level={micLevel as any} bars={20} />
           </View>
         ) : null}
 

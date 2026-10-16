@@ -10,7 +10,7 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 import { Sym, ios } from '../../components/ios';
 import { Button, GlassDock, HeaderButton, T, useHaptic } from '../../components/ui';
 import { takeIdScanResult, type IdCardData } from '../../lib/idScan';
-import { takeIntakeResult, type IntakeData } from '../../lib/intake';
+import { onIntakeResult, takeIntakeResult, type IntakeData } from '../../lib/intake';
 import { ageFrom, elementFromMonth, toISO } from '../../lib/birth';
 import { DateField, Dropdown } from '../../components/FormPickers';
 import { ElementInsight, ElementPicker } from '../../components/ElementPicker';
@@ -182,6 +182,9 @@ function NewPatientInner() {
     h.success();
   };
 
+  // เลิกรับผลซักประวัติเมื่อออกจากหน้า
+  useEffect(() => () => onIntakeResult(null), []);
+
   /** สแกนบัตรประชาชน → เปิดกล้องพร้อมกรอบบัตรทันที */
   const scanIdCard = () => router.push('/id-scan');
   // กลับมาจากหน้ากล้อง → ใส่ข้อมูลที่อ่านได้
@@ -191,6 +194,7 @@ function NewPatientInner() {
       if (r) applyCard(r);
       const it = takeIntakeResult();
       if (it) applyIntake(it);
+      onIntakeResult(applyIntake);
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []),
   );
