@@ -215,19 +215,21 @@ export default function ScanQr() {
       </View>
 
       {/* แผ่นล่าง: ตัวอย่างตำราที่ได้รับ */}
-      {sheet ? (
+      {/* กำลังอ่านรหัส (ยังไม่เด้งแผ่นล่าง จนกว่าจะได้ผล — แผ่นล่างจะได้ขนาดพอดีเนื้อหาตั้งแต่แรก) */}
+      {sheet?.state === 'loading' ? (
+        <Animated.View entering={FadeIn.duration(150)} exiting={FadeOut.duration(150)} pointerEvents="none" style={[styles.loading, { bottom: insets.bottom + 90 }]}>
+          <ActivityIndicator color="#FFFFFF" />
+          <T v="subhead" color="#FFFFFF">กำลังอ่านรหัส {sheet.code.slice(0, 4)}-{sheet.code.slice(4)}…</T>
+        </Animated.View>
+      ) : null}
+      {sheet && sheet.state !== 'loading' ? (
         <>
           <Animated.View entering={FadeIn.duration(200)} exiting={FadeOut.duration(180)} style={[StyleSheet.absoluteFill, styles.backdrop]}>
             <Pressable style={StyleSheet.absoluteFill} onPress={closeSheet} accessibilityLabel="ปิด" />
           </Animated.View>
-          <Animated.View entering={SlideInDown.springify().damping(18).mass(0.8)} exiting={SlideOutDown.duration(220)} style={[styles.sheet, { paddingBottom: insets.bottom + 16 }]}>
+          <Animated.View key={sheet.state} entering={SlideInDown.duration(320)} exiting={SlideOutDown.duration(220)} style={[styles.sheet, { paddingBottom: insets.bottom + 16 }]}>
             <View style={styles.grabber} />
-            {sheet.state === 'loading' ? (
-              <View style={styles.sheetCenter}>
-                <ActivityIndicator color={palette.primary} />
-                <T v="subhead" color={palette.inkSoft} style={{ marginTop: 10 }}>กำลังอ่านรหัส {sheet.code.slice(0, 4)}-{sheet.code.slice(4)}…</T>
-              </View>
-            ) : sheet.state === 'error' ? (
+            {sheet.state === 'error' ? (
               <View style={styles.sheetCenter}>
                 <Sym name="exclamationmark.circle.fill" size={30} color={palette.coral} />
                 <T v="title" center style={{ marginTop: 10 }}>{sheet.err}</T>
@@ -290,6 +292,7 @@ const styles = StyleSheet.create({
   bottom: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
   seg: { width: 240, height: 36 },
   backdrop: { backgroundColor: 'rgba(0,0,0,0.45)' },
+  loading: { position: 'absolute', alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 18, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.16)' },
   sheet: { position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: palette.surface, borderTopLeftRadius: 30, borderTopRightRadius: 30, borderCurve: 'continuous', paddingHorizontal: 20, paddingTop: 10 },
   grabber: { alignSelf: 'center', width: 38, height: 5, borderRadius: 3, backgroundColor: 'rgba(60,60,67,0.25)', marginBottom: 16 },
   sheetCenter: { alignItems: 'center', paddingVertical: 24 },
