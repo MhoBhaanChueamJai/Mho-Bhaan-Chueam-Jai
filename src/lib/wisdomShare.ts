@@ -31,12 +31,18 @@ export async function createShare(w: Wisdom, fromName: string): Promise<string> 
   throw new Error('สร้างรหัสแชร์ไม่สำเร็จ');
 }
 
+// ผลที่เพิ่งอ่านรหัสได้ (หน้าแผ่นล่างใช้ต่อได้ทันทีไม่ต้องโหลดซ้ำ)
+const recent = new Map<string, ReceivedShare>();
+export const cachedShare = (code: string) => recent.get(cleanCode(code)) ?? null;
+
 export async function fetchShare(code: string): Promise<ReceivedShare | null> {
   const { data, error } = await supabase.rpc('get_wisdom_share', { p_code: cleanCode(code) });
   if (error) throw error;
   const r = Array.isArray(data) ? data[0] : data;
   if (!r?.payload) return null;
-  return { fromName: r.from_name ?? 'เพื่อนหมอ', wisdom: r.payload as SharedWisdom, createdAt: r.created_at };
+  const got = { fromName: r.from_name ?? 'เพื่อนหมอ', wisdom: r.payload as SharedWisdom, createdAt: r.created_at };
+  recent.set(cleanCode(code), got);
+  return got;
 }
 
 /** สร้างรหัส แล้วเปิดเมนูแชร์ของระบบ (LINE, ข้อความ, AirDrop ฯลฯ) */

@@ -2,27 +2,21 @@
  * สแกนคิวอาร์โค้ดรับตำราจากเพื่อน — เปิดกล้องทันที กรอบสี่เหลี่ยมกลางจอ
  * เจอรหัสแชร์ → ไปหน้ารับตำรา (ดูตัวอย่างก่อนเก็บเข้าคลัง)
  * แท็บด้านล่างสลับโหมด: สแกน | รหัส (กรอกรหัสแชร์ 8 ตัวในหน้านี้เลย)
- * สแกนเจอ/กรอกครบ 8 ตัว → อ่านรหัสอัตโนมัติ → เด้งแผ่นล่าง (bottom sheet) แสดงปก ชื่อ ผู้แชร์ ประเภท เนื้อหา 5 บรรทัด + ปุ่มเพิ่มลงคลัง
+ * สแกนเจอ/กรอกครบ 8 ตัว → อ่านรหัสอัตโนมัติ → เปิดแผ่นล่างแบบ iOS (wisdom/got) ตัวอย่างตำรา + ปุ่มเพิ่มลงคลัง
  */
 import SegmentedControl from '@react-native-segmented-control/segmented-control';
 import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Keyboard, Pressable, StyleSheet, TextInput, View, useWindowDimensions } from 'react-native';
-import Animated, { Easing, FadeIn, FadeOut, SlideInDown, SlideOutDown, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, FadeIn, FadeOut, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Sym } from '../../components/ios';
 import { Button, PressableScale, T, useHaptic } from '../../components/ui';
-import { BookCover } from '../../components/BookCover';
-import { KindIcon } from '../../components/KindIcon';
-import type { Wisdom } from '../../data/mock';
-import { plainText } from '../../lib/wisdomKinds';
-import { cleanCode, codeFromScan, fetchShare, type ReceivedShare } from '../../lib/wisdomShare';
-import { useApp } from '../../store/app';
-import { palette } from '../../theme';
+import { cleanCode, codeFromScan, fetchShare } from '../../lib/wisdomShare';
 
 export default function ScanQr() {
   const insets = useSafeAreaInsets();
@@ -44,55 +38,46 @@ export default function ScanQr() {
     else input.current?.blur();
   };
   // ── อ่านรหัสอัตโนมัติ → แผ่นล่างแสดงตัวอย่างตำรา ──
-  const { addWisdom, wisdoms } = useApp();
-  const [sheet, setSheet] = useState<null | { code: string; state: 'loading' | 'error' | 'ok'; got?: ReceivedShare; err?: string; savedId?: string }>(null);
+  // สถานะการอ่านรหัส: กำลังอ่าน / อ่านไม่ได้ (เจอตำรา → เปิดแผ่นล่างแบบ iOS หน้า wisdom/got)
+  const [status, setStatus] = useState<null | { code: string; state: 'loading' | 'error'; err?: string }>(null);
   const look = async (c: string) => {
     Keyboard.dismiss();
-    setSheet({ code: c, state: 'loading' });
+    setStatus({ code: c, state: 'loading' });
     try {
       const got = await fetchShare(c);
       if (!got) {
         h.warn();
-        setSheet({ code: c, state: 'error', err: 'ไม่พบตำราจากรหัสนี้ หรือรหัสหมดอายุแล้ว' });
+        setStatus({ code: c, state: 'error', err: 'ไม่พบตำราจากรหัสนี้ หรือรหัสหมดอายุแล้ว' });
       } else {
         h.success();
-        setSheet({ code: c, state: 'ok', got });
+        setStatus(null);
+        router.push({ pathname: '/wisdom/got', params: { code: c } });
       }
     } catch {
       h.warn();
-      setSheet({ code: c, state: 'error', err: 'เชื่อมต่อไม่ได้ ลองใหม่อีกครั้ง' });
+      setStatus({ code: c, state: 'error', err: 'เชื่อมต่อไม่ได้ ลองใหม่อีกครั้ง' });
     }
   };
-  const closeSheet = () => {
-    setSheet(null);
+  const retry = () => {
+    setStatus(null);
     done.current = false;
     if (mode === 'code') {
       setCode('');
-      setTimeout(() => input.current?.focus(), 250);
+      setTimeout(() => input.current?.focus(), 200);
     }
   };
+  // ปิดแผ่นล่างกลับมาหน้านี้ → พร้อมสแกน/กรอกรหัสใหม่
+  useFocusEffect(
+    useCallback(() => {
+      done.current = false;
+      setStatus(null);
+      setCode('');
+    }, []),
+  );
   useEffect(() => {
-    if (mode === 'code' && code.length === 8 && !sheet) look(code);
+    if (mode === 'code' && code.length === 8 && !status) look(code);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [code, mode]);
-  const save = () => {
-    if (!sheet?.got) return;
-    const g = sheet.got;
-    const t = new Date();
-    const id = `w${Date.now()}`;
-    addWisdom({
-      ...g.wisdom,
-      id,
-      source: 'เพื่อนแชร์',
-      sharedBy: g.fromName,
-      shareCode: cleanCode(sheet.code),
-      date: `${t.getDate()}/${t.getMonth() + 1}/${t.getFullYear() + 543}`,
-      summary: g.wisdom.summary ?? '',
-      verified: false,
-    });
-    h.success();
-    setSheet({ ...sheet, savedId: id });
-  };
   const size = Math.min(W - 96, 300);
   const fx = (W - size) / 2, fy = H * 0.42 - size / 2;
 
@@ -214,62 +199,22 @@ export default function ScanQr() {
         />
       </View>
 
-      {/* แผ่นล่าง: ตัวอย่างตำราที่ได้รับ */}
-      {/* กำลังอ่านรหัส (ยังไม่เด้งแผ่นล่าง จนกว่าจะได้ผล — แผ่นล่างจะได้ขนาดพอดีเนื้อหาตั้งแต่แรก) */}
-      {sheet?.state === 'loading' ? (
-        <Animated.View entering={FadeIn.duration(150)} exiting={FadeOut.duration(150)} pointerEvents="none" style={[styles.loading, { bottom: insets.bottom + 90 }]}>
-          <ActivityIndicator color="#FFFFFF" />
-          <T v="subhead" color="#FFFFFF">กำลังอ่านรหัส {sheet.code.slice(0, 4)}-{sheet.code.slice(4)}…</T>
+      {/* กำลังอ่านรหัส / อ่านไม่ได้ */}
+      {status ? (
+        <Animated.View entering={FadeIn.duration(150)} exiting={FadeOut.duration(150)} style={[styles.loading, { bottom: insets.bottom + 90 }, status.state === 'error' && styles.errPill]}>
+          {status.state === 'loading' ? (
+            <>
+              <ActivityIndicator color="#FFFFFF" />
+              <T v="subhead" color="#FFFFFF">กำลังอ่านรหัส {status.code.slice(0, 4)}-{status.code.slice(4)}…</T>
+            </>
+          ) : (
+            <PressableScale onPress={retry} style={styles.errRow} accessibilityLabel="ลองใหม่">
+              <Sym name="exclamationmark.circle.fill" size={16} color="#FFFFFF" />
+              <T v="subhead" color="#FFFFFF" style={{ flexShrink: 1 }}>{status.err}</T>
+              <T v="subhead" color="#FFFFFF" style={{ fontWeight: '700' }}>ลองใหม่</T>
+            </PressableScale>
+          )}
         </Animated.View>
-      ) : null}
-      {sheet && sheet.state !== 'loading' ? (
-        <>
-          <Animated.View entering={FadeIn.duration(200)} exiting={FadeOut.duration(180)} style={[StyleSheet.absoluteFill, styles.backdrop]}>
-            <Pressable style={StyleSheet.absoluteFill} onPress={closeSheet} accessibilityLabel="ปิด" />
-          </Animated.View>
-          <Animated.View key={sheet.state} entering={SlideInDown.duration(320)} exiting={SlideOutDown.duration(220)} style={[styles.sheet, { paddingBottom: insets.bottom + 16 }]}>
-            <View style={styles.grabber} />
-            {sheet.state === 'error' ? (
-              <View style={styles.sheetCenter}>
-                <Sym name="exclamationmark.circle.fill" size={30} color={palette.coral} />
-                <T v="title" center style={{ marginTop: 10 }}>{sheet.err}</T>
-                <Button kind="secondary" label="ลองรหัสอื่น" onPress={closeSheet} style={{ alignSelf: 'stretch', height: 52, marginTop: 18 }} />
-              </View>
-            ) : sheet.got ? (
-              (() => {
-                const g = sheet.got;
-                const pw = { ...g.wisdom, id: 'preview', source: 'เพื่อนแชร์', date: '', verified: true, summary: g.wisdom.summary ?? '' } as Wisdom;
-                const dup = wisdoms.some((x) => x.title === g.wisdom.title && x.sharedBy === g.fromName);
-                return (
-                  <View style={{ gap: 16 }}>
-                    <View style={styles.sheetHead}>
-                      <BookCover w={pw} width={92} />
-                      <View style={{ flex: 1, gap: 6 }}>
-                        <View style={styles.kindPill}>
-                          <KindIcon kind={g.wisdom.kind} size={12} color={palette.primaryDeep} />
-                          <T v="caption" color={palette.primaryDeep} style={{ fontWeight: '700' }}>{g.wisdom.kind}</T>
-                        </View>
-                        <T v="h3" numberOfLines={3}>{g.wisdom.title}</T>
-                        <View style={styles.byRow}>
-                          <Sym name="person.crop.circle.fill" size={14} color={palette.inkSoft} />
-                          <T v="subhead" color={palette.inkSoft} numberOfLines={1} style={{ flex: 1 }}>เพิ่มโดย {g.fromName}</T>
-                        </View>
-                      </View>
-                    </View>
-                    {g.wisdom.summary ? (
-                      <T v="body" color={palette.inkSoft} numberOfLines={5}>{plainText(g.wisdom.summary).replace(/\n*(ได้รับสืบทอดจาก|แหล่งที่มา):.*$/, '').trim()}</T>
-                    ) : null}
-                    {sheet.savedId ? (
-                      <Button label="เปิดดูในคลัง" icon={<Sym name="book.fill" size={17} color="#FFFFFF" />} onPress={() => router.replace(`/wisdom/${sheet.savedId}`)} style={{ height: 52 }} />
-                    ) : (
-                      <Button label={dup ? 'มีในคลังแล้ว · เพิ่มอีกครั้ง' : 'เพิ่มลงคลัง'} icon={<Sym name="plus" size={17} color="#FFFFFF" weight="semibold" />} onPress={save} style={{ height: 52 }} />
-                    )}
-                  </View>
-                );
-              })()
-            ) : null}
-          </Animated.View>
-        </>
       ) : null}
     </View>
   );
@@ -291,14 +236,9 @@ const styles = StyleSheet.create({
   round: { width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' },
   bottom: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
   seg: { width: 240, height: 36 },
-  backdrop: { backgroundColor: 'rgba(0,0,0,0.45)' },
+  errPill: { backgroundColor: 'rgba(217,83,74,0.9)' },
+  errRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   loading: { position: 'absolute', alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 18, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.16)' },
-  sheet: { position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: palette.surface, borderTopLeftRadius: 30, borderTopRightRadius: 30, borderCurve: 'continuous', paddingHorizontal: 20, paddingTop: 10 },
-  grabber: { alignSelf: 'center', width: 38, height: 5, borderRadius: 3, backgroundColor: 'rgba(60,60,67,0.25)', marginBottom: 16 },
-  sheetCenter: { alignItems: 'center', paddingVertical: 24 },
-  sheetHead: { flexDirection: 'row', gap: 16, alignItems: 'center' },
-  kindPill: { flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999, backgroundColor: palette.primarySoft },
-  byRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   codePage: { alignItems: 'center', paddingHorizontal: 24 },
   boxes: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 28 },
   box: { width: 36, height: 48, borderRadius: 10, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.22)', alignItems: 'center', justifyContent: 'center' },
