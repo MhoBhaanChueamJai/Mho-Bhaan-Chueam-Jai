@@ -11,7 +11,8 @@ import { useSpeaker } from '../components/audio';
 import { CircleIcon, ListRow, ListSection, PAGE_PAD } from '../components/ListRow';
 import { Sym, ios } from '../components/ios';
 import { Avatar, HeaderBack, PressableScale, T, useHaptic } from '../components/ui';
-import { avatars, doctor, fullAddress } from '../data/mock';
+import { avatars, doctor, doctorTypes, fullAddress } from '../data/mock';
+import { TYPE_LABEL } from './verify';
 import { DIALECTS } from '../lib/dialect';
 import { AISphere } from '../components/AISphere';
 import { supabase } from '../lib/supabase';
@@ -31,6 +32,12 @@ export default function Settings() {
   const tts = useSpeaker();
   const h = useHaptic();
   const dialect = settings.dialect ?? 'central';
+  // ประเภทหมอพื้นบ้านจากทะเบียน (ยืนยันตัวตนแล้ว) หรือจากที่ตั้งไว้
+  const healer = isPractitioner
+    ? profile?.healer_types?.length
+      ? profile.healer_types.map((t) => TYPE_LABEL[t] ?? t).join(' · ')
+      : (doctorTypes.find((d) => d.key === settings.doctorType) ?? doctorTypes[0]).label
+    : null;
 
   const exportAll = () => {
     const text = patients
@@ -102,8 +109,8 @@ export default function Settings() {
               {profile?.email ? <T v="subhead" color={ios.secondary} numberOfLines={1}>{profile.email}</T> : null}
               <View style={[styles.badge, { backgroundColor: isPractitioner ? palette.primarySoft : '#FBEFD9' }]}>
                 <Sym name={isPractitioner ? 'checkmark.seal.fill' : 'person.fill'} size={12} color={isPractitioner ? palette.primary : palette.orange} />
-                <T v="caption" color={isPractitioner ? palette.primaryDeep : '#8A5A10'} style={{ fontWeight: '700' }}>
-                  {isPractitioner ? 'หมอพื้นบ้านที่ได้รับการรับรอง' : 'สมาชิกทั่วไป'}
+                <T v="caption" color={isPractitioner ? palette.primaryDeep : '#8A5A10'} style={{ fontWeight: '700', flexShrink: 1 }} numberOfLines={2}>
+                  {healer ?? 'สมาชิกทั่วไป'}
                 </T>
               </View>
             </View>
