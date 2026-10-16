@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import React, { useRef, useState } from 'react';
-import { Keyboard, Pressable, StyleSheet, TextInput, View, useWindowDimensions } from 'react-native';
+import { Keyboard, Pressable, ScrollView, StyleSheet, TextInput, View, useWindowDimensions } from 'react-native';
 import Animated, { FadeIn, FadeInUp, LinearTransition, useAnimatedKeyboard, useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Sym, ios } from '../components/ios';
@@ -36,7 +36,7 @@ function Field({
   inputRef?: React.RefObject<TextInput | null>;
   onSubmit?: () => void;
   returnKey?: 'next' | 'go';
-  autoComplete?: 'username' | 'password' | 'email' | 'new-password' | 'given-name' | 'family-name';
+  autoComplete?: 'username' | 'password' | 'email' | 'new-password' | 'name';
   placeholder?: string;
   keyboard?: 'email-address' | 'default';
   half?: boolean;
@@ -57,7 +57,7 @@ function Field({
         autoCorrect={false}
         autoComplete={autoComplete}
         textContentType={
-          ({ password: 'password', 'new-password': 'newPassword', email: 'emailAddress', 'given-name': 'givenName', 'family-name': 'familyName', username: 'username' } as const)[autoComplete ?? 'username']
+          ({ password: 'password', 'new-password': 'newPassword', email: 'emailAddress', name: 'name', username: 'username' } as const)[autoComplete ?? 'username']
         }
         returnKeyType={returnKey}
         onSubmitEditing={onSubmit}
@@ -83,8 +83,10 @@ export default function Login() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [mode, setMode] = useState<'login' | 'signup'>('login');
-  const [first, setFirst] = useState('');
-  const [last, setLast] = useState('');
+  const [fullName, setFullName] = useState('');
+  // ชื่อ–นามสกุลกรอกช่องเดียว: คำแรกเป็นชื่อ ที่เหลือเป็นนามสกุล
+  const [first, ...rest] = fullName.trim().split(/\s+/);
+  const last = rest.join(' ');
   const [email, setEmail] = useState('');
   const [pass2, setPass2] = useState('');
   const [info, setInfo] = useState('');
@@ -95,7 +97,7 @@ export default function Login() {
     !busy &&
     (mode === 'login'
       ? user.trim().length >= 3 && pass.length >= 6
-      : first.trim().length >= 1 && last.trim().length >= 1 && emailOk && pass.length >= 6 && pass2.length >= 6);
+      : !!first && !!last && emailOk && pass.length >= 6 && pass2.length >= 6);
 
   const enter = (name: string) => {
     h.success();
@@ -124,11 +126,11 @@ export default function Login() {
       let name = user.trim();
       if (mode === 'signup') {
         if (pass !== pass2) return fail('รหัสผ่านทั้งสองช่องไม่ตรงกัน');
-        name = `${first.trim()} ${last.trim()}`;
+        name = `${first} ${last}`;
         const { data, error: e } = await supabase.auth.signUp({
           email: email.trim().toLowerCase(),
           password: pass,
-          options: { data: { first_name: first.trim(), last_name: last.trim(), display_name: name } },
+          options: { data: { first_name: first, last_name: last, display_name: name } },
         });
         if (e) return fail(e.message.toLowerCase().includes('already') ? 'อีเมลนี้สมัครไว้แล้ว ลองเข้าสู่ระบบ' : `สมัครไม่สำเร็จ: ${e.message}`);
         if (!data.session) {
@@ -162,7 +164,17 @@ export default function Login() {
   const [sheetH, setSheetH] = useState(0);
   const heroH = sheetH ? height - sheetH + 28 : Math.round(height * 0.5);
   const kb = useAnimatedKeyboard();
-  const lift = useAnimatedStyle(() => ({ transform: [{ translateY: kb.height.value > 0 ? -Math.max(0, kb.height.value - insets.bottom + 8) : 0 }] }));
+  const signup = mode === 'signup';
+  // โหมดเข้าสู่ระบบ: แผ่นยกตามคีย์บอร์ด / โหมดสมัคร: แผ่นเต็มจอแบบ sheet เนื้อหาเลื่อนหลบคีย์บอร์ดเอง
+  const lift = useAnimatedStyle(
+    () => ({ transform: [{ translateY: !signup && kb.height.value > 0 ? -Math.max(0, kb.height.value - insets.bottom + 8) : 0 }] }),
+    [signup],
+  );
+  // อินโทรด้านหลังถอยลึกเล็กน้อยเมื่อเปิด sheet สมัคร (แบบ iOS sheet)
+  const heroSt = useAnimatedStyle(
+    () => ({ opacity: withTiming(signup ? 0.45 : 1, { duration: 280 }), transform: [{ scale: withTiming(signup ? 0.94 : 1, { duration: 280 }) }] }),
+    [signup],
+  );
   const toggle = () => {
     setMode(mode === 'login' ? 'signup' : 'login');
     setError('');
@@ -174,22 +186,8 @@ export default function Login() {
     </PressableScale>
   );
 
-  return (
-    <View style={styles.root}>
-      {/* ── ส่วนบน: อินโทรเปิดตัวแอปแบบ keynote ── */}
-      <Pressable onPress={Keyboard.dismiss} accessible={false} style={{ height: heroH }}>
-        <KeynoteIntro width={width} height={heroH - insets.top} inset={insets.top} />
-      </Pressable>
-
-      {/* ── ส่วนล่าง: กรอกข้อมูล ── */}
-      <Animated.View
-        entering={FadeInUp.delay(100).duration(500)}
-        layout={LinearTransition.duration(280)}
-        onLayout={(e) => {
-          if (mode === 'login' && !sheetH) setSheetH(Math.round(e.nativeEvent.layout.height));
-        }}
-        style={[styles.sheet, { paddingBottom: insets.bottom + 8 }, lift]}
-      >
+  const body = (
+    <>
         <T v="h1" style={{ fontWeight: '700' }}>{mode === 'login' ? 'ยินดีต้อนรับ' : 'สร้างบัญชีใหม่'}</T>
         <T v="callout" color={ios.secondary} style={{ marginTop: 2 }}>
           {mode === 'login' ? 'เข้าสู่ระบบด้วยอีเมลหรือชื่อผู้ใช้' : 'สมัครฟรี ใช้คลังสมุนไพร ภูมิปัญญา และครูปัญญา AI'}
@@ -199,10 +197,7 @@ export default function Login() {
         <Animated.View style={[styles.group, shakeStyle]}>
           {mode === 'signup' ? (
             <>
-              <View style={{ flexDirection: 'row', gap: 10 }}>
-                <Field half icon="person.fill" label="ชื่อ" value={first} onChange={(v) => { setFirst(v); setError(''); }} autoComplete="given-name" returnKey="next" />
-                <Field half icon="person.fill" label="นามสกุล" value={last} onChange={(v) => { setLast(v); setError(''); }} autoComplete="family-name" returnKey="next" />
-              </View>
+              <Field icon="person.fill" label="ชื่อ นามสกุล" placeholder="ชื่อ นามสกุล" value={fullName} onChange={(v) => { setFullName(v); setError(''); }} autoComplete="name" returnKey="next" />
               <Field icon="envelope.fill" label="อีเมล" keyboard="email-address" value={email} onChange={(v) => { setEmail(v); setError(''); }} autoComplete="email" returnKey="next" />
             </>
           ) : (
@@ -264,6 +259,8 @@ export default function Login() {
             </Animated.View>
           ) : info ? (
             <T v="caption" color={palette.primary}>{info}</T>
+          ) : signup && first && !last ? (
+            <T v="caption" color={ios.secondary}>เว้นวรรคระหว่างชื่อกับนามสกุล เช่น สมชาย ใจดี</T>
           ) : null}
         </View>
 
@@ -285,6 +282,7 @@ export default function Login() {
         )}
 
         {/* สลับโหมด: เส้นคั่น + ข้อความ ไม่แย่งความเด่นจากปุ่มหลัก */}
+        {signup ? <View style={{ flex: 1, minHeight: 16 }} /> : null}
         <View style={styles.divider} />
         <PressableScale haptic="select" onPress={toggle} style={styles.alt}>
           <T v="callout" color={ios.secondary} center>
@@ -292,6 +290,42 @@ export default function Login() {
             <T v="callout" color={palette.primary} style={{ fontWeight: '700' }}>{mode === 'login' ? 'สมัครบัญชี' : 'เข้าสู่ระบบ'}</T>
           </T>
         </PressableScale>
+    </>
+  );
+
+  return (
+    <View style={styles.root}>
+      {/* ── ส่วนบน: อินโทรเปิดตัวแอปแบบ keynote ── */}
+      <Animated.View style={heroSt}>
+        <Pressable onPress={Keyboard.dismiss} accessible={false} style={{ height: heroH }}>
+          <KeynoteIntro width={width} height={heroH - insets.top} inset={insets.top} />
+        </Pressable>
+      </Animated.View>
+
+      {/* ── ส่วนล่าง: กรอกข้อมูล ── */}
+      <Animated.View
+        entering={FadeInUp.delay(100).duration(500)}
+        layout={LinearTransition.duration(280)}
+        onLayout={(e) => {
+          if (mode === 'login' && !sheetH) setSheetH(Math.round(e.nativeEvent.layout.height));
+        }}
+        style={[styles.sheet, { paddingBottom: insets.bottom + 8 }, signup && { top: insets.top + 10, paddingTop: 8 }, lift]}
+      >
+        {signup ? <View style={styles.grabber} /> : null}
+        {signup ? (
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={{ flexGrow: 1, paddingTop: 16 }}
+            automaticallyAdjustKeyboardInsets
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+            bounces={false}
+          >
+            {body}
+          </ScrollView>
+        ) : (
+          body
+        )}
       </Animated.View>
     </View>
   );
@@ -309,6 +343,7 @@ const styles = StyleSheet.create({
   error: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   link: { alignSelf: 'center', minHeight: 44, justifyContent: 'center', paddingHorizontal: 12, marginTop: 2 },
   note: { minHeight: 44, marginTop: 6, paddingHorizontal: 12 },
+  grabber: { alignSelf: 'center', width: 36, height: 5, borderRadius: 3, backgroundColor: 'rgba(60,60,67,0.3)' },
   divider: { height: StyleSheet.hairlineWidth, backgroundColor: ios.separator, marginTop: 10 },
   alt: { alignSelf: 'center', minHeight: 44, justifyContent: 'center', paddingHorizontal: 12, marginTop: 6 },
 });
