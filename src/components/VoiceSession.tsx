@@ -10,7 +10,7 @@ import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Keyboard, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
-import Animated, { FadeIn, FadeInDown, useAnimatedKeyboard, useAnimatedStyle, useDerivedValue, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeInDown, FadeInUp, FadeOutUp, useAnimatedKeyboard, useAnimatedStyle, useDerivedValue, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { synthesize, transcribe } from '../api/ai';
 import { rmsLevel, useVoiceRecorder } from './audio';
@@ -69,6 +69,25 @@ export function VoiceSession({ scribe, initialOptions, title, opening, topics, h
   const [options, setOptions] = useState<string[]>(initialOptions ?? []);
   const [picked, setPicked] = useState<string[]>([]);
   const [kbOpen, setKbOpen] = useState(false);
+  // Snackbar แจ้งสถานะข้อมูล (บันทึกหัวข้อไหน / แก้อะไร)
+  const [snack, setSnack] = useState<{ id: number; icon: string; text: string } | null>(null);
+  const snackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showSnack = (text: string, icon = 'checkmark.circle.fill') => {
+    if (snackTimer.current) clearTimeout(snackTimer.current);
+    setSnack({ id: Date.now(), icon, text });
+    snackTimer.current = setTimeout(() => setSnack(null), 2800);
+  };
+  /** เทียบข้อมูลเก่า-ใหม่ แล้วแจ้งหัวข้อที่เพิ่ง ได้/แก้ */
+  const announceChanges = (prev: VoiceData, next: VoiceData) => {
+    const changed = topics.filter((t) => String(next[t.key] ?? '').trim() && String(next[t.key] ?? '').trim() !== String(prev[t.key] ?? '').trim());
+    if (!changed.length) return;
+    const short = (v: string) => (v.length > 34 ? `${v.slice(0, 34)}…` : v);
+    if (changed.length === 1) {
+      const t = changed[0];
+      const wasSet = !!String(prev[t.key] ?? '').trim();
+      showSnack(`${wasSet ? 'แก้' : 'บันทึก'}${t.label}: ${short(String(next[t.key]))}`, wasSet ? 'pencil.circle.fill' : 'checkmark.circle.fill');
+    } else showSnack(`บันทึกแล้ว ${changed.length} หัวข้อ: ${changed.map((t) => t.label).join(', ')}`);
+  };
   // โหมดฟังบทสนทนา: chat → scribe (อัดต่อเนื่อง) → analyzing → review (แก้ไขก่อนบันทึก)
   const [mode, setMode] = useState<'chat' | 'scribe' | 'analyzing' | 'review'>('chat');
   const [lines, setLines] = useState<string[]>([]);
@@ -241,6 +260,7 @@ export function VoiceSession({ scribe, initialOptions, title, opening, topics, h
         const r = await turn(dataRef.current, hist.current, ans);
         setOptions(r.options ?? []);
         if (!alive.current) return;
+        announceChanges(dataRef.current, r.data);
         dataRef.current = r.data;
         setData(r.data);
         let reply = r.reply;
@@ -397,6 +417,7 @@ export function VoiceSession({ scribe, initialOptions, title, opening, topics, h
       try {
         const d = await scribe(transcript);
         const merged = { ...dataRef.current, ...d };
+        announceChanges(dataRef.current, merged);
         dataRef.current = merged;
         setData(merged);
         h.success();
@@ -457,6 +478,14 @@ export function VoiceSession({ scribe, initialOptions, title, opening, topics, h
           <View style={{ width: 44 }} />
         )}
       </View>
+
+      {/* Snackbar สถานะข้อมูล */}
+      {snack ? (
+        <Animated.View key={snack.id} entering={FadeInUp.duration(260)} exiting={FadeOutUp.duration(220)} style={[styles.snack, { top: insets.top + 64 }]} pointerEvents="none">
+          <Sym name={snack.icon as any} size={17} color="#7CF0A8" />
+          <T v="subhead" color="#FFFFFF" numberOfLines={2} style={{ flex: 1 }}>{snack.text}</T>
+        </Animated.View>
+      ) : null}
 
       {mode === 'scribe' || mode === 'analyzing' ? (
         /* ── โหมดฟังบทสนทนา ── */
@@ -651,6 +680,7 @@ const styles = StyleSheet.create({
   fieldHead: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
   fieldDot: { width: 8, height: 8, borderRadius: 4 },
   fieldInput: { fontSize: 17, lineHeight: 24, color: '#FFFFFF', minHeight: 26, padding: 0 },
+  snack: { position: 'absolute', left: 20, right: 20, zIndex: 20, flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 12, paddingHorizontal: 16, borderRadius: 18, borderCurve: 'continuous', backgroundColor: 'rgba(28,32,30,0.97)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(124,240,168,0.35)', boxShadow: '0px 8px 24px rgba(0,0,0,0.5)' },
   darkDock: { position: 'absolute', left: 24, right: 24, gap: 8, padding: 8, borderRadius: 32, borderCurve: 'continuous', backgroundColor: 'rgba(28,30,29,0.96)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.22)', boxShadow: '0px 10px 30px rgba(0,0,0,0.6)' },
   typeRow: { flexDirection: 'row', alignItems: 'center', gap: 8, height: 50, paddingLeft: 16, paddingRight: 6, borderRadius: 25, backgroundColor: '#FFFFFF' },
   typeInput: { flex: 1, fontSize: 17, color: '#1F2A24', height: '100%' },
