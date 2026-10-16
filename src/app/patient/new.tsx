@@ -325,12 +325,6 @@ function NewPatientInner() {
               />
               <Field label="อายุ (ปี)" value={f.age} onChange={set('age')} placeholder="0" keyboard="number-pad" flex={1.1} />
             </View>
-            {birthISO ? (
-              <Animated.View entering={FadeIn} style={styles.birthNote}>
-                <Sym name="sparkles" size={13} color={palette.primary} />
-                <T v="caption" color={palette.primaryDeep}>ธาตุ{elementFromMonth(Number(f.bMonth))} ตามเดือนเกิด · {f.sex}</T>
-              </Animated.View>
-            ) : null}
           </View>
 
           <Field label="โทรศัพท์" value={f.phone} onChange={set('phone')} placeholder="08X-XXX-XXXX" keyboard="phone-pad" />
