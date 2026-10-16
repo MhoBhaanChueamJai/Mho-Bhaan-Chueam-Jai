@@ -250,7 +250,7 @@ export default function WisdomDetail() {
               {om ? (
                 <View style={styles.originRow}>
                   <Sym name="person.crop.circle" size={14} color={ios.secondary} />
-                  <T v="subhead" color={ios.secondary} style={{ flex: 1 }}>{om[1]} {om[2]}</T>
+                  <T v="subhead" color={ios.secondary} numberOfLines={1} style={{ flex: 1 }}>{om[1]} {om[2]}</T>
                 </View>
               ) : null}
             </Section>
