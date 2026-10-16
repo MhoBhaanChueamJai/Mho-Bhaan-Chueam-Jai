@@ -6,7 +6,7 @@ import { FlatList, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
 import { Sym, ios } from '../../../components/ios';
 import { Button, HeaderButton, PressableScale, T } from '../../../components/ui';
-import { herbs, tastes, tasteTone } from '../../../data/herbs';
+import { herbs, tasteTone } from '../../../data/herbs';
 import { elevation, palette, radius, space } from '../../../theme';
 
 export default function Herbs() {
