@@ -39,7 +39,7 @@ export default function Home() {
           headerLeft: () => (
             <PressableScale onPress={() => router.push('/settings')} accessibilityLabel={`บัญชีและตั้งค่า ${me}`} hitSlop={6} style={styles.me}>
               <Image source={avatars.doctor} style={styles.meAvatar} />
-              <T v="title" color={palette.ink} numberOfLines={1} style={{ maxWidth: 150 }}>{me}</T>
+              <T v="subhead" color={palette.ink} numberOfLines={1} style={{ maxWidth: 140, fontWeight: '600' }}>{me}</T>
             </PressableScale>
           ),
           headerRight: () => (
@@ -139,9 +139,9 @@ export default function Home() {
 }
 
 const styles = StyleSheet.create({
-  me: { flexDirection: 'row', alignItems: 'center', gap: 8, height: 36, paddingLeft: 2, paddingRight: 10 },
+  me: { flexDirection: 'row', alignItems: 'center', gap: 7, height: 36, paddingLeft: 2, paddingRight: 8 },
   dot: { position: 'absolute', top: 6, right: 7, width: 9, height: 9, borderRadius: 5, backgroundColor: '#E5484D', borderWidth: 1.5, borderColor: '#FFFFFF' },
-  meAvatar: { width: 32, height: 32, borderRadius: 16 },
+  meAvatar: { width: 28, height: 28, borderRadius: 14 },
   page: { paddingHorizontal: 16, paddingBottom: 120 },
   ai: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14 },
   orb: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center' },
