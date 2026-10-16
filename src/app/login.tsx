@@ -7,6 +7,7 @@ import { Sym, ios } from '../components/ios';
 import { KeynoteIntro } from '../components/Intro';
 import { Button, PressableScale, T, useHaptic } from '../components/ui';
 import { supabase, usernameToEmail } from '../lib/supabase';
+import { PRIVACY_VERSION } from './privacy';
 import { useApp } from '../store/app';
 import { control, palette } from '../theme';
 
@@ -89,6 +90,7 @@ export default function Login() {
   const last = rest.join(' ');
   const [email, setEmail] = useState('');
   const [pass2, setPass2] = useState('');
+  const [agree, setAgree] = useState(false);
   const [info, setInfo] = useState('');
   const shake = useSharedValue(0);
   const shakeStyle = useAnimatedStyle(() => ({ transform: [{ translateX: shake.value }] }));
@@ -97,7 +99,7 @@ export default function Login() {
     !busy &&
     (mode === 'login'
       ? user.trim().length >= 3 && pass.length >= 6
-      : !!first && !!last && emailOk && pass.length >= 6 && pass2.length >= 6);
+      : !!first && !!last && emailOk && pass.length >= 6 && pass2.length >= 6 && agree);
 
   const enter = (name: string) => {
     h.success();
@@ -130,7 +132,7 @@ export default function Login() {
         const { data, error: e } = await supabase.auth.signUp({
           email: email.trim().toLowerCase(),
           password: pass,
-          options: { data: { first_name: first, last_name: last, display_name: name } },
+          options: { data: { first_name: first, last_name: last, display_name: name, privacy_version: PRIVACY_VERSION, privacy_accepted_at: new Date().toISOString() } },
         });
         if (e) return fail(e.message.toLowerCase().includes('already') ? 'อีเมลนี้สมัครไว้แล้ว ลองเข้าสู่ระบบ' : `สมัครไม่สำเร็จ: ${e.message}`);
         if (!data.session) {
@@ -250,6 +252,29 @@ export default function Login() {
           ) : null}
         </Animated.View>
 
+        {/* ยอมรับนโยบายความเป็นส่วนตัว */}
+        {signup ? (
+          <View style={styles.consent}>
+            <PressableScale
+              haptic="select"
+              hitSlop={control.hitSlop}
+              onPress={() => setAgree((x) => !x)}
+              style={[styles.check, agree && styles.checkOn]}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: agree }}
+              accessibilityLabel="ยอมรับนโยบายความเป็นส่วนตัว"
+            >
+              {agree ? <Sym name="checkmark" size={13} color="#FFFFFF" weight="bold" /> : null}
+            </PressableScale>
+            <T v="callout" color={ios.secondary} style={{ flex: 1 }} onPress={() => setAgree((x) => !x)}>
+              ฉันได้อ่านและยอมรับ{' '}
+              <T v="callout" color={palette.primary} style={{ fontWeight: '700' }} onPress={() => router.push('/privacy')}>
+                นโยบายความเป็นส่วนตัว
+              </T>
+            </T>
+          </View>
+        ) : null}
+
         {/* ข้อความแจ้ง */}
         <View style={styles.msg}>
           {error ? (
@@ -343,6 +368,9 @@ const styles = StyleSheet.create({
   error: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   link: { alignSelf: 'center', minHeight: 44, justifyContent: 'center', paddingHorizontal: 12, marginTop: 2 },
   note: { minHeight: 44, marginTop: 6, paddingHorizontal: 12 },
+  consent: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 16, paddingHorizontal: 4 },
+  check: { width: 24, height: 24, borderRadius: 7, borderWidth: 1.5, borderColor: 'rgba(60,60,67,0.3)', alignItems: 'center', justifyContent: 'center' },
+  checkOn: { backgroundColor: palette.primary, borderColor: palette.primary },
   grabber: { alignSelf: 'center', width: 36, height: 5, borderRadius: 3, backgroundColor: 'rgba(60,60,67,0.3)' },
   divider: { height: StyleSheet.hairlineWidth, backgroundColor: ios.separator, marginTop: 10 },
   alt: { alignSelf: 'center', minHeight: 44, justifyContent: 'center', paddingHorizontal: 12, marginTop: 6 },

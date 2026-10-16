@@ -41,6 +41,7 @@ function Root() {
         <Stack.Screen name="scan" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
         <Stack.Screen name="assistant" />
         <Stack.Screen name="verify" options={{ presentation: 'modal', headerShown: true, title: 'ยืนยันตัวตน', headerShadowVisible: false, headerStyle: { backgroundColor: '#FFFFFF' } }} />
+        <Stack.Screen name="privacy" options={{ presentation: 'modal', headerShown: true, title: 'นโยบายความเป็นส่วนตัว', headerShadowVisible: false, headerStyle: { backgroundColor: '#FFFFFF' } }} />
         <Stack.Screen name="pin-setup" options={{ animation: 'fade', gestureEnabled: false }} />
         <Stack.Screen name="patient/search" options={{ animation: 'fade', animationDuration: 120, gestureEnabled: false }} />
         <Stack.Screen name="patient/new" options={{ presentation: 'modal', headerShown: true, title: 'ผู้ป่วยใหม่', headerStyle: { backgroundColor: '#F2F2F7' }, headerShadowVisible: false }} />

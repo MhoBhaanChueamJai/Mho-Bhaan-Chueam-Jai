@@ -305,6 +305,7 @@ export default function Settings() {
         </Section>
 
         <Section title="ข้อมูล" footer={`ผู้ป่วย ${patients.length} ราย · ภูมิปัญญา ${wisdoms.length} เรื่อง · เก็บในเครื่องนี้ตาม พ.ร.บ.คุ้มครองข้อมูลส่วนบุคคล`}>
+          <Row icon={<AppIcon name="hand.raised.fill" bg="#007AFF" />} title="นโยบายความเป็นส่วนตัว" onPress={() => router.push('/privacy')} chevron />
           <Row icon={<AppIcon name="square.and.arrow.up" bg={palette.primary} />} title="ส่งออกข้อมูลผู้ป่วยทั้งหมด" onPress={exportAll} chevron />
           <Row icon={<AppIcon name="trash.fill" bg={palette.coral} />} title="รีเซ็ตเป็นข้อมูลตัวอย่าง" onPress={reset} danger last />
         </Section>
