@@ -11,7 +11,8 @@ import Animated, { useAnimatedStyle, useDerivedValue, useFrameCallback, useShare
 export const SPHERE_SKSL = `uniform float2 res; uniform float t; uniform float e;
 uniform float3 c1; uniform float3 c2; uniform float3 c3;
 half4 main(float2 fc) {
-  float2 uv = (fc - 0.5 * res) / (0.5 * min(res.x, res.y));
+  // ผืนผ้าใบใหญ่กว่าลูก 1.5 เท่า (เผื่อแสงฟุ้ง/ตอนขยาย ไม่ให้ขอบโดนตัด)
+  float2 uv = (fc - 0.5 * res) / (0.5 * min(res.x, res.y)) * 1.5;
   float r = length(uv);
   float R = 0.86;
   float2 p = uv / R;
@@ -79,15 +80,16 @@ export function AISphere({ size = 200, level, active = true }: { size?: number; 
       return [r + m, g + m, b + m];
     };
     const h = hue.value;
-    return { res: [size, size], t: t.value, e: e.value, c1: hsv(h, 0.78, 1), c2: hsv(h + 45, 0.85, 1), c3: hsv(h + 95, 0.8, 1) };
+    return { res: [size * 1.5, size * 1.5], t: t.value, e: e.value, c1: hsv(h, 0.78, 1), c2: hsv(h + 45, 0.85, 1), c3: hsv(h + 95, 0.8, 1) };
   });
   // ลูกแก้วขยาย-หดตามจังหวะเสียง (สปริงนุ่ม) + หายใจเบาๆ ตอนเงียบ
   const pulse = useDerivedValue(() => withSpring(0.93 + 0.14 * e.value + Math.sin(t.value * 1.4) * 0.012, { damping: 14, stiffness: 180, mass: 0.6 }));
   const scaleSt = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
   if (!FX) return <View style={{ width: size, height: size }} />;
+  const big = size * 1.5;
   return (
-    <Animated.View style={[{ width: size, height: size }, scaleSt]} pointerEvents="none">
-      <Canvas style={{ width: size, height: size }}>
+    <Animated.View style={[{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }, scaleSt]} pointerEvents="none">
+      <Canvas style={{ width: big, height: big, position: 'absolute' }}>
         <Fill>
           <Shader source={FX} uniforms={uniforms} />
         </Fill>
