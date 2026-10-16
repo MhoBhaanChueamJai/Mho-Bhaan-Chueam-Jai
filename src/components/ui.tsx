@@ -148,8 +148,8 @@ export function GlassCircle({ children, onPress, size = control.icon, label, tin
 export function GlassDock({ children, style }: { children: React.ReactNode; style?: StyleProp<ViewStyle> }) {
   const insets = useSafeAreaInsets();
   return (
-    // ระยะจากขอบล่างเท่ากับขอบข้าง (16) — แบบแถบลอยของ iOS 26
-    <View style={{ position: 'absolute', left: 16, right: 16, bottom: insets.bottom ? 16 : 12 }} pointerEvents="box-none">
+    // เว้นจากขอบจอ 24 ทั้งซ้าย ขวา ล่าง — แบบแถบลอยของ iOS 26
+    <View style={{ position: 'absolute', left: 24, right: 24, bottom: insets.bottom ? 24 : 16 }} pointerEvents="box-none">
       {/* ขอบนอกเป็น Liquid Glass ใส (ไม่ทาสีขาวทับ) ให้เห็นเนื้อหาด้านหลังแบบกระจกจริง */}
       <Glass interactive tint="rgba(255,255,255,0.12)" style={[styles.dock, elevation.e3, style]}>{children}</Glass>
     </View>
