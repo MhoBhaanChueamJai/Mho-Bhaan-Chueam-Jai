@@ -11,10 +11,11 @@ import { chatJSON, transcribe } from '../../api/ai';
 import { useVoiceRecorder } from '../../components/audio';
 import { Sym, ios } from '../../components/ios';
 import { Waveform } from '../../components/Orb';
-import { Button, GlassDock, HeaderButton, PressableScale, T, useHaptic } from '../../components/ui';
+import { Button, GlassDock, HeaderButton, T, useHaptic } from '../../components/ui';
 import { takeIdScanResult, type IdCardData } from '../../lib/idScan';
 import { ageFrom, elementFromMonth, toISO } from '../../lib/birth';
 import { DateField, Dropdown } from '../../components/FormPickers';
+import { ElementPicker } from '../../components/ElementPicker';
 import { formatAddress, parseAddress } from '../../lib/address';
 import type { Patient } from '../../data/mock';
 import { useApp } from '../../store/app';
@@ -66,7 +67,6 @@ const EMPTY: Form = {
   element: 'ดิน',
 };
 
-const ELEMENTS: Patient['element'][] = ['ดิน', 'น้ำ', 'ลม', 'ไฟ'];
 /** คำนำหน้า → เพศ (เลือกคำนำหน้าแล้วกำหนดเพศให้อัตโนมัติ) */
 const PREFIXES: { label: string; sex: 'ชาย' | 'หญิง' }[] = [
   { label: 'นาย', sex: 'ชาย' },
@@ -105,25 +105,6 @@ function Field({ label, value, onChange, placeholder, keyboard, flex, multiline 
   );
 }
 
-/** ตัวเลือกแบบปุ่มแคปซูล (เพศ / ธาตุ) */
-function Choice<V extends string>({ label, options, value, onChange }: { label: string; options: V[]; value: V; onChange: (v: V) => void }) {
-  return (
-    <View>
-      <T v="subhead" color={ios.secondary} style={styles.label}>{label}</T>
-      <View style={styles.choices}>
-        {options.map((o) => {
-          const on = o === value;
-          return (
-            <PressableScale key={o} haptic="select" scaleTo={0.96} onPress={() => onChange(o)} style={[styles.choice, on && styles.choiceOn]} accessibilityRole="radio" accessibilityState={{ selected: on }} accessibilityLabel={`${label} ${o}`}>
-              <T v="body" color={on ? palette.white : palette.ink} style={{ fontWeight: on ? '600' : '400' }}>{o}</T>
-            </PressableScale>
-          );
-        })}
-      </View>
-    </View>
-  );
-}
-
 function Section({ title, icon, footer, children }: { title: string; icon: string; footer?: string; children: React.ReactNode }) {
   return (
     <View style={[styles.card, elevation.e1]}>
@@ -146,6 +127,8 @@ function NewPatientInner() {
   const [f, setF] = useState<Form>(EMPTY);
   const [aiBusy, setAiBusy] = useState<'' | 'voice' | 'card'>('');
   const [aiNote, setAiNote] = useState('');
+  // เลือกธาตุแล้วหรือยัง (จากวันเกิดอัตโนมัติ หรือหมอเลือกเอง)
+  const [elPicked, setElPicked] = useState(false);
   const set = (k: keyof Form) => (v: string) => setF((x) => ({ ...x, [k]: v }));
   const canSave = f.name.trim().length > 1;
   // วันเกิดครบ → คำนวณอายุและธาตุเจ้าเรือนให้อัตโนมัติ (แก้เองได้)
@@ -153,6 +136,7 @@ function NewPatientInner() {
   useEffect(() => {
     if (!birthISO) return;
     setF((x) => ({ ...x, age: String(ageFrom(birthISO)), element: elementFromMonth(Number(x.bMonth)) }));
+    setElPicked(true);
   }, [birthISO]);
 
   /** พูด → ถอดเสียง → AI แยกข้อมูลลงช่อง */
@@ -331,6 +315,27 @@ function NewPatientInner() {
           <Field label="ที่อยู่" value={f.address} onChange={set('address')} placeholder="เช่น 12 หมู่ 4 บ้านป่าไผ่ ต.ดอนแก้ว อ.แม่ริม จ.เชียงใหม่" multiline />
         </Section>
 
+        {/* ธาตุเจ้าเรือน: มีวันเกิด → ครูปัญญาวิเคราะห์ให้อัตโนมัติ · ไม่มี → เลือกเอง */}
+        <Section title="ธาตุเจ้าเรือน" icon="sparkles">
+          <View style={styles.elHint}>
+            {birthISO ? (
+              <>
+                <Sym name="sparkles" size={13} color={palette.primary} />
+                <T v="subhead" color={palette.primaryDeep} style={{ flex: 1 }}>ครูปัญญาวิเคราะห์จากวันเกิด: ธาตุ{f.element}</T>
+              </>
+            ) : (
+              <T v="subhead" color={ios.secondary} style={{ flex: 1 }}>ยังไม่ระบุวันเกิด เลือกธาตุเจ้าเรือนของผู้ป่วย</T>
+            )}
+          </View>
+          <ElementPicker
+            value={elPicked ? f.element : null}
+            onChange={(el) => {
+              setF((x) => ({ ...x, element: el }));
+              setElPicked(true);
+            }}
+          />
+        </Section>
+
         <Section title="สุขภาพ" icon="heart.fill" footer="ใช้ตรวจความปลอดภัยของสมุนไพรกับผู้ป่วย">
           <Field label="โรคประจำตัว" value={f.chronic} onChange={set('chronic')} placeholder="ไม่มี" />
           <Field label="แพ้ยา / อาหาร" value={f.allergies} onChange={set('allergies')} placeholder="ไม่มี" />
@@ -338,7 +343,6 @@ function NewPatientInner() {
             <Field label="น้ำหนัก (กก.)" value={f.weight} onChange={set('weight')} placeholder="0" keyboard="decimal-pad" flex={1} />
             <Field label="ส่วนสูง (ซม.)" value={f.height} onChange={set('height')} placeholder="0" keyboard="decimal-pad" flex={1} />
           </View>
-          <Choice label={birthISO ? 'ธาตุเจ้าเรือน (คำนวณจากเดือนเกิด แก้ได้)' : 'ธาตุเจ้าเรือน'} options={ELEMENTS} value={f.element} onChange={(v) => setF((x) => ({ ...x, element: v }))} />
         </Section>
       </ScrollView>
 
@@ -356,6 +360,7 @@ const styles = StyleSheet.create({
   note: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 8 },
   status: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: palette.surface, borderRadius: 22, borderCurve: 'continuous', padding: 16 },
   statusOn: { backgroundColor: palette.primary },
+  elHint: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: -4 },
   birthNote: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8, marginLeft: 4 },
   card: { backgroundColor: palette.surface, borderRadius: 22, borderCurve: 'continuous', padding: 16 },
   cardHead: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14 },
