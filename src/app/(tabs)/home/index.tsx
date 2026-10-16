@@ -141,7 +141,7 @@ export default function Home() {
 const styles = StyleSheet.create({
   me: { flexDirection: 'row', alignItems: 'center', gap: 7, height: 36, paddingLeft: 2, paddingRight: 8 },
   dot: { position: 'absolute', top: 6, right: 7, width: 9, height: 9, borderRadius: 5, backgroundColor: '#E5484D', borderWidth: 1.5, borderColor: '#FFFFFF' },
-  meAvatar: { width: 28, height: 28, borderRadius: 14 },
+  meAvatar: { width: 32, height: 32, borderRadius: 16 },
   page: { paddingHorizontal: 16, paddingBottom: 120 },
   ai: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14 },
   orb: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center' },
