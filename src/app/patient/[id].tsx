@@ -6,6 +6,7 @@ import Animated, { FadeIn, LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CircleIcon, ListRow, ListSection, PAGE_PAD } from '../../components/ListRow';
 import { Sym, ios } from '../../components/ios';
+import { AISphere } from '../../components/AISphere';
 import { Avatar, Button, GlassDock, HeaderBack, PressableScale, T } from '../../components/ui';
 import { avatarFor, fullAddress, type MB5Visit, type Patient } from '../../data/mock';
 import { statusLabel, statusTone } from '../../data/tones';
@@ -42,12 +43,19 @@ const DETAIL: { k: keyof MB5Visit; l: string }[] = [
 ];
 
 /** ปุ่มลัดวงกลม (แบบ Contacts): ไอคอนในวงกลม + ป้ายใต้ปุ่ม */
-function QuickAction({ sym, label, onPress, primary }: { sym: any; label: string; onPress?: () => void; primary?: boolean }) {
+function QuickAction({ sym, label, onPress, primary, ai }: { sym?: any; label: string; onPress?: () => void; primary?: boolean; ai?: boolean }) {
   return (
     <PressableScale haptic="press" scaleTo={0.94} onPress={onPress} style={styles.qa} accessibilityLabel={label}>
-      <View style={[styles.qaCircle, primary ? { backgroundColor: palette.primary } : { backgroundColor: palette.surface }, elevation.e1]}>
-        <Sym name={sym} size={22} color={primary ? '#FFFFFF' : palette.primary} />
-      </View>
+      {ai ? (
+        // ไอคอน AI: ก้อนแสงครูปัญญาในวงกลมดำ
+        <View style={[styles.qaCircle, { backgroundColor: '#05090A', overflow: 'hidden' }, elevation.e2]}>
+          <AISphere size={60} active />
+        </View>
+      ) : (
+        <View style={[styles.qaCircle, primary ? { backgroundColor: palette.primary } : { backgroundColor: palette.surface }, elevation.e1]}>
+          <Sym name={sym} size={22} color={primary ? '#FFFFFF' : palette.primary} />
+        </View>
+      )}
       <T v="subhead" color={primary ? palette.primaryDeep : ios.label} style={{ fontWeight: '600' }}>{label}</T>
     </PressableScale>
   );
@@ -155,7 +163,7 @@ function PatientDetailInner() {
         {/* ── ปุ่มลัด ── */}
         <View style={styles.qaRow}>
           <QuickAction sym="phone.fill" label="โทร" onPress={call} />
-          <QuickAction sym="mic.fill" label="บันทึกการรักษา" onPress={record} primary />
+          <QuickAction ai label="บันทึกการรักษา" onPress={record} primary />
           <QuickAction sym="square.and.arrow.up" label="ส่งออก" onPress={share} />
         </View>
 
@@ -198,7 +206,7 @@ function PatientDetailInner() {
       </ScrollView>
 
       <GlassDock>
-        <Button style={{ flex: 1, height: 52 }} label={`บันทึกการรักษาครั้งที่ ${(p.visits[0]?.no ?? 0) + 1}`} icon={<Sym name="mic.fill" size={18} color="#FFFFFF" />} onPress={record} />
+        <Button style={{ flex: 1, height: 52 }} label={`บันทึกการรักษาครั้งที่ ${(p.visits[0]?.no ?? 0) + 1}`} icon={<Sym name="sparkles" size={18} color="#FFFFFF" />} onPress={record} />
       </GlassDock>
     </>
   );
