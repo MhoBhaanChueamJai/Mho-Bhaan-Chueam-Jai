@@ -2,16 +2,17 @@
  * อ่านแบบหนังสือ — เนื้อหายาวแบ่งเป็นหน้า ปัดซ้าย/ขวาเพื่อพลิกหน้า
  * หน้าแรก = ปกหนังสือ (แบบเดียวกับในคลังภูมิ) · หน้าปกใน (ชื่อเรื่อง ประเภท ที่มา) · เนื้อหา (ตัดหน้าให้พอดีจอ) · ท้ายเล่ม = ตัวยา/ขั้นตอน/ข้อห้าม
  * ตัวอักษรในเล่ม: Noto Serif Thai (แบบมีหัว ทางการ)
- * พลิกหน้าแบบกระดาษจริง: แผ่นกระดาษม้วนโค้งตามนิ้วลาก เห็นหลังกระดาษ มีเงาทอดลงหน้าถัดไป · แตะขวา/ซ้ายเพื่อพลิก
+ * พลิกหน้าแบบกระดาษม้วนจริง (Skia page curl): ลากจากตรงไหนก็ได้ ลากเฉียง = พับเฉียง · แตะขวา/ซ้ายเพื่อพลิก
  */
 import { NotoSerifThai_400Regular, NotoSerifThai_700Bold, useFonts } from '@expo-google-fonts/noto-serif-thai';
+import { Canvas, Group, Image as SkImg, ImageShader, LinearGradient as SkLinear, Rect, Vertices, makeImageFromView, type SkImage } from '@shopify/react-native-skia';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useMemo, useState } from 'react';
+import React, { createRef, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated';
+import Animated, { Easing, runOnJS, useAnimatedStyle, useDerivedValue, useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BookCover, COVER_RATIO } from '../../components/BookCover';
 import { KindIcon } from '../../components/KindIcon';
@@ -26,104 +27,49 @@ const ORIGIN_RE = /\n*(ได้รับสืบทอดจาก|แหล�
 
 type Page = { kind: 'cover' } | { kind: 'title' } | { kind: 'text'; heading?: string; text: string } | { kind: 'list'; heading: string; items: string[]; numbered?: boolean };
 
-/** ── พลิกหน้าแบบกระดาษโค้ง ──
- * หน้าที่กำลังพลิกถูกหั่นเป็นแถบแนวตั้ง แต่ละแถบวางตามกระดาษที่ม้วนรอบทรงกระบอก (รัศมี R) ตามเส้นพับ c
- * ส่วนที่ม้วนพ้นครึ่งวงจะกลับด้าน (เห็นหลังกระดาษจางๆ) และวางทับอยู่ด้านบน · คำนวณบน UI thread ทั้งหมด
- * pos = ตำแหน่งหน้าแบบทศนิยม (3.4 = กำลังพลิกจากหน้า 3 ไป 4 ได้ 40%)
+/** ── พลิกหน้าแบบกระดาษม้วน (page curl) ──
+ * ดัดแปลงหลักการจาก react-native-pagecurl (MIT, github.com/Onedayago/react-native-pagecurl):
+ * ถ่ายภาพหน้ากระดาษ (RN view → SkImage) แล้ววาดเป็นตาข่ายสามเหลี่ยมด้วย Skia Vertices
+ * จุดบนแผ่นที่เลยเส้นพับถูกม้วนรอบทรงกระบอกรัศมี R เลยครึ่งวงจะพับกลับเป็นหลังกระดาษ
+ * เส้นพับเอียงตามนิ้ว (ลากเฉียงได้) · แสงเงา/หลังกระดาษใช้ gradient ในพิกัดกระดาษ · เงาทอดลงหน้าถัดไป
  */
-const STRIPS = 16;
-const PERSP = 1600;
-function curlAt(x: number, f: number, Wp: number) {
-  'worklet';
-  const R = Wp * 0.14;
-  const c = Wp + 2 - f * (Wp + (Math.PI * R) / 2 + Wp * 0.08); // เส้นพับเลื่อนจากขอบขวาไปซ้าย
-  const a = x - c;
-  let X = x;
-  let Z = 0;
-  let phi = 0;
-  if (a > 0 && a <= Math.PI * R) {
-    phi = a / R;
-    X = c + R * Math.sin(phi);
-    Z = R * (1 - Math.cos(phi));
-  } else if (a > Math.PI * R) {
-    phi = Math.PI;
-    X = c - (a - Math.PI * R);
-    Z = 2 * R;
-  }
-  const k = PERSP / (PERSP - Z); // ใกล้ตา = ใหญ่ขึ้นเล็กน้อย
-  return { X: Wp / 2 + (X - Wp / 2) * k, k, phi, c, R };
-}
+const COLS = 26;
+const ROWS = 34;
+type Geo = { valid: number; cx: number; cy: number; ux: number; uy: number; fx: number; fy: number };
 
-function Strip({ i, s, k, pos, Wp, H, content, paper }: { i: number; s: number; k: number; pos: SharedValue<number>; Wp: number; H: number; content: React.ReactNode; paper: string }) {
-  const x0 = i * s;
-  const st = useAnimatedStyle(() => {
-    const f = Math.min(1, Math.max(0, pos.value - k));
-    if (f <= 0) return { transform: [{ translateX: 0 }, { scaleX: 1 }, { scaleY: 1 }] };
-    const p0 = curlAt(x0, f, Wp);
-    const p1 = curlAt(x0 + s, f, Wp);
-    let sx = (p1.X - p0.X) / s;
-    if (Math.abs(sx) < 0.003) sx = sx < 0 ? -0.003 : 0.003;
-    return { transform: [{ translateX: p0.X - x0 }, { scaleX: sx }, { scaleY: (p0.k + p1.k) / 2 }] };
-  });
-  // แสงเงาบนแผ่นที่โค้ง: ด้านหน้าหมองลงเมื่อเอียงหนีแสง · ด้านหลังเป็นสีกระดาษเห็นตัวอักษรทะลุจางๆ
-  const dark = useAnimatedStyle(() => {
-    const f = Math.min(1, Math.max(0, pos.value - k));
-    if (f <= 0) return { opacity: 0 };
-    const phi = (curlAt(x0, f, Wp).phi + curlAt(x0 + s, f, Wp).phi) / 2;
-    return { opacity: phi < Math.PI / 2 ? 0.32 * Math.sin(phi) ** 1.5 : 0.1 + 0.22 * Math.sin(phi) };
-  });
-  const back = useAnimatedStyle(() => {
-    const f = Math.min(1, Math.max(0, pos.value - k));
-    if (f <= 0) return { opacity: 0 };
-    const phi = (curlAt(x0, f, Wp).phi + curlAt(x0 + s, f, Wp).phi) / 2;
-    return { opacity: phi > Math.PI / 2 ? 0.86 : 0 };
-  });
+function CurlLayer({ base, turning, show, Wp, Hp, verts, tex, idx, g0, g1, s0, s1, baseDim, paper }: {
+  base: SkImage | null; turning: SkImage | null; show: SharedValue<number>; Wp: number; Hp: number;
+  verts: SharedValue<{ x: number; y: number }[]>; tex: { x: number; y: number }[]; idx: SharedValue<number[]>;
+  g0: SharedValue<{ x: number; y: number }>; g1: SharedValue<{ x: number; y: number }>; s0: SharedValue<{ x: number; y: number }>; s1: SharedValue<{ x: number; y: number }>;
+  baseDim: SharedValue<number>; paper: string;
+}) {
+  const rect = { x: 0, y: 0, width: Wp, height: Hp };
   return (
-    <Animated.View style={[{ position: 'absolute', left: x0, top: 0, width: s + 1, height: H, overflow: 'hidden', transformOrigin: 'left center' }, st]}>
-      <View style={{ position: 'absolute', left: -x0, top: 0, width: Wp, height: H }}>{content}</View>
-      <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: paper }, back]} />
-      <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.shade, dark]} />
-    </Animated.View>
-  );
-}
-
-function FlipPage({ k, pos, frame, curl, paper, render }: { k: number; pos: SharedValue<number>; frame: { left: number; top: number; width: number; height: number }; curl: boolean; paper: string; render: (shade: React.ReactNode) => React.ReactNode }) {
-  const Wp = frame.width;
-  const s = Wp / STRIPS;
-  const box = useAnimatedStyle(() => {
-    const f = Math.min(1, Math.max(0, pos.value - k));
-    return { zIndex: 1000 - k, opacity: f >= 0.995 ? 0 : 1 };
-  });
-  // หน้าที่ถูกเผยด้านล่าง: มืดลงนิดๆ แล้วสว่างขึ้นเมื่อแผ่นบนพลิกพ้น
-  const shade = useAnimatedStyle(() => {
-    const under = pos.value > k - 1 && pos.value < k ? k - pos.value : 0;
-    return { opacity: under * 0.28 };
-  });
-  // เงาที่แผ่นโค้งทอดลงบนหน้าถัดไป (ขวาของสันโค้ง)
-  const cast = useAnimatedStyle(() => {
-    const f = Math.min(1, Math.max(0, pos.value - k));
-    if (f <= 0 || f >= 1) return { opacity: 0 };
-    const p = curlAt(Wp, f, Wp);
-    const edge = Math.max(p.X, Wp / 2 + (p.c + p.R - Wp / 2) * (PERSP / (PERSP - p.R)));
-    return { opacity: Math.min(1, f * 10) * (1 - f) * 0.9, transform: [{ translateX: edge }] };
-  });
-  const shadeEl = <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.shade, shade]} />;
-  const content = render(shadeEl);
-  return (
-    <Animated.View style={[{ position: 'absolute', ...frame }, box]}>
-      {curl ? (
+    <Group opacity={show}>
+      {base ? <SkImg image={base} x={0} y={0} width={Wp} height={Hp} fit="fill" /> : null}
+      <Rect x={0} y={0} width={Wp} height={Hp} color="black" opacity={baseDim} />
+      {/* เงาที่ส่วนม้วนทอดลงบนหน้าที่อยู่ด้านล่าง */}
+      <Rect x={-Wp} y={-Hp} width={Wp * 3} height={Hp * 3}>
+        <SkLinear start={s0} end={s1} colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.38)', 'rgba(0,0,0,0)']} positions={[0, 0.02, 1]} mode="clamp" />
+      </Rect>
+      {turning ? (
         <>
-          <Animated.View pointerEvents="none" style={[styles.cast, cast]}>
-            <LinearGradient colors={['rgba(0,0,0,0.38)', 'rgba(0,0,0,0)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} />
-          </Animated.View>
-          {Array.from({ length: STRIPS }, (_, i) => (
-            <Strip key={i} i={i} s={s} k={k} pos={pos} Wp={Wp} H={frame.height} content={content} paper={paper} />
-          ))}
+          <Vertices mode="triangles" vertices={verts} textures={tex} indices={idx}>
+            <ImageShader image={turning} fit="fill" rect={rect} />
+          </Vertices>
+          {/* แสงเงาบนส่วนโค้ง + หลังกระดาษ (เห็นตัวอักษรทะลุจางๆ) */}
+          <Vertices mode="triangles" vertices={verts} textures={tex} indices={idx}>
+            <SkLinear
+              start={g0}
+              end={g1}
+              colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.10)', 'rgba(0,0,0,0.32)', 'rgba(120,100,70,0.55)', paper]}
+              positions={[0, 0.2, 0.47, 0.53, 1]}
+              mode="clamp"
+            />
+          </Vertices>
         </>
-      ) : (
-        content
-      )}
-    </Animated.View>
+      ) : null}
+    </Group>
   );
 }
 
@@ -164,49 +110,194 @@ export default function ReadBook() {
     return out;
   }, [w, body, kf, perPage]);
 
-  // ── พลิกหน้า ──
+  // ── พลิกหน้า (page curl) ──
   const h = useHaptic();
-  const pos = useSharedValue(0);
-  const start = useSharedValue(0);
   const n = pages.length;
-  const landed = (t: number) => {
-    setPage(t);
-    h.select();
-  };
-  const settle = (t: number) => {
+  const Wp = bookW;
+  const Hp = bookH;
+  const R = Math.round(Wp * 0.13); // รัศมีม้วนกระดาษ
+  const HC = Math.PI * R;
+  const tt = useSharedValue(0); // 0 = แผ่นที่พลิกวางราบ · 1 = พลิกพ้นไปทางซ้ายแล้ว
+  const tilt = useSharedValue(0); // เอียงเส้นพับตามนิ้วแนวตั้ง
+  const sy = useSharedValue(Hp * 0.8); // ระดับที่จับขอบกระดาษ
+  const dir = useSharedValue(1); // 1 = หน้าถัดไป · -1 = ย้อนกลับ
+  const active = useSharedValue(0); // แสดงชั้น Skia (ระหว่างพลิก)
+  const busy = useSharedValue(0);
+  const readyF = useSharedValue(0);
+  const readyB = useSharedValue(0);
+
+  // ภาพหน้ากระดาษ (ถ่ายจาก RN view) ของหน้าก่อน/ปัจจุบัน/ถัดไป
+  const refs = useRef<Record<number, React.RefObject<View | null>>>({});
+  const refOf = (k: number) => (refs.current[k] ??= createRef<View>());
+  const [imgs, setImgs] = useState<{ prev: SkImage | null; cur: SkImage | null; next: SkImage | null }>({ prev: null, cur: null, next: null });
+  useEffect(() => {
+    let alive = true;
+    const shot = async () => {
+      const get = (k: number) => (k >= 0 && k < n && refs.current[k]?.current ? makeImageFromView(refs.current[k] as React.RefObject<View>).catch(() => null) : Promise.resolve(null));
+      const [prev, cur, next] = await Promise.all([get(page - 1), get(page), get(page + 1)]);
+      if (!alive) return;
+      setImgs({ prev, cur, next });
+      readyF.value = cur && next ? 1 : 0;
+      readyB.value = prev && cur ? 1 : 0;
+    };
+    // ซ่อนชั้น Skia เมื่อ RN แสดงหน้าใหม่แล้ว จากนั้นถ่ายภาพหน้าข้างเคียงใหม่ (รอบสองเผื่อรูปปกโหลดช้า)
+    const raf = requestAnimationFrame(() => {
+      active.value = 0;
+      busy.value = 0;
+    });
+    const t1 = setTimeout(shot, 90);
+    const t2 = setTimeout(shot, 900);
+    return () => {
+      alive = false;
+      cancelAnimationFrame(raf);
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, [page, n, fontsOk, active, busy, readyF, readyB]);
+
+  const turned = useCallback(
+    (d: number) => {
+      setPage((p) => Math.max(0, Math.min(n - 1, p + d)));
+      h.select();
+    },
+    [n, h],
+  );
+
+  // เรขาคณิต: S = จุดจับที่ขอบขวา (Wp, sy) · C = จุดบนเส้นพับ · u = ทิศม้วน · f = แนวเส้นพับ
+  const geo = useDerivedValue<Geo>(() => {
+    const cx = Wp - tt.value * (Wp + R + 8);
+    const dxAbs = Wp - cx;
+    const lim = dxAbs * 0.35;
+    const cy = sy.value + Math.max(-lim, Math.min(lim, tilt.value));
+    const dx = cx - Wp;
+    const dy = cy - sy.value;
+    const d = Math.sqrt(dx * dx + dy * dy);
+    if (d < 1) return { valid: 0, cx: 0, cy: 0, ux: 0, uy: 0, fx: 0, fy: 0 };
+    return { valid: 1, cx, cy, ux: -dx / d, uy: -dy / d, fx: dy / d, fy: -dx / d };
+  });
+  const tex = useMemo(() => {
+    const out: { x: number; y: number }[] = [];
+    for (let r = 0; r <= ROWS; r++) for (let c = 0; c <= COLS; c++) out.push({ x: (c / COLS) * Wp, y: (r / ROWS) * Hp });
+    return out;
+  }, [Wp, Hp]);
+  const idxSet = useMemo(() => {
+    const build = (rr: boolean, cr: boolean) => {
+      const out: number[] = [];
+      for (let ri = 0; ri < ROWS; ri++) {
+        const r = rr ? ROWS - 1 - ri : ri;
+        for (let ci = 0; ci < COLS; ci++) {
+          const c = cr ? COLS - 1 - ci : ci;
+          const tl = r * (COLS + 1) + c;
+          const bl = tl + COLS + 1;
+          out.push(tl, tl + 1, bl, tl + 1, bl + 1, bl);
+        }
+      }
+      return out;
+    };
+    return { n: build(false, false), rr: build(true, false) };
+  }, []);
+  // ส่วนที่ม้วนต้องวาดทีหลัง (ทับด้านบน): เรียงสามเหลี่ยมตามทิศม้วน
+  const idx = useDerivedValue(() => (geo.value.valid && geo.value.uy < 0 ? idxSet.rr : idxSet.n));
+  const verts = useDerivedValue(() => {
+    const g = geo.value;
+    const out: { x: number; y: number }[] = [];
+    for (let r = 0; r <= ROWS; r++) {
+      for (let c = 0; c <= COLS; c++) {
+        const ox = (c / COLS) * Wp;
+        const oy = (r / ROWS) * Hp;
+        if (!g.valid) {
+          out.push({ x: ox, y: oy });
+          continue;
+        }
+        const rx = ox - g.cx;
+        const ry = oy - g.cy;
+        const along = rx * g.ux + ry * g.uy;
+        const perp = rx * g.fx + ry * g.fy;
+        if (along > HC) {
+          const ex = along - HC;
+          out.push({ x: g.cx - g.ux * ex + g.fx * perp, y: g.cy - g.uy * ex + g.fy * perp });
+        } else if (along > 0) {
+          const sn = Math.sin(along / R);
+          out.push({ x: g.cx + g.ux * R * sn + g.fx * perp, y: g.cy + g.uy * R * sn + g.fy * perp });
+        } else out.push({ x: ox, y: oy });
+      }
+    }
+    return out;
+  });
+  // gradient ในพิกัดกระดาษ: จากเส้นพับ → ครึ่งวงม้วน (แสงเงา + หลังกระดาษ)
+  const g0 = useDerivedValue(() => ({ x: geo.value.cx, y: geo.value.cy }));
+  const g1 = useDerivedValue(() => ({ x: geo.value.cx + geo.value.ux * HC, y: geo.value.cy + geo.value.uy * HC }));
+  // เงาทอดบนหน้าล่าง เริ่มที่ขอบนอกของส่วนม้วน
+  const s0 = useDerivedValue(() => ({ x: geo.value.cx + geo.value.ux * R * 0.9, y: geo.value.cy + geo.value.uy * R * 0.9 }));
+  const s1 = useDerivedValue(() => ({ x: geo.value.cx + geo.value.ux * (R + 46), y: geo.value.cy + geo.value.uy * (R + 46) }));
+  const baseDim = useDerivedValue(() => (geo.value.valid ? 0.22 * (1 - tt.value) : 0));
+  const showF = useDerivedValue<number>(() => (dir.value > 0 ? 1 : 0));
+  const showB = useDerivedValue<number>(() => (dir.value < 0 ? 1 : 0));
+  const layer = useAnimatedStyle(() => ({ opacity: active.value }));
+
+  const DUR = 620;
+  const ease = Easing.bezier(0.3, 0.1, 0.25, 1);
+  const finish = (target: number, d: number, done: boolean) => {
     'worklet';
-    pos.value = withTiming(t, { duration: 650, easing: Easing.out(Easing.quad) });
-    runOnJS(landed)(t);
+    tilt.value = withTiming(0, { duration: DUR, easing: ease });
+    tt.value = withTiming(target, { duration: DUR, easing: ease }, (ok) => {
+      if (!ok) return;
+      if (done) runOnJS(turned)(d);
+      else {
+        active.value = 0;
+        busy.value = 0;
+      }
+    });
+  };
+  const begin = (d: number, y: number) => {
+    'worklet';
+    dir.value = d;
+    sy.value = Math.max(24, Math.min(Hp - 24, y));
+    tt.value = d > 0 ? 0 : 1;
+    tilt.value = 0;
+    active.value = 1;
+    busy.value = 1;
+    readyF.value = 0;
+    readyB.value = 0;
   };
   const pan = Gesture.Pan()
-    .activeOffsetX([-10, 10])
-    .onStart(() => {
-      start.value = Math.round(pos.value);
+    .activeOffsetX([-8, 8])
+    .onStart((e) => {
+      if (busy.value) return;
+      const d = e.translationX < 0 ? 1 : -1;
+      if (d > 0 ? !readyF.value : !readyB.value) return;
+      begin(d, e.y - frame.top);
     })
     .onUpdate((e) => {
-      const lo = Math.max(0, start.value - 1);
-      const hi = Math.min(n - 1, start.value + 1);
-      pos.value = Math.min(hi, Math.max(lo, start.value - e.translationX / (W * 0.85)));
+      if (!active.value || !busy.value) return;
+      const p = Math.max(0, Math.min(1, Math.abs(e.translationX) / (Wp * 0.95)));
+      tt.value = dir.value > 0 ? (e.translationX < 0 ? p : 0) : e.translationX > 0 ? 1 - p : 1;
+      tilt.value = e.translationY * 0.6;
     })
     .onEnd((e) => {
-      const d = pos.value - start.value;
-      let t = start.value;
-      if (d > 0.25 || (e.velocityX < -450 && d > 0)) t = Math.min(n - 1, start.value + 1);
-      else if (d < -0.25 || (e.velocityX > 450 && d < 0)) t = Math.max(0, start.value - 1);
-      settle(t);
+      if (!active.value || !busy.value) return;
+      if (dir.value > 0) {
+        const done = tt.value > 0.3 || e.velocityX < -400;
+        finish(done ? 1 : 0, 1, done);
+      } else {
+        const done = tt.value < 0.7 || e.velocityX > 400;
+        finish(done ? 0 : 1, -1, done);
+      }
     });
   const tap = Gesture.Tap().onEnd((e) => {
-    const cur = Math.round(pos.value);
-    const t = e.x > W * 0.4 ? Math.min(n - 1, cur + 1) : Math.max(0, cur - 1);
-    if (t !== cur) settle(t);
+    if (busy.value) return;
+    const fwd = e.x > W * 0.4;
+    if (fwd ? !readyF.value : !readyB.value) return;
+    begin(fwd ? 1 : -1, Hp * 0.86);
+    tilt.value = -Hp * 0.14; // เปิดจากมุมล่างขวาเฉียงขึ้น เหมือนหยิบมุมกระดาษ
+    finish(fwd ? 1 : 0, fwd ? 1 : -1, true);
   });
   const gesture = Gesture.Exclusive(pan, tap);
 
-  const renderPage = (item: Page, index: number, shade: React.ReactNode) =>
+  const renderPage = (item: Page, index: number) =>
     item.kind === 'cover' ? (
       <View style={{ flex: 1 }}>
         <BookCover w={w} width={bookW} />
-        <View style={[StyleSheet.absoluteFill, { borderRadius: 5, overflow: 'hidden' }]} pointerEvents="none">{shade}</View>
       </View>
     ) : (
     <View style={{ flex: 1 }}>
@@ -254,7 +345,6 @@ export default function ReadBook() {
           </View>
         )}
         <Text style={[styles.folio, F.r]}>— {index} —</Text>
-        {shade}
       </View>
     </View>
   );
@@ -265,13 +355,25 @@ export default function ReadBook() {
       <LinearGradient colors={['#2B2117', '#1A140E']} style={StyleSheet.absoluteFill} />
       <GestureDetector gesture={gesture}>
         <View style={{ flex: 1 }}>
+          {/* หน้าจริง (RN): หน้าปัจจุบันอยู่บนสุด หน้าข้างเคียงซ้อนด้านหลังไว้ถ่ายภาพ */}
           {pages
             .map((item, k) => ({ item, k }))
-            .filter(({ k }) => k >= page - 2 && k <= page + 2)
-            .reverse()
+            .filter(({ k }) => k >= page - 1 && k <= page + 1)
+            .sort((a, b) => (a.k === page ? 1 : b.k === page ? -1 : 0))
             .map(({ item, k }) => (
-              <FlipPage key={k} k={k} pos={pos} frame={frame} curl={k >= page - 1 && k <= page + 1} paper={item.kind === 'cover' ? '#E9DFC8' : PAPER} render={(shade) => renderPage(item, k, shade)} />
+              <View key={k} ref={refOf(k)} collapsable={false} style={[styles.sheet, frame]}>
+                {renderPage(item, k)}
+              </View>
             ))}
+          {/* ชั้นพลิกหน้า (Skia) แสดงเฉพาะตอนพลิก */}
+          <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, layer]}>
+            <Canvas style={StyleSheet.absoluteFill}>
+              <Group transform={[{ translateX: frame.left }, { translateY: frame.top }]}>
+                <CurlLayer base={imgs.next} turning={imgs.cur} show={showF} Wp={Wp} Hp={Hp} verts={verts} tex={tex} idx={idx} g0={g0} g1={g1} s0={s0} s1={s1} baseDim={baseDim} paper="rgba(240,231,211,0.93)" />
+                <CurlLayer base={imgs.cur} turning={imgs.prev} show={showB} Wp={Wp} Hp={Hp} verts={verts} tex={tex} idx={idx} g0={g0} g1={g1} s0={s0} s1={s1} baseDim={baseDim} paper="rgba(240,231,211,0.93)" />
+              </Group>
+            </Canvas>
+          </Animated.View>
         </View>
       </GestureDetector>
       <View style={[styles.top, { top: insets.top + 8 }]}>
@@ -292,8 +394,7 @@ export default function ReadBook() {
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: '#1A140E' },
   paper: { flex: 1, backgroundColor: PAPER, borderRadius: 6, borderTopRightRadius: 14, borderBottomRightRadius: 14, overflow: 'hidden', boxShadow: '0px 18px 40px rgba(0,0,0,0.5)' },
-  cast: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 34 },
-  shade: { backgroundColor: '#000' },
+  sheet: { position: 'absolute' },
   gutter: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 26 },
   titlePage: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 30 },
   titleKind: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 18, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999, borderWidth: 1, borderColor: 'rgba(58,44,28,0.3)' },
