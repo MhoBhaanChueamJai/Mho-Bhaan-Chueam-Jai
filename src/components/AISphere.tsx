@@ -1,12 +1,12 @@
 /**
  * ทรงกลม AI (อ้างอิง Dribbble "Sphere — AI Voice Assistant") — วาดด้วย shader (Skia SkSL)
  * ลูกแก้วมืด ขอบเรืองแสงสี (fresnel) + ริบบิ้นแสงพลิ้วอยู่ข้างใน สีไล่เฉดหมุนวงล้อสีต่อเนื่อง
- * level (0..1) = ระดับเสียง AI/ไมค์ → ริบบิ้นหนาขึ้น คลื่นแรงขึ้น ขอบสว่างขึ้น
+ * level (0..1) = ระดับเสียง AI/ไมค์ → ลูกแก้วขยาย-หดตามจังหวะ ริบบิ้นหนาขึ้น คลื่นแรงขึ้น ขอบสว่างขึ้น
  */
 import { Canvas, Fill, Shader, Skia } from '@shopify/react-native-skia';
 import React, { useEffect } from 'react';
 import { View } from 'react-native';
-import { useDerivedValue, useFrameCallback, useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useDerivedValue, useFrameCallback, useSharedValue, withSpring, withTiming, type SharedValue } from 'react-native-reanimated';
 
 export const SPHERE_SKSL = `uniform float2 res; uniform float t; uniform float e;
 uniform float3 c1; uniform float3 c2; uniform float3 c3;
@@ -81,14 +81,17 @@ export function AISphere({ size = 200, level, active = true }: { size?: number; 
     const h = hue.value;
     return { res: [size, size], t: t.value, e: e.value, c1: hsv(h, 0.78, 1), c2: hsv(h + 45, 0.85, 1), c3: hsv(h + 95, 0.8, 1) };
   });
+  // ลูกแก้วขยาย-หดตามจังหวะเสียง (สปริงนุ่ม) + หายใจเบาๆ ตอนเงียบ
+  const pulse = useDerivedValue(() => withSpring(0.93 + 0.14 * e.value + Math.sin(t.value * 1.4) * 0.012, { damping: 14, stiffness: 180, mass: 0.6 }));
+  const scaleSt = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
   if (!FX) return <View style={{ width: size, height: size }} />;
   return (
-    <View style={{ width: size, height: size }} pointerEvents="none">
+    <Animated.View style={[{ width: size, height: size }, scaleSt]} pointerEvents="none">
       <Canvas style={{ width: size, height: size }}>
         <Fill>
           <Shader source={FX} uniforms={uniforms} />
         </Fill>
       </Canvas>
-    </View>
+    </Animated.View>
   );
 }
