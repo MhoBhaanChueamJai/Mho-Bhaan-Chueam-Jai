@@ -62,7 +62,7 @@ export default function Vault() {
   const GRID_W = Math.floor((SW - 40 - 32) / 3) - 4;
   const list = wisdoms.filter((w) => !w.builtin);
   const library = wisdoms.filter((w) => w.builtin);
-  const count = (k: Wisdom['kind']) => wisdoms.filter((w) => w.kind === k).length;
+  const count = (k: Wisdom['kind']) => wisdoms.filter((w) => w.kind === k && !w.builtin).length;
 
   return (
     <>

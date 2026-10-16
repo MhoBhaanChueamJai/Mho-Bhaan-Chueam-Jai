@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import type { ModelKey } from '../api/ai';
 import { LIBRARY } from '../data/library';
-import { LEGACY_SAMPLE_PATIENTS, LEGACY_SAMPLE_WISDOMS, agenda as seedAgenda, patients as seedPatients, wisdoms as seedWisdoms, type MB5Visit, type Patient, type Wisdom } from '../data/mock';
+import { LEGACY_SAMPLE_PATIENTS, isLegacyWisdom, agenda as seedAgenda, patients as seedPatients, wisdoms as seedWisdoms, type MB5Visit, type Patient, type Wisdom } from '../data/mock';
 import * as cloud from '../lib/cloud';
 import type { Agenda } from '../lib/cloud';
 import { supabase } from '../lib/supabase';
@@ -109,7 +109,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // mine = ตำราของผู้ใช้ (บันทึกเครื่อง/คลาวด์) · wisdoms = ของผู้ใช้ + ตำราเริ่มต้นในระบบ
   const [mine, setMineRaw] = useState<Wisdom[]>(seedWisdoms);
   const setWisdoms = (v: Wisdom[] | ((l: Wisdom[]) => Wisdom[])) =>
-    setMineRaw((l) => (typeof v === 'function' ? v(l) : v).filter((x) => !LEGACY_SAMPLE_WISDOMS.includes(x.id) && !x.builtin));
+    setMineRaw((l) => (typeof v === 'function' ? v(l) : v).filter((x) => !isLegacyWisdom(x) && !x.builtin));
   const wisdoms = useMemo(() => [...mine, ...LIBRARY], [mine]);
   const [patients, setPatientsRaw] = useState<Patient[]>(seedPatients);
   // กรองผู้ป่วยตัวอย่างรุ่นเก่าออกเสมอ
@@ -166,7 +166,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (legacyP.length) cloud.deleteLegacySamples(legacyP).catch(() => {});
       setWisdoms(d.wisdoms);
       // ตำราตัวอย่างรุ่นเก่าในคลาวด์ → ลบทิ้ง
-      d.wisdoms.filter((x) => LEGACY_SAMPLE_WISDOMS.includes(x.id)).forEach((x) => cloud.deleteWisdom(x.id).catch(() => {}));
+      d.wisdoms.filter(isLegacyWisdom).forEach((x) => cloud.deleteWisdom(x.id).catch(() => {}));
       setAgenda(d.agenda);
       setSearchLog(d.events.filter((x) => x.kind === 'search').map((x) => ({ q: x.value, at: x.at })).slice(0, 30));
       setOpenLog(d.events.filter((x) => x.kind === 'open').map((x) => ({ pid: x.value, at: x.at })).slice(0, 50));
