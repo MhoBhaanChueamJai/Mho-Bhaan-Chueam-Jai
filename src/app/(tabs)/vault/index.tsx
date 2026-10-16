@@ -12,7 +12,7 @@ import { ScrollView, StyleSheet, View, type ImageSourcePropType } from 'react-na
 import Animated, { FadeIn, FadeInDown, LinearTransition } from 'react-native-reanimated';
 import { CircleIcon } from '../../../components/ListRow';
 import { Sym, ios } from '../../../components/ios';
-import { Glass, GlassCircle, PressableScale, T } from '../../../components/ui';
+import { HeaderButton, PressableScale, T } from '../../../components/ui';
 import { herbs } from '../../../data/herbs';
 import { legacy, type Wisdom } from '../../../data/mock';
 import { useApp } from '../../../store/app';
@@ -83,23 +83,20 @@ export default function Vault() {
 
   return (
     <>
-    {/* ปุ่มบนหัวจอ (แบบแอป Wallet): [+] แยกเดี่ยว · [ค้นหา | สแกน QR] — ปิดพื้นกระจกรวมของระบบ วาดกระจกเอง 2 ก้อน */}
+    {/* ปุ่มบนหัวจอแบบเดียวกับแท็บอื่น: ค้นหา · สแกน QR รับตำรา · เพิ่ม */}
     <Stack.Screen
       options={{
-        headerRightBackgroundVisible: false,
         headerRight: () => (
-          <View style={styles.tools}>
-            <GlassCircle label="เพิ่มภูมิปัญญา" onPress={() => router.push('/wisdom/new')} size={44}>
-              <Sym name="plus" size={21} color={palette.ink} weight="medium" />
-            </GlassCircle>
-            <Glass interactive style={styles.toolGroup}>
-              <PressableScale haptic="select" onPress={() => router.push('/wisdom/search')} style={styles.toolBtn} accessibilityLabel="ค้นหาภูมิปัญญา">
-                <Sym name="magnifyingglass" size={19} color={palette.ink} weight="medium" />
-              </PressableScale>
-              <PressableScale haptic="select" onPress={() => router.push('/wisdom/scan-qr')} style={styles.toolBtn} accessibilityLabel="สแกนคิวอาร์โค้ดรับตำรา">
-                <Sym name="qrcode.viewfinder" size={19} color={palette.ink} weight="medium" />
-              </PressableScale>
-            </Glass>
+          <View style={{ flexDirection: 'row', gap: 4 }}>
+            <HeaderButton label="ค้นหาภูมิปัญญา" onPress={() => router.push('/wisdom/search')}>
+              <Sym name="magnifyingglass" size={20} color={palette.primary} weight="semibold" />
+            </HeaderButton>
+            <HeaderButton label="สแกนคิวอาร์โค้ดรับตำรา" onPress={() => router.push('/wisdom/scan-qr')}>
+              <Sym name="qrcode.viewfinder" size={20} color={palette.primary} weight="semibold" />
+            </HeaderButton>
+            <HeaderButton label="เพิ่มภูมิปัญญา" onPress={() => router.push('/wisdom/new')}>
+              <Sym name="plus" size={20} color={palette.primary} weight="semibold" />
+            </HeaderButton>
           </View>
         ),
       }}
@@ -197,9 +194,6 @@ export default function Vault() {
 const CARD_W = 272;
 const styles = StyleSheet.create({
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingLeft: 20, paddingRight: 16, marginBottom: 14 },
-  tools: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  toolGroup: { flexDirection: 'row', alignItems: 'center', height: 44, paddingHorizontal: 8, gap: 12, borderRadius: 22 },
-  toolBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   heroWrap: { marginHorizontal: 16, borderRadius: 30, borderCurve: 'continuous', backgroundColor: '#14261c' },
   hero: { paddingHorizontal: 20, paddingTop: 18, paddingBottom: 20, borderRadius: 30, borderCurve: 'continuous', overflow: 'hidden' },
   heroTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 },
