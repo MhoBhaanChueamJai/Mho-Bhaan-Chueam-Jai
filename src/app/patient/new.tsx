@@ -13,12 +13,13 @@ import { Sym, ios } from '../../components/ios';
 import { Waveform } from '../../components/Orb';
 import { Button, GlassDock, HeaderButton, PressableScale, T, useHaptic } from '../../components/ui';
 import { takeIdScanResult, type IdCardData } from '../../lib/idScan';
-import { TH_MONTHS, ageFrom, elementFromMonth, thaiBirth, toISO } from '../../lib/birth';
+import { ageFrom, elementFromMonth, toISO } from '../../lib/birth';
 import type { Patient } from '../../data/mock';
 import { useApp } from '../../store/app';
 import { elevation, palette } from '../../theme';
 
 type Form = {
+  prefix: string;
   name: string;
   sex: 'ชาย' | 'หญิง';
   age: string;
@@ -40,6 +41,7 @@ type Form = {
 };
 
 const EMPTY: Form = {
+  prefix: '',
   name: '',
   sex: 'หญิง',
   age: '',
@@ -61,6 +63,20 @@ const EMPTY: Form = {
 };
 
 const ELEMENTS: Patient['element'][] = ['ดิน', 'น้ำ', 'ลม', 'ไฟ'];
+/** คำนำหน้า → เพศ (เลือกคำนำหน้าแล้วกำหนดเพศให้อัตโนมัติ) */
+const PREFIXES: { label: string; sex: 'ชาย' | 'หญิง' }[] = [
+  { label: 'นาย', sex: 'ชาย' },
+  { label: 'นาง', sex: 'หญิง' },
+  { label: 'นางสาว', sex: 'หญิง' },
+  { label: 'ด.ช.', sex: 'ชาย' },
+  { label: 'ด.ญ.', sex: 'หญิง' },
+];
+/** แยกคำนำหน้าออกจากชื่อเต็ม (เช่น "นาย ณัฐนนท์ ภูมิศรีแก้ว", "นางสาวสมศรี") */
+function splitPrefix(full: string): { prefix: string; name: string } {
+  const t = full.trim().replace(/^เด็กชาย/, 'ด.ช.').replace(/^เด็กหญิง/, 'ด.ญ.');
+  const p = [...PREFIXES].sort((a, b) => b.label.length - a.label.length).find((x) => t.startsWith(x.label));
+  return p ? { prefix: p.label, name: t.slice(p.label.length).trim() } : { prefix: '', name: t };
+}
 const SAMPLE = 'นางสมศรี คำมา อายุหกสิบแปด บ้านเลขที่สิบสอง หมู่สี่ บ้านป่าไผ่ เบอร์ศูนย์แปดเก้า หนึ่งสองสาม สี่ห้าหกเจ็ด เป็นเบาหวาน แพ้ยาเพนนิซิลลิน หนักห้าสิบห้า สูงร้อยห้าสิบ';
 
 /** ช่องกรอก: ป้ายด้านบน + ช่องแคปซูลพื้นมิ้นต์ (โฟกัส = พื้นขาว ขอบเขียว) */
@@ -162,7 +178,15 @@ function NewPatientInner() {
         const next = { ...x };
         (Object.keys(r) as (keyof Form)[]).forEach((k) => {
           const v = String(r[k] ?? '').trim();
-          if (v) (next as any)[k] = k === 'sex' ? (v.includes('ชาย') ? 'ชาย' : 'หญิง') : v;
+          if (!v) return;
+          if (k === 'name') {
+            const sp = splitPrefix(v);
+            next.name = sp.name;
+            if (sp.prefix) {
+              next.prefix = sp.prefix;
+              next.sex = PREFIXES.find((x) => x.label === sp.prefix)!.sex;
+            }
+          } else (next as any)[k] = k === 'sex' ? (v.includes('ชาย') ? 'ชาย' : 'หญิง') : v;
         });
         return next;
       });
@@ -180,11 +204,19 @@ function NewPatientInner() {
   const applyCard = (r: IdCardData) => {
     setF((x) => {
       const next = { ...x };
-      (['name', 'bDay', 'bMonth', 'bYear', 'houseNo', 'moo', 'village', 'subdistrict', 'district', 'province'] as (keyof Form)[]).forEach((k) => {
+      (['bDay', 'bMonth', 'bYear', 'houseNo', 'moo', 'village', 'subdistrict', 'district', 'province'] as (keyof Form)[]).forEach((k) => {
         const v = String((r as any)[k] ?? '').trim();
         if (v) (next as any)[k] = v;
       });
       if (r.sex) next.sex = String(r.sex).includes('ชาย') ? 'ชาย' : 'หญิง';
+      if (r.name) {
+        const sp = splitPrefix(r.name);
+        next.name = sp.name;
+        if (sp.prefix) {
+          next.prefix = sp.prefix;
+          next.sex = PREFIXES.find((x) => x.label === sp.prefix)!.sex;
+        }
+      }
       return next;
     });
     setAiNote('');
@@ -206,7 +238,7 @@ function NewPatientInner() {
     if (!canSave) return;
     const num = (s: string) => Number(s.replace(/[^0-9.]/g, '')) || 0;
     const id = addPatient({
-      name: f.name.trim(),
+      name: [f.prefix, f.name.trim()].filter(Boolean).join(' '),
       sex: f.sex,
       age: num(f.age),
       birthDate: birthISO ?? undefined,
@@ -263,8 +295,23 @@ function NewPatientInner() {
         ) : null}
 
         <Section title="ข้อมูลผู้ป่วย" icon="person.fill">
-          <Field label="ชื่อ-สกุล" value={f.name} onChange={set('name')} placeholder="เช่น นางบุญมา ศรีคำ" />
-          <Choice label="เพศ" options={['หญิง', 'ชาย'] as ('หญิง' | 'ชาย')[]} value={f.sex} onChange={(v) => setF((x) => ({ ...x, sex: v }))} />
+          {/* คำนำหน้า → กำหนดเพศให้อัตโนมัติ */}
+          <View>
+            <T v="subhead" color={ios.secondary} style={styles.label}>คำนำหน้า</T>
+            <View style={styles.prefixRow}>
+              {PREFIXES.map((p) => {
+                const on = f.prefix === p.label;
+                return (
+                  <PressableScale key={p.label} haptic="select" scaleTo={0.95} onPress={() => setF((x) => ({ ...x, prefix: p.label, sex: p.sex }))} style={[styles.prefix, on && styles.choiceOn]} accessibilityRole="radio" accessibilityState={{ selected: on }}>
+                    <T v="body" color={on ? palette.white : palette.ink} style={{ fontWeight: on ? '600' : '400' }}>{p.label}</T>
+                  </PressableScale>
+                );
+              })}
+            </View>
+          </View>
+          <Field label="ชื่อ-สกุล" value={f.name} onChange={set('name')} placeholder="เช่น บุญมา ศรีคำ" />
+
+          {/* วันเกิด → อายุ + ธาตุเจ้าเรือน */}
           <View>
             <View style={styles.row2}>
               <Field label="วันเกิด" value={f.bDay} onChange={set('bDay')} placeholder="วัน" keyboard="number-pad" flex={1} />
@@ -272,18 +319,35 @@ function NewPatientInner() {
               <Field label="ปี พ.ศ." value={f.bYear} onChange={set('bYear')} placeholder="2500" keyboard="number-pad" flex={1.3} />
             </View>
             {birthISO ? (
-              <Animated.View entering={FadeIn} style={styles.birthNote}>
-                <Sym name="sparkles" size={13} color={palette.primary} />
-                <T v="caption" color={palette.primaryDeep} style={{ flex: 1 }}>เกิด {thaiBirth(birthISO)} · อายุ {ageFrom(birthISO)} ปี · ธาตุ{elementFromMonth(Number(f.bMonth))} (เกิดเดือน{TH_MONTHS[Number(f.bMonth) - 1]})</T>
+              <Animated.View entering={FadeIn} style={styles.facts}>
+                <View style={styles.fact}>
+                  <T v="caption" color={ios.secondary}>อายุ</T>
+                  <T v="title" color={palette.primaryDeep}>{ageFrom(birthISO)} ปี</T>
+                </View>
+                <View style={styles.factSep} />
+                <View style={styles.fact}>
+                  <T v="caption" color={ios.secondary}>ธาตุเจ้าเรือน</T>
+                  <T v="title" color={palette.primaryDeep}>ธาตุ{elementFromMonth(Number(f.bMonth))}</T>
+                </View>
+                <View style={styles.factSep} />
+                <View style={styles.fact}>
+                  <T v="caption" color={ios.secondary}>เพศ</T>
+                  <T v="title" color={palette.primaryDeep}>{f.sex}</T>
+                </View>
               </Animated.View>
             ) : f.bDay || f.bMonth || f.bYear ? (
               <T v="caption" color={ios.secondary} style={styles.birthNote}>กรอกวัน เดือน (1–12) และปี พ.ศ. ให้ครบ เพื่อคำนวณอายุและธาตุ</T>
             ) : null}
           </View>
-          <View style={styles.row2}>
-            <Field label="อายุ (ปี)" value={f.age} onChange={set('age')} placeholder="0" keyboard="number-pad" flex={1} />
-            <Field label="โทรศัพท์" value={f.phone} onChange={set('phone')} placeholder="08X-XXX-XXXX" keyboard="phone-pad" flex={2} />
-          </View>
+
+          {birthISO ? (
+            <Field label="โทรศัพท์" value={f.phone} onChange={set('phone')} placeholder="08X-XXX-XXXX" keyboard="phone-pad" />
+          ) : (
+            <View style={styles.row2}>
+              <Field label="อายุ (ถ้าไม่ทราบวันเกิด)" value={f.age} onChange={set('age')} placeholder="0" keyboard="number-pad" flex={1.2} />
+              <Field label="โทรศัพท์" value={f.phone} onChange={set('phone')} placeholder="08X-XXX-XXXX" keyboard="phone-pad" flex={1.6} />
+            </View>
+          )}
         </Section>
 
         <Section title="ที่อยู่" icon="house.fill">
@@ -324,6 +388,11 @@ const styles = StyleSheet.create({
   note: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 8 },
   status: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: palette.surface, borderRadius: 22, borderCurve: 'continuous', padding: 16 },
   statusOn: { backgroundColor: palette.primary },
+  prefixRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  prefix: { height: 44, paddingHorizontal: 18, borderRadius: 22, backgroundColor: palette.mint, alignItems: 'center', justifyContent: 'center' },
+  facts: { flexDirection: 'row', alignItems: 'center', marginTop: 12, backgroundColor: palette.primarySoft, borderRadius: 16, borderCurve: 'continuous', paddingVertical: 10 },
+  fact: { flex: 1, alignItems: 'center', gap: 1 },
+  factSep: { width: StyleSheet.hairlineWidth, alignSelf: 'stretch', backgroundColor: 'rgba(11,110,69,0.2)' },
   birthNote: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8, marginLeft: 4 },
   card: { backgroundColor: palette.surface, borderRadius: 22, borderCurve: 'continuous', padding: 16 },
   cardHead: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14 },
