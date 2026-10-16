@@ -34,7 +34,7 @@ function Root() {
   return (
     <>
       <StatusBar style="dark" />
-      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: palette.bg }, animation: 'default' }}>
+      <Stack screenOptions={{ headerShown: false, headerBackButtonDisplayMode: 'minimal', contentStyle: { backgroundColor: palette.bg }, animation: 'default' }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="login" options={{ animation: 'fade', gestureEnabled: false }} />
         <Stack.Screen name="capture" options={{ presentation: 'fullScreenModal', animation: 'fade_from_bottom' }} />
@@ -52,13 +52,13 @@ function Root() {
         <Stack.Screen name="patient/search" options={{ animation: 'fade', animationDuration: 120, gestureEnabled: false }} />
         <Stack.Screen name="herb/search" options={{ animation: 'fade', animationDuration: 120, gestureEnabled: false }} />
         <Stack.Screen name="wisdom/search" options={{ animation: 'fade', animationDuration: 120, gestureEnabled: false }} />
-        <Stack.Screen name="patient/new" options={{ headerShown: true, title: 'เพิ่มผู้ป่วย', headerBackTitle: 'ผู้ป่วย', headerTintColor: palette.ink, headerShadowVisible: false, headerStyle: { backgroundColor: palette.bg }, contentStyle: { backgroundColor: palette.bg } }} />
-        <Stack.Screen name="wisdom/new" options={{ headerShown: true, title: 'เพิ่มภูมิปัญญา', headerBackTitle: 'คลังภูมิ', headerTintColor: palette.ink, headerShadowVisible: false, headerStyle: { backgroundColor: palette.bg }, contentStyle: { backgroundColor: palette.bg } }} />
-        <Stack.Screen name="wisdom/receive" options={{ headerShown: true, title: 'รับตำราจากเพื่อน', headerBackTitle: 'คลังภูมิ', headerTintColor: palette.ink, headerShadowVisible: false, headerStyle: { backgroundColor: palette.bg }, contentStyle: { backgroundColor: palette.bg } }} />
+        <Stack.Screen name="patient/new" options={{ headerShown: true, title: 'เพิ่มผู้ป่วย', headerBackButtonDisplayMode: 'minimal', headerTintColor: palette.ink, headerShadowVisible: false, headerStyle: { backgroundColor: palette.bg }, contentStyle: { backgroundColor: palette.bg } }} />
+        <Stack.Screen name="wisdom/new" options={{ headerShown: true, title: 'เพิ่มภูมิปัญญา', headerBackButtonDisplayMode: 'minimal', headerTintColor: palette.ink, headerShadowVisible: false, headerStyle: { backgroundColor: palette.bg }, contentStyle: { backgroundColor: palette.bg } }} />
+        <Stack.Screen name="wisdom/receive" options={{ headerShown: true, title: 'รับตำราจากเพื่อน', headerBackButtonDisplayMode: 'minimal', headerTintColor: palette.ink, headerShadowVisible: false, headerStyle: { backgroundColor: palette.bg }, contentStyle: { backgroundColor: palette.bg } }} />
         <Stack.Screen name="settings" options={{ headerShown: true, title: 'ตั้งค่า', headerLargeTitle: true, headerTransparent: true, headerShadowVisible: false, headerLargeTitleShadowVisible: false, headerBackVisible: false }} />
-        <Stack.Screen name="profile" options={{ headerShown: true, title: 'ข้อมูลส่วนตัว', headerBackTitle: 'ตั้งค่า', headerTintColor: palette.ink, headerShadowVisible: false, headerStyle: { backgroundColor: palette.bg } }} />
-        <Stack.Screen name="notifications" options={{ headerShown: true, title: 'แจ้งเตือน', headerBackTitle: 'หน้าหลัก', headerTintColor: palette.ink, headerShadowVisible: false, headerStyle: { backgroundColor: palette.bg } }} />
-        <Stack.Screen name="ai-settings" options={{ headerShown: true, title: 'ตั้งค่า AI', headerBackTitle: 'ตั้งค่า', headerTintColor: palette.ink, headerShadowVisible: false, headerStyle: { backgroundColor: palette.bg } }} />
+        <Stack.Screen name="profile" options={{ headerShown: true, title: 'ข้อมูลส่วนตัว', headerBackButtonDisplayMode: 'minimal', headerTintColor: palette.ink, headerShadowVisible: false, headerStyle: { backgroundColor: palette.bg } }} />
+        <Stack.Screen name="notifications" options={{ headerShown: true, title: 'แจ้งเตือน', headerBackButtonDisplayMode: 'minimal', headerTintColor: palette.ink, headerShadowVisible: false, headerStyle: { backgroundColor: palette.bg } }} />
+        <Stack.Screen name="ai-settings" options={{ headerShown: true, title: 'ตั้งค่า AI', headerBackButtonDisplayMode: 'minimal', headerTintColor: palette.ink, headerShadowVisible: false, headerStyle: { backgroundColor: palette.bg } }} />
       </Stack>
       {lockEnabled && !unlocked ? <LockScreen /> : null}
     </>

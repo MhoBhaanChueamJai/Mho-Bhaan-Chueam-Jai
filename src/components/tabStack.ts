@@ -7,6 +7,7 @@ import { palette } from '../theme';
  */
 export const tabStackOptions = {
   headerLargeTitle: true,
+  headerBackButtonDisplayMode: 'minimal',
   // เว็บไม่มี large title แบบ native → ใช้แถบหัวทึบ ไม่ทับเนื้อหา
   headerTransparent: Platform.OS === 'ios',
   headerShadowVisible: false,
