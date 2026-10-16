@@ -39,8 +39,8 @@ export function SuggestCard({ title, note, items, onPick }: { title: string; not
       <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" style={{ marginHorizontal: -16 }} contentContainerStyle={styles.chips}>
         {items.map((s, i) => (
           <Animated.View key={s.q + i} entering={FadeInDown.delay(i * 40).duration(220)}>
-            <PressableScale haptic="select" scaleTo={0.95} onPress={() => onPick(s.q)} accessibilityLabel={`ค้นหา ${s.q}`}>
-              <Glass interactive tint="rgba(255,255,255,0.55)" style={styles.chip}>
+            <PressableScale haptic="select" scaleTo={0.95} onPress={() => onPick(s.q)} accessibilityLabel={`ค้นหา ${s.q}`} style={[styles.chipShadow, elevation.e2]}>
+              <Glass interactive tint="rgba(255,255,255,0.7)" style={styles.chip}>
                 <Sym name={s.icon as any} size={14} color={palette.primary} />
                 <T v="callout" color={palette.primaryDeep} style={{ fontWeight: '600' }} numberOfLines={1}>{s.q}</T>
               </Glass>
@@ -161,7 +161,8 @@ const styles = StyleSheet.create({
   cancelWrap: { position: 'absolute', right: 8 },
   cancel: { height: control.icon, paddingHorizontal: 8, justifyContent: 'center' },
   sugHead: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 4, marginBottom: 8 },
-  chips: { gap: 8, paddingHorizontal: 16, paddingVertical: 4 },
+  chips: { gap: 10, paddingHorizontal: 16, paddingTop: 4, paddingBottom: 14 },
+  chipShadow: { borderRadius: 20 },
   chip: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 40, paddingHorizontal: 16, borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.9)' },
   btn: { width: control.icon, height: control.icon, borderRadius: control.icon / 2, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
 });
