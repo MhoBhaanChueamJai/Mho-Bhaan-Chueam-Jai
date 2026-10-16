@@ -37,7 +37,7 @@ ${text.slice(0, 14000)}
 งาน:
 1) แยกข้อมูลลงหัวข้อของ${kind}:
    - ${f.ingredients ? `ingredients = ${f.ingredients.label} (รายการ${kind === 'ตำรับยา' ? ' พร้อมปริมาณ เช่น "เถาวัลย์เปรียง 1 กำมือ"' : ''})` : 'ingredients = []'}
-   - steps = ${f.method.label}${f.method.steps ? ' (แยกทีละขั้น เรียงลำดับ)' : ' (ข้อความต้นฉบับ ใส่เป็นรายการย่อหน้า)'}
+   - steps = ${f.method.hidden ? '[] (ไม่ต้องแยก ข้อความเดิมให้รวมไว้ใน pages)' : `${f.method.label}${f.method.steps ? ' (แยกทีละขั้น เรียงลำดับ)' : ''}`}
    - extra = ${f.extra ? f.extra.label : '""'}
    - caution = ${f.caution.label}
    - origin = ${f.origin.label} (ถ้ามีกล่าวถึง)

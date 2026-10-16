@@ -93,7 +93,7 @@ export default function ReadBook() {
     const heading = kf.summary.big ? kf.summary.label : 'เนื้อหา';
     bookPages(body, perPage).forEach((t, i) => out.push({ kind: 'text', heading: i === 0 ? heading : undefined, text: t }));
     if (w.ingredients?.length) out.push({ kind: 'list', heading: kf.ingredients?.label ?? 'ตัวยา', items: w.ingredients });
-    if (w.method) {
+    if (w.method && !kf.method.hidden) {
       const { steps, extra } = splitMethod(w.kind, w.method);
       if (kf.method.steps && steps.length > 1) out.push({ kind: 'list', heading: kf.method.label, items: steps, numbered: true });
       else bookPages(steps.join('\n'), perPage).forEach((t, i) => out.push({ kind: 'text', heading: i === 0 ? kf.method.label : undefined, text: t }));

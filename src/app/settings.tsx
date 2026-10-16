@@ -11,7 +11,7 @@ import { useSpeaker } from '../components/audio';
 import { CircleIcon, ListRow, ListSection, PAGE_PAD } from '../components/ListRow';
 import { Sym, ios } from '../components/ios';
 import { Avatar, HeaderBack, PressableScale, T, useHaptic } from '../components/ui';
-import { avatars, doctor, doctorTypes, fullAddress } from '../data/mock';
+import { doctor, doctorTypes, fullAddress } from '../data/mock';
 import { TYPE_LABEL } from './verify';
 import { DIALECTS } from '../lib/dialect';
 import { AISphere } from '../components/AISphere';
@@ -103,7 +103,7 @@ export default function Settings() {
         <Animated.View entering={enter(0)}>
           <PressableScale haptic="select" scaleTo={0.98} onPress={() => router.push('/profile')} style={[styles.card, styles.profile, elevation.e1]} accessibilityLabel="ดูข้อมูลส่วนตัว">
             <View style={styles.avatarRing}>
-              <Avatar name={displayName} src={avatars.doctor} size={68} />
+              <Avatar name={displayName} size={68} />
             </View>
             <View style={{ flex: 1, gap: 3 }}>
               <T v="title" numberOfLines={1} style={{ fontSize: 19, lineHeight: 26 }}>{displayName}</T>

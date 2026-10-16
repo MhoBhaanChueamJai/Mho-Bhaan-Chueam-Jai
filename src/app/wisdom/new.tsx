@@ -254,7 +254,7 @@ function NewWisdomInner() {
               ))}
             </Section>
           ) : null}
-          {org.steps.length || org.extra ? (
+          {(org.steps.length || org.extra) && !cfg.method.hidden ? (
             <Section title={cfg.method.label} icon="list.number">
               {org.steps.map((x, i) =>
                 cfg.method.steps ? (

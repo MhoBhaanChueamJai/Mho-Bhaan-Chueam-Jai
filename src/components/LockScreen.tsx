@@ -11,7 +11,7 @@ import { Sym } from './ios';
 import { PinPad, type PinPadHandle } from './PinPad';
 import { HeroRing, PinShell } from './PinShell';
 import { Avatar, PressableScale, T, useHaptic } from './ui';
-import { avatars, doctor } from '../data/mock';
+import { doctor } from '../data/mock';
 import { supabase } from '../lib/supabase';
 import { useApp } from '../store/app';
 import { palette } from '../theme';
@@ -66,7 +66,7 @@ export function LockScreen() {
       <PinShell
         hero={
           <HeroRing>
-            <Avatar name={doctor.name} src={avatars.doctor} size={64} />
+            <Avatar name={doctor.name} size={64} />
           </HeroRing>
         }
         title={`สวัสดี ${name}`}

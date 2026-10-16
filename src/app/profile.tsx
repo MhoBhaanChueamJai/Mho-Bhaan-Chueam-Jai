@@ -9,7 +9,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { CircleIcon, ListRow, ListSection, PAGE_PAD } from '../components/ListRow';
 import { Sym, ios } from '../components/ios';
 import { Avatar, PressableScale, T } from '../components/ui';
-import { avatars, doctor } from '../data/mock';
+import { doctor } from '../data/mock';
 import { TYPE_LABEL } from './verify';
 import { useApp } from '../store/app';
 import { palette } from '../theme';
@@ -33,7 +33,7 @@ export default function Profile() {
     <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingTop: 8, paddingBottom: 56 }}>
       <Animated.View entering={FadeInDown.duration(420)} style={{ alignItems: 'center', marginTop: 8 }}>
         <View style={styles.avatarRing}>
-          <Avatar name={name} src={avatars.doctor} size={96} />
+          <Avatar name={name} size={96} />
         </View>
         <T v="h2" center style={{ marginTop: 12 }}>{name}</T>
         <T v="subhead" color={isPractitioner ? palette.primaryDeep : ios.secondary}>{isPractitioner ? 'หมอพื้นบ้านที่ได้รับการรับรอง' : 'สมาชิกทั่วไป'}</T>

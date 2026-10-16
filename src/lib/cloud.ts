@@ -139,8 +139,10 @@ export async function seedIfEmpty(): Promise<boolean> {
   const { count, error } = await supabase.from('patients').select('id', { count: 'exact', head: true });
   if (error) throw error;
   if ((count ?? 0) > 0) return false;
-  check(await supabase.from('patients').insert(seedPatients.map(patientToRow)));
-  check(await supabase.from('visits').insert(seedPatients.flatMap((p) => p.visits.map((v) => visitToRow(p.id, v)))));
+  if (!seedPatients.length && !seedWisdoms.length && !Object.keys(seedAgenda).length) return false; // ไม่มีข้อมูลตัวอย่างแล้ว
+  if (seedPatients.length) check(await supabase.from('patients').insert(seedPatients.map(patientToRow)));
+  const seedVisits = seedPatients.flatMap((p) => p.visits.map((v) => visitToRow(p.id, v)));
+  if (seedVisits.length) check(await supabase.from('visits').insert(seedVisits));
   if (seedWisdoms.length) check(await supabase.from('wisdoms').insert(seedWisdoms.map(wisdomToRow)));
   check(
     await supabase.from('appointments').insert(
@@ -164,6 +166,14 @@ export async function saveWisdom(w: Wisdom) {
 /** ลบตำราของตัวเอง (สำเนาที่ได้รับจากเพื่อน = ลบเฉพาะในคลังเรา ต้นฉบับของเพื่อนไม่กระทบ) */
 export async function deleteWisdom(id: string) {
   check(await supabase.from('wisdoms').delete().eq('id', id));
+}
+
+/** ลบข้อมูลตัวอย่างรุ่นเก่า (ผู้ป่วย/ประวัติ/นัดหมายตัวอย่าง) ออกจากคลาวด์ของบัญชีเดิม */
+export async function deleteLegacySamples(patientIds: string[]) {
+  if (!patientIds.length) return;
+  check(await supabase.from('appointments').delete().in('patient_id', patientIds));
+  check(await supabase.from('visits').delete().in('patient_id', patientIds));
+  check(await supabase.from('patients').delete().in('id', patientIds));
 }
 
 export async function logEvent(kind: 'search' | 'open', value: string) {

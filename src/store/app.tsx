@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import type { ModelKey } from '../api/ai';
 import { LIBRARY } from '../data/library';
-import { LEGACY_SAMPLE_WISDOMS, agenda as seedAgenda, patients as seedPatients, wisdoms as seedWisdoms, type MB5Visit, type Patient, type Wisdom } from '../data/mock';
+import { LEGACY_SAMPLE_PATIENTS, LEGACY_SAMPLE_WISDOMS, agenda as seedAgenda, patients as seedPatients, wisdoms as seedWisdoms, type MB5Visit, type Patient, type Wisdom } from '../data/mock';
 import * as cloud from '../lib/cloud';
 import type { Agenda } from '../lib/cloud';
 import { supabase } from '../lib/supabase';
@@ -111,12 +111,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const setWisdoms = (v: Wisdom[] | ((l: Wisdom[]) => Wisdom[])) =>
     setMineRaw((l) => (typeof v === 'function' ? v(l) : v).filter((x) => !LEGACY_SAMPLE_WISDOMS.includes(x.id) && !x.builtin));
   const wisdoms = useMemo(() => [...mine, ...LIBRARY], [mine]);
-  const [patients, setPatients] = useState<Patient[]>(seedPatients);
+  const [patients, setPatientsRaw] = useState<Patient[]>(seedPatients);
+  // กรองผู้ป่วยตัวอย่างรุ่นเก่าออกเสมอ
+  const setPatients = (v: Patient[] | ((l: Patient[]) => Patient[])) =>
+    setPatientsRaw((l) => (typeof v === 'function' ? v(l) : v).filter((x) => !LEGACY_SAMPLE_PATIENTS.includes(x.id)));
   const [unlocked, setUnlocked] = useState(false);
   const [searchLog, setSearchLog] = useState<SearchLog>([]);
   const [openLog, setOpenLog] = useState<OpenLog>([]);
   const [ready, setReady] = useState(false);
-  const [agenda, setAgenda] = useState<Agenda>(seedAgenda);
+  const [agenda, setAgendaRaw] = useState<Agenda>(seedAgenda);
+  // นัดหมายของผู้ป่วยตัวอย่างรุ่นเก่า → ตัดออก
+  const setAgenda = (a: Agenda) =>
+    setAgendaRaw(
+      Object.fromEntries(
+        Object.entries(a)
+          .map(([d, l]) => [d, l.filter((x) => !LEGACY_SAMPLE_PATIENTS.includes(x.pid))] as const)
+          .filter(([, l]) => l.length),
+      ),
+    );
   const [sync, setSync] = useState<Ctx['sync']>('local');
   const [syncError, setSyncError] = useState('');
   const [online, setOnline] = useState(false);
@@ -149,6 +161,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (practitioner) await cloud.seedIfEmpty();
       const d = await cloud.loadAll();
       setPatients(d.patients);
+      // ผู้ป่วย/ประวัติ/นัดหมายตัวอย่างรุ่นเก่าในคลาวด์ → ลบทิ้ง
+      const legacyP = d.patients.filter((x) => LEGACY_SAMPLE_PATIENTS.includes(x.id)).map((x) => x.id);
+      if (legacyP.length) cloud.deleteLegacySamples(legacyP).catch(() => {});
       setWisdoms(d.wisdoms);
       // ตำราตัวอย่างรุ่นเก่าในคลาวด์ → ลบทิ้ง
       d.wisdoms.filter((x) => LEGACY_SAMPLE_WISDOMS.includes(x.id)).forEach((x) => cloud.deleteWisdom(x.id).catch(() => {}));
@@ -188,7 +203,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const saved = JSON.parse(raw);
         if (saved.settings) setSettings({ ...defaults, ...saved.settings });
         if (saved.wisdoms?.length) setWisdoms(saved.wisdoms);
-        if (saved.patients?.length && saved.patients[0].visits) setPatients(saved.patients);
+        if (saved.patients && (!saved.patients.length || saved.patients[0].visits)) setPatients(saved.patients);
         if (saved.searchLog) setSearchLog(saved.searchLog);
         if (saved.openLog) setOpenLog(saved.openLog);
         if (saved.agenda) setAgenda(saved.agenda);

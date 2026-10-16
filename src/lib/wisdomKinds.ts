@@ -17,7 +17,7 @@ export type KindForm = {
   /** null = ไม่ใช้ */
   ingredients: (FieldCfg & { amount: boolean; add: string }) | null;
   /** steps = กรอกทีละขั้น · false = กล่องข้อความยาว (เช่น ข้อความต้นฉบับ) */
-  method: FieldCfg & { steps: boolean; add?: string };
+  method: FieldCfg & { steps: boolean; add?: string; hidden?: boolean };
   /** บรรทัดเสริมท้ายวิธีทำ เช่น วิธีใช้ / ความถี่ */
   extra: (FieldCfg & { prefix: string }) | null;
   summary: FieldCfg & { big?: boolean };
@@ -64,7 +64,8 @@ export const KIND_FORM: Record<Kind, KindForm> = {
     title: { label: 'ชื่อตำรา', ph: 'เช่น ตำรายาวัดดอนแก้ว' },
     indication: { label: 'ว่าด้วยเรื่อง', ph: 'เช่น ยาแก้ไข้ ตำราเส้น' },
     ingredients: { label: 'ตัวยาที่พบในตำรา', ph: 'เช่น บอระเพ็ด', amount: false, add: 'เพิ่มตัวยา' },
-    method: { label: 'ข้อความต้นฉบับ', ph: 'คัดลอกข้อความตามต้นฉบับ (อักขระเดิม)', steps: false },
+    // ไม่แสดงหัวข้อ "ข้อความต้นฉบับ" แยก (ข้อความเดิมอยู่รวมในเนื้อหา)
+    method: { label: 'ข้อความต้นฉบับ', ph: 'คัดลอกข้อความตามต้นฉบับ (อักขระเดิม)', steps: false, hidden: true },
     extra: null,
     summary: { label: 'ถอดความ (ภาษาปัจจุบัน)', ph: 'อธิบายเนื้อหาของตำราเป็นภาษาปัจจุบัน', big: true },
     caution: { label: 'หมายเหตุ / ข้อควรระวัง', ph: 'เช่น อักษรบางส่วนเลือนราง' },

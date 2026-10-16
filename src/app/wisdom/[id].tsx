@@ -55,7 +55,8 @@ function Section({ icon, color, title, children, i, reading, onY }: { icon: stri
 
 export default function WisdomDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { wisdoms, updateWisdom, removeWisdom } = useApp();
+  const { wisdoms, updateWisdom, removeWisdom, profile } = useApp();
+  const myName = profile?.display_name || [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || doctor.short;
   const h = useHaptic();
   const w = wisdoms.find((x) => x.id === id) ?? wisdoms[0];
   const insets = useSafeAreaInsets();
@@ -112,7 +113,7 @@ export default function WisdomDetail() {
     { key: 'summary', label: L.summary, text: [w.title, body].filter(Boolean).join(' ') },
     { key: 'indication', label: L.indication, text: w.indication ? `${L.indication} ${w.indication}` : '' },
     { key: 'ingredients', label: L.ingredients, text: w.ingredients?.length ? `${L.ingredients} ${w.ingredients.join(' ')}` : '' },
-    { key: 'method', label: L.method, text: w.method ? `${L.method} ${w.method.replace(/\n/g, ' ')}` : '' },
+    { key: 'method', label: L.method, text: w.method && !kf.method.hidden ? `${L.method} ${w.method.replace(/\n/g, ' ')}` : '' },
     { key: 'caution', label: L.caution, text: w.caution ? `${L.caution} ${w.caution}` : '' },
   ]
     .filter((x) => x.text)
@@ -237,7 +238,7 @@ export default function WisdomDetail() {
           <View style={styles.meta}>
             <Sym name={SOURCE_ICON[w.source] as any} size={13} color={ios.secondary} />
             <T v="subhead" color={ios.secondary}>
-              {w.sharedBy ? `ได้รับจาก ${w.sharedBy}` : `${w.source} · บันทึกโดย ${doctor.short}`} · {w.date}
+              {w.builtin ? 'ตำราอ้างอิงในระบบ · มีแหล่งอ้างอิง' : w.sharedBy ? `ได้รับจาก ${w.sharedBy}` : `${w.source} · บันทึกโดย ${myName}`}{w.date ? ` · ${w.date}` : ''}
             </T>
           </View>
         </Animated.View>
@@ -245,7 +246,7 @@ export default function WisdomDetail() {
         <View style={styles.body} onLayout={(e) => (bodyY.current = e.nativeEvent.layout.y)}>
           {body || om ? (
             <Section reading={reading === 'summary'} onY={(v) => (posY.current['summary'] = v)} i={0} icon={kf.summary.big ? (w.kind === 'คาถา/พิธี' ? 'sparkles' : 'text.book.closed.fill') : 'book.fill'} color={palette.primary} title={L.summary}>
-              <T v="body" numberOfLines={readIdx === null ? 9 : undefined} style={[styles.para, w.kind === 'คาถา/พิธี' && styles.chant]}>{body}</T>
+              <T v="body" style={[styles.para, w.kind === 'คาถา/พิธี' && styles.chant]}>{body}</T>
               {om ? (
                 <View style={styles.originRow}>
                   <Sym name="person.crop.circle" size={14} color={ios.secondary} />
@@ -295,7 +296,7 @@ export default function WisdomDetail() {
             </Section>
           ) : null}
 
-          {w.method ? (
+          {w.method && !kf.method.hidden ? (
             <Section reading={reading === 'method'} onY={(v) => (posY.current['method'] = v)} i={3} icon="flame.fill" color="#D9921A" title={L.method}>
               {kf.method.steps && steps.length > 1 ? (
                 <View style={{ gap: 12, marginTop: 4 }}>

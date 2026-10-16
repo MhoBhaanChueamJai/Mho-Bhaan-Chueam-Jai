@@ -8,7 +8,7 @@ import { AppIcon, Group, IOSCard, Row, SectionTitle, Sym, ios } from '../../../c
 import { AISphere } from '../../../components/AISphere';
 import { Avatar, HeaderButton, PressableScale, T } from '../../../components/ui';
 import { noticesFrom } from '../../../lib/notices';
-import { TODAY, avatarFor, avatars, doctor, lastVisit, thaiDate } from '../../../data/mock';
+import { TODAY, avatarFor, doctor, lastVisit, thaiDate } from '../../../data/mock';
 import { visitSortKey } from '../../../data/tones';
 import { useApp } from '../../../store/app';
 import { palette } from '../../../theme';
@@ -65,7 +65,7 @@ export default function Home() {
           // ซ้าย: โปรไฟล์ (รูป + ชื่อ) · ขวา: แจ้งเตือน
           headerLeft: () => (
             <PressableScale onPress={() => router.push('/settings')} accessibilityLabel={`บัญชีและตั้งค่า ${me}`} hitSlop={6} style={styles.me}>
-              <Image source={avatars.doctor} style={styles.meAvatar} />
+              <Avatar name={me} size={32} />
               <T v="subhead" color={palette.ink} numberOfLines={1} style={{ maxWidth: 140, fontWeight: '600' }}>{me}</T>
             </PressableScale>
           ),
