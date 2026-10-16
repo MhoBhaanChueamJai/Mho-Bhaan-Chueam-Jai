@@ -1,55 +1,33 @@
+/**
+ * ตั้งค่า — ออกแบบใหม่ตาม DESIGN_SYSTEM.md
+ * โปรไฟล์ · ภาษาที่ใช้คุย (ภาษาถิ่น) · ความปลอดภัย · ข้อมูล · ออกจากระบบ
+ * (ไม่มีการตั้งค่า AI — ครูปัญญาใช้ 2 โมเดลร่วมกันอัตโนมัติ และเสียงเดียวทั้งแอป)
+ */
 import { Stack, router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Alert, Linking, ScrollView, Share, StyleSheet, Switch, View } from 'react-native';
-import { MODELS, health, type ModelKey, type ServiceKey } from '../api/ai';
+import { Alert, ScrollView, Share, StyleSheet, Switch, View } from 'react-native';
+import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
 import { useSpeaker } from '../components/audio';
 import { AppIcon, Sym, ios } from '../components/ios';
 import { Avatar, HeaderBack, PressableScale, T, useHaptic } from '../components/ui';
 import { avatars, doctor, doctorTypes, fullAddress } from '../data/mock';
 import { TYPE_LABEL } from './verify';
+import { DIALECTS } from '../lib/dialect';
 import { supabase } from '../lib/supabase';
 import { useApp } from '../store/app';
 import { authenticateBiometric, biometricInfo, clearPin } from '../store/security';
-import { control, palette } from '../theme';
+import { control, elevation, palette } from '../theme';
 
-const SERVICES: { k: ServiceKey; label: string; sym: any; bg: string }[] = [
-  { k: 'llm', label: 'สมองครูปัญญา (Gemma / Qwen)', sym: 'cpu', bg: palette.primary },
-  { k: 'asr', label: 'ฟังเสียงภาษาไทย', sym: 'waveform', bg: '#2A8C7A' },
-  { k: 'tts', label: 'พูดตอบด้วยเสียง', sym: 'speaker.wave.2.fill', bg: palette.orange },
-  { k: 'ocr', label: 'อ่านตำราโบราณ (OCR)', sym: 'doc.text.viewfinder', bg: '#8A6A44' },
-];
-const VOICES = [
-  { id: 'female', label: 'หญิง' },
-  { id: 'male', label: 'ชาย' },
-  { id: 'default', label: 'กลาง' },
-];
+const enter = (i: number) => FadeInDown.delay(40 + i * 50).springify().damping(20);
 
-/** แถวแบบหน้า Settings ของ iPhone */
-function Row({
-  icon,
-  title,
-  value,
-  right,
-  onPress,
-  last,
-  danger,
-  chevron,
-}: {
-  icon?: React.ReactNode;
-  title: string;
-  value?: string;
-  right?: React.ReactNode;
-  onPress?: () => void;
-  last?: boolean;
-  danger?: boolean;
-  chevron?: boolean;
-}) {
+/** แถวรายการในการ์ด (แบบหน้า Settings ของ iPhone) */
+function Row({ icon, title, value, right, onPress, last, danger, chevron }: { icon?: React.ReactNode; title: string; value?: string; right?: React.ReactNode; onPress?: () => void; last?: boolean; danger?: boolean; chevron?: boolean }) {
   const body = (
     <View style={styles.row}>
       {icon}
       <View style={[styles.rowMain, !last && styles.sep]}>
         <T v="body" color={danger ? palette.coral : ios.label} style={{ flex: 1 }} numberOfLines={1}>{title}</T>
-        {value ? <T v="body" color={ios.secondary}>{value}</T> : null}
+        {value ? <T v="subhead" color={ios.secondary}>{value}</T> : null}
         {right}
         {chevron ? <Sym name="chevron.right" size={13} color={ios.tertiary} weight="semibold" /> : null}
       </View>
@@ -64,18 +42,18 @@ function Row({
   );
 }
 
-function Section({ title, footer, children }: { title?: string; footer?: string; children: React.ReactNode }) {
+function Section({ title, footer, children, i }: { title: string; footer?: string; children: React.ReactNode; i: number }) {
   return (
-    <View style={{ marginTop: 26 }}>
-      {title ? <T v="caption" color={ios.secondary} style={styles.secTitle}>{title}</T> : null}
-      <View style={styles.group}>{children}</View>
+    <Animated.View entering={enter(i)} layout={LinearTransition.springify().damping(20)} style={{ marginTop: 26 }}>
+      <T v="h3" style={styles.secTitle}>{title}</T>
+      {children}
       {footer ? <T v="caption" color={ios.secondary} style={styles.secFooter}>{footer}</T> : null}
-    </View>
+    </Animated.View>
   );
 }
 
 export default function Settings() {
-  const { settings, update, patients, wisdoms, resetData, setUnlocked, sync, syncError, reloadCloud, profile, isPractitioner } = useApp();
+  const { settings, update, patients, wisdoms, resetData, setUnlocked, profile, isPractitioner } = useApp();
   const displayName = profile?.display_name || (profile?.first_name ? `${profile.first_name} ${profile.last_name ?? ''}` : doctor.name);
   const [bio, setBio] = useState({ available: false, label: 'Face ID', icon: 'faceid' as 'faceid' | 'touchid' });
   useEffect(() => {
@@ -83,29 +61,9 @@ export default function Settings() {
   }, []);
   const tts = useSpeaker();
   const h = useHaptic();
-  const [status, setStatus] = useState<Record<ServiceKey, boolean> | null>(null);
-  const [checking, setChecking] = useState(false);
   const type = doctorTypes.find((d) => d.key === settings.doctorType) ?? doctorTypes[0];
-  const voice = VOICES.find((v) => v.id === settings.voice) ?? VOICES[0];
-
-  const check = async () => {
-    setChecking(true);
-    setStatus(null);
-    setStatus(await health());
-    setChecking(false);
-  };
-  useEffect(() => {
-    check();
-    return () => tts.stop();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const nextVoice = () => {
-    const i = VOICES.findIndex((v) => v.id === settings.voice);
-    const v = VOICES[(i + 1) % VOICES.length];
-    update({ voice: v.id });
-    setTimeout(() => tts.speak('สวัสดีครับคุณหมอ ครูปัญญายินดีรับใช้ครับ'), 50);
-  };
+  const dialect = settings.dialect ?? 'central';
+  const types = isPractitioner ? (profile?.healer_types?.length ? profile.healer_types.map((t) => TYPE_LABEL[t] ?? t).join(' · ') : type.label) : null;
 
   const exportAll = () => {
     const text = patients
@@ -113,19 +71,6 @@ export default function Settings() {
       .join('\n\n');
     Share.share({ title: 'ข้อมูลผู้ป่วย', message: `ข้อมูลผู้ป่วย ${patients.length} ราย\n\n${text}` });
   };
-
-  const reset = () =>
-    Alert.alert('รีเซ็ตเป็นข้อมูลตัวอย่าง?', 'ผู้ป่วยและภูมิปัญญาที่บันทึกในเครื่องจะถูกลบ และกลับเป็นข้อมูลตัวอย่าง', [
-      { text: 'ยกเลิก', style: 'cancel' },
-      {
-        text: 'รีเซ็ต',
-        style: 'destructive',
-        onPress: () => {
-          resetData();
-          h.success();
-        },
-      },
-    ]);
 
   /** เปิด: ไปหน้าตั้ง PIN, ปิด: ถามยืนยันแล้วลบ PIN */
   const togglePin = (on: boolean) => {
@@ -174,150 +119,109 @@ export default function Settings() {
       },
     ]);
 
+
   return (
     <>
       <Stack.Screen options={{ headerLeft: () => <HeaderBack fallback="/home" color={palette.primary} /> }} />
-      <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 48 }} showsVerticalScrollIndicator={false}>
-        {/* โปรไฟล์ */}
-        <View style={[styles.group, { marginTop: 12 }]}>
-          <View style={styles.profile}>
-            <Avatar name={doctor.name} src={avatars.doctor} size={64} />
-            <View style={{ flex: 1 }}>
-              <T v="title" style={{ fontSize: 20, lineHeight: 26 }}>{displayName}</T>
-              <T v="callout" color={ios.secondary}>{isPractitioner ? (profile?.healer_types?.length ? profile.healer_types.map((t) => TYPE_LABEL[t] ?? t).join(' · ') : type.label) : 'สมาชิกทั่วไป'}{profile?.email ? ` · ${profile.email}` : ''}</T>
-            </View>
+      <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 56 }} showsVerticalScrollIndicator={false}>
+        {/* ── โปรไฟล์ ── */}
+        <Animated.View entering={enter(0)}>
+        <PressableScale haptic="select" scaleTo={0.98} onPress={() => router.push('/profile')} style={[styles.card, styles.profile, elevation.e1]} accessibilityLabel="ดูข้อมูลส่วนตัว">
+          <View style={styles.profileMore}>
+            <T v="caption" color={palette.primary} style={{ fontWeight: '600' }}>ข้อมูลส่วนตัว</T>
+            <Sym name="chevron.right" size={11} color={palette.primary} weight="semibold" />
           </View>
-          <View style={[styles.sep, { marginLeft: 16 }]} />
+          <View style={styles.avatarRing}>
+            <Avatar name={displayName} src={avatars.doctor} size={84} />
+          </View>
+          <T v="h2" center style={{ marginTop: 12 }}>{displayName}</T>
+          {profile?.email ? <T v="subhead" color={ios.secondary} center>{profile.email}</T> : null}
+          <View style={[styles.badge, { backgroundColor: isPractitioner ? palette.primarySoft : '#FBEFD9' }]}>
+            <Sym name={isPractitioner ? 'checkmark.seal.fill' : 'person.fill'} size={14} color={isPractitioner ? palette.primary : palette.orange} />
+            <T v="subhead" color={isPractitioner ? palette.primaryDeep : '#8A5A10'} style={{ fontWeight: '600' }}>
+              {isPractitioner ? 'หมอพื้นบ้านที่ได้รับการรับรอง' : 'สมาชิกทั่วไป'}
+            </T>
+          </View>
           {isPractitioner ? (
-            <View style={styles.license}>
-              <Sym name="checkmark.seal.fill" size={20} color={palette.primary} />
-              <View style={{ flex: 1 }}>
-                <T v="callout">หมอพื้นบ้านที่ได้รับการรับรอง</T>
-                <T v="caption" color={ios.secondary}>
-                  {profile?.cert_number ? `เลขที่ ${profile.cert_number} · ${profile.cert_province ?? ''}${profile.cert_expiry ? ` · หมดอายุ ${profile.cert_expiry}` : ''}` : doctor.license.replace('หมอพื้นบ้านขึ้นทะเบียน ', '')}
-                </T>
-              </View>
+            <View style={styles.certBox}>
+              {types ? <T v="subhead" center>{types}</T> : null}
+              <T v="caption" color={ios.secondary} center>
+                {profile?.cert_number ? `เลขที่ ${profile.cert_number}${profile.cert_province ? ` · ${profile.cert_province}` : ''}${profile.cert_expiry ? ` · หมดอายุ ${profile.cert_expiry}` : ''}` : doctor.license}
+              </T>
             </View>
           ) : (
-            <PressableScale onPress={() => router.push('/verify')} style={styles.license}>
-              <Sym name="person.badge.shield.checkmark.fill" size={20} color={palette.orange} />
-              <View style={{ flex: 1 }}>
-                <T v="callout">ยังไม่ได้ยืนยันตัวตนหมอพื้นบ้าน</T>
-                <T v="caption" color={ios.secondary}>ยืนยันเพื่อใช้งานการรักษาผู้ป่วย</T>
-              </View>
-              <Sym name="chevron.right" size={13} color={ios.tertiary} weight="semibold" />
+            <PressableScale haptic="press" onPress={() => router.push('/verify')} style={styles.verifyBtn} accessibilityLabel="ยืนยันตัวตนหมอพื้นบ้าน">
+              <Sym name="person.badge.shield.checkmark.fill" size={18} color="#FFFFFF" />
+              <T v="bodyStrong" color="#FFFFFF">ยืนยันตัวตนหมอพื้นบ้าน</T>
             </PressableScale>
           )}
-        </View>
+        </PressableScale>
+        </Animated.View>
 
-        <Section title="ครูปัญญา AI">
-          <Row
-            icon={<AppIcon name="speaker.wave.2.fill" bg={palette.orange} />}
-            title="อ่านคำตอบให้ฟังอัตโนมัติ"
-            right={<Switch value={settings.autoSpeak} onValueChange={(v) => update({ autoSpeak: v })} trackColor={{ true: palette.primary }} />}
-          />
-          <Row icon={<AppIcon name="person.wave.2.fill" bg="#C2564B" />} title="เสียงของครูปัญญา" value={tts.speaking ? 'กำลังเล่น…' : voice.label} onPress={nextVoice} chevron />
-          <Row
-            icon={<AppIcon name="cpu" bg={palette.primary} />}
-            title="โมเดล AI"
-            last
-            right={
-              <View style={styles.seg}>
-                {(Object.keys(MODELS) as ModelKey[]).map((k) => (
-                  <PressableScale key={k} haptic="select" onPress={() => update({ model: k })} style={[styles.segItem, settings.model === k && styles.segOn]}>
-                    <T v="caption" color={settings.model === k ? ios.label : ios.secondary} style={{ fontWeight: '600' }}>{MODELS[k].label}</T>
-                  </PressableScale>
-                ))}
-              </View>
-            }
-          />
-        </Section>
-
-        <Section
-          title="ความปลอดภัย"
-          footer={
-            settings.pinEnabled || settings.faceIdEnabled
-              ? 'เปิดแอปครั้งถัดไป หรือกลับมาหลังออกจากแอปเกิน 1 นาที ต้องปลดล็อกก่อนใช้งาน ไม่ต้องกรอกรหัสผ่านใหม่'
-              : 'ตั้งรหัส PIN หรือ Face ID เพื่อป้องกันข้อมูลผู้ป่วยเมื่อมีคนอื่นหยิบเครื่องไป'
-          }
-        >
-          <Row
-            icon={<AppIcon name="lock.shield.fill" bg={palette.primary} />}
-            title="รหัส PIN"
-            right={<Switch value={settings.pinEnabled} onValueChange={togglePin} trackColor={{ true: palette.primary }} />}
-          />
-          {settings.pinEnabled ? (
-            <Row icon={<AppIcon name="key.fill" bg="#5E6B63" />} title="เปลี่ยนรหัส PIN" onPress={() => router.push({ pathname: '/pin-setup', params: { mode: 'change' } })} chevron />
-          ) : null}
-          <Row
-            icon={<AppIcon name={bio.icon} bg="#2A8C7A" />}
-            title={bio.label}
-            value={bio.available ? undefined : 'ไม่พร้อมใช้งาน'}
-            last
-            right={bio.available ? <Switch value={settings.faceIdEnabled} onValueChange={toggleFace} trackColor={{ true: palette.primary }} /> : undefined}
-          />
-        </Section>
-
-        <Section title="การใช้งาน" footer="ขนาดตัวอักษรในแอปปรับตาม การตั้งค่า › การแสดงผลและความสว่าง › ขนาดข้อความ ของ iPhone">
-          <Row
-            icon={<AppIcon name="iphone.radiowaves.left.and.right" bg="#2A8C7A" />}
-            title="สั่นตอบสนองเมื่อแตะ"
-            right={<Switch value={settings.haptics} onValueChange={(v) => update({ haptics: v })} trackColor={{ true: palette.primary }} />}
-          />
-          <Row icon={<AppIcon name="textformat.size" bg="#5E6B63" />} title="ขนาดตัวอักษร" value="ตาม iPhone" onPress={() => Linking.openSettings()} chevron last />
-        </Section>
-
-        <Section title="สถานะบริการ AI">
-          {SERVICES.map((s) => {
-            const ok = status?.[s.k];
-            return (
-              <Row
-                key={s.k}
-                icon={<AppIcon name={s.sym} bg={s.bg} />}
-                title={s.label}
-                right={
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <View style={[styles.dot, { backgroundColor: status == null ? ios.tertiary : ok ? palette.online : palette.coral }]} />
-                    <T v="callout" color={ios.secondary}>{status == null ? 'กำลังตรวจ' : ok ? 'พร้อม' : 'ขัดข้อง'}</T>
+        {/* ── ภาษาที่ใช้คุย ── */}
+        <Section i={1} title="ภาษาที่ใช้คุย" footer="ครูปัญญาจะฟังและเข้าใจภาษาถิ่นที่เลือกได้แม่นขึ้น">
+          <View style={styles.dialects}>
+            {DIALECTS.map((d) => {
+              const on = dialect === d.id;
+              return (
+                <PressableScale
+                  key={d.id}
+                  haptic="select"
+                  scaleTo={0.97}
+                  onPress={() => update({ dialect: d.id })}
+                  style={[styles.dialect, elevation.e1, on && styles.dialectOn]}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: on }}
+                  accessibilityLabel={d.label}
+                >
+                  <View style={{ flex: 1 }}>
+                    <T v="title" color={on ? palette.primaryDeep : ios.label}>{d.label}</T>
+                    <T v="caption" color={ios.secondary}>{d.note}</T>
                   </View>
-                }
-              />
-            );
-          })}
-          <Row icon={<AppIcon name="arrow.clockwise" bg="#8E8E93" />} title={checking ? 'กำลังตรวจสอบ…' : 'ตรวจสอบอีกครั้ง'} onPress={check} last />
+                  <View style={[styles.radio, on && styles.radioOn]}>{on ? <Sym name="checkmark" size={12} color="#FFFFFF" weight="bold" /> : null}</View>
+                </PressableScale>
+              );
+            })}
+          </View>
         </Section>
 
+        {/* ── ความปลอดภัย ── */}
         <Section
-          title="ฐานข้อมูล"
-          footer={sync === 'error' ? `เชื่อมต่อไม่สำเร็จ: ${syncError.slice(0, 120)} — ใช้ข้อมูลในเครื่องไปก่อน` : 'ข้อมูลผู้ป่วยซิงก์กับ Supabase และเก็บสำเนาในเครื่องไว้ใช้ตอนไม่มีเน็ต'}
+          i={2}
+          title="ความปลอดภัย"
+          footer={settings.pinEnabled || settings.faceIdEnabled ? 'กลับมาหลังออกจากแอปเกิน 1 นาที ต้องปลดล็อกก่อนใช้งาน' : 'ตั้งรหัส PIN หรือ Face ID เพื่อป้องกันข้อมูลผู้ป่วย'}
         >
-          <Row
-            icon={<AppIcon name="externaldrive.fill.badge.icloud" bg="#3B7DD8" />}
-            title="Supabase"
-            right={
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <View style={[styles.dot, { backgroundColor: sync === 'cloud' ? palette.online : sync === 'syncing' ? ios.tertiary : palette.coral }]} />
-                <T v="callout" color={ios.secondary}>{{ cloud: 'ซิงก์แล้ว', syncing: 'กำลังซิงก์', error: 'ขัดข้อง', local: 'ในเครื่อง' }[sync]}</T>
-              </View>
-            }
-          />
-          <Row icon={<AppIcon name="arrow.clockwise" bg="#8E8E93" />} title="ซิงก์ข้อมูลอีกครั้ง" onPress={() => reloadCloud()} last />
+          <View style={[styles.card, elevation.e1]}>
+            <Row icon={<AppIcon name="lock.shield.fill" bg={palette.primary} />} title="รหัส PIN" right={<Switch value={settings.pinEnabled} onValueChange={togglePin} trackColor={{ true: palette.primary }} />} />
+            {settings.pinEnabled ? <Row icon={<AppIcon name="key.fill" bg="#5E6B63" />} title="เปลี่ยนรหัส PIN" onPress={() => router.push({ pathname: '/pin-setup', params: { mode: 'change' } })} chevron /> : null}
+            <Row
+              icon={<AppIcon name={bio.icon} bg="#2A8C7A" />}
+              title={bio.label}
+              value={bio.available ? undefined : 'ไม่พร้อมใช้งาน'}
+              last
+              right={bio.available ? <Switch value={settings.faceIdEnabled} onValueChange={toggleFace} trackColor={{ true: palette.primary }} /> : undefined}
+            />
+          </View>
         </Section>
 
-        <Section title="ข้อมูล" footer={`ผู้ป่วย ${patients.length} ราย · ภูมิปัญญา ${wisdoms.length} เรื่อง · เก็บในเครื่องนี้ตาม พ.ร.บ.คุ้มครองข้อมูลส่วนบุคคล`}>
-          <Row icon={<AppIcon name="hand.raised.fill" bg="#007AFF" />} title="นโยบายความเป็นส่วนตัว" onPress={() => router.push('/privacy')} chevron />
-          <Row icon={<AppIcon name="square.and.arrow.up" bg={palette.primary} />} title="ส่งออกข้อมูลผู้ป่วยทั้งหมด" onPress={exportAll} chevron />
-          <Row icon={<AppIcon name="trash.fill" bg={palette.coral} />} title="รีเซ็ตเป็นข้อมูลตัวอย่าง" onPress={reset} danger last />
+        {/* ── ข้อมูล ── */}
+        <Section i={3} title="ข้อมูล" footer={`ผู้ป่วย ${patients.length} ราย · ภูมิปัญญา ${wisdoms.length} เรื่อง`}>
+          <View style={[styles.card, elevation.e1]}>
+            <Row icon={<AppIcon name="square.and.arrow.up" bg={palette.primary} />} title="ส่งออกข้อมูลผู้ป่วย" onPress={exportAll} chevron />
+            <Row icon={<AppIcon name="hand.raised.fill" bg="#007AFF" />} title="นโยบายความเป็นส่วนตัว" onPress={() => router.push('/privacy')} chevron last />
+          </View>
         </Section>
 
-        <View style={[styles.group, { marginTop: 26 }]}>
-          <PressableScale onPress={logout} scaleTo={0.99} haptic="press" style={styles.logout} accessibilityLabel="ออกจากระบบ">
-            <T v="body" color={palette.coral} style={{ fontWeight: '600' }}>ออกจากระบบ</T>
+        {/* ── ออกจากระบบ ── */}
+        <Animated.View entering={enter(4)}>
+          <PressableScale onPress={logout} scaleTo={0.98} haptic="press" style={[styles.card, styles.logout, elevation.e1]} accessibilityLabel="ออกจากระบบ">
+            <Sym name="rectangle.portrait.and.arrow.right" size={18} color={palette.coral} />
+            <T v="bodyStrong" color={palette.coral}>ออกจากระบบ</T>
           </PressableScale>
-        </View>
+        </Animated.View>
 
-        <T v="caption" color={ios.secondary} center style={{ marginTop: 20, paddingHorizontal: 24 }}>
-          หมอบ้านเชื่อมใจ เวอร์ชัน 1.0{'\n'}คำแนะนำจาก AI เป็นข้อมูลเบื้องต้น ไม่ใช่การวินิจฉัยแทนแพทย์
+        <T v="caption" color={ios.tertiary} center style={{ marginTop: 20, paddingHorizontal: 24 }}>
+          หมอบ้านเชื่อมใจ เวอร์ชัน 1.0{'\n'}คำแนะนำจากครูปัญญาเป็นข้อมูลเบื้องต้น ไม่ใช่การวินิจฉัยแทนแพทย์
         </T>
       </ScrollView>
     </>
@@ -325,17 +229,22 @@ export default function Settings() {
 }
 
 const styles = StyleSheet.create({
-  group: { backgroundColor: palette.surface, borderRadius: 14, borderCurve: 'continuous', overflow: 'hidden' },
-  secTitle: { paddingHorizontal: 16, marginBottom: 6 },
-  secFooter: { paddingHorizontal: 16, marginTop: 6 },
-  profile: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16 },
-  license: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 12 },
+  card: { backgroundColor: palette.surface, borderRadius: 20, borderCurve: 'continuous' },
+  profile: { alignItems: 'center', paddingVertical: 22, paddingHorizontal: 18, marginTop: 8 },
+  profileMore: { position: 'absolute', top: 14, right: 14, flexDirection: 'row', alignItems: 'center', gap: 3 },
+  avatarRing: { padding: 4, borderRadius: 999, backgroundColor: palette.primarySoft },
+  badge: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999 },
+  certBox: { marginTop: 12, alignSelf: 'stretch', backgroundColor: palette.mint, borderRadius: 14, paddingVertical: 10, paddingHorizontal: 12, gap: 2 },
+  verifyBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14, height: 48, paddingHorizontal: 20, borderRadius: 24, backgroundColor: palette.primary },
+  secTitle: { marginBottom: 10, marginLeft: 4 },
+  secFooter: { paddingHorizontal: 6, marginTop: 8 },
+  dialects: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  dialect: { width: '48.4%', flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: palette.surface, borderRadius: 18, borderCurve: 'continuous', paddingVertical: 14, paddingHorizontal: 14, borderWidth: 1.5, borderColor: 'transparent' },
+  dialectOn: { borderColor: palette.primary, backgroundColor: '#F4FBF7' },
+  radio: { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: 'rgba(60,60,67,0.25)', alignItems: 'center', justifyContent: 'center' },
+  radioOn: { backgroundColor: palette.primary, borderColor: palette.primary },
   row: { flexDirection: 'row', alignItems: 'center', paddingLeft: 16, gap: 14 },
   rowMain: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: control.row, paddingRight: 16, paddingVertical: 8 },
   sep: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: ios.separator },
-  dot: { width: 8, height: 8, borderRadius: 4 },
-  logout: { minHeight: control.row, alignItems: 'center', justifyContent: 'center', paddingVertical: 12 },
-  seg: { flexDirection: 'row', backgroundColor: palette.bgDeep, borderRadius: 9, padding: 2 },
-  segItem: { paddingHorizontal: 12, height: 28, justifyContent: 'center', borderRadius: 7 },
-  segOn: { backgroundColor: palette.surface, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 3, shadowOffset: { width: 0, height: 1 } },
+  logout: { marginTop: 26, minHeight: 54, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
 });

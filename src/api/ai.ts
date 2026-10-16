@@ -41,7 +41,8 @@ export const SYSTEM_PROMPT = `คุณคือ "ครูปัญญา" ผ�
 - ห้ามวินิจฉัยแทนแพทย์ ให้เป็นคำแนะนำเบื้องต้นเท่านั้น
 - ไม่ใช้ markdown ตาราง ใช้หัวข้อสั้นและรายการด้วย "•"`;
 
-export async function chat(messages: ChatMsg[], model: ModelKey = 'gemma', maxTokens = 700): Promise<string> {
+/** เรียกโมเดลเดียว */
+async function chatOne(messages: ChatMsg[], model: ModelKey, maxTokens: number, ms = 60_000): Promise<string> {
   return withTimeout(async (signal) => {
     const res = await fetch(`${ENDPOINTS[model]}/v1/chat/completions`, {
       method: 'POST',
@@ -59,15 +60,103 @@ export async function chat(messages: ChatMsg[], model: ModelKey = 'gemma', maxTo
     const json = await res.json();
     const text: string = json.choices?.[0]?.message?.content ?? '';
     return text.replace(/<think>[\s\S]*?<\/think>/g, '').replace(/\*\*/g, '').trim();
-  }, 90_000);
+  }, ms);
 }
 
-/** ขอผลลัพธ์เป็น JSON จาก LLM (ตัด code fence ออกให้) */
-export async function chatJSON<T>(messages: ChatMsg[], model: ModelKey = 'gemma'): Promise<T> {
-  const raw = await chat(messages, model, 1200);
-  const m = raw.match(/\{[\s\S]*\}/);
-  if (!m) throw new Error('no json');
-  return JSON.parse(m[0]) as T;
+/** ยิงทั้ง 2 โมเดลพร้อมกัน คืนผลที่สำเร็จ (ตัวที่ล่ม/ช้าเกิน ถูกข้าม) */
+async function both<T>(fn: (m: ModelKey) => Promise<T>): Promise<{ gemma?: T; qwen?: T }> {
+  const [g, q] = await Promise.allSettled([fn('gemma'), fn('qwen')]);
+  return { gemma: g.status === 'fulfilled' ? g.value : undefined, qwen: q.status === 'fulfilled' ? q.value : undefined };
+}
+
+/**
+ * ครูปัญญาคิด 2 ทาง: Gemma + Qwen ตอบพร้อมกัน แล้วรวมเป็นคำตอบเดียวที่ถูกต้องที่สุด (ผู้ใช้ไม่ต้องเลือกโมเดล)
+ * ถ้าโมเดลใดล่มหรือช้า ใช้ผลของอีกตัวทันที
+ */
+export async function chat(messages: ChatMsg[], _model?: ModelKey, maxTokens = 700): Promise<string> {
+  const r = await both((m) => chatOne(messages, m, maxTokens, 45_000));
+  if (!r.gemma && !r.qwen) throw new Error('LLM unavailable');
+  if (!r.gemma || !r.qwen) return (r.gemma ?? r.qwen)!;
+  const question = messages.filter((m) => m.role === 'user').slice(-1)[0]?.content ?? '';
+  const system = messages.find((m) => m.role === 'system')?.content;
+  try {
+    return await chatOne(
+      [
+        ...(system ? [{ role: 'system' as const, content: system }] : []),
+        {
+          role: 'user',
+          content: `คำถาม: ${question}\n\nคำตอบจากผู้ช่วยคนที่ 1:\n${r.gemma}\n\nคำตอบจากผู้ช่วยคนที่ 2:\n${r.qwen}\n\nช่วยกันตรวจสอบ: รวมเป็นคำตอบเดียวที่ถูกต้องและครบถ้วนที่สุด ตัดส่วนที่ผิดหรือขัดแย้งออก ถ้าความเห็นต่างกันให้เลือกข้อที่ปลอดภัยต่อผู้ป่วยกว่า ใช้รูปแบบและภาษาเดียวกับคำตอบเดิม ตอบเฉพาะคำตอบสุดท้าย ห้ามพูดถึงผู้ช่วยทั้งสอง`,
+        },
+      ],
+      'gemma',
+      maxTokens,
+      30_000,
+    );
+  } catch {
+    return r.qwen.length > r.gemma.length ? r.qwen : r.gemma;
+  }
+}
+
+const isEmpty = (v: unknown) => v == null || (typeof v === 'string' && !v.trim()) || (Array.isArray(v) && !v.length);
+const norm = (v: unknown) => (typeof v === 'string' ? v.replace(/\s+/g, '').toLowerCase() : JSON.stringify(v));
+
+/** รวม JSON 2 ชุด: ตรงกัน/มีฝั่งเดียว → ใช้เลย · ข้อความยาว → ใช้ของ Gemma (ภาษาไทยลื่น) · ค่าสั้นที่ขัดกัน → เก็บไว้ให้ตัดสิน */
+function mergeJSON(a: any, b: any, path: string, conflicts: { path: string; a: unknown; b: unknown }[]): any {
+  if (isEmpty(a)) return b;
+  if (isEmpty(b)) return a;
+  if (Array.isArray(a) && Array.isArray(b)) {
+    const seen = new Set(a.map(norm));
+    return [...a, ...b.filter((x) => !seen.has(norm(x)))];
+  }
+  if (typeof a === 'object' && typeof b === 'object') {
+    const out: any = {};
+    new Set([...Object.keys(a), ...Object.keys(b)]).forEach((k) => (out[k] = mergeJSON(a[k], b[k], path ? `${path}.${k}` : k, conflicts)));
+    return out;
+  }
+  if (norm(a) === norm(b)) return a;
+  if (typeof a === 'string' && typeof b === 'string' && Math.max(a.length, b.length) > 40) return a;
+  conflicts.push({ path, a, b });
+  return a;
+}
+
+/** ขอผลลัพธ์เป็น JSON — 2 โมเดลช่วยกัน แล้วรวม/ตัดสินค่าที่ขัดกัน */
+export async function chatJSON<T>(messages: ChatMsg[], _model?: ModelKey): Promise<T> {
+  const parse = (raw: string) => {
+    const m = raw.match(/\{[\s\S]*\}/);
+    if (!m) throw new Error('no json');
+    return JSON.parse(m[0]);
+  };
+  const r = await both(async (m) => parse(await chatOne(messages, m, 1200, 45_000)));
+  if (!r.gemma && !r.qwen) throw new Error('LLM unavailable');
+  if (!r.gemma || !r.qwen) return (r.gemma ?? r.qwen) as T;
+  const conflicts: { path: string; a: unknown; b: unknown }[] = [];
+  const merged = mergeJSON(r.gemma, r.qwen, '', conflicts);
+  if (!conflicts.length) return merged as T;
+  // ค่าที่สองโมเดลเห็นไม่ตรงกัน → ให้ตัดสินจากบริบทเดิม
+  try {
+    const question = messages.filter((m) => m.role === 'user').slice(-1)[0]?.content ?? '';
+    const verdict = parse(
+      await chatOne(
+        [
+          {
+            role: 'user',
+            content: `${question}\n\n---\nมีผู้ช่วย 2 คนตอบข้อมูลบางช่องไม่ตรงกัน:\n${conflicts.map((c) => `${c.path}: (1) ${JSON.stringify(c.a)} | (2) ${JSON.stringify(c.b)}`).join('\n')}\nเลือกค่าที่ถูกต้องที่สุดตามข้อมูลต้นทาง ตอบ JSON เท่านั้น เช่น {"ชื่อช่อง": ค่าที่ถูก}`,
+          },
+        ],
+        'qwen',
+        400,
+        15_000,
+      ),
+    );
+    conflicts.forEach((c) => {
+      if (verdict[c.path] === undefined) return;
+      const keys = c.path.split('.');
+      let o = merged;
+      keys.slice(0, -1).forEach((k) => (o = o[k]));
+      o[keys[keys.length - 1]] = verdict[c.path];
+    });
+  } catch {}
+  return merged as T;
 }
 
 /** เสียง (WAV 16kHz) → ข้อความ */

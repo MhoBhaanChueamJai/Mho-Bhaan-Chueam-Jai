@@ -54,7 +54,7 @@ export default function Scan() {
       text = await ocrImage(imgUri, mime);
     } catch {}
     setRaw(text);
-    setPhase(`${settings.model === 'qwen' ? 'Qwen' : 'Gemma'} กำลังถอดความเป็นภาษาปัจจุบัน…`);
+    setPhase('ครูปัญญากำลังถอดความเป็นภาษาปัจจุบัน…');
     try {
       if (!text) throw new Error('empty');
       const r = await chatJSON<Reading>(

@@ -408,7 +408,7 @@ herbs ไม่เกิน 3 รายการ รายการอื่น�
           </ProgressHalo>
           <T v="h2" style={{ marginTop: 12 }}>ครูปัญญากำลังคิด…</T>
           <View style={{ marginTop: space.xl, gap: space.sm, width: '80%' }}>
-            {['ถอดเสียงภาษาไทย (Qwen3‑ASR)', `วิเคราะห์ด้วย ${settings.model === 'qwen' ? 'Qwen' : 'Gemma'}`, 'เรียบเรียงตามหลักแพทย์แผนไทย'].map((s, i) => (
+            {['ถอดเสียงภาษาไทย', 'วิเคราะห์และตรวจทานข้อมูล', 'เรียบเรียงตามหลักแพทย์แผนไทย'].map((s, i) => (
               <Animated.View key={s} entering={FadeInDown.delay(i * 250)} style={styles.stepRow}>
                 <View style={[styles.stepDot, step > i && { backgroundColor: palette.primary, borderColor: palette.primary }, step === i && { borderColor: palette.orange }]}>
                   {step > i ? <Check size={14} color={palette.white} /> : null}
@@ -424,7 +424,7 @@ herbs ไม่เกิน 3 รายการ รายการอื่น�
         <ScrollView contentContainerStyle={{ padding: space.lg, paddingBottom: insets.bottom + 140 }} showsVerticalScrollIndicator={false}>
           <Animated.View entering={FadeInDown.springify()} style={{ alignItems: 'center', marginBottom: space.sm }}>
             <AISphere size={96} active={tts.speaking} level={tts.level} />
-            {demo ? <Badge label="โหมดสาธิต · ไม่ได้เชื่อมต่อ AI" fg={palette.coral} bg={palette.coralSoft} /> : <Badge label={`✓ วิเคราะห์โดย ${settings.model === 'qwen' ? 'Qwen' : 'Gemma'}`} />}
+            {demo ? <Badge label="โหมดสาธิต · ไม่ได้เชื่อมต่อ AI" fg={palette.coral} bg={palette.coralSoft} /> : <Badge label="✓ ครูปัญญาวิเคราะห์แล้ว" />}
           </Animated.View>
 
           <Animated.View entering={FadeInDown.delay(80).springify()} layout={LinearTransition}>

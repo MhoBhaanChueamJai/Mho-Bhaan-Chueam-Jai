@@ -51,6 +51,7 @@ function Root() {
         <Stack.Screen name="wisdom/search" options={{ animation: 'fade', animationDuration: 120, gestureEnabled: false }} />
         <Stack.Screen name="patient/new" options={{ headerShown: true, title: 'เพิ่มผู้ป่วย', headerBackTitle: 'ผู้ป่วย', headerTintColor: palette.primary, headerShadowVisible: false, headerStyle: { backgroundColor: palette.bg }, contentStyle: { backgroundColor: palette.bg } }} />
         <Stack.Screen name="settings" options={{ headerShown: true, title: 'ตั้งค่า', headerLargeTitle: true, headerTransparent: true, headerShadowVisible: false, headerLargeTitleShadowVisible: false, headerBackVisible: false }} />
+        <Stack.Screen name="profile" options={{ headerShown: true, title: 'ข้อมูลส่วนตัว', headerBackTitle: 'ตั้งค่า', headerTintColor: palette.primary, headerShadowVisible: false, headerStyle: { backgroundColor: palette.bg } }} />
       </Stack>
       {lockEnabled && !unlocked ? <LockScreen /> : null}
     </>

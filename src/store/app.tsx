@@ -1,3 +1,4 @@
+import { setDialect, type Dialect } from '../lib/dialect';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import type { ModelKey } from '../api/ai';
@@ -7,6 +8,8 @@ import type { Agenda } from '../lib/cloud';
 import { supabase } from '../lib/supabase';
 
 type Settings = {
+  /** ภาษาที่ใช้คุยกับครูปัญญา */
+  dialect: Dialect;
   model: ModelKey;
   voice: string;
   autoSpeak: boolean;
@@ -25,6 +28,7 @@ type Settings = {
 };
 
 const defaults: Settings = {
+  dialect: 'central',
   model: 'gemma',
   voice: 'female',
   autoSpeak: true,
@@ -92,6 +96,8 @@ const KEY = 'suebsan.v1';
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [settings, setSettings] = useState<Settings>(defaults);
+  // ให้ส่วน AI (นอก React) รู้ภาษาถิ่นที่ตั้งไว้
+  useEffect(() => setDialect(settings.dialect ?? 'central'), [settings.dialect]);
   const [wisdoms, setWisdoms] = useState<Wisdom[]>(seedWisdoms);
   const [patients, setPatients] = useState<Patient[]>(seedPatients);
   const [unlocked, setUnlocked] = useState(false);

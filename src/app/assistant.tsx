@@ -3,12 +3,12 @@ import React, { useEffect, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import Animated, { FadeIn, FadeInUp, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { MODELS, SYSTEM_PROMPT, chat, transcribe, type ChatMsg, type ModelKey } from '../api/ai';
+import { SYSTEM_PROMPT, chat, transcribe, type ChatMsg } from '../api/ai';
 import { useSpeaker, useVoiceRecorder } from '../components/audio';
 import { Group, Row, Sym, ios } from '../components/ios';
 import { SoftShadow, Waveform } from '../components/Orb';
 import { AISphere } from '../components/AISphere';
-import { Glass, HeaderBack, HeaderButton, PressableScale, T, useHaptic } from '../components/ui';
+import { Glass, HeaderBack, PressableScale, T, useHaptic } from '../components/ui';
 import { askLaunch } from '../lib/askLaunch';
 import { useApp } from '../store/app';
 import { control, palette } from '../theme';
@@ -26,7 +26,7 @@ type Msg = ChatMsg & { id: string; failed?: boolean };
 export default function Assistant() {
   const { q } = useLocalSearchParams<{ q?: string }>();
   const insets = useSafeAreaInsets();
-  const { settings, update } = useApp();
+  const { settings } = useApp();
   const h = useHaptic();
   const tts = useSpeaker();
   const rec = useVoiceRecorder();
@@ -104,8 +104,7 @@ export default function Assistant() {
     }
   };
 
-  const nextModel: ModelKey = settings.model === 'gemma' ? 'qwen' : 'gemma';
-  const status = busy ? 'กำลังคิด…' : tts.speaking ? 'กำลังพูด…' : rec.isRecording ? 'กำลังฟัง…' : MODELS[settings.model].label;
+  const status = busy ? 'กำลังคิด…' : tts.speaking ? 'กำลังพูด…' : rec.isRecording ? 'กำลังฟัง…' : 'พร้อมช่วยคุณหมอ';
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: palette.bg }}>
@@ -122,11 +121,6 @@ export default function Assistant() {
               <T v="title">ครูปัญญา</T>
               <T v="micro" color={busy || rec.isRecording ? palette.primary : ios.secondary}>{status}</T>
             </View>
-          ),
-          headerRight: () => (
-            <HeaderButton label={`เปลี่ยนเป็น ${MODELS[nextModel].label}`} onPress={() => update({ model: nextModel })}>
-              <Sym name="cpu" size={20} color={palette.primary} />
-            </HeaderButton>
           ),
         }}
       />
