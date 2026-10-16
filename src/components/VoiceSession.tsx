@@ -18,7 +18,7 @@ import { Sym } from './ios';
 import { AISphere } from './AISphere';
 import { AIGlow, Waveform } from './Orb';
 import { Button, Glass, GlassCircle, PressableScale, T, useHaptic } from './ui';
-import { isYes, type Turn } from '../lib/intake';
+import type { Turn } from '../lib/intake';
 import { palette } from '../theme';
 
 type Phase = 'speaking' | 'listening' | 'thinking' | 'done';
@@ -243,10 +243,10 @@ export function VoiceSession({ scribe, initialOptions, title, opening, topics, h
         setData(r.data);
         let reply = r.reply;
         if (r.done) {
-          // ท้ายสุด: สรุปข้อมูล → ข้อความปิดท้าย → ถามยืนยันบันทึก
+          // ท้ายสุด: สรุปข้อมูล → ข้อความปิดท้าย → ไปหน้าตรวจทานก่อนบันทึก (ใช้ร่วมกับโหมดฟังบทสนทนา)
           const extra = closing?.(r.data);
           if (extra) reply = `${reply} ${extra}`;
-          reply = `${reply} ${confirmQ}`;
+          reply = `${reply} ตรวจทานข้อมูล แก้ไขได้ แล้วกดบันทึกได้เลยครับ`;
         }
         hist.current.push({ role: 'ai', text: reply });
         setAiText(reply);
@@ -254,30 +254,11 @@ export function VoiceSession({ scribe, initialOptions, title, opening, topics, h
         h.select();
         await speak(reply);
         if (r.done) {
-          // ฟังคำยืนยัน: ใช้ → บันทึกเลย · ไม่ → ใส่ข้อมูลในฟอร์มให้แก้ต่อ
-          setPhase('listening');
-          setUserText('');
-          const yes = await listen();
-          if (!alive.current) return;
-          if (yes) setUserText(yes);
-          const ok = !!yes && isYes(yes);
-          if (!ok && noContinues) {
-            // ยังไม่บันทึก → คุยต่อเพื่อแก้ไข
-            const fix = 'ได้ครับ อยากแก้ข้อไหน บอกผมได้เลยครับ';
-            hist.current.push({ role: 'ai', text: fix });
-            setAiText(fix);
-            setPhase('speaking');
-            await speak(fix);
-            continue;
-          }
-          const bye = ok ? yesBye : noBye;
-          setAiText(bye);
-          setPhase('speaking');
-          await speak(bye);
           if (!alive.current) return;
           setPhase('done');
+          setOptions([]);
           h.success();
-          finish(ok);
+          setMode('review');
           return;
         }
       }
@@ -312,10 +293,6 @@ export function VoiceSession({ scribe, initialOptions, title, opening, topics, h
   const finish = (save: boolean) => {
     stopAll();
     onFinish({ ...dataRef.current }, save);
-  };
-  const useData = () => {
-    h.success();
-    finish(!!dockSaves);
   };
 
   const got = topics.filter((t) => has(data, t.key));
@@ -483,7 +460,7 @@ export function VoiceSession({ scribe, initialOptions, title, opening, topics, h
       ) : mode === 'review' ? (
         /* ── ตรวจทาน: แก้ เพิ่ม ลบ แต่ละหัวข้อ ก่อนบันทึก ── */
         <ScrollView style={{ flex: 1 }} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive" contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 120, gap: 12 }}>
-          <T v="subhead" color="rgba(255,255,255,0.6)">{scribeErr || 'ครูปัญญาจัดลงหัวข้อให้แล้ว แก้ เพิ่ม หรือลบได้ก่อนบันทึก'}</T>
+          <T v="subhead" color="rgba(255,255,255,0.6)">{scribeErr || 'ตรวจทานข้อมูล แก้ เพิ่ม หรือลบได้ก่อนบันทึก'}</T>
           {topics.map((t, i) => {
             const v = String(data[t.key] ?? '');
             return (
@@ -629,7 +606,16 @@ export function VoiceSession({ scribe, initialOptions, title, opening, topics, h
         {/* ปุ่มบันทึกแสดงเมื่อถามครบทุกหัวข้อแล้วเท่านั้น */}
         {mode === 'chat' && !kbOpen && got.length === topics.length ? (
           <Animated.View entering={FadeIn.duration(300)}>
-            <Button label={dockLabel(data, got.length, topics.length, phase === 'done')} disabled={!canUse(data)} onPress={useData} style={{ height: 52 }} />
+            <Button
+              label="ตรวจทานและบันทึก"
+              disabled={!canUse(data)}
+              onPress={() => {
+                stopAll();
+                setPhase('done');
+                setMode('review');
+              }}
+              style={{ height: 52 }}
+            />
           </Animated.View>
         ) : null}
       </View>
