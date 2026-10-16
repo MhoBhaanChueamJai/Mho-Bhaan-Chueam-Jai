@@ -40,7 +40,7 @@ export function SuggestCard({ title, note, items, onPick }: { title: string; not
         {items.map((s, i) => (
           <Animated.View key={s.q + i} entering={FadeInDown.delay(i * 40).duration(220)}>
             <PressableScale haptic="select" scaleTo={0.95} onPress={() => onPick(s.q)} accessibilityLabel={`ค้นหา ${s.q}`} style={[styles.chipShadow, elevation.e2]}>
-              <Glass interactive tint="rgba(255,255,255,0.7)" style={styles.chip}>
+              <Glass interactive tint="rgba(255,255,255,0.9)" style={styles.chip}>
                 <Sym name={s.icon as any} size={14} color={palette.primary} />
                 <T v="callout" color={palette.primaryDeep} style={{ fontWeight: '600' }} numberOfLines={1}>{s.q}</T>
               </Glass>
