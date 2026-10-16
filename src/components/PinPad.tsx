@@ -13,32 +13,26 @@ import { PIN_LENGTH } from '../store/security';
 
 export type PinPadHandle = { shake: () => void };
 
-const KEYS = [
-  ['1', ''],
-  ['2', 'ABC'],
-  ['3', 'DEF'],
-  ['4', 'GHI'],
-  ['5', 'JKL'],
-  ['6', 'MNO'],
-  ['7', 'PQRS'],
-  ['8', 'TUV'],
-  ['9', 'WXYZ'],
-];
+const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
 
+/** จุด PIN: ว่าง = วงเทาอ่อน, กรอกแล้ว = เม็ดเขียวขยายขึ้นแบบสปริง */
 function Dot({ filled, color }: { filled: boolean; color: string }) {
   const s = useSharedValue(filled ? 1 : 0);
   useEffect(() => {
-    s.value = withSpring(filled ? 1 : 0, { damping: 14, stiffness: 300 });
+    s.value = withSpring(filled ? 1 : 0, { damping: 12, stiffness: 320 });
   }, [filled, s]);
-  const st = useAnimatedStyle(() => ({ backgroundColor: filled ? color : 'transparent', transform: [{ scale: 0.85 + s.value * 0.15 }] }));
-  return <Animated.View style={[styles.dot, { borderColor: color }, st]} />;
+  const st = useAnimatedStyle(() => ({ transform: [{ scale: s.value }], opacity: s.value }));
+  return (
+    <View style={styles.dotSlot}>
+      <Animated.View style={[styles.dotFill, { backgroundColor: color }, st]} />
+    </View>
+  );
 }
 
-function Key({ label, sub, onPress, color, light }: { label: string; sub?: string; onPress: () => void; color: string; light?: boolean }) {
+function Key({ label, onPress, color, light }: { label: string; onPress: () => void; color: string; light?: boolean }) {
   return (
-    <PressableScale haptic="tap" scaleTo={0.9} onPress={onPress} style={[styles.key, { backgroundColor: light ? 'rgba(255,255,255,0.14)' : 'rgba(31,42,36,0.06)' }]} accessibilityLabel={label}>
+    <PressableScale haptic="tap" scaleTo={0.88} onPress={onPress} style={[styles.key, { backgroundColor: light ? 'rgba(255,255,255,0.14)' : '#F1F4F1' }]} accessibilityLabel={label}>
       <Text style={[styles.keyNum, { color }]}>{label}</Text>
-      {sub ? <Text style={[styles.keySub, { color }]}>{sub}</Text> : null}
     </PressableScale>
   );
 }
@@ -49,6 +43,7 @@ export const PinPad = React.forwardRef<
 >(function PinPad({ value, onChange, onComplete, light, leftAction }, ref) {
   const h = useHaptic();
   const color = light ? '#FFFFFF' : '#14201A';
+  const dotColor = light ? '#FFFFFF' : '#2E7D57';
   const x = useSharedValue(0);
   const shakeSt = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }] }));
   useImperativeHandle(ref, () => ({
@@ -75,12 +70,12 @@ export const PinPad = React.forwardRef<
     <View style={{ alignItems: 'center' }}>
       <Animated.View style={[styles.dots, shakeSt]}>
         {Array.from({ length: PIN_LENGTH }).map((_, i) => (
-          <Dot key={i} filled={i < value.length} color={color} />
+          <Dot key={i} filled={i < value.length} color={dotColor} />
         ))}
       </Animated.View>
       <View style={styles.grid}>
-        {KEYS.map(([n, sub]) => (
-          <Key key={n} label={n} sub={sub} color={color} light={light} onPress={() => press(n)} />
+        {KEYS.map((n) => (
+          <Key key={n} label={n} color={color} light={light} onPress={() => press(n)} />
         ))}
         <View style={styles.key}>{leftAction}</View>
         <Key label="0" color={color} light={light} onPress={() => press('0')} />
@@ -96,13 +91,13 @@ export const PinPad = React.forwardRef<
   );
 });
 
-const K = 78;
+const K = 74;
 const styles = StyleSheet.create({
-  dots: { flexDirection: 'row', gap: 18, marginBottom: 40 },
-  dot: { width: 14, height: 14, borderRadius: 7, borderWidth: 1.5 },
-  grid: { width: K * 3 + 26 * 2, flexDirection: 'row', flexWrap: 'wrap', columnGap: 26, rowGap: 16 },
+  dots: { flexDirection: 'row', gap: 14, marginBottom: 30 },
+  dotSlot: { width: 16, height: 16, borderRadius: 8, backgroundColor: 'rgba(120,135,118,0.22)', alignItems: 'center', justifyContent: 'center' },
+  dotFill: { width: 16, height: 16, borderRadius: 8 },
+  grid: { width: K * 3 + 28 * 2, flexDirection: 'row', flexWrap: 'wrap', columnGap: 28, rowGap: 14 },
   key: { width: K, height: K, borderRadius: K / 2, alignItems: 'center', justifyContent: 'center' },
-  keyNum: { fontSize: 34, fontWeight: '400', lineHeight: 40 },
-  keySub: { fontSize: 10, fontWeight: '600', letterSpacing: 2, opacity: 0.7, marginTop: -2 },
+  keyNum: { fontSize: 30, fontWeight: '500' },
   del: { width: K, height: K, alignItems: 'center', justifyContent: 'center' },
 });
