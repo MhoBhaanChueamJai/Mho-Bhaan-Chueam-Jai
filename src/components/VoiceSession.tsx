@@ -9,7 +9,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useRef, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, StyleSheet, TextInput, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown, useDerivedValue, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { synthesize, transcribe } from '../api/ai';
@@ -19,6 +19,7 @@ import { AISphere } from './AISphere';
 import { AIGlow, Waveform } from './Orb';
 import { Button, GlassCircle, GlassDock, PressableScale, T, useHaptic } from './ui';
 import { isYes, type Turn } from '../lib/intake';
+import { palette } from '../theme';
 
 type Phase = 'speaking' | 'listening' | 'thinking' | 'done';
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -56,6 +57,11 @@ export function VoiceSession({ title, opening, topics, has, turn, closing, confi
   const hist = useRef<Turn[]>([]);
   const alive = useRef(true);
   const manualStop = useRef(false);
+  // คำตอบที่พิมพ์ (ใช้แทนเสียงได้ทุกเมื่อ)
+  const typed = useRef<string | null>(null);
+  const stopSpeaking = useRef<(() => void) | null>(null);
+  const [draft, setDraft] = useState('');
+  const [kbOpen, setKbOpen] = useState(false);
   const player = useRef<AudioPlayer | null>(null);
   const speakLevel = useSharedValue(0);
   // เสียงไมค์ (อัปเดตทุก 80ms) → ทำให้นุ่มก่อนส่งให้ดอกไม้
@@ -67,6 +73,7 @@ export function VoiceSession({ title, opening, topics, has, turn, closing, confi
       let finished = false;
       const end = () => {
         if (finished) return;
+        stopSpeaking.current = null;
         finished = true;
         speakLevel.value = withTiming(0, { duration: 250 });
         try {
@@ -84,6 +91,7 @@ export function VoiceSession({ title, opening, topics, has, turn, closing, confi
         if (!alive.current) return end();
         const p = createAudioPlayer({ uri });
         player.current = p;
+        stopSpeaking.current = end;
         // แสงตอบสนองระดับเสียงจริงของครูปัญญา (RMS จากคลื่นเสียง)
         let lastSample = 0;
         try {
@@ -123,6 +131,13 @@ export function VoiceSession({ title, opening, topics, has, turn, closing, confi
    */
   const listen = async (): Promise<string> => {
     manualStop.current = false;
+    const takeTyped = () => {
+      const t = typed.current;
+      typed.current = null;
+      return t;
+    };
+    const pre = takeTyped();
+    if (pre) return pre;
     await wait(300);
     try {
       await rec.start();
@@ -145,7 +160,7 @@ export function VoiceSession({ title, opening, topics, has, turn, closing, confi
     let heard = false;
     let quiet = 0;
     const t0 = Date.now();
-    while (alive.current && !manualStop.current) {
+    while (alive.current && !manualStop.current && !typed.current) {
       await wait(TICK);
       const lv = rec.level.value;
       if (lv > speakTh) {
@@ -161,6 +176,9 @@ export function VoiceSession({ title, opening, topics, has, turn, closing, confi
       if (Date.now() - t0 > (heard ? 25000 : 10000)) break;
     }
     const uri = await rec.stop().catch(() => null);
+    // พิมพ์ตอบระหว่างฟัง → ใช้ข้อความที่พิมพ์
+    const tt = takeTyped();
+    if (tt) return tt;
     if (!alive.current || !uri || (!heard && !manualStop.current)) return '';
     try {
       return (await transcribe(uri)).trim();
@@ -273,10 +291,23 @@ export function VoiceSession({ title, opening, topics, has, turn, closing, confi
   };
 
   const got = topics.filter((t) => has(data, t.key));
+  /** ส่งคำตอบที่พิมพ์: ถ้าครูปัญญากำลังพูดอยู่ ให้หยุดพูดแล้วใช้คำตอบนี้ทันที */
+  const sendTyped = () => {
+    const t = draft.trim();
+    if (!t) return;
+    h.press();
+    typed.current = t;
+    setDraft('');
+    try {
+      player.current?.pause();
+    } catch {}
+    stopSpeaking.current?.();
+  };
+
   const status = phase === 'speaking' ? 'ครูปัญญากำลังพูด' : phase === 'listening' ? 'กำลังฟัง… พูดได้เลย' : phase === 'thinking' ? 'กำลังคิด…' : doneLabel;
 
   return (
-    <View style={styles.page}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.page}>
       <StatusBar style="light" />
       <LinearGradient colors={['#000000', '#050B08', '#000000']} style={StyleSheet.absoluteFill} />
       <AIGlow active={phase === 'listening' || phase === 'speaking'} />
@@ -322,7 +353,7 @@ export function VoiceSession({ title, opening, topics, has, turn, closing, confi
       </View>
 
       {/* ข้อมูลที่ได้แล้ว */}
-      <View style={[styles.chips, { bottom: insets.bottom + 100 }]}>
+      <View style={[styles.chips, { bottom: insets.bottom + 170 }]}>
         {topics.map((t) => {
           const ok = got.includes(t);
           return (
@@ -334,17 +365,39 @@ export function VoiceSession({ title, opening, topics, has, turn, closing, confi
         })}
       </View>
 
-      <GlassDock>
-        <Button label={dockLabel(data, got.length, topics.length, phase === 'done')} disabled={!canUse(data)} onPress={useData} style={{ flex: 1, height: 52 }} />
+      <GlassDock style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
+        {/* พิมพ์ตอบแทนการพูดได้ */}
+        <View style={styles.typeRow}>
+          <Sym name="keyboard" size={17} color="rgba(255,255,255,0.55)" />
+          <TextInput
+            value={draft}
+            onChangeText={setDraft}
+            placeholder="พิมพ์ตอบได้ที่นี่"
+            placeholderTextColor="rgba(255,255,255,0.4)"
+            returnKeyType="send"
+            onSubmitEditing={sendTyped}
+            onFocus={() => setKbOpen(true)}
+            onBlur={() => setKbOpen(false)}
+            style={styles.typeInput}
+            accessibilityLabel="พิมพ์คำตอบ"
+          />
+          <PressableScale haptic="press" onPress={sendTyped} disabled={!draft.trim()} style={[styles.send, { backgroundColor: draft.trim() ? palette.primary : 'transparent' }]} accessibilityLabel="ส่งคำตอบ">
+            <Sym name="arrow.up" size={17} color={draft.trim() ? '#FFFFFF' : 'rgba(255,255,255,0.35)'} weight="bold" />
+          </PressableScale>
+        </View>
+        {kbOpen ? null : <Button label={dockLabel(data, got.length, topics.length, phase === 'done')} disabled={!canUse(data)} onPress={useData} style={{ height: 52 }} />}
       </GlassDock>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: '#000000' },
+  typeRow: { flexDirection: 'row', alignItems: 'center', gap: 8, height: 46, paddingLeft: 14, paddingRight: 4, borderRadius: 23, backgroundColor: 'rgba(255,255,255,0.08)' },
+  typeInput: { flex: 1, fontSize: 17, color: '#FFFFFF', height: '100%' },
+  send: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
   top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: 160 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: 230 },
   statusPill: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14, paddingHorizontal: 14, paddingVertical: 6, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.1)' },
   liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#FF5A5A' },
   userBubble: { marginTop: 14, marginHorizontal: 32, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.1)' },
