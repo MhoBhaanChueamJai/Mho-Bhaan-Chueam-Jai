@@ -188,14 +188,15 @@ export default function VoiceIntake() {
         setPhase('thinking');
         const r = await intakeTurn(dataRef.current, hist.current, ans);
         if (!alive.current) return;
-        const prevBirth = !!toISO(...birthParts(dataRef.current));
         dataRef.current = r.data;
         setData(r.data);
-        // เพิ่งได้วันเกิดครบ → บอกธาตุเจ้าเรือนก่อนถามต่อ (คำนวณเอง ไม่ให้ AI เดา)
         let reply = r.reply;
-        const iso = toISO(...birthParts(r.data));
-        if (iso && !prevBirth) reply = `${elementNote(iso)} ${reply}`;
-        if (r.done) reply = `${reply} จะใช้ข้อมูลนี้บันทึกผู้ป่วยเลยไหมครับ`;
+        if (r.done) {
+          // ท้ายสุด: สรุปข้อมูล → วิเคราะห์ธาตุเจ้าเรือนจากข้อมูลทั้งหมด (คำนวณเอง ไม่ให้ AI เดา) → ถามยืนยันบันทึก
+          const iso = toISO(...birthParts(r.data));
+          if (iso) reply = `${reply} ${elementNote(iso)}`;
+          reply = `${reply} จะใช้ข้อมูลนี้บันทึกผู้ป่วยเลยไหมครับ`;
+        }
         hist.current.push({ role: 'ai', text: reply });
         setAiText(reply);
         setPhase('speaking');
