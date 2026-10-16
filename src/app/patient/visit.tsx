@@ -11,19 +11,19 @@ import { useApp } from '../../store/app';
 
 function VisitInner() {
   const { pid } = useLocalSearchParams<{ pid: string }>();
-  const { patients, addVisit } = useApp();
+  const { patients, addVisit, wisdoms } = useApp();
   const p = patients.find((x) => x.id === pid);
   if (!p) return null;
   const no = (p.visits[0]?.no ?? 0) + 1;
   return (
     <VoiceSession
       title={`บันทึกการรักษาครั้งที่ ${no}`}
-      scribe={(t) => visitScribe(p, t) as any}
+      scribe={(t) => visitScribe(p, t, wisdoms) as any}
       opening={visitOpening(p)}
       initialOptions={optionsFor(p, 'symptoms')}
       topics={VISIT_TOPICS as { key: string; label: string }[]}
       has={(d, k) => visitHas(d as VisitData, k)}
-      turn={(k, h, a) => visitTurn(p, k as VisitData, h, a) as any}
+      turn={(k, h, a) => visitTurn(p, k as VisitData, h, a, wisdoms) as any}
       confirmQ="บันทึกการรักษาครั้งนี้เลยไหมครับ"
       yesBye="เรียบร้อยครับ บันทึกการรักษาให้แล้วนะครับ"
       noBye=""

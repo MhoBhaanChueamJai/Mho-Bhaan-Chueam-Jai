@@ -3,8 +3,9 @@
  * ถามทีละเรื่อง: อาการ → ตรวจร่างกาย → วินิจฉัย → การรักษา/ยาที่ให้ → ของแสลง/ข้อห้าม → นัดดูอาการ
  */
 import { chatJSON } from '../api/ai';
+import type { Patient, Wisdom } from '../data/mock';
 import { dialectHint, dialectSpeakStyle } from './dialect';
-import type { Patient } from '../data/mock';
+import { knowledgeFor } from './knowledge';
 import type { Turn } from './intake';
 
 export type VisitData = {
@@ -108,8 +109,10 @@ export const visitOpening = (p: Patient) => {
 };
 
 /** หนึ่งรอบการสนทนา */
-export async function visitTurn(p: Patient, known: VisitData, history: Turn[], answer: string): Promise<{ data: VisitData; reply: string; done: boolean; options: string[] }> {
+export async function visitTurn(p: Patient, known: VisitData, history: Turn[], answer: string, kb: Wisdom[] = []): Promise<{ data: VisitData; reply: string; done: boolean; options: string[] }> {
   const asked = history.filter((h) => h.role === 'ai').length;
+  // ค้นตำราในคลังภูมิที่เกี่ยวกับอาการ/การตรวจ/การรักษาตอนนี้ ให้ครูปัญญาใช้ประกอบการวินิจฉัยและเตือน
+  const kn = knowledgeFor([known.symptoms, known.exam, known.diagnosis, known.treatment, answer].filter(Boolean).join(' '), kb, 3, 2400);
   try {
     const r = await chatJSON<{ fields?: VisitData; reply?: string; done?: boolean; options?: string[] }>([
       {
@@ -120,6 +123,7 @@ export async function visitTurn(p: Patient, known: VisitData, history: Turn[], a
 ประวัติการรักษา:
 ${historyText(p)}
 ข้อมูลครั้งนี้ที่รู้แล้ว: ${JSON.stringify(known)}
+${kn.text}
 บทสนทนาล่าสุด:
 ${history.slice(-6).map((h) => `${h.role === 'ai' ? 'ครูปัญญา' : 'หมอ'}: ${h.text}`).join('\n')}
 หมอเพิ่งตอบว่า: "${answer}"
@@ -160,7 +164,8 @@ ${dialectHint()}
 }
 
 /** โหมดฟังบทสนทนา: บทสนทนาหมอ–ผู้ป่วย (ถอดเสียง) → แยกลงหัวข้อการรักษา */
-export async function visitScribe(p: Patient, transcript: string): Promise<VisitData> {
+export async function visitScribe(p: Patient, transcript: string, kb: Wisdom[] = []): Promise<VisitData> {
+  const kn = knowledgeFor(transcript, kb, 3, 2400);
   const r = await chatJSON<VisitData>([
     {
       role: 'user',
@@ -170,6 +175,7 @@ ${transcript}
 ผู้ป่วย: ${p.name} ${p.sex} ${p.age} ปี ธาตุ${p.element} โรคประจำตัว ${p.chronic} แพ้ ${p.allergies}
 ประวัติการรักษา:
 ${historyText(p)}
+${kn.text}
 ${dialectHint()}
 
 สรุปการรักษาครั้งนี้จากบทสนทนา แยกลงหัวข้อเป็นภาษาไทยกลาง กระชับ ใช้ศัพท์แพทย์แผนไทยได้ ห้ามเดาข้อมูลที่ไม่ได้พูดถึง (ยกเว้นการวินิจฉัย) (ช่องที่ไม่มีให้เป็น "")

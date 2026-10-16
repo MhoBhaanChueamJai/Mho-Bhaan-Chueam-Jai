@@ -12,6 +12,7 @@ import { Waveform } from '../components/Orb';
 import { AISphere } from '../components/AISphere';
 import { GlassCircle, PressableScale, T, useHaptic } from '../components/ui';
 import { askLaunch } from '../lib/askLaunch';
+import { knowledgeFor } from '../lib/knowledge';
 import { useApp } from '../store/app';
 import { control, palette } from '../theme';
 
@@ -22,13 +23,13 @@ const SUGGEST = [
   { q: 'ยาสมุนไพรกินคู่กับยาความดันได้ไหม', sym: 'pills' },
 ] as const;
 
-type Msg = ChatMsg & { id: string; failed?: boolean };
+type Msg = ChatMsg & { id: string; failed?: boolean; sources?: { id: string; title: string }[] };
 
 /** หน้าแชทครูปัญญา — หน้าเต็มจอแยก (ไม่มีแถบเมนูล่าง) */
 export default function Assistant() {
   const { q } = useLocalSearchParams<{ q?: string }>();
   const insets = useSafeAreaInsets();
-  const { settings } = useApp();
+  const { settings, wisdoms } = useApp();
   const h = useHaptic();
   const tts = useSpeaker();
   const rec = useVoiceRecorder();
@@ -51,9 +52,16 @@ export default function Assistant() {
     setText('');
     setBusy(true);
     try {
-      const reply = await chat([{ role: 'system', content: `${SYSTEM_PROMPT}\n- ${dialectHint()}\n- ${dialectSpeakStyle()}` }, ...history.map(({ role, content }) => ({ role, content }))], settings.model);
+      // ค้นตำราในคลังภูมิที่เกี่ยวกับคำถาม (รวมบริบทคำถามก่อนหน้า) แนบให้ครูปัญญาใช้ตอบ
+      const recentQ = history.filter((x) => x.role === 'user').slice(-2).map((x) => x.content).join(' ');
+      const kn = knowledgeFor(recentQ, wisdoms, 4, 3200);
+      const sys = `${SYSTEM_PROMPT}\n- ${dialectHint()}\n- ${dialectSpeakStyle()}${kn.text ? `\n\n${kn.text}` : ''}`;
+      const reply = await chat([{ role: 'system', content: sys }, ...history.map(({ role, content }) => ({ role, content }))], settings.model, kn.text ? 900 : 700);
       const id = `a${Date.now()}`;
-      setMsgs((m) => [...m, { id, role: 'assistant', content: reply }]);
+      // ที่มา = ตำราที่ถูกค้นและครูปัญญาเอ่ยชื่อในคำตอบ (ถ้าไม่เอ่ยเลย แสดงเล่มที่ตรงที่สุด)
+      const named = kn.used.filter((w) => reply.includes(w.title.replace(/\s*\(.*\)$/, '')));
+      const sources = (named.length ? named : kn.used.slice(0, 1)).map((w) => ({ id: w.id, title: w.title }));
+      setMsgs((m) => [...m, { id, role: 'assistant', content: reply, sources }]);
       h.success();
       if (settings.autoSpeak) {
         setSpeakingId(id);
@@ -172,6 +180,20 @@ export default function Assistant() {
               <View style={[styles.bubble, styles.ai, m.failed && { backgroundColor: 'rgba(217,83,74,0.25)' }]}>
                 <T v="body" color="#FFFFFF">{m.content}</T>
               </View>
+              {/* ที่มาจากคลังภูมิ: กดเปิดตำรา */}
+              {m.sources?.length ? (
+                <View style={styles.sources}>
+                  <T v="micro" color="rgba(255,255,255,0.55)" style={{ fontWeight: '600' }}>อ้างอิงจากคลังภูมิ</T>
+                  <View style={styles.sourceRow}>
+                    {m.sources.map((src) => (
+                      <PressableScale key={src.id} haptic="select" onPress={() => router.push(`/wisdom/${src.id}`)} style={styles.sourceChip} accessibilityLabel={`เปิดตำรา ${src.title}`}>
+                        <Sym name="book.closed.fill" size={12} color={MINT} />
+                        <T v="caption" color="#FFFFFF" numberOfLines={1} style={{ maxWidth: 220, fontWeight: '600' }}>{src.title}</T>
+                      </PressableScale>
+                    ))}
+                  </View>
+                </View>
+              ) : null}
               {!m.failed && (
                 <PressableScale
                   haptic="select"
@@ -246,6 +268,9 @@ const styles = StyleSheet.create({
   ai: { backgroundColor: 'rgba(255,255,255,0.1)', borderBottomLeftRadius: 6 },
   suggest: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 60, paddingHorizontal: 14, paddingVertical: 12, borderRadius: 20, borderCurve: 'continuous', backgroundColor: 'rgba(255,255,255,0.07)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.14)' },
   suggestIcon: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(124,240,168,0.14)', alignItems: 'center', justifyContent: 'center' },
+  sources: { marginTop: 8, marginLeft: 4, gap: 6, maxWidth: '88%' },
+  sourceRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  sourceChip: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, backgroundColor: 'rgba(124,240,168,0.14)', borderWidth: 1, borderColor: 'rgba(124,240,168,0.3)' },
   listen: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 6, marginLeft: 6, height: 28 },
   top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingBottom: 8 },
   darkDock: { position: 'absolute', left: 24, right: 24, padding: 8, borderRadius: 32, borderCurve: 'continuous', backgroundColor: 'rgba(28,30,29,0.96)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.22)', boxShadow: '0px 10px 30px rgba(0,0,0,0.6)' },
