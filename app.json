@@ -67,7 +67,8 @@
         }
       ],
       "expo-video",
-      "expo-secure-store"
+      "expo-secure-store",
+      "@react-native-community/datetimepicker"
     ],
     "scheme": "suebsan",
     "experiments": {
