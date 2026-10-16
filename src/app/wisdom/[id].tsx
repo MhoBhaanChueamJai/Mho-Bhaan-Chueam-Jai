@@ -1,6 +1,6 @@
 /**
  * หน้าตำรา — Hero ปกหนังสือ (พื้นหลังเบลอจากปก) + ชื่อ/ที่มา + แผ่นเนื้อหาโค้งซ้อนขึ้นมา
- * สรุป · สรรพคุณ · ตัวยา (มีรูปถ้าตรงกับคลังสมุนไพร กดดูได้) · วิธีปรุงและวิธีใช้ · ข้อห้าม
+ * เนื้อหา · สรรพคุณ · ตัวยา (มีรูปถ้าตรงกับคลังสมุนไพร กดดูได้) · วิธีปรุงและวิธีใช้ · ข้อห้าม
  * แถบล่าง: ฟังด้วยเสียง · หัวขวา: แชร์ QR ให้เพื่อน
  */
 import { BlurView } from 'expo-blur';
@@ -95,7 +95,7 @@ export default function WisdomDetail() {
 
   // ── โหมดอ่านออกเสียง: อ่านทีละหัวข้อ ไฮไลต์การ์ดที่กำลังอ่าน และเลื่อนตามให้ ──
   const sections = [
-    { key: 'summary', label: 'สรุป', text: [w.title, w.summary].filter(Boolean).join(' ') },
+    { key: 'summary', label: 'เนื้อหา', text: [w.title, w.summary].filter(Boolean).join(' ') },
     { key: 'indication', label: 'สรรพคุณ', text: w.indication ? `สรรพคุณ ${w.indication}` : '' },
     { key: 'ingredients', label: 'ตัวยา', text: w.ingredients?.length ? `ตัวยา ${w.ingredients.join(' ')}` : '' },
     { key: 'method', label: w.kind === 'คาถา/พิธี' ? 'ขั้นตอน' : 'วิธีปรุงและวิธีใช้', text: w.method ? `${w.kind === 'คาถา/พิธี' ? 'ขั้นตอน' : 'วิธีปรุงและวิธีใช้'} ${w.method}` : '' },
@@ -223,7 +223,7 @@ export default function WisdomDetail() {
 
         <View style={styles.body} onLayout={(e) => (bodyY.current = e.nativeEvent.layout.y)}>
           {w.summary ? (
-            <Section reading={reading === 'summary'} onY={(v) => (posY.current['summary'] = v)} i={0} icon="text.alignleft" color={palette.primary} title="สรุป">
+            <Section reading={reading === 'summary'} onY={(v) => (posY.current['summary'] = v)} i={0} icon="book.fill" color={palette.primary} title="เนื้อหา">
               <T v="body" style={styles.para}>{w.summary}</T>
             </Section>
           ) : null}

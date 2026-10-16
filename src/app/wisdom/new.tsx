@@ -186,7 +186,7 @@ function NewWisdomInner() {
         <Section title={f.kind === 'คาถา/พิธี' ? 'ขั้นตอน' : 'ตัวยาและวิธีทำ'} icon={f.kind === 'คาถา/พิธี' ? 'list.number' : 'leaf.fill'}>
           {f.kind !== 'คาถา/พิธี' ? <Field label="ตัวยา / สมุนไพร" value={f.ingredients} onChange={set('ingredients')} placeholder="คั่นด้วยจุลภาค เช่น เถาวัลย์เปรียง 1 กำมือ, ไพล 3 แง่ง" multiline /> : null}
           <Field label={f.kind === 'คาถา/พิธี' ? 'ขั้นตอน / บทคาถา' : 'วิธีปรุงและวิธีใช้'} value={f.method} onChange={set('method')} placeholder={f.kind === 'คาถา/พิธี' ? 'เล่าขั้นตอนตามลำดับ' : 'เช่น ต้มสามเอาหนึ่ง กินเช้าเย็นครั้งละครึ่งแก้ว'} multiline />
-          {f.summary ? <Field label={editing ? 'สรุป' : 'ถอดความ'} value={f.summary} onChange={set('summary')} multiline /> : null}
+          {f.summary ? <Field label={editing ? 'เนื้อหา' : 'ถอดความ'} value={f.summary} onChange={set('summary')} multiline /> : null}
         </Section>
 
         <Section title="ความปลอดภัยและที่มา" icon="checkmark.shield.fill" footer="ภูมิปัญญาที่บันทึกจะรอตรวจทานก่อนส่งต่อให้ลูกศิษย์">
