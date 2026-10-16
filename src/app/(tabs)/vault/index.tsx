@@ -110,22 +110,8 @@ export default function Vault() {
       </View>
       </View>
 
-      {/* ── เรื่องล่าสุด ── */}
-      {list.length ? (
-        <>
-          <View style={styles.secHead}>
-            <T v="h3">ล่าสุด</T>
-          </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} decelerationRate="fast" snapToInterval={RAIL_W + 4 + 16} snapToAlignment="start" contentContainerStyle={styles.rail}>
-            {list.slice(0, 8).map((w, i) => (
-              <Book key={w.id} w={w} width={RAIL_W} i={i} />
-            ))}
-          </ScrollView>
-        </>
-      ) : null}
-
       {/* ── รายการทั้งหมด ── */}
-      <View style={[styles.secHead, { marginTop: 14 }]}>
+      <View style={styles.secHead}>
         <T v="h3">ทั้งหมด</T>
         <T v="subhead" color={ios.secondary}>{list.length} เรื่อง</T>
       </View>
@@ -147,7 +133,6 @@ export default function Vault() {
   );
 }
 
-const RAIL_W = 150;
 const styles = StyleSheet.create({
   empty: { marginHorizontal: 16, marginTop: 10, alignItems: 'center', paddingVertical: 28, gap: 6, backgroundColor: palette.surface, borderRadius: 20, borderCurve: 'continuous' },
   bookShadow: { borderRadius: 8, boxShadow: '0px 10px 18px rgba(20,40,30,0.22), 0px 2px 4px rgba(20,40,30,0.18)' },
@@ -162,6 +147,5 @@ const styles = StyleSheet.create({
   kpi: { flex: 1, paddingVertical: 12, paddingHorizontal: 10, borderRadius: 18, borderCurve: 'continuous', overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.35)' },
   kpiIcon: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
   secHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', paddingHorizontal: 20, marginTop: 24, marginBottom: 2 },
-  rail: { paddingHorizontal: 20, paddingTop: 14, paddingBottom: 18, gap: 16 },
   meta: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
 });
