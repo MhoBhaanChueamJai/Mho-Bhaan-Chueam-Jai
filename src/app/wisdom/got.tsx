@@ -5,7 +5,7 @@
  */
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BookCover } from '../../components/BookCover';
 import { KindIcon } from '../../components/KindIcon';
@@ -33,6 +33,9 @@ export default function GotWisdom() {
   const { code: raw } = useLocalSearchParams<{ code: string }>();
   const code = cleanCode(raw ?? '');
   const insets = useSafeAreaInsets();
+  // ความสูงชัดเจน (ไม่พึ่ง flex:1) — Sheet ของ iOS บางครั้งวัดความสูงเนื้อหาเป็น 0 ทำให้หน้าว่าง
+  const { height: SH } = useWindowDimensions();
+  const sheetH = SH - insets.top - 10;
   const { addWisdom, wisdoms } = useApp();
   const h = useHaptic();
   const [got, setGot] = useState<ReceivedShare | null>(() => cachedShare(code));
@@ -73,7 +76,7 @@ export default function GotWisdom() {
   const ingCount = (w?.ingredients ?? []).filter((x) => !/^\s*\(/.test(x)).length;
 
   return (
-    <View style={styles.page}>
+    <View style={[styles.page, { height: sheetH }]}>
       {/* แถบบน: ✕ · ชื่อ · ✓ (ปุ่มกระจกแบบ iOS 26) */}
       <View style={styles.bar}>
         <GlassCircle label="ปิด" onPress={() => router.back()} size={48}>
@@ -136,7 +139,7 @@ export default function GotWisdom() {
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: GROUPED_BG },
+  page: { backgroundColor: GROUPED_BG },
   bar: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
   content: { paddingHorizontal: 16, paddingTop: 8 },
