@@ -24,7 +24,7 @@ export async function createShare(w: Wisdom, fromName: string): Promise<string> 
   // รหัสชนกันได้ยากมาก แต่ลองใหม่ไม่เกิน 3 ครั้งถ้าซ้ำ
   for (let i = 0; i < 3; i++) {
     const code = newCode();
-    const { error } = await supabase.from('wisdom_shares').insert({ code, from_name: fromName, payload });
+    const { error } = await supabase.from('wisdom_shares').insert({ code, from_name: fromName, payload, wisdom_id: w.id });
     if (!error) return code;
     if (error.code !== '23505') throw error;
   }
@@ -62,4 +62,30 @@ export async function shareCodeText(title: string, fromName: string, code: strin
   await Share.share({
     message: `📜 ${fromName} แชร์ตำรา "${title}" ให้คุณ\n\nเปิดแอปหมอบ้านเชื่อมใจ → คลังภูมิ → สแกนรับตำรา หรือกรอกรหัส\n${prettyCode(code)}\n\nหรือเปิดลิงก์: ${WEB}/wisdom/receive?code=${code}\n(รหัสใช้ได้ 30 วัน)`,
   });
+}
+
+/** เนื้อหาล่าสุดของต้นฉบับที่เพื่อนแชร์มา (null = ต้นฉบับถูกลบ / ยังไม่รองรับ) */
+export async function fetchLatestShared(code: string): Promise<SharedWisdom | null> {
+  const { data, error } = await supabase.rpc('get_shared_wisdom', { p_code: cleanCode(code) });
+  if (error) return null;
+  const r = Array.isArray(data) ? data[0] : data;
+  if (!r?.title) return null;
+  return { title: r.title, kind: r.kind, summary: r.summary ?? '', ingredients: r.ingredients ?? undefined, method: r.method ?? undefined, indication: r.indication ?? undefined, caution: r.caution ?? undefined };
+}
+
+/** อัปเดตสำเนาที่ได้รับจากเพื่อน ให้ตรงกับต้นฉบับล่าสุด (เฉพาะช่องที่เปลี่ยน) */
+export async function syncShared(list: Wisdom[], update: (id: string, patch: Partial<Wisdom>) => void) {
+  await Promise.all(
+    list
+      .filter((w) => w.shareCode)
+      .map(async (w) => {
+        const r = await fetchLatestShared(w.shareCode!);
+        if (!r) return;
+        const patch: Partial<Wisdom> = {};
+        (Object.keys(r) as (keyof SharedWisdom)[]).forEach((k) => {
+          if (JSON.stringify(r[k] ?? null) !== JSON.stringify(w[k] ?? null)) (patch as any)[k] = r[k];
+        });
+        if (Object.keys(patch).length) update(w.id, patch);
+      }),
+  );
 }

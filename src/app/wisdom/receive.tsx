@@ -59,6 +59,7 @@ export default function ReceiveWisdom() {
       id: `w${Date.now()}`,
       source: 'เพื่อนแชร์',
       sharedBy: got.fromName,
+      shareCode: cleanCode(code),
       date: `${t.getDate()}/${t.getMonth() + 1}/${t.getFullYear() + 543}`,
       summary: got.wisdom.summary ?? '',
       verified: false,

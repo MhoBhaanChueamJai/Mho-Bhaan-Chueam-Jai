@@ -69,6 +69,8 @@ type Ctx = {
   addWisdom: (w: Wisdom) => void;
   /** แก้ข้อมูลตำรา (เช่น ยืนยันว่าตรวจทานแล้ว) */
   updateWisdom: (id: string, patch: Partial<Wisdom>) => void;
+  /** ลบออกจากคลังของเรา */
+  removeWisdom: (id: string) => void;
   patients: Patient[];
   /** เพิ่มการรักษาครั้งใหม่ (ครั้งที่ n+1) ลงทะเบียนการรักษา ม.บ.5 ของผู้ป่วย */
   addVisit: (pid: string, visit: Omit<MB5Visit, 'no'>) => number;
@@ -198,6 +200,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       ready,
       update: (patch) => setSettings((s) => ({ ...s, ...patch })),
       wisdoms,
+      removeWisdom: (id) => {
+        setWisdoms((list) => list.filter((x) => x.id !== id));
+        push(() => cloud.deleteWisdom(id));
+      },
       updateWisdom: (id, patch) => {
         setWisdoms((list) =>
           list.map((x) => {

@@ -63,6 +63,7 @@ const wisdomToRow = (w: Wisdom) => ({
   verified: w.verified,
   // ส่งเฉพาะเมื่อมีค่า (ใช้ได้แม้ฐานข้อมูลยังไม่มีคอลัมน์นี้)
   ...(w.sharedBy ? { shared_by: w.sharedBy } : {}),
+  ...(w.shareCode ? { share_code: w.shareCode } : {}),
 });
 const rowToWisdom = (r: any): Wisdom => ({
   id: r.id,
@@ -78,6 +79,7 @@ const rowToWisdom = (r: any): Wisdom => ({
   caution: r.caution ?? undefined,
   verified: !!r.verified,
   sharedBy: r.shared_by ?? undefined,
+  shareCode: r.share_code ?? undefined,
 });
 
 const check = <T,>(r: { data: T | null; error: any }) => {
@@ -159,6 +161,11 @@ export async function saveVisit(pid: string, v: MB5Visit) {
 export async function saveWisdom(w: Wisdom) {
   check(await supabase.from('wisdoms').upsert(wisdomToRow(w)));
 }
+/** ลบตำราของตัวเอง (สำเนาที่ได้รับจากเพื่อน = ลบเฉพาะในคลังเรา ต้นฉบับของเพื่อนไม่กระทบ) */
+export async function deleteWisdom(id: string) {
+  check(await supabase.from('wisdoms').delete().eq('id', id));
+}
+
 export async function logEvent(kind: 'search' | 'open', value: string) {
   check(await supabase.from('user_events').insert({ kind, value }));
 }

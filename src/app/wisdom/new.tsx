@@ -2,7 +2,7 @@
  * เพิ่มภูมิปัญญา — หน้าเต็มแบบเดียวกับเพิ่มผู้ป่วย (DESIGN_SYSTEM.md)
  * เครื่องมือบนหัวจอ: เล่าให้ครูปัญญาฟัง (โหมดเสียง) · สแกนตำราโบราณ → เติมฟอร์มให้ แก้ไขได้ก่อนบันทึก
  */
-import { Stack, router, useFocusEffect } from 'expo-router';
+import { Stack, router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View, type KeyboardTypeOptions } from 'react-native';
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
@@ -58,10 +58,17 @@ function Section({ title, icon, footer, children }: { title: string; icon: strin
 }
 
 function NewWisdomInner() {
-  const { addWisdom } = useApp();
+  const { addWisdom, updateWisdom, wisdoms } = useApp();
   const h = useHaptic();
-  const [f, setF] = useState<Form>(EMPTY);
-  const [source, setSource] = useState<Wisdom['source']>('พิมพ์เอง');
+  // แก้ไข (เปิดด้วย ?id=) → เติมฟอร์มจากตำราเดิม บันทึกทับเรื่องเดิม
+  const { id: editId } = useLocalSearchParams<{ id?: string }>();
+  const editing = editId ? wisdoms.find((x) => x.id === editId) : undefined;
+  const [f, setF] = useState<Form>(() =>
+    editing
+      ? { ...EMPTY, title: editing.title, kind: editing.kind, ingredients: (editing.ingredients ?? []).join(', '), method: editing.method ?? '', indication: editing.indication ?? '', caution: editing.caution ?? '', summary: editing.summary ?? '' }
+      : EMPTY,
+  );
+  const [source, setSource] = useState<Wisdom['source']>(editing?.source ?? 'พิมพ์เอง');
   const [aiNote, setAiNote] = useState('');
   const set = (k: keyof Form) => (v: string) => setF((x) => ({ ...x, [k]: v }));
 
@@ -97,6 +104,21 @@ function NewWisdomInner() {
     if (!canSave) return;
     const t = new Date();
     const lines = f.ingredients.split(/[,，\n]/).map((x) => x.trim()).filter(Boolean);
+    if (editing) {
+      // แก้ไข: บันทึกทับ (เพื่อนที่รับไปจะได้เนื้อหาใหม่ผ่านรหัสแชร์)
+      updateWisdom(editing.id, {
+        title: f.title.trim(),
+        kind: f.kind,
+        summary: f.summary.trim() || editing.summary,
+        ingredients: lines.length ? lines : undefined,
+        method: f.method.trim() || undefined,
+        indication: f.indication.trim() || undefined,
+        caution: f.caution.trim() || undefined,
+      });
+      h.success();
+      router.back();
+      return;
+    }
     addWisdom({
       id: `w${Date.now()}`,
       title: f.title.trim(),
@@ -121,6 +143,7 @@ function NewWisdomInner() {
       {/* เครื่องมือบนหัวจอ (แบบหน้าเพิ่มผู้ป่วย): เล่าด้วยเสียง · สแกนตำรา */}
       <Stack.Screen
         options={{
+          title: editing ? 'แก้ไขภูมิปัญญา' : 'เพิ่มภูมิปัญญา',
           headerRight: () => (
             <View style={{ flexDirection: 'row', gap: 4 }}>
               <HeaderButton label="เล่าให้ครูปัญญาบันทึก" onPress={() => router.push('/wisdom/voice')}>
@@ -163,7 +186,7 @@ function NewWisdomInner() {
         <Section title={f.kind === 'คาถา/พิธี' ? 'ขั้นตอน' : 'ตัวยาและวิธีทำ'} icon={f.kind === 'คาถา/พิธี' ? 'list.number' : 'leaf.fill'}>
           {f.kind !== 'คาถา/พิธี' ? <Field label="ตัวยา / สมุนไพร" value={f.ingredients} onChange={set('ingredients')} placeholder="คั่นด้วยจุลภาค เช่น เถาวัลย์เปรียง 1 กำมือ, ไพล 3 แง่ง" multiline /> : null}
           <Field label={f.kind === 'คาถา/พิธี' ? 'ขั้นตอน / บทคาถา' : 'วิธีปรุงและวิธีใช้'} value={f.method} onChange={set('method')} placeholder={f.kind === 'คาถา/พิธี' ? 'เล่าขั้นตอนตามลำดับ' : 'เช่น ต้มสามเอาหนึ่ง กินเช้าเย็นครั้งละครึ่งแก้ว'} multiline />
-          {f.summary ? <Field label="ถอดความ" value={f.summary} onChange={set('summary')} multiline /> : null}
+          {f.summary ? <Field label={editing ? 'สรุป' : 'ถอดความ'} value={f.summary} onChange={set('summary')} multiline /> : null}
         </Section>
 
         <Section title="ความปลอดภัยและที่มา" icon="checkmark.shield.fill" footer="ภูมิปัญญาที่บันทึกจะรอตรวจทานก่อนส่งต่อให้ลูกศิษย์">
@@ -173,7 +196,7 @@ function NewWisdomInner() {
       </ScrollView>
 
       <GlassDock>
-        <Button label="บันทึกภูมิปัญญา" disabled={!canSave} onPress={save} style={{ flex: 1, height: 52 }} />
+        <Button label={editing ? 'บันทึกการแก้ไข' : 'บันทึกภูมิปัญญา'} disabled={!canSave} onPress={save} style={{ flex: 1, height: 52 }} />
       </GlassDock>
     </KeyboardAvoidingView>
   );

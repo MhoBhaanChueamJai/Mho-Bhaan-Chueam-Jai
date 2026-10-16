@@ -6,12 +6,13 @@
 import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Stack, router } from 'expo-router';
-import React from 'react';
+import { Stack, router, useFocusEffect } from 'expo-router';
+import React, { useCallback } from 'react';
 import { ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { BookCover } from '../../../components/BookCover';
 import { KindIcon } from '../../../components/KindIcon';
+import { syncShared } from '../../../lib/wisdomShare';
 import { Sym, ios } from '../../../components/ios';
 import { HeaderButton, PressableScale, T } from '../../../components/ui';
 import { type Wisdom } from '../../../data/mock';
@@ -48,7 +49,14 @@ function Book({ w, width, i }: { w: Wisdom; width: number; i: number }) {
 }
 
 export default function Vault() {
-  const { wisdoms } = useApp();
+  const { wisdoms, updateWisdom } = useApp();
+  // ตำราที่เพื่อนแชร์มา: เปิดคลังเมื่อไหร่ ดึงเนื้อหาล่าสุดจากต้นฉบับ (เพื่อนแก้แล้วอัปเดตตาม)
+  useFocusEffect(
+    useCallback(() => {
+      syncShared(wisdoms, updateWisdom);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []),
+  );
   const { width: SW } = useWindowDimensions();
   // ชั้นหนังสือ 3 คอลัมน์: ขอบ 20 + ช่องไฟ 16
   const GRID_W = Math.floor((SW - 40 - 32) / 3) - 4;
