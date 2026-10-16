@@ -13,7 +13,7 @@ import { Avatar, PressableScale, T } from '../../components/ui';
 import { avatars, lastVisit } from '../../data/mock';
 import { statusTone } from '../../data/tones';
 import { useApp } from '../../store/app';
-import { control, palette } from '../../theme';
+import { control, elevation, palette } from '../../theme';
 
 
 /** ไฮไลต์คำที่ค้นในข้อความ */
@@ -112,29 +112,45 @@ export default function PatientSearch() {
             {searching ? `พบ ${results.length} ราย` : `ผู้ป่วยทั้งหมด ${patients.length} ราย`}
           </T>
 
-          <View style={styles.group}>
+          <View style={{ gap: 10 }}>
             {results.map((p, i) => {
               const v = lastVisit(p);
               const st = statusTone[p.status];
               return (
-                <Animated.View key={p.id} entering={FadeInDown.delay(Math.min(i, 8) * 30).duration(220)}>
+                <Animated.View key={p.id} entering={FadeInDown.delay(Math.min(i, 8) * 40).duration(260)}>
                   <PressableScale
-                    scaleTo={0.99}
+                    scaleTo={0.98}
                     haptic="select"
                     onPress={() => {
                       Keyboard.dismiss();
                       router.replace(`/patient/${p.id}`);
                     }}
-                    style={[styles.row, i < results.length - 1 && styles.sep]}
+                    style={[styles.card, elevation.e1]}
+                    accessibilityLabel={p.name}
                   >
-                    <Avatar name={p.name} src={avatars[p.id]} size={44} />
-                    <View style={{ flex: 1 }}>
-                      <Hi text={p.name} q={q.trim()} bold />
-                      <Hi text={v ? v.diagnosis : 'ยังไม่มีการรักษา'} q={q.trim()} v="caption" color={ios.secondary} />
+                    {/* รูปพร้อมวงสีตามสถานะ */}
+                    <View style={[styles.ring, { borderColor: st.fg }]}>
+                      <Avatar name={p.name} src={avatars[p.id]} size={50} />
                     </View>
-                    <View style={[styles.status, { backgroundColor: st.bg }]}>
-                      <T v="micro" color={st.fg}>{p.status}</T>
+                    <View style={{ flex: 1, gap: 2 }}>
+                      <View style={styles.nameRow}>
+                        <View style={{ flex: 1 }}>
+                          <Hi text={p.name} q={q.trim()} bold />
+                        </View>
+                        <View style={[styles.status, { backgroundColor: st.bg }]}>
+                          <View style={[styles.statusDot, { backgroundColor: st.fg }]} />
+                          <T v="micro" color={st.fg}>{p.status}</T>
+                        </View>
+                      </View>
+                      <T v="caption" color={ios.secondary}>{p.sex} · {p.age} ปี · ธาตุ{p.element}</T>
+                      <View style={styles.diag}>
+                        <Sym name="stethoscope" size={13} color={palette.primary} />
+                        <View style={{ flex: 1 }}>
+                          <Hi text={v ? v.diagnosis : 'ยังไม่มีการรักษา'} q={q.trim()} v="caption" color={ios.label} />
+                        </View>
+                      </View>
                     </View>
+                    <Sym name="chevron.right" size={13} color={ios.tertiary} weight="semibold" />
                   </PressableScale>
                 </Animated.View>
               );
@@ -155,17 +171,19 @@ export default function PatientSearch() {
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: palette.bg },
+  page: { flex: 1, backgroundColor: '#F5F6F3' },
   bar: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', paddingHorizontal: 16, height: 52 },
-  field: { height: control.icon, borderRadius: control.icon / 2, backgroundColor: '#F1F3EF', flexDirection: 'row', alignItems: 'center', paddingLeft: 13.5, paddingRight: 6, gap: 8, overflow: 'hidden' },
+  field: { height: control.icon, borderRadius: control.icon / 2, backgroundColor: '#FFFFFF', flexDirection: 'row', alignItems: 'center', paddingLeft: 13.5, paddingRight: 6, gap: 8, overflow: 'hidden' },
   input: { fontSize: 17, color: palette.ink, height: control.icon, outlineStyle: 'none' } as any,
   clear: { width: 30, height: 30, alignItems: 'center', justifyContent: 'center' },
   cancelWrap: { position: 'absolute', right: 8 },
   cancel: { height: control.icon, paddingHorizontal: 8, justifyContent: 'center' },
   sec: { paddingHorizontal: 4, marginBottom: 8, marginTop: 16 },
-  group: { backgroundColor: palette.surface, borderRadius: 18, borderCurve: 'continuous', overflow: 'hidden' },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 10, minHeight: 64 },
-  sep: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: ios.separator },
-  status: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999 },
+  status: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 9, paddingVertical: 3, borderRadius: 999 },
+  statusDot: { width: 6, height: 6, borderRadius: 3 },
+  card: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: palette.surface, borderRadius: 20, borderCurve: 'continuous', padding: 12, paddingRight: 14 },
+  ring: { padding: 2.5, borderRadius: 999, borderWidth: 2 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  diag: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4, backgroundColor: '#F4F6F3', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 5, alignSelf: 'flex-start', maxWidth: '100%' },
   empty: { alignItems: 'center', paddingVertical: 40, gap: 2 },
 });
