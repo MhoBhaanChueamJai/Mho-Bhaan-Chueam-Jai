@@ -369,15 +369,16 @@ export function VoiceSession({ title, opening, topics, has, turn, closing, confi
 
       {/* แถบลอยยกขึ้นตามคีย์บอร์ด (ส่วนอื่นของหน้าอยู่ที่เดิม) */}
       <Animated.View pointerEvents="box-none" style={[StyleSheet.absoluteFill, dockLift]}>
-      <GlassDock style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
+      {/* แถบมืด (กระจกสว่างบนพื้นดำทำให้ช่องพิมพ์มองไม่เห็น) */}
+      <View style={[styles.darkDock, { bottom: insets.bottom ? 24 : 16 }]}>
         {/* พิมพ์ตอบแทนการพูดได้ */}
         <View style={styles.typeRow}>
-          <Sym name="keyboard" size={17} color="rgba(255,255,255,0.55)" />
+          <Sym name="keyboard" size={18} color="rgba(255,255,255,0.75)" />
           <TextInput
             value={draft}
             onChangeText={setDraft}
             placeholder="พิมพ์ตอบได้ที่นี่"
-            placeholderTextColor="rgba(255,255,255,0.4)"
+            placeholderTextColor="rgba(255,255,255,0.6)"
             returnKeyType="send"
             onSubmitEditing={sendTyped}
             onFocus={() => setKbOpen(true)}
@@ -386,7 +387,7 @@ export function VoiceSession({ title, opening, topics, has, turn, closing, confi
             accessibilityLabel="พิมพ์คำตอบ"
           />
           <PressableScale haptic="press" onPress={sendTyped} disabled={!draft.trim()} style={[styles.send, { backgroundColor: draft.trim() ? palette.primary : 'transparent' }]} accessibilityLabel="ส่งคำตอบ">
-            <Sym name="arrow.up" size={17} color={draft.trim() ? '#FFFFFF' : 'rgba(255,255,255,0.35)'} weight="bold" />
+            <Sym name="arrow.up" size={17} color={draft.trim() ? '#FFFFFF' : 'rgba(255,255,255,0.5)'} weight="bold" />
           </PressableScale>
         </View>
         {/* ปุ่มบันทึกแสดงเมื่อถามครบทุกหัวข้อแล้วเท่านั้น */}
@@ -395,7 +396,7 @@ export function VoiceSession({ title, opening, topics, has, turn, closing, confi
             <Button label={dockLabel(data, got.length, topics.length, phase === 'done')} disabled={!canUse(data)} onPress={useData} style={{ height: 52 }} />
           </Animated.View>
         ) : null}
-      </GlassDock>
+      </View>
       </Animated.View>
     </View>
   );
@@ -403,7 +404,8 @@ export function VoiceSession({ title, opening, topics, has, turn, closing, confi
 
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: '#000000' },
-  typeRow: { flexDirection: 'row', alignItems: 'center', gap: 8, height: 46, paddingLeft: 14, paddingRight: 4, borderRadius: 23, backgroundColor: 'rgba(255,255,255,0.08)' },
+  darkDock: { position: 'absolute', left: 24, right: 24, gap: 8, padding: 8, borderRadius: 32, borderCurve: 'continuous', backgroundColor: 'rgba(28,30,29,0.96)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.22)', boxShadow: '0px 10px 30px rgba(0,0,0,0.6)' },
+  typeRow: { flexDirection: 'row', alignItems: 'center', gap: 8, height: 50, paddingLeft: 16, paddingRight: 6, borderRadius: 25, backgroundColor: 'rgba(255,255,255,0.1)' },
   typeInput: { flex: 1, fontSize: 17, color: '#FFFFFF', height: '100%' },
   send: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
   top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16 },
