@@ -16,10 +16,24 @@ import { rmsLevel, useVoiceRecorder } from '../../components/audio';
 import { Sym } from '../../components/ios';
 import { AIFlower, AIGlow, Waveform } from '../../components/Orb';
 import { Button, GlassCircle, GlassDock, PressableScale, T, useHaptic } from '../../components/ui';
-import { OPENING, TOPICS, hasTopic, intakeTurn, setIntakeResult, type IntakeData, type Turn } from '../../lib/intake';
+import { OPENING, TOPICS, hasTopic, intakeTurn, isYes, setIntakeResult, type IntakeData, type Turn } from '../../lib/intake';
+import { ageFrom, elementFromMonth, normalizeBirth, toISO } from '../../lib/birth';
+import { ELEMENT_PROFILE, ageSamutthan } from '../../lib/elements';
 
 type Phase = 'speaking' | 'listening' | 'thinking' | 'done';
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const birthParts = (d: IntakeData): [string, string, string] => {
+  const b = normalizeBirth(d);
+  return [b.bDay, b.bMonth, b.bYear];
+};
+/** ประโยคบอกธาตุเจ้าเรือนจากวันเกิด (+ อายุสมุฏฐาน) */
+function elementNote(iso: string) {
+  const m = Number(iso.slice(5, 7));
+  const el = elementFromMonth(m);
+  const p = ELEMENT_PROFILE[el];
+  const ag = ageSamutthan(ageFrom(iso));
+  return `จากวันเกิด ผู้ป่วยอายุ ${ageFrom(iso)} ปี เป็นธาตุ${el}นะครับ คนธาตุ${el}มักมีปัญหา${p.prone.slice(0, 2).join(' กับ ')} รสยาที่เหมาะคือรส${p.tastes.join(' รส')} และตอนนี้อยู่ใน${ag.stage} ที่${ag.dosha.split(' ')[0]}เด่นครับ`;
+}
 
 export default function VoiceIntake() {
   const insets = useSafeAreaInsets();
@@ -159,16 +173,35 @@ export default function VoiceIntake() {
         setPhase('thinking');
         const r = await intakeTurn(dataRef.current, hist.current, ans);
         if (!alive.current) return;
+        const prevBirth = !!toISO(...birthParts(dataRef.current));
         dataRef.current = r.data;
         setData(r.data);
-        hist.current.push({ role: 'ai', text: r.reply });
-        setAiText(r.reply);
+        // เพิ่งได้วันเกิดครบ → บอกธาตุเจ้าเรือนก่อนถามต่อ (คำนวณเอง ไม่ให้ AI เดา)
+        let reply = r.reply;
+        const iso = toISO(...birthParts(r.data));
+        if (iso && !prevBirth) reply = `${elementNote(iso)} ${reply}`;
+        if (r.done) reply = `${reply} จะใช้ข้อมูลนี้บันทึกผู้ป่วยเลยไหมครับ`;
+        hist.current.push({ role: 'ai', text: reply });
+        setAiText(reply);
         setPhase('speaking');
         h.select();
-        await speak(r.reply);
+        await speak(reply);
         if (r.done) {
+          // ฟังคำยืนยัน: ใช้ → บันทึกเลย · ไม่ → ใส่ข้อมูลในฟอร์มให้แก้ต่อ
+          setPhase('listening');
+          setUserText('');
+          const yes = await listen();
+          if (!alive.current) return;
+          if (yes) setUserText(yes);
+          const ok = !!yes && isYes(yes);
+          const bye = ok ? 'เรียบร้อยครับ บันทึกผู้ป่วยให้แล้วนะครับ' : 'ได้ครับ ผมใส่ข้อมูลไว้ในฟอร์มให้แล้ว แก้ไขได้เลยครับ';
+          setAiText(bye);
+          setPhase('speaking');
+          await speak(bye);
+          if (!alive.current) return;
           setPhase('done');
           h.success();
+          finish(ok);
           return;
         }
       }
@@ -196,11 +229,15 @@ export default function VoiceIntake() {
     router.back();
   };
 
-  const useData = () => {
+  /** ส่งข้อมูลกลับฟอร์ม (save = บันทึกผู้ป่วยเลย) แล้วปิดหน้า */
+  const finish = (save: boolean) => {
     stopAll();
-    setIntakeResult({ ...dataRef.current });
-    h.success();
+    setIntakeResult({ ...dataRef.current, save });
     router.back();
+  };
+  const useData = () => {
+    h.success();
+    finish(false);
   };
 
   const got = TOPICS.filter((t) => hasTopic(data, t.key));

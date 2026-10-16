@@ -3,7 +3,7 @@
  * บนสุด: การ์ดพูดแนะนำผู้ป่วย (AI กรอกให้) → ฟอร์มแบ่งการ์ด ป้ายอยู่เหนือช่องแคปซูล → ปุ่มบันทึกติดล่าง
  */
 import { Stack, router, useFocusEffect } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { PractitionerGate } from '../../components/PractitionerGate';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View, type KeyboardTypeOptions } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
@@ -126,6 +126,9 @@ function NewPatientInner() {
   // เลือกธาตุแล้วหรือยัง (จากวันเกิดอัตโนมัติ หรือหมอเลือกเอง)
   const [elPicked, setElPicked] = useState(false);
   const set = (k: keyof Form) => (v: string) => setF((x) => ({ ...x, [k]: v }));
+  // ค่าฟอร์มล่าสุด (ให้ callback ที่ลงทะเบียนไว้ก่อนอ่านค่าปัจจุบันได้)
+  const fRef = useRef(f);
+  fRef.current = f;
   const canSave = f.name.trim().length > 1;
   // วันเกิดครบ → คำนวณอายุและธาตุเจ้าเรือนให้อัตโนมัติ (แก้เองได้)
   const birthISO = toISO(f.bDay, f.bMonth, f.bYear);
@@ -136,28 +139,35 @@ function NewPatientInner() {
   }, [birthISO]);
 
   /** ใส่ข้อมูลจากครูปัญญาซักประวัติ (โหมดเสียง) ลงฟอร์ม */
-  const applyIntake = (d: IntakeData) => {
-    setF((x) => {
-      const next = { ...x };
-      (['age', 'phone', 'address', 'chronic', 'allergies', 'weight', 'height'] as const).forEach((k) => {
-        const v = String(d[k] ?? '').trim();
-        if (v) (next as any)[k] = v;
-      });
-      // วันเกิด: แปลงชื่อเดือน/ปี ค.ศ./วันที่ทั้งก้อน → วัน/เดือนเลข/ปี พ.ศ.
-      const b = normalizeBirth(d);
-      if (b.bDay && b.bMonth && b.bYear) Object.assign(next, b);
-      else if (b.bYear && !next.age) next.age = String(new Date().getFullYear() + 543 - Number(b.bYear));
-      if (d.name) {
-        const sp = splitPrefix([d.prefix, d.name].filter(Boolean).join(' '));
-        next.name = sp.name;
-        if (sp.prefix) {
-          next.prefix = sp.prefix;
-          next.sex = PREFIXES.find((p) => p.label === sp.prefix)!.sex;
-        }
-      }
-      return next;
+  const applyIntake = (d: IntakeData & { save?: boolean }) => {
+    const next = { ...fRef.current };
+    (['age', 'phone', 'address', 'chronic', 'allergies', 'weight', 'height'] as const).forEach((k) => {
+      const v = String(d[k] ?? '').trim();
+      if (v) (next as any)[k] = v;
     });
+    // วันเกิด: แปลงชื่อเดือน/ปี ค.ศ./วันที่ทั้งก้อน → วัน/เดือนเลข/ปี พ.ศ.
+    const b = normalizeBirth(d);
+    if (b.bDay && b.bMonth && b.bYear) Object.assign(next, b);
+    else if (b.bYear && !next.age) next.age = String(new Date().getFullYear() + 543 - Number(b.bYear));
+    if (d.name) {
+      const sp = splitPrefix([d.prefix, d.name].filter(Boolean).join(' '));
+      next.name = sp.name;
+      if (sp.prefix) {
+        next.prefix = sp.prefix;
+        next.sex = PREFIXES.find((p) => p.label === sp.prefix)!.sex;
+      }
+    }
+    // วันเกิดครบ → อายุ + ธาตุเจ้าเรือน
+    const iso = toISO(next.bDay, next.bMonth, next.bYear);
+    if (iso) {
+      next.age = String(ageFrom(iso));
+      next.element = elementFromMonth(Number(next.bMonth));
+      setElPicked(true);
+    }
+    setF(next);
     h.success();
+    // ตอบ "ใช้" ในโหมดเสียง → บันทึกผู้ป่วยเลย
+    if (d.save && next.name.trim().length > 1) setTimeout(() => saveForm(next), 350);
   };
 
   /** ใส่ข้อมูลที่อ่านจากบัตร (หน้ากล้องอ่านให้แล้ว) ลงฟอร์ม */
@@ -205,14 +215,15 @@ function NewPatientInner() {
     }, []),
   );
 
-  const save = () => {
-    if (!canSave) return;
+  const saveForm = (f: Form) => {
+    if (f.name.trim().length <= 1) return;
     const num = (s: string) => Number(s.replace(/[^0-9.]/g, '')) || 0;
+    const iso = toISO(f.bDay, f.bMonth, f.bYear);
     const id = addPatient({
       name: [f.prefix, f.name.trim()].filter(Boolean).join(' '),
       sex: f.sex,
       age: num(f.age),
-      birthDate: birthISO ?? undefined,
+      birthDate: iso ?? undefined,
       address: { ...parseAddress(f.address), full: f.address.trim() },
       phone: f.phone || '-',
       chronic: f.chronic || 'ไม่มี',
@@ -226,6 +237,7 @@ function NewPatientInner() {
     h.success();
     router.replace(`/patient/${id}`);
   };
+  const save = () => canSave && saveForm(f);
 
   const recording = false;
 

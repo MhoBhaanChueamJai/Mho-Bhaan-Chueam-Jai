@@ -90,13 +90,14 @@ ${history.slice(-6).map((h) => `${h.role === 'ai' ? 'ครูปัญญา' :
 }
 
 /** ส่งผลการซักประวัติกลับไปหน้าเพิ่มผู้ป่วย */
-let pending: IntakeData | null = null;
-let listener: ((d: IntakeData) => void) | null = null;
+export type IntakeResult = IntakeData & { save?: boolean };
+let pending: IntakeResult | null = null;
+let listener: ((d: IntakeResult) => void) | null = null;
 /** หน้าเพิ่มผู้ป่วยลงทะเบียนรับผล — ได้ผลทันทีที่กด "ใช้ข้อมูลนี้" */
-export const onIntakeResult = (fn: ((d: IntakeData) => void) | null) => {
+export const onIntakeResult = (fn: ((d: IntakeResult) => void) | null) => {
   listener = fn;
 };
-export const setIntakeResult = (d: IntakeData) => {
+export const setIntakeResult = (d: IntakeResult) => {
   if (listener) listener(d);
   else pending = d;
 };
@@ -105,3 +106,10 @@ export const takeIntakeResult = () => {
   pending = null;
   return r;
 };
+
+/** คำตอบยืนยัน "ใช้/บันทึก" (รองรับภาษาถิ่น) — ถ้ามีคำปฏิเสธถือว่าไม่ใช้ */
+export function isYes(ans: string): boolean {
+  const t = ans.replace(/\s+/g, '');
+  if (/(ไม่|บ่|ยังก่อน|เดี๋ยวก่อน|รอก่อน|แก้)/.test(t)) return false;
+  return /(ใช่|ใช้|ได้|เอา|ตกลง|โอเค|ok|บันทึก|แม่น|เลย|จ้า|ค่ะ|ครับ|ถูกต้อง|เจ้า)/i.test(t);
+}
