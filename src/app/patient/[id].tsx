@@ -6,7 +6,7 @@ import Animated, { FadeIn, LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Group, IOSCard, SectionTitle, Sym, ios } from '../../components/ios';
 import { Avatar, Button, GlassDock, HeaderBack, HeaderButton, PressableScale, T } from '../../components/ui';
-import { avatars, fullAddress, type MB5Visit, type Patient } from '../../data/mock';
+import { avatarFor, fullAddress, type MB5Visit, type Patient } from '../../data/mock';
 import { statusTone } from '../../data/tones';
 import { useApp } from '../../store/app';
 import { elementColor, palette } from '../../theme';
@@ -125,7 +125,7 @@ function PatientDetailInner() {
       <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 110 }} showsVerticalScrollIndicator={false}>
         {/* ส่วนบนแบบ Contacts */}
         <View style={styles.hero}>
-          <Avatar name={p.name} src={avatars[p.id]} size={96} />
+          <Avatar name={p.name} src={avatarFor(p)} size={96} />
           <T v="h1" center style={{ marginTop: 10 }}>{p.name}</T>
           <T v="callout" color={ios.secondary} center>
             {p.sex} · {p.age} ปี · {el.label}

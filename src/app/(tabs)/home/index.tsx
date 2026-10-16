@@ -7,7 +7,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { AppIcon, Group, IOSCard, Row, SectionTitle, Sym, ios } from '../../../components/ios';
 import { AIFlower } from '../../../components/Orb';
 import { Avatar, PressableScale, T } from '../../../components/ui';
-import { TODAY, avatars, doctor, lastVisit, legacy, thaiDate } from '../../../data/mock';
+import { TODAY, avatarFor, avatars, doctor, lastVisit, legacy, thaiDate } from '../../../data/mock';
 import { visitSortKey } from '../../../data/tones';
 import { useApp } from '../../../store/app';
 import { palette } from '../../../theme';
@@ -72,7 +72,7 @@ export default function Home() {
               return (
                 <Row
                   key={p.id}
-                  leading={<Avatar name={p.name} src={avatars[p.id]} size={36} />}
+                  leading={<Avatar name={p.name} src={avatarFor(p)} size={36} />}
                   title={p.name}
                   subtitle={v ? v.diagnosis : 'ยังไม่มีการรักษา'}
                   value={v ? v.date.slice(0, 5) : undefined}

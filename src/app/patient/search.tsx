@@ -11,7 +11,7 @@ import Animated, { Easing, FadeIn, FadeInDown, interpolate, runOnJS, useAnimated
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Sym, ios } from '../../components/ios';
 import { Avatar, PressableScale, T } from '../../components/ui';
-import { avatars, lastVisit } from '../../data/mock';
+import { avatarFor, lastVisit } from '../../data/mock';
 import { statusTone } from '../../data/tones';
 import { SuggestCard } from '../../components/SearchShell';
 import { aiSuggestions, ruleSuggestions, type Suggestion } from '../../lib/searchSuggest';
@@ -172,7 +172,7 @@ function PatientSearchInner() {
                     >
                       {/* รูป + จุดสถานะมุมล่างขวา */}
                       <View>
-                        <Avatar name={p.name} src={avatars[p.id]} size={52} />
+                        <Avatar name={p.name} src={avatarFor(p)} size={52} />
                         <View style={[styles.dot, { backgroundColor: st.fg }]} />
                       </View>
                       <View style={{ flex: 1, gap: 1 }}>

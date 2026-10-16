@@ -5,7 +5,7 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { IOSCard, Sym, ios } from '../../../components/ios';
 import { Avatar, HeaderButton, PressableScale, T } from '../../../components/ui';
-import { avatars, lastVisit } from '../../../data/mock';
+import { avatarFor, lastVisit } from '../../../data/mock';
 import { statusLabel, statusTone, visitSortKey } from '../../../data/tones';
 import { useApp } from '../../../store/app';
 import { elevation, palette } from '../../../theme';
@@ -49,7 +49,7 @@ function PatientsInner() {
                   {i ? <View style={styles.sep} /> : null}
                   <PressableScale scaleTo={0.98} haptic="select" onPress={() => router.push(`/patient/${p.id}`)} style={styles.row} accessibilityLabel={`${p.name} ${statusLabel(p.status)}`}>
                     <View>
-                      <Avatar name={p.name} src={avatars[p.id]} size={52} />
+                      <Avatar name={p.name} src={avatarFor(p)} size={52} />
                       <View style={[styles.dot, { backgroundColor: st.fg }]} />
                     </View>
                     <View style={{ flex: 1, gap: 1 }}>

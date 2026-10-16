@@ -359,6 +359,21 @@ export const avatars: Record<string, number> = {
   q3: require('../../assets/avatars/q3.png'),
 };
 
+/** อวาตาร์ 3D สำหรับผู้ป่วยใหม่ (เลือกตามเพศและช่วงวัย) */
+const GENERIC = {
+  child: { ชาย: require('../../assets/avatars/generic/child_m.png'), หญิง: require('../../assets/avatars/generic/child_f.png') },
+  young: { ชาย: require('../../assets/avatars/generic/young_m.png'), หญิง: require('../../assets/avatars/generic/young_f.png') },
+  adult: { ชาย: require('../../assets/avatars/generic/adult_m.png'), หญิง: require('../../assets/avatars/generic/adult_f.png') },
+  senior: { ชาย: require('../../assets/avatars/generic/senior_m.png'), หญิง: require('../../assets/avatars/generic/senior_f.png') },
+} as const;
+
+/** รูปผู้ป่วย: มีรูปเฉพาะคนใช้รูปนั้น ไม่มีก็ใช้อวาตาร์ตามเพศ/อายุ */
+export function avatarFor(p: Pick<Patient, 'id' | 'sex' | 'age'>): number {
+  if (avatars[p.id]) return avatars[p.id];
+  const band = p.age < 13 ? 'child' : p.age < 30 ? 'young' : p.age < 55 ? 'adult' : 'senior';
+  return GENERIC[band][p.sex === 'ชาย' ? 'ชาย' : 'หญิง'];
+}
+
 /** วันนี้ (เที่ยงคืน ตามเวลาเครื่อง) */
 export const TODAY = (() => {
   const d = new Date();
