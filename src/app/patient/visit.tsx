@@ -38,7 +38,7 @@ function VisitInner() {
           const t = new Date();
           addVisit(p.id, {
             date: `${String(t.getDate()).padStart(2, '0')}/${String(t.getMonth() + 1).padStart(2, '0')}/${t.getFullYear() + 543}`,
-            symptoms: v.symptoms || '-',
+            symptoms: [v.symptoms, v.duration ? `เป็นมา ${v.duration}` : ''].filter(Boolean).join(' · ') || '-',
             exam: v.exam || '-',
             diagnosis: v.diagnosis || '-',
             treatment: v.treatment || '-',
