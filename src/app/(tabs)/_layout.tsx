@@ -6,14 +6,14 @@ import { palette } from '../../theme';
 
 /**
  * แท็บบาร์ native ของ iOS 26 (Liquid Glass ของ Apple)
- * - แคปซูลกระจกเลื่อนตามแท็บที่เลือก, หดตัวเมื่อเลื่อนลง
+ * - แคปซูลกระจกเลื่อนตามแท็บที่เลือก ไม่หดตัว (ให้ปุ่มครูปัญญา AI อยู่ให้เห็นตลอด)
  * - แท็บ "ครูปัญญา" (ไมค์) กดแล้วเปิดหน้าแชทเต็มจอ
  */
 export default function TabsLayout() {
   const { settings, isPractitioner } = useApp();
   if (!settings.loggedIn) return <Redirect href="/login" />;
   return (
-    <NativeTabs tintColor={palette.primary} minimizeBehavior="onScrollDown">
+    <NativeTabs tintColor={palette.primary} minimizeBehavior="never">
       <NativeTabs.Trigger name="home">
         <Icon sf={{ default: 'house', selected: 'house.fill' }} />
         <Label>หน้าหลัก</Label>

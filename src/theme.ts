@@ -13,7 +13,6 @@
  * ตัวอักษร: ฟอนต์ระบบ + ขนาดมาตรฐาน Apple HIG, ปรับขนาดตาม Dynamic Type ของเครื่อง
  * Touch target ≥ 56pt สำหรับผู้ใช้ 40–80 ปี
  */
-import { Platform } from 'react-native';
 
 export const palette = {
   // 60 — Canvas (พื้นขาว)
@@ -83,21 +82,25 @@ export const radius = { sm: 14, md: 20, lg: 26, xl: 34, pill: 999 };
 
 export const touch = { min: 56 };
 
-const shadow = (y: number, blur: number, opacity: number, color = '#A7B1A4') =>
-  Platform.select({
-    ios: { shadowColor: color, shadowOffset: { width: 0, height: y }, shadowOpacity: opacity, shadowRadius: blur },
-    default: { elevation: Math.round(y * 0.8) },
-  })!;
 
-/** เงานุ่มแบบ clay (ref: ishtiaqkhanparag) */
+/**
+ * ระดับเงา (Elevation) — ใช้ชุดเดียวทั้งแอป
+ * หลักการ: แสงมาจากด้านบนจุดเดียว → เงาตกลงล่างเสมอ, สีเงาเป็นโทนเขียวเข้ม (ไม่ใช้ดำ/เทา) ให้กลืนกับธีม
+ * ยิ่งชิ้นอยู่ "สูง" (ใกล้ผู้ใช้) เงายิ่งเลื่อนลง กว้างขึ้น และเข้มขึ้นเล็กน้อย
+ *   e1 พัก   — การ์ด/รายการที่วางบนพื้น (ส่วนใหญ่ของแอป)
+ *   e2 ลอย   — ตัวควบคุมที่ลอยเหนือเนื้อหา: ช่องค้นหา ปุ่มวงกลม
+ *   e3 ซ้อน  — ชั้นบนสุด: sheet, popover
+ *   glow    — เฉพาะปุ่มหลักสีเขียว (เงาสีเดียวกับปุ่ม)
+ */
+const SH = 'rgba(11, 61, 38,';
 export const elevation = {
-  e1: shadow(8, 18, 0.28),
-  e2: shadow(12, 26, 0.32),
-  e3: shadow(18, 36, 0.36),
-  glow: shadow(10, 18, 0.45, '#14905C'),
-  /** การ์ดขาวลอย: เงานุ่มกว้าง โทนเขียวเข้มจางๆ */
-  card: { boxShadow: '0px 6px 20px rgba(11, 61, 38, 0.08), 0px 1px 3px rgba(11, 61, 38, 0.06)' } as const,
-};
+  e1: { boxShadow: `0px 1px 2px ${SH} 0.05), 0px 4px 14px ${SH} 0.07)` },
+  e2: { boxShadow: `0px 2px 4px ${SH} 0.06), 0px 8px 22px ${SH} 0.11)` },
+  e3: { boxShadow: `0px 4px 8px ${SH} 0.06), 0px 18px 40px ${SH} 0.16)` },
+  glow: { boxShadow: '0px 6px 16px rgba(20, 144, 92, 0.28)' },
+  /** การ์ด = e1 */
+  card: { boxShadow: `0px 1px 2px ${SH} 0.05), 0px 4px 14px ${SH} 0.07)` },
+} as const;
 
 /** การ์ด clay: พื้นสว่างกว่าฉากเล็กน้อย + ขอบไฮไลต์ขาว */
 export const clayCard = {

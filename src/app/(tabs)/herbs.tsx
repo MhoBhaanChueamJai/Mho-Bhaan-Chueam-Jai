@@ -5,21 +5,21 @@ import React, { useMemo, useState } from 'react';
 import { FlatList, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Backdrop, Button, Chip, PressableScale, SearchBar, T, TopScrim } from '../../components/ui';
+import { SearchButton } from '../../components/SearchShell';
+import { Backdrop, Button, Chip, PressableScale, T, TopScrim } from '../../components/ui';
 import { herbs, tastes, tasteTone } from '../../data/herbs';
 import { elevation, palette, radius, space } from '../../theme';
 
 export default function Herbs() {
   const insets = useSafeAreaInsets();
-  const [q, setQ] = useState('');
   const [taste, setTaste] = useState<string>('ทั้งหมด');
 
   const list = useMemo(
     () =>
       herbs.filter(
-        (h) => (taste === 'ทั้งหมด' || h.taste === taste) && (!q || [h.name, h.local, h.sci, ...h.uses].join(' ').toLowerCase().includes(q.toLowerCase())),
+        (h) => taste === 'ทั้งหมด' || h.taste === taste,
       ),
-    [q, taste],
+    [taste],
   );
 
   return (
@@ -30,14 +30,17 @@ export default function Herbs() {
         keyExtractor={(h) => h.id}
         numColumns={2}
         columnWrapperStyle={{ gap: space.md }}
-        contentContainerStyle={{ paddingHorizontal: space.xl, paddingTop: insets.top + space.lg, paddingBottom: 140, gap: space.md }}
+        contentContainerStyle={{ paddingHorizontal: space.xl, paddingTop: insets.top + 12, paddingBottom: 140, gap: space.md }}
         showsVerticalScrollIndicator={false}
         keyboardDismissMode="on-drag"
         ListHeaderComponent={
           <View style={{ marginBottom: space.sm }}>
-            <T v="h1">คลังสมุนไพร</T>
+            {/* ปุ่มค้นหามุมขวาบน → เปิดหน้าค้นหาแบบยืดออก (ตำแหน่งเดียวกับแถบค้นหา) */}
+            <View style={{ position: 'absolute', right: 0, top: -4, zIndex: 2 }}>
+              <SearchButton label="ค้นหาสมุนไพร" onPress={() => router.push('/herb/search')} />
+            </View>
+            <T v="h1" style={{ paddingRight: 56 }}>คลังสมุนไพร</T>
             <T v="callout" color={palette.inkSoft}>{herbs.length} ชนิด · อ้างอิงบัญชียาหลักแห่งชาติ</T>
-            <SearchBar style={{ marginTop: space.xl }} value={q} onChangeText={setQ} placeholder="ค้นหาชื่อ หรืออาการ เช่น ปวดเข่า" />
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -space.xl, marginTop: space.lg - 20, marginBottom: -20 }} contentContainerStyle={{ gap: 8, paddingHorizontal: space.xl, paddingVertical: 28 }}>
               {tastes.map((t) => (
                 <Chip key={t} label={t === 'ทั้งหมด' ? 'ทั้งหมด' : `รส${t}`} active={taste === t} onPress={() => setTaste(t)} />
@@ -47,8 +50,8 @@ export default function Herbs() {
         }
         ListEmptyComponent={
           <View style={{ alignItems: 'center', paddingVertical: space.xxxl, gap: space.lg }}>
-            <T v="title" color={palette.inkSoft}>ไม่พบ “{q}” ในคลัง</T>
-            <Button label="ถามครูปัญญาแทน" onPress={() => router.push({ pathname: '/assistant', params: { q } })} />
+            <T v="title" color={palette.inkSoft}>ยังไม่มีสมุนไพรในหมวดนี้</T>
+            <Button label="ถามครูปัญญาแทน" onPress={() => router.push('/assistant')} />
           </View>
         }
         renderItem={({ item, index }) => {
