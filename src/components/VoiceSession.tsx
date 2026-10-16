@@ -17,7 +17,7 @@ import { rmsLevel, useVoiceRecorder } from './audio';
 import { Sym } from './ios';
 import { AISphere } from './AISphere';
 import { AIGlow, Waveform } from './Orb';
-import { Button, GlassCircle, PressableScale, T, useHaptic } from './ui';
+import { Button, Glass, GlassCircle, PressableScale, T, useHaptic } from './ui';
 import { isYes, type Turn } from '../lib/intake';
 import { palette } from '../theme';
 
@@ -365,17 +365,22 @@ export function VoiceSession({ initialOptions, title, opening, topics, has, turn
               {options.map((o) => {
                 const on = picked.includes(o);
                 return (
-                  <PressableScale key={o} haptic="select" scaleTo={0.95} onPress={() => setPicked((x) => (on ? x.filter((y) => y !== o) : [...x, o]))} style={[styles.opt, on && styles.optOn]} accessibilityRole="checkbox" accessibilityState={{ checked: on }}>
-                    {on ? <Sym name="checkmark" size={12} color="#04150E" weight="bold" /> : null}
-                    <T v="subhead" color={on ? '#04150E' : 'rgba(255,255,255,0.9)'} style={{ fontWeight: on ? '700' : '500' }}>{o}</T>
+                  <PressableScale key={o} haptic="select" scaleTo={0.95} onPress={() => setPicked((x) => (on ? x.filter((y) => y !== o) : [...x, o]))} accessibilityRole="checkbox" accessibilityState={{ checked: on }} accessibilityLabel={o}>
+                    {/* ชิป Liquid Glass (เลือกแล้ว = กระจกอมเขียว ขอบเขียว) */}
+                    <Glass tint={on ? 'rgba(124,240,168,0.28)' : 'rgba(255,255,255,0.08)'} style={[styles.opt, on && styles.optOn]}>
+                      {on ? <Sym name="checkmark" size={12} color="#7CF0A8" weight="bold" /> : null}
+                      <T v="subhead" color={on ? '#BFFFD6' : 'rgba(255,255,255,0.92)'} style={{ fontWeight: on ? '700' : '500' }}>{o}</T>
+                    </Glass>
                   </PressableScale>
                 );
               })}
             </View>
             {picked.length ? (
-              <PressableScale haptic="press" onPress={() => sendTyped(picked.join(', '))} style={styles.optSend} accessibilityLabel="ส่งตัวเลือก">
-                <T v="bodyStrong" color="#04150E">ส่งคำตอบ ({picked.length})</T>
-                <Sym name="arrow.up" size={15} color="#04150E" weight="bold" />
+              <PressableScale haptic="press" onPress={() => sendTyped(picked.join(', '))} accessibilityLabel="ส่งตัวเลือก">
+                <Glass tint="rgba(124,240,168,0.55)" style={styles.optSend}>
+                  <T v="bodyStrong" color="#FFFFFF">ส่งคำตอบ ({picked.length})</T>
+                  <Sym name="arrow.up" size={15} color="#FFFFFF" weight="bold" />
+                </Glass>
               </PressableScale>
             ) : null}
           </Animated.View>
@@ -439,9 +444,9 @@ const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: '#000000' },
   optWrap: { alignItems: 'center', marginTop: 16, paddingHorizontal: 20, gap: 12 },
   opts: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8 },
-  opt: { flexDirection: 'row', alignItems: 'center', gap: 5, minHeight: 40, paddingHorizontal: 14, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.1)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.25)' },
-  optOn: { backgroundColor: '#7CF0A8', borderColor: '#7CF0A8' },
-  optSend: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 44, paddingHorizontal: 20, borderRadius: 22, backgroundColor: '#7CF0A8' },
+  opt: { flexDirection: 'row', alignItems: 'center', gap: 5, minHeight: 40, paddingHorizontal: 14, borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.3)' },
+  optOn: { borderColor: '#7CF0A8', borderWidth: 1 },
+  optSend: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 44, paddingHorizontal: 20, borderRadius: 22, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.5)' },
   darkDock: { position: 'absolute', left: 24, right: 24, gap: 8, padding: 8, borderRadius: 32, borderCurve: 'continuous', backgroundColor: 'rgba(28,30,29,0.96)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.22)', boxShadow: '0px 10px 30px rgba(0,0,0,0.6)' },
   typeRow: { flexDirection: 'row', alignItems: 'center', gap: 8, height: 50, paddingLeft: 16, paddingRight: 6, borderRadius: 25, backgroundColor: '#FFFFFF' },
   typeInput: { flex: 1, fontSize: 17, color: '#1F2A24', height: '100%' },
