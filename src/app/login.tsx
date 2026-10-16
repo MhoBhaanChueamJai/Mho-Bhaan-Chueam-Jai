@@ -11,7 +11,7 @@ import { useApp } from '../store/app';
 import { control, palette } from '../theme';
 
 
-/** ช่องกรอกแคปซูล (ไม่มีป้ายด้านบน ใช้ placeholder แทน เพื่อให้พอดีจอโดยไม่ต้องเลื่อน) */
+/** แถวกรอกข้อมูลในการ์ดกลุ่มแบบ iOS (ไม่มีป้ายด้านบน ใช้ placeholder) */
 function Field({
   icon,
   label,
@@ -27,7 +27,7 @@ function Field({
   keyboard,
   half,
 }: {
-  icon: any;
+  icon?: any;
   label: string;
   value: string;
   onChange: (v: string) => void;
@@ -43,35 +43,35 @@ function Field({
 }) {
   const [focus, setFocus] = useState(false);
   return (
-    <View style={half ? { flex: 1 } : undefined}>
-      <View style={[styles.field, focus && styles.fieldFocus]}>
-        <Sym name={icon} size={17} color={focus ? palette.primary : ios.tertiary} />
-        <TextInput
-          ref={inputRef}
-          value={value}
-          onChangeText={onChange}
-          placeholder={placeholder ?? label}
-          keyboardType={keyboard}
-          placeholderTextColor={ios.tertiary}
-          secureTextEntry={secure}
-          autoCapitalize="none"
-          autoCorrect={false}
-          autoComplete={autoComplete}
-          textContentType={
-            ({ password: 'password', 'new-password': 'newPassword', email: 'emailAddress', 'given-name': 'givenName', 'family-name': 'familyName', username: 'username' } as const)[autoComplete ?? 'username']
-          }
-          returnKeyType={returnKey}
-          onSubmitEditing={onSubmit}
-          onFocus={() => setFocus(true)}
-          onBlur={() => setFocus(false)}
-          style={styles.input}
-          accessibilityLabel={label}
-        />
-        {right}
-      </View>
+    <View style={[styles.field, half && { flex: 1 }, !icon && { paddingLeft: 16 }]}>
+      {icon ? <Sym name={icon} size={17} color={focus ? palette.primary : ios.tertiary} /> : null}
+      <TextInput
+        ref={inputRef}
+        value={value}
+        onChangeText={onChange}
+        placeholder={placeholder ?? label}
+        keyboardType={keyboard}
+        placeholderTextColor={ios.tertiary}
+        secureTextEntry={secure}
+        autoCapitalize="none"
+        autoCorrect={false}
+        autoComplete={autoComplete}
+        textContentType={
+          ({ password: 'password', 'new-password': 'newPassword', email: 'emailAddress', 'given-name': 'givenName', 'family-name': 'familyName', username: 'username' } as const)[autoComplete ?? 'username']
+        }
+        returnKeyType={returnKey}
+        onSubmitEditing={onSubmit}
+        onFocus={() => setFocus(true)}
+        onBlur={() => setFocus(false)}
+        style={styles.input}
+        accessibilityLabel={label}
+      />
+      {right}
     </View>
   );
 }
+
+const Sep = ({ inset = 46 }: { inset?: number }) => <View style={[styles.sep, { marginLeft: inset }]} />;
 
 export default function Login() {
   const insets = useSafeAreaInsets();
@@ -159,10 +159,22 @@ export default function Login() {
     }
   };
 
-  // จอเดียวไม่เลื่อน: อินโทรตรึงด้านบน, แผ่นกรอกข้อมูลยึดขอบล่าง และยกขึ้นตามคีย์บอร์ด
-  const heroH = Math.round(height * 0.52);
+  // จอเดียวไม่เลื่อน: อินโทรเต็มจอด้านหลัง แผ่นกรอกข้อมูลสูงเท่าเนื้อหา ยึดขอบล่าง และยกตามคีย์บอร์ด
+  // ความสูงอินโทรวัดจากแผ่นโหมดเข้าสู่ระบบครั้งแรก (โหมดสมัครแผ่นสูงขึ้นทับอินโทร ไม่ทำให้อินโทรกระตุก)
+  const [sheetH, setSheetH] = useState(0);
+  const heroH = sheetH ? height - sheetH + 28 : Math.round(height * 0.5);
   const kb = useAnimatedKeyboard();
   const lift = useAnimatedStyle(() => ({ transform: [{ translateY: kb.height.value > 0 ? -Math.max(0, kb.height.value - insets.bottom + 8) : 0 }] }));
+  const toggle = () => {
+    setMode(mode === 'login' ? 'signup' : 'login');
+    setError('');
+    setInfo('');
+  };
+  const eye = (
+    <PressableScale haptic="select" hitSlop={control.hitSlop} onPress={() => setShow((x) => !x)} style={styles.eye} accessibilityLabel={show ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน'}>
+      <Sym name={show ? 'eye.slash' : 'eye'} size={17} color={ios.secondary} />
+    </PressableScale>
+  );
 
   return (
     <View style={styles.root}>
@@ -171,123 +183,123 @@ export default function Login() {
         <KeynoteIntro width={width} height={heroH - insets.top} inset={insets.top} />
       </Pressable>
 
-      {/* ── ส่วนล่าง: กรอกข้อมูลเข้าสู่ระบบ ── */}
+      {/* ── ส่วนล่าง: กรอกข้อมูล ── */}
       <Animated.View
         entering={FadeInUp.delay(100).duration(500)}
         layout={LinearTransition.duration(280)}
-        style={[styles.sheet, { minHeight: height - heroH + 28, paddingBottom: insets.bottom + 12 }, lift]}
+        onLayout={(e) => {
+          if (mode === 'login' && !sheetH) setSheetH(Math.round(e.nativeEvent.layout.height));
+        }}
+        style={[styles.sheet, { paddingBottom: insets.bottom + 8 }, lift]}
       >
-          <T v="h1" style={{ fontWeight: '700' }}>{mode === 'login' ? 'ยินดีต้อนรับ' : 'สร้างบัญชีใหม่'}</T>
-          <T v="callout" color={ios.secondary} style={{ marginTop: 2 }}>
-            {mode === 'login' ? 'เข้าสู่ระบบเพื่อดูแลผู้ป่วยและภูมิปัญญาของคุณ' : 'สมัครสมาชิกเพื่อใช้งานคลังสมุนไพร ภูมิปัญญา และครูปัญญา AI'}
-          </T>
+        <T v="h1" style={{ fontWeight: '700' }}>{mode === 'login' ? 'ยินดีต้อนรับ' : 'สร้างบัญชีใหม่'}</T>
+        <T v="callout" color={ios.secondary} style={{ marginTop: 2 }}>
+          {mode === 'login' ? 'เข้าสู่ระบบด้วยอีเมลหรือชื่อผู้ใช้' : 'สมัครฟรี ใช้คลังสมุนไพร ภูมิปัญญา และครูปัญญา AI'}
+        </T>
 
-          <Animated.View style={[{ gap: 12, marginTop: 20 }, shakeStyle]}>
-            {mode === 'signup' ? (
-              <>
-                <View style={{ flexDirection: 'row', gap: 10 }}>
-                  <Field half icon="person.fill" label="ชื่อ" placeholder="ชื่อ" value={first} onChange={(v) => { setFirst(v); setError(''); }} autoComplete="given-name" returnKey="next" />
-                  <Field half icon="person.fill" label="นามสกุล" placeholder="นามสกุล" value={last} onChange={(v) => { setLast(v); setError(''); }} autoComplete="family-name" returnKey="next" />
-                </View>
-                <Field icon="envelope.fill" label="อีเมล" placeholder="อีเมล" keyboard="email-address" value={email} onChange={(v) => { setEmail(v); setError(''); }} autoComplete="email" returnKey="next" />
-              </>
-            ) : (
+        {/* การ์ดกลุ่มช่องกรอก */}
+        <Animated.View style={[styles.group, shakeStyle]}>
+          {mode === 'signup' ? (
+            <>
+              <View style={{ flexDirection: 'row' }}>
+                <Field half icon="person.fill" label="ชื่อ" value={first} onChange={(v) => { setFirst(v); setError(''); }} autoComplete="given-name" returnKey="next" />
+                <View style={styles.vsep} />
+                <Field half label="นามสกุล" value={last} onChange={(v) => { setLast(v); setError(''); }} autoComplete="family-name" returnKey="next" />
+              </View>
+              <Sep />
+              <Field icon="envelope.fill" label="อีเมล" keyboard="email-address" value={email} onChange={(v) => { setEmail(v); setError(''); }} autoComplete="email" returnKey="next" />
+              <Sep />
+            </>
+          ) : (
+            <>
               <Field
                 icon="person.fill"
                 label="อีเมล หรือชื่อผู้ใช้"
-                placeholder="อีเมล หรือชื่อผู้ใช้"
                 keyboard="email-address"
                 value={user}
-                onChange={(v) => {
-                  setUser(v);
-                  setError('');
-                }}
+                onChange={(v) => { setUser(v); setError(''); }}
                 returnKey="next"
                 onSubmit={() => passRef.current?.focus()}
                 autoComplete="username"
               />
-            )}
-            <Field
-              icon="lock.fill"
-              label={mode === 'signup' ? 'ตั้งรหัสผ่าน' : 'รหัสผ่าน'}
-              placeholder={mode === 'signup' ? 'ตั้งรหัสผ่าน (อย่างน้อย 6 ตัว)' : 'รหัสผ่าน'}
-              value={pass}
-              onChange={(v) => {
-                setPass(v);
-                setError('');
-              }}
-              secure={!show}
-              inputRef={passRef}
-              returnKey={mode === 'signup' ? 'next' : 'go'}
-              onSubmit={mode === 'signup' ? undefined : submit}
-              autoComplete={mode === 'signup' ? 'new-password' : 'password'}
-              right={
-                <PressableScale haptic="select" hitSlop={control.hitSlop} onPress={() => setShow((x) => !x)} style={styles.eye} accessibilityLabel={show ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน'}>
-                  <Sym name={show ? 'eye.slash' : 'eye'} size={17} color={ios.secondary} />
-                </PressableScale>
-              }
-            />
-            {mode === 'signup' ? (
+              <Sep />
+            </>
+          )}
+          <Field
+            icon="lock.fill"
+            label="รหัสผ่าน"
+            placeholder={mode === 'signup' ? 'ตั้งรหัสผ่าน (อย่างน้อย 6 ตัว)' : 'รหัสผ่าน'}
+            value={pass}
+            onChange={(v) => { setPass(v); setError(''); }}
+            secure={!show}
+            inputRef={passRef}
+            returnKey={mode === 'signup' ? 'next' : 'go'}
+            onSubmit={mode === 'signup' ? undefined : submit}
+            autoComplete={mode === 'signup' ? 'new-password' : 'password'}
+            right={eye}
+          />
+          {mode === 'signup' ? (
+            <>
+              <Sep />
               <Field
-                icon="lock.fill"
+                icon="checkmark.shield.fill"
                 label="ยืนยันรหัสผ่าน"
-                placeholder="ยืนยันรหัสผ่าน"
                 value={pass2}
-                onChange={(v) => {
-                  setPass2(v);
-                  setError('');
-                }}
+                onChange={(v) => { setPass2(v); setError(''); }}
                 secure={!show}
                 returnKey="go"
                 onSubmit={submit}
                 autoComplete="new-password"
-                right={pass2 ? <Sym name={pass2 === pass ? 'checkmark.circle.fill' : 'xmark.circle.fill'} size={17} color={pass2 === pass ? palette.primary : palette.coral} /> : undefined}
+                right={
+                  pass2 ? (
+                    <View style={styles.eye}>
+                      <Sym name={pass2 === pass ? 'checkmark.circle.fill' : 'xmark.circle.fill'} size={17} color={pass2 === pass ? palette.primary : palette.coral} />
+                    </View>
+                  ) : undefined
+                }
               />
-            ) : null}
-          </Animated.View>
+            </>
+          ) : null}
+        </Animated.View>
 
-          <View style={styles.row}>
-            {error ? (
-              <Animated.View entering={FadeIn} style={styles.error}>
-                <Sym name="exclamationmark.circle.fill" size={15} color={palette.coral} />
-                <T v="caption" color={palette.coral}>{error}</T>
-              </Animated.View>
-            ) : info ? (
-              <T v="caption" color={palette.primary} style={{ flex: 1 }}>{info}</T>
-            ) : (
-              <View />
-            )}
-            {mode === 'login' ? (
-              <PressableScale haptic="select" onPress={() => setError('ติดต่อ สสจ. หรือ รพ.สต. เพื่อตั้งรหัสผ่านใหม่')} style={styles.forgot}>
-                <T v="callout" color={palette.primary}>ลืมรหัสผ่าน?</T>
-              </PressableScale>
-            ) : null}
-          </View>
+        {/* ข้อความแจ้ง */}
+        <View style={styles.msg}>
+          {error ? (
+            <Animated.View entering={FadeIn} style={styles.error}>
+              <Sym name="exclamationmark.circle.fill" size={14} color={palette.coral} />
+              <T v="caption" color={palette.coral} style={{ flex: 1 }}>{error}</T>
+            </Animated.View>
+          ) : info ? (
+            <T v="caption" color={palette.primary}>{info}</T>
+          ) : null}
+        </View>
 
-          <Button
-            label={busy ? 'กำลังดำเนินการ…' : mode === 'login' ? 'เข้าสู่ระบบ' : 'สร้างบัญชี'}
-            disabled={!canSubmit}
-            onPress={submit}
-            icon={busy ? undefined : <Sym name="arrow.right" size={17} color="#FFFFFF" weight="semibold" />}
-            style={{ marginTop: 4, height: 54 }}
-          />
+        <Button
+          label={busy ? 'กำลังดำเนินการ…' : mode === 'login' ? 'เข้าสู่ระบบ' : 'สร้างบัญชี'}
+          disabled={!canSubmit}
+          onPress={submit}
+          style={{ height: 54 }}
+        />
 
-
-          <View style={{ flex: 1 }} />
-          <PressableScale
-            haptic="select"
-            onPress={() => {
-              setMode(mode === 'login' ? 'signup' : 'login');
-              setError('');
-              setInfo('');
-            }}
-            style={styles.switch}
-          >
-            <T v="callout" color={ios.secondary}>
-              {mode === 'login' ? 'ยังไม่มีบัญชี? ' : 'มีบัญชีแล้ว? '}
-              <T v="callout" color={palette.primary} style={{ fontWeight: '700' }}>{mode === 'login' ? 'สมัครใช้งาน' : 'เข้าสู่ระบบ'}</T>
-            </T>
+        {mode === 'login' ? (
+          <PressableScale haptic="select" onPress={() => setError('ติดต่อ สสจ. หรือ รพ.สต. เพื่อตั้งรหัสผ่านใหม่')} style={styles.link}>
+            <T v="callout" color={palette.primary}>ลืมรหัสผ่าน?</T>
           </PressableScale>
+        ) : (
+          <T v="caption" color={ios.tertiary} center style={styles.note}>
+            สมาชิกใช้งานได้ทุกส่วน ยกเว้นการรักษาผู้ป่วย ซึ่งต้องยืนยันตัวตนหมอพื้นบ้านก่อน
+          </T>
+        )}
+
+        {/* สลับโหมด */}
+        <View style={styles.or}>
+          <View style={styles.orLine} />
+          <T v="caption" color={ios.tertiary}>{mode === 'login' ? 'ยังไม่มีบัญชี' : 'มีบัญชีแล้ว'}</T>
+          <View style={styles.orLine} />
+        </View>
+        <PressableScale haptic="select" onPress={toggle} style={styles.alt}>
+          <T v="bodyStrong" color={palette.primary}>{mode === 'login' ? 'สมัครสมาชิกใหม่' : 'เข้าสู่ระบบ'}</T>
+        </PressableScale>
       </Animated.View>
     </View>
   );
@@ -296,12 +308,17 @@ export default function Login() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#071A11', overflow: 'hidden' },
   sheet: { position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: '#FFFFFF', borderTopLeftRadius: 32, borderTopRightRadius: 32, borderCurve: 'continuous', paddingHorizontal: 24, paddingTop: 28 },
-  field: { flexDirection: 'row', alignItems: 'center', gap: 10, height: 54, borderRadius: 27, paddingLeft: 18, paddingRight: 8, backgroundColor: '#F4F4F7', borderWidth: 1.5, borderColor: 'transparent' },
-  fieldFocus: { backgroundColor: '#FFFFFF', borderColor: palette.primary },
+  group: { marginTop: 20, backgroundColor: '#F4F4F7', borderRadius: 16, borderCurve: 'continuous', overflow: 'hidden' },
+  field: { flexDirection: 'row', alignItems: 'center', gap: 12, height: 52, paddingLeft: 16, paddingRight: 6 },
   input: { flex: 1, fontSize: 17, color: palette.ink, height: '100%' },
+  sep: { height: StyleSheet.hairlineWidth, backgroundColor: ios.separator },
+  vsep: { width: StyleSheet.hairlineWidth, backgroundColor: ios.separator, marginVertical: 10 },
   eye: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4, minHeight: 36 },
-  error: { flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 },
-  switch: { alignSelf: 'center', minHeight: 44, justifyContent: 'center', paddingHorizontal: 12, marginTop: 8 },
-  forgot: { minHeight: 36, justifyContent: 'center', paddingLeft: 12 },
+  msg: { minHeight: 30, justifyContent: 'center', paddingHorizontal: 4 },
+  error: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  link: { alignSelf: 'center', minHeight: 44, justifyContent: 'center', paddingHorizontal: 12, marginTop: 2 },
+  note: { minHeight: 44, marginTop: 6, paddingHorizontal: 12 },
+  or: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 6 },
+  orLine: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: ios.separator },
+  alt: { height: 50, borderRadius: 25, marginTop: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: palette.primarySoft },
 });
