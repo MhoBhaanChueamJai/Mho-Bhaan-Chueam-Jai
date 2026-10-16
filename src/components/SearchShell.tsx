@@ -36,7 +36,7 @@ export function SuggestCard({ title, note, items, onPick }: { title: string; not
         <T v="subhead" color={palette.primaryDeep} style={{ fontWeight: '600', flex: 1 }}>{title}</T>
         {typeof note === 'string' ? <T v="micro" color={ios.tertiary}>{note}</T> : note}
       </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" style={{ marginHorizontal: -16 }} contentContainerStyle={styles.chips}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" style={styles.chipScroll} contentContainerStyle={styles.chips}>
         {items.map((s, i) => (
           <Animated.View key={s.q + i} entering={FadeInDown.delay(i * 40).duration(220)}>
             <PressableScale haptic="select" scaleTo={0.95} onPress={() => onPick(s.q)} accessibilityLabel={`ค้นหา ${s.q}`} style={[styles.chipShadow, elevation.e2]}>
@@ -161,7 +161,9 @@ const styles = StyleSheet.create({
   cancelWrap: { position: 'absolute', right: 8 },
   cancel: { height: control.icon, paddingHorizontal: 8, justifyContent: 'center' },
   sugHead: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 4, marginBottom: 8 },
-  chips: { gap: 10, paddingHorizontal: 16, paddingTop: 4, paddingBottom: 14 },
+  // ScrollView แนวนอนตัดทุกอย่างที่ล้นขอบ → เผื่อพื้นที่ให้เงา e2 (บน ~12, ล่าง ~28) แล้วดึงระยะกลับด้วย margin ติดลบ
+  chipScroll: { marginHorizontal: -16, marginTop: -12, marginBottom: -24 },
+  chips: { gap: 10, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 32 },
   chipShadow: { borderRadius: 20 },
   chip: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 40, paddingHorizontal: 16, borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.9)' },
   btn: { width: control.icon, height: control.icon, borderRadius: control.icon / 2, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
