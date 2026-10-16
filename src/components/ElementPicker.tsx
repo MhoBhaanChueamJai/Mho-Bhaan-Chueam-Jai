@@ -325,17 +325,10 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', justifyContent: 'space-between' },
   item: { flex: 1, alignItems: 'center' },
   circleShadow: { width: 68, height: 68, borderRadius: 34, boxShadow: '0px 2px 6px rgba(0,0,0,0.06), 0px 8px 20px rgba(0,0,0,0.06)' },
-  insight: { marginTop: 18, paddingTop: 16, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: ios.separator },
-  insHead: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
-  insDot: { width: 10, height: 10, borderRadius: 5 },
-  insBlock: { marginTop: 12 },
-  insTitle: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
-  bullet: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 3, paddingLeft: 2 },
-  bulletDot: { width: 5, height: 5, borderRadius: 3 },
-  tasteRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 },
-  taste: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999 },
-  tiles: { flexDirection: 'row', gap: 10, marginTop: 16 },
-  tile: { flex: 1, backgroundColor: palette.mint, borderRadius: 16, borderCurve: 'continuous', padding: 12 },
+  insight: { marginTop: 16, paddingTop: 14, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: ios.separator, gap: 8 },
+  line: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  tasteRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 5 },
+  taste: { paddingHorizontal: 9, paddingVertical: 2, borderRadius: 999 },
   circle: { width: 68, height: 68, borderRadius: 34, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5 },
 });
 
@@ -348,76 +341,34 @@ export function ElementInsight({ el, age }: { el: El; age?: number }) {
   const tint = TINT[el];
   const ag = age != null && age > 0 ? ageSamutthan(age) : null;
   const ss = seasonNow();
+  // สรุปสั้น 3 บรรทัด: มักเป็น · รสที่เหมาะ · วัย/ฤดู
   return (
     <Animated.View key={el} entering={FadeIn.duration(300)} style={styles.insight}>
-      <View style={styles.insHead}>
-        <View style={[styles.insDot, { backgroundColor: tint }]} />
-        <T v="title" color={tint}>ธาตุ{el}</T>
-        <T v="caption" color={ios.secondary}>· ผู้เกิดเดือน{p.born}</T>
+      <View style={styles.line}>
+        <Sym name="stethoscope" size={13} color={tint} />
+        <T v="subhead" color={ios.secondary} style={{ flex: 1 }} numberOfLines={2}>
+          <T v="subhead" style={{ fontWeight: '600' }}>มักเป็น </T>
+          {p.prone.join(' · ')}
+        </T>
       </View>
-
-      <InsightRow icon="person.fill" title="ลักษณะเด่น" items={p.traits} tint={tint} />
-      <InsightRow icon="stethoscope" title="มักมีปัญหาสุขภาพ" items={p.prone} tint={tint} />
-
-      <View style={styles.insBlock}>
-        <View style={styles.insTitle}>
-          <Sym name="leaf.fill" size={13} color={tint} />
-          <T v="subhead" style={{ fontWeight: '600' }}>รสยาและอาหารที่เหมาะ</T>
-        </View>
+      <View style={styles.line}>
+        <Sym name="leaf.fill" size={13} color={tint} />
+        <T v="subhead" style={{ fontWeight: '600' }}>รสที่เหมาะ</T>
         <View style={styles.tasteRow}>
           {p.tastes.map((x) => (
             <View key={x} style={[styles.taste, { backgroundColor: `${tint}1F` }]}>
-              <T v="subhead" color={tint} style={{ fontWeight: '600' }}>รส{x}</T>
+              <T v="caption" color={tint} style={{ fontWeight: '700' }}>{x}</T>
             </View>
           ))}
         </View>
-        <T v="caption" color={ios.secondary} style={{ marginTop: 6 }}>เช่น {p.foods.join(' · ')}</T>
       </View>
-
-      <View style={styles.insBlock}>
-        <View style={styles.insTitle}>
-          <Sym name="exclamationmark.triangle.fill" size={13} color="#D9921A" />
-          <T v="subhead" style={{ fontWeight: '600' }}>ควรระวัง</T>
-        </View>
-        <T v="subhead" color={ios.secondary}>{p.avoid}</T>
+      <View style={styles.line}>
+        <Sym name="calendar" size={13} color={tint} />
+        <T v="subhead" color={ios.secondary} style={{ flex: 1 }} numberOfLines={2}>
+          {ag ? `${ag.stage} (${ag.dosha.split(' ')[0]}) · ` : ''}
+          {ss.name.split(' ')[0]} ({ss.dosha.split(' ')[0]})
+        </T>
       </View>
-
-      {/* อายุสมุฏฐาน + อุตุสมุฏฐาน */}
-      <View style={styles.tiles}>
-        {ag ? (
-          <View style={styles.tile}>
-            <T v="caption" color={ios.secondary}>อายุสมุฏฐาน · {age} ปี</T>
-            <T v="title" style={{ marginTop: 2 }}>{ag.stage}</T>
-            <T v="caption" color={TINT[ag.el]} style={{ fontWeight: '600' }}>{ag.dosha}</T>
-            <T v="caption" color={ios.secondary} style={{ marginTop: 4 }}>{ag.note}</T>
-          </View>
-        ) : null}
-        <View style={styles.tile}>
-          <T v="caption" color={ios.secondary}>อุตุสมุฏฐาน · ตอนนี้</T>
-          <T v="title" style={{ marginTop: 2 }}>{ss.name}</T>
-          <T v="caption" color={TINT[ss.el]} style={{ fontWeight: '600' }}>{ss.dosha}</T>
-          <T v="caption" color={ios.secondary} style={{ marginTop: 4 }}>{ss.tip}</T>
-        </View>
-      </View>
-
-      <T v="caption" color={ios.tertiary} style={{ marginTop: 10 }}>ข้อมูลตามหลักการแพทย์แผนไทยเบื้องต้น ใช้ประกอบการพิจารณาของหมอ</T>
     </Animated.View>
-  );
-}
-
-function InsightRow({ icon, title, items, tint }: { icon: string; title: string; items: string[]; tint: string }) {
-  return (
-    <View style={styles.insBlock}>
-      <View style={styles.insTitle}>
-        <Sym name={icon as any} size={13} color={tint} />
-        <T v="subhead" style={{ fontWeight: '600' }}>{title}</T>
-      </View>
-      {items.map((x) => (
-        <View key={x} style={styles.bullet}>
-          <View style={[styles.bulletDot, { backgroundColor: tint }]} />
-          <T v="subhead" color={ios.secondary} style={{ flex: 1 }}>{x}</T>
-        </View>
-      ))}
-    </View>
   );
 }
