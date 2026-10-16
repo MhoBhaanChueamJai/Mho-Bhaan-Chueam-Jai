@@ -1,189 +1,215 @@
 /**
- * ตัวเลือกธาตุเจ้าเรือน — ไอคอนธาตุ 3D วาดด้วย shader (Skia SkSL) ในปุ่ม Liquid Glass
- * ไม่ได้เลือก = ภาพนิ่ง · เลือก = เล่นแอนิเมชันของธาตุ (energy 0→1 + เวลาเดิน)
- *   ไฟ  — เปลวไฟหลายชั้น แกนร้อนขาวเหลือง ลุกโชนสูงขึ้น มีสะเก็ดไฟลอย แสงเรืองที่ฐาน
- *   น้ำ — หยดน้ำทรงหยด แสงหักเห ไฮไลต์สะท้อน กระเพื่อม + วงคลื่นที่ฐาน
- *   ลม — กระแสลมหมุนวนเป็นริ้ว มีมิติแสงเงา หมุนเร็วขึ้นเมื่อเลือก
- *   ดิน — ก้อนดินทรงกลมผิวหิน หญ้าคลุมด้านบน แสงตกกระทบ เงาสัมผัส หมุนช้าๆ เมื่อเลือก
+ * ตัวเลือกธาตุเจ้าเรือน — ไอคอนธาตุ 3D สไตล์น่ารัก (แบบอีโมจิ 3D: ทรงมน มันวาว ไฮไลต์ + เงานุ่ม)
+ * วาดด้วย Skia (Path + Gradient + Blur) ในปุ่ม Liquid Glass
+ * ไม่ได้เลือก = ภาพนิ่ง · เลือก = เล่นแอนิเมชันของธาตุ
+ *   ไฟ  — เปลวไฟอ้วนกลม 2 ชั้น พลิ้วไหว ยืดหด + ประกายไฟลอยขึ้น
+ *   น้ำ — หยดน้ำใสมันวาว เด้งดึ๋ง + วงน้ำกระเพื่อมที่พื้น
+ *   ลม — ริ้วลมม้วนเป็นหลอดนุ่ม ไหลเลื่อนเป็นจังหวะ
+ *   ดิน — ก้อนดินกลมมนมีหญ้าคลุม + ต้นอ่อนแตกใบ โตขึ้นและใบโบกไหว
  */
-import { Canvas, Fill, Shader, Skia } from '@shopify/react-native-skia';
+import { BlurMask, Canvas, Circle, Group, LinearGradient, Oval, Path, RadialGradient, Skia, vec } from '@shopify/react-native-skia';
 import React, { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { useDerivedValue, useFrameCallback, useSharedValue, withTiming, Easing } from 'react-native-reanimated';
-import { Sym } from './ios';
+import { Easing, useDerivedValue, useFrameCallback, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { Glass, PressableScale, T } from './ui';
 import type { Patient } from '../data/mock';
 import { palette } from '../theme';
 
 type El = Patient['element'];
 
-const LIB = `
-float hash(float2 p) { return fract(sin(dot(p, float2(127.1, 311.7))) * 43758.5453); }
-float noise(float2 p) {
-  float2 i = floor(p); float2 f = fract(p); float2 u = f * f * (3.0 - 2.0 * f);
-  return mix(mix(hash(i), hash(i + float2(1.0, 0.0)), u.x), mix(hash(i + float2(0.0, 1.0)), hash(i + float2(1.0, 1.0)), u.x), u.y);
+const P = (d: string) => Skia.Path.MakeFromSVGString(d)!;
+// ไฟ
+const FLAME_OUT = P('M50 8 C 60 24 80 36 79 60 C 78 79 65 91 50 91 C 35 91 22 79 21 61 C 20 47 29 39 35 30 C 37 40 41 45 46 45 C 43 31 45 19 50 8 Z');
+const FLAME_IN = P('M50 40 C 58 51 66 60 65 72 C 64 83 57 88 50 88 C 43 88 36 83 35 72 C 34 62 43 53 50 40 Z');
+// น้ำ
+const DROP = P('M50 8 C 58 24 77 42 77 62 C 77 79 65 91 50 91 C 35 91 23 79 23 62 C 23 42 42 24 50 8 Z');
+// ลม (ริ้วม้วน)
+const WIND_A = P('M14 38 H56 C67 38 71 27 64 21 C58 16 50 20 51 27');
+const WIND_B = P('M10 54 H70 C83 54 87 69 78 75 C71 80 62 76 64 68');
+const WIND_C = P('M22 70 H46');
+// ดิน
+const MOUND = P('M16 70 C 16 52 32 44 50 44 C 68 44 84 52 84 70 C 84 82 70 88 50 88 C 30 88 16 82 16 70 Z');
+const GRASS = P('M17 64 C 20 52 34 45 50 45 C 66 45 80 52 83 64 C 78 61 74 66 70 62 C 66 66 61 61 57 64 C 53 60 48 65 44 61 C 40 65 35 60 31 64 C 27 60 22 66 17 64 Z');
+const STEM = P('M50 46 C 50 38 49 32 50 26');
+const LEAF_L = P('M50 30 C 42 30 35 25 34 18 C 42 17 49 22 50 30 Z');
+const LEAF_R = P('M50 28 C 57 27 63 21 64 14 C 56 14 50 20 50 28 Z');
+
+const TINT: Record<El, string> = { ไฟ: '#FF7A2F', น้ำ: '#2BA7F0', ลม: '#4FBFD0', ดิน: '#9A6A3F' };
+
+function Shadow({ w = 26 }: { w?: number }) {
+  return (
+    <Oval x={50 - w} y={88} width={w * 2} height={8} color="rgba(30,40,30,0.18)">
+      <BlurMask blur={3} style="normal" />
+    </Oval>
+  );
 }
-float fbm(float2 p) {
-  float v = 0.0; float a = 0.5;
-  for (int i = 0; i < 5; i++) { v += a * noise(p); p = p * 2.03 + float2(1.7, 9.2); a *= 0.5; }
-  return v;
-}
-`;
-
-const FIRE = `uniform float2 res; uniform float t; uniform float e;
-${LIB}
-half4 main(float2 fc) {
-  float2 uv = fc / res;
-  float2 q = float2((uv.x - 0.5) * 1.5, 1.0 - uv.y);
-  float rise = t * (0.5 + 1.8 * e);
-  float h = 0.5 + 0.38 * e;
-  float n = fbm(float2(q.x * 2.4, q.y * 2.0 - rise));
-  float n2 = fbm(float2(q.x * 5.0 + 3.0, q.y * 4.0 - rise * 1.7));
-  float y = q.y + (n - 0.5) * (0.18 + 0.12 * e);
-  float width = mix(0.40, 0.015, clamp(y / h, 0.0, 1.0));
-  float x = abs(q.x + (n2 - 0.5) * (0.16 + 0.1 * e) * q.y);
-  float body = (1.0 - smoothstep(width * 0.5, width, x)) * (1.0 - smoothstep(h * 0.7, h * 1.05, y)) * smoothstep(0.05, 0.15, q.y);
-  float core = (1.0 - smoothstep(width * 0.12, width * 0.55, x)) * (1.0 - smoothstep(h * 0.2, h * 0.65, y)) * smoothstep(0.07, 0.17, q.y);
-  float3 col = float3(0.62, 0.05, 0.02) * body;
-  col = mix(col, float3(1.0, 0.42, 0.04), body * smoothstep(0.15, 0.9, body));
-  col = mix(col, float3(1.0, 0.82, 0.30), core);
-  col = mix(col, float3(1.0, 0.98, 0.86), core * core * core);
-  float2 sp = float2(q.x * 8.0, q.y * 8.0 - t * 3.2);
-  float s = step(0.965, hash(floor(sp))) * (1.0 - smoothstep(0.0, 0.22, length(fract(sp) - 0.5))) * e * smoothstep(0.35, 0.9, q.y) * (1.0 - smoothstep(0.9, 1.0, q.y));
-  col += float3(1.0, 0.62, 0.22) * s;
-  float a = clamp(max(body, s), 0.0, 1.0);
-  float g = exp(-dot(float2(q.x * 1.3, (q.y - 0.1) * 3.2), float2(q.x * 1.3, (q.y - 0.1) * 3.2)) * 5.0) * (0.25 + 0.45 * e);
-  col += float3(1.0, 0.32, 0.05) * g * (1.0 - a);
-  a = clamp(a + g * 0.55, 0.0, 1.0);
-  return half4(half3(col), half(a));
-}`;
-
-const WATER = `uniform float2 res; uniform float t; uniform float e;
-${LIB}
-half4 main(float2 fc) {
-  float2 uv = fc / res;
-  float2 p = float2(uv.x - 0.5, uv.y - 0.6);
-  p.x += sin(p.y * 14.0 - t * 5.0) * 0.012 * e;
-  float r = 0.27;
-  float circ = sqrt(max(r * r - p.y * p.y, 0.0));
-  // กรวยปลายหยดสัมผัสวงกลมพอดี (tangent) → รูปหยดน้ำเรียบต่อเนื่อง
-  float H = 0.44;
-  float sa = r / H;
-  float ty = -p.y;
-  float tip = (ty > r * sa) ? (H - ty) * sa / sqrt(max(1.0 - sa * sa, 0.01)) : 0.0;
-  float rad = max(circ, tip);
-  float inside = 1.0 - smoothstep(rad - 0.012, rad + 0.004, abs(p.x));
-  inside *= (p.y < r && p.y > -H) ? 1.0 : 0.0;
-  float nx = p.x / max(rad, 0.001);
-  float ny = clamp(p.y / r, -1.0, 1.0);
-  float3 nrm = normalize(float3(nx * 0.9, ny * 0.5, sqrt(max(1.0 - nx * nx * 0.8, 0.05))));
-  float3 L = normalize(float3(-0.5, -0.7, 0.6));
-  float diff = clamp(dot(nrm, L), 0.0, 1.0);
-  float fres = pow(1.0 - nrm.z, 2.2);
-  float caus = fbm(float2(p.x * 16.0 + t * 0.6, p.y * 16.0 - t * 0.9));
-  float3 deep = float3(0.02, 0.30, 0.62);
-  float3 shallow = float3(0.30, 0.78, 0.98);
-  float3 col = mix(deep, shallow, 0.25 + 0.6 * diff);
-  col = mix(col, deep * 0.7, smoothstep(0.05, 0.27, p.y) * 0.45);
-  col += float3(0.7, 0.97, 1.0) * smoothstep(0.62, 0.78, caus) * 0.18 * smoothstep(0.0, 0.2, p.y + 0.1);
-  col = mix(col, float3(0.75, 0.95, 1.0), fres * 0.6);
-  float2 hl = (p - float2(-0.09, 0.0)) * float2(1.0, 0.7);
-  col += float3(1.0) * (1.0 - smoothstep(0.0, 0.06, length(hl))) * 0.95;
-  col += float3(1.0) * (1.0 - smoothstep(0.0, 0.025, length(p - float2(0.1, 0.12)))) * 0.6;
-  float a = inside * 0.96;
-  float rp = length(float2(p.x, (p.y - 0.31) * 3.2));
-  float ring = 0.0;
-  for (int i = 0; i < 3; i++) {
-    float ph = fract(t * 0.45 + float(i) / 3.0);
-    ring += (1.0 - smoothstep(0.0, 0.02, abs(rp - (0.1 + ph * 0.32)))) * (1.0 - ph);
-  }
-  ring *= e * (1.0 - inside);
-  float sh = exp(-pow(rp * 3.5, 2.0)) * 0.22 * (1.0 - inside);
-  float3 outc = col * a + float3(0.4, 0.85, 1.0) * ring * 0.7;
-  float oa = clamp(a + ring * 0.7 + sh, 0.0, 1.0);
-  return half4(half3(outc), half(oa));
-}`;
-
-const WIND = `uniform float2 res; uniform float t; uniform float e;
-${LIB}
-half4 main(float2 fc) {
-  float2 uv = fc / res;
-  float2 p = (uv - 0.5) * float2(1.0, 1.15);
-  float r = length(p);
-  float ang = atan(p.y, p.x);
-  float spin = t * (0.35 + 2.6 * e);
-  float n = fbm(float2(ang * 1.5 + spin * 0.4, r * 6.0 - spin));
-  float bands = sin(ang * 2.0 + r * 22.0 - spin * 3.0 + n * 3.0);
-  float streak = smoothstep(0.55, 0.98, bands);
-  float env = smoothstep(0.06, 0.14, r) * (1.0 - smoothstep(0.36, 0.46, r));
-  float lit = 0.55 + 0.45 * sin(ang - 0.8);
-  float3 col = mix(float3(0.55, 0.80, 0.86), float3(0.97, 1.0, 1.0), lit);
-  col = mix(col, float3(0.30, 0.62, 0.72), (1.0 - lit) * 0.5);
-  float a = streak * env * (0.65 + 0.35 * n);
-  float core = (1.0 - smoothstep(0.0, 0.12, r)) * 0.35;
-  float3 c = col * a + float3(0.85, 0.97, 1.0) * core;
-  float sh = exp(-pow(length(float2(p.x, (p.y - 0.42) * 4.0)) * 3.0, 2.0)) * 0.15;
-  return half4(half3(c), half(clamp(a + core + sh, 0.0, 1.0)));
-}`;
-
-const EARTH = `uniform float2 res; uniform float t; uniform float e;
-${LIB}
-half4 main(float2 fc) {
-  float2 uv = fc / res;
-  float2 p = (uv - float2(0.5, 0.52)) / 0.36;
-  float d = dot(p, p);
-  float inside = 1.0 - smoothstep(0.96, 1.0, d);
-  float z = sqrt(max(1.0 - d, 0.0));
-  float3 nrm = normalize(float3(p.x, p.y, z));
-  float rot = t * 0.35 * e;
-  float lon = atan(nrm.x, nrm.z) + rot;
-  float2 tc = float2(lon * 1.6, nrm.y * 2.2);
-  float rock = fbm(tc * 2.0);
-  float crack = 1.0 - smoothstep(0.0, 0.02, abs(fbm(tc * 3.5 + 7.0) - 0.5) - 0.01);
-  float3 L = normalize(float3(-0.55, -0.75, 0.55));
-  float diff = clamp(dot(nrm, L), 0.0, 1.0);
-  float3 soil = mix(float3(0.36, 0.22, 0.12), float3(0.62, 0.42, 0.24), rock);
-  soil = mix(soil, float3(0.2, 0.12, 0.07), crack * 0.6);
-  float grass = 1.0 - smoothstep(-0.45, -0.25, nrm.y + (fbm(tc * 4.0) - 0.5) * 0.35);
-  float3 g = mix(float3(0.18, 0.42, 0.14), float3(0.40, 0.68, 0.26), fbm(tc * 6.0));
-  float3 col = mix(soil, g, grass);
-  col *= 0.28 + 0.85 * diff;
-  float3 H = normalize(L + float3(0.0, 0.0, 1.0));
-  col += float3(1.0, 0.95, 0.85) * pow(clamp(dot(nrm, H), 0.0, 1.0), 24.0) * 0.25 * (0.4 + grass);
-  col += float3(0.5, 0.7, 0.45) * pow(1.0 - z, 3.0) * 0.25;
-  float sh = exp(-pow(length(float2(p.x * 0.9, (p.y - 1.12) * 4.0)), 2.0) * 3.0) * 0.35 * (1.0 - inside);
-  float2 dp = float2(p.x * 3.0, p.y * 3.0 + t * 0.8);
-  float dust = step(0.975, hash(floor(dp))) * (1.0 - smoothstep(0.0, 0.25, length(fract(dp) - 0.5))) * e * (1.0 - inside) * (1.0 - smoothstep(1.0, 1.4, length(p)));
-  float3 c = col * inside + float3(0.7, 0.55, 0.35) * dust;
-  return half4(half3(c), half(clamp(inside + sh + dust, 0.0, 1.0)));
-}`;
-
-const SRC: Record<El, string> = { ไฟ: FIRE, น้ำ: WATER, ลม: WIND, ดิน: EARTH };
-const EFFECTS = Object.fromEntries(Object.entries(SRC).map(([k, s]) => [k, Skia.RuntimeEffect.Make(s)])) as Record<El, ReturnType<typeof Skia.RuntimeEffect.Make>>;
-/** ภาพนิ่งตอนยังไม่เลือก: เลือกเฟรมที่สวยที่สุดของแต่ละธาตุ */
-const IDLE_T: Record<El, number> = { ไฟ: 1.7, น้ำ: 0.3, ลม: 0.9, ดิน: 0.0 };
-const TINT: Record<El, string> = { ไฟ: '#F26B1D', น้ำ: '#1E9BE0', ลม: '#5FB8C8', ดิน: '#8A5A2E' };
-const FALLBACK: Record<El, string> = { ไฟ: 'flame.fill', น้ำ: 'drop.fill', ลม: 'wind', ดิน: 'mountain.2.fill' };
 
 function ElementIcon({ el, active, size = 58 }: { el: El; active: boolean; size?: number }) {
-  const time = useSharedValue(IDLE_T[el]);
-  const energy = useSharedValue(0);
+  const t = useSharedValue(0);
+  const e = useSharedValue(0);
   const cb = useFrameCallback((f) => {
-    time.value += (f.timeSincePreviousFrame ?? 16) / 1000;
+    t.value += (f.timeSincePreviousFrame ?? 16) / 1000;
   }, false);
   useEffect(() => {
     cb.setActive(active);
-    energy.value = withTiming(active ? 1 : 0, { duration: active ? 900 : 500, easing: Easing.out(Easing.cubic) });
+    e.value = active ? withSpring(1, { damping: 9, stiffness: 140 }) : withTiming(0, { duration: 400, easing: Easing.out(Easing.cubic) });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active]);
-  const uniforms = useDerivedValue(() => ({ res: [size, size], t: time.value, e: energy.value }));
-  const fx = EFFECTS[el];
-  if (!fx) return <Sym name={FALLBACK[el] as any} size={size * 0.55} color={TINT[el]} />;
+
+  const k = size / 100;
+  // ทั้งไอคอนลอยเด้งเบาๆ เมื่อเลือก (หมุนรอบฐาน)
+  const bob = useDerivedValue(() => [{ translateY: -Math.abs(Math.sin(t.value * 3.2)) * 5 * e.value }]);
+
+  // ── ไฟ ──
+  const flameOut = useDerivedValue(() => {
+    const w = Math.sin(t.value * 11) * e.value;
+    return [{ translateX: 50 }, { translateY: 91 }, { scaleY: 1 + 0.08 * w + 0.06 * e.value }, { scaleX: 1 - 0.05 * w }, { skewX: Math.sin(t.value * 5) * 0.12 * e.value }, { translateX: -50 }, { translateY: -91 }];
+  });
+  const flameIn = useDerivedValue(() => {
+    const w = Math.sin(t.value * 14 + 1.3) * e.value;
+    return [{ translateX: 50 }, { translateY: 88 }, { scaleY: 1 + 0.12 * w }, { scaleX: 1 - 0.06 * w }, { skewX: Math.sin(t.value * 6 + 0.7) * 0.15 * e.value }, { translateX: -50 }, { translateY: -88 }];
+  });
+  const spark = (i: number) =>
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    useDerivedValue(() => {
+      const ph = (t.value * 0.9 + i / 3) % 1;
+      return { y: 46 - ph * 40, o: (1 - ph) * e.value, x: 50 + Math.sin((t.value + i) * 4) * 10 + (i - 1) * 12 };
+    });
+  const s0 = spark(0), s1 = spark(1), s2 = spark(2);
+  const s0y = useDerivedValue(() => s0.value.y), s0x = useDerivedValue(() => s0.value.x), s0o = useDerivedValue(() => s0.value.o);
+  const s1y = useDerivedValue(() => s1.value.y), s1x = useDerivedValue(() => s1.value.x), s1o = useDerivedValue(() => s1.value.o);
+  const s2y = useDerivedValue(() => s2.value.y), s2x = useDerivedValue(() => s2.value.x), s2o = useDerivedValue(() => s2.value.o);
+
+  // ── น้ำ ── เด้งดึ๋ง (ยืด-ยุบ) + วงน้ำ
+  const dropT = useDerivedValue(() => {
+    const b = Math.sin(t.value * 6.5);
+    const sq = b * 0.07 * e.value;
+    return [{ translateX: 50 }, { translateY: 91 }, { scaleX: 1 + sq }, { scaleY: 1 - sq }, { translateX: -50 }, { translateY: -91 }];
+  });
+  const ring = (i: number) =>
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    useDerivedValue(() => ((t.value * 0.7 + i / 2) % 1));
+  const r0 = ring(0), r1 = ring(1);
+  const r0x = useDerivedValue(() => 50 - (14 + r0.value * 26)), r0w = useDerivedValue(() => (14 + r0.value * 26) * 2), r0o = useDerivedValue(() => (1 - r0.value) * 0.7 * e.value);
+  const r1x = useDerivedValue(() => 50 - (14 + r1.value * 26)), r1w = useDerivedValue(() => (14 + r1.value * 26) * 2), r1o = useDerivedValue(() => (1 - r1.value) * 0.7 * e.value);
+  const r0y = useDerivedValue(() => 89 - (2 + r0.value * 3)), r0h = useDerivedValue(() => (2 + r0.value * 3) * 2);
+  const r1y = useDerivedValue(() => 89 - (2 + r1.value * 3)), r1h = useDerivedValue(() => (2 + r1.value * 3) * 2);
+
+  // ── ลม ── ริ้วลมไหลเลื่อนคนละจังหวะ
+  const wA = useDerivedValue(() => [{ translateX: Math.sin(t.value * 4) * 5 * e.value }]);
+  const wB = useDerivedValue(() => [{ translateX: Math.sin(t.value * 4 + 1.6) * 6 * e.value }]);
+  const wC = useDerivedValue(() => [{ translateX: Math.sin(t.value * 4 + 3.1) * 7 * e.value }]);
+
+  // ── ดิน ── ต้นอ่อนโต + ใบโบก
+  const sprout = useDerivedValue(() => {
+    const g = 0.75 + 0.3 * e.value;
+    return [{ translateX: 50 }, { translateY: 46 }, { scale: g }, { rotate: Math.sin(t.value * 3) * 0.12 * e.value }, { translateX: -50 }, { translateY: -46 }];
+  });
+  const leafL = useDerivedValue(() => [{ translateX: 50 }, { translateY: 30 }, { rotate: Math.sin(t.value * 5) * 0.25 * e.value }, { translateX: -50 }, { translateY: -30 }]);
+  const leafR = useDerivedValue(() => [{ translateX: 50 }, { translateY: 28 }, { rotate: -Math.sin(t.value * 5 + 0.8) * 0.25 * e.value }, { translateX: -50 }, { translateY: -28 }]);
+
   return (
     <Canvas style={{ width: size, height: size }}>
-      <Fill>
-        <Shader source={fx} uniforms={uniforms} />
-      </Fill>
+      <Group transform={[{ scale: k }]}>
+        <Group transform={bob}>
+          {el === 'ไฟ' ? (
+            <>
+              <Shadow w={24} />
+              {/* ย่อเปลวไฟ 0.86 จากฐาน เผื่อที่ให้ยืดสูงตอนลุกโชน ไม่ให้ปลายโดนตัด */}
+              <Group transform={[{ translateX: 50 }, { translateY: 91 }, { scale: 0.86 }, { translateX: -50 }, { translateY: -91 }]}>
+              <Group transform={flameOut}>
+                <Path path={FLAME_OUT}>
+                  <LinearGradient start={vec(50, 8)} end={vec(50, 91)} colors={['#FFC24A', '#FF7A2F', '#F0442A']} />
+                </Path>
+                <Oval x={30} y={44} width={9} height={22} color="rgba(255,255,255,0.45)">
+                  <BlurMask blur={2.5} style="normal" />
+                </Oval>
+              </Group>
+              <Group transform={flameIn}>
+                <Path path={FLAME_IN}>
+                  <LinearGradient start={vec(50, 40)} end={vec(50, 88)} colors={['#FFF6B8', '#FFD24A']} />
+                </Path>
+                <Oval x={42} y={58} width={6} height={12} color="rgba(255,255,255,0.7)">
+                  <BlurMask blur={1.5} style="normal" />
+                </Oval>
+              </Group>
+              </Group>
+              <Circle cx={s0x} cy={s0y} r={2.6} color="#FFB23E" opacity={s0o} />
+              <Circle cx={s1x} cy={s1y} r={2} color="#FFD25A" opacity={s1o} />
+              <Circle cx={s2x} cy={s2y} r={2.3} color="#FF8A3A" opacity={s2o} />
+            </>
+          ) : el === 'น้ำ' ? (
+            <>
+              <Shadow w={22} />
+              <Oval x={r0x} y={r0y} width={r0w} height={r0h} style="stroke" strokeWidth={1.8} color="#5CC8FF" opacity={r0o} />
+              <Oval x={r1x} y={r1y} width={r1w} height={r1h} style="stroke" strokeWidth={1.8} color="#5CC8FF" opacity={r1o} />
+              <Group transform={dropT}>
+                <Path path={DROP}>
+                  <RadialGradient c={vec(40, 48)} r={52} colors={['#A6EBFF', '#45BDF5', '#1A7FDC']} />
+                </Path>
+                <Oval x={52} y={72} width={18} height={9} color="rgba(255,255,255,0.35)">
+                  <BlurMask blur={3} style="normal" />
+                </Oval>
+                <Group transform={[{ translateX: 38 }, { translateY: 46 }, { rotate: 0.45 }, { translateX: -38 }, { translateY: -46 }]}>
+                  <Oval x={33} y={36} width={10} height={22} color="rgba(255,255,255,0.85)">
+                    <BlurMask blur={1.5} style="normal" />
+                  </Oval>
+                </Group>
+                <Circle cx={43} cy={66} r={2.6} color="rgba(255,255,255,0.9)" />
+              </Group>
+            </>
+          ) : el === 'ลม' ? (
+            <>
+              <Shadow w={20} />
+              {[{ p: WIND_A, tr: wA }, { p: WIND_B, tr: wB }, { p: WIND_C, tr: wC }].map(({ p, tr }, i) => (
+                <Group key={i} transform={tr}>
+                  {/* เงาใต้หลอด → มิติ 3D */}
+                  <Group transform={[{ translateY: 2.2 }]}>
+                    <Path path={p} style="stroke" strokeWidth={9} strokeCap="round" strokeJoin="round" color="rgba(40,140,160,0.35)">
+                      <BlurMask blur={1.2} style="normal" />
+                    </Path>
+                  </Group>
+                  <Path path={p} style="stroke" strokeWidth={9} strokeCap="round" strokeJoin="round">
+                    <LinearGradient start={vec(10, 20)} end={vec(85, 80)} colors={['#F2FDFF', '#A8ECF6', '#62CBDD']} />
+                  </Path>
+                  <Group transform={[{ translateY: -1.8 }]}>
+                    <Path path={p} style="stroke" strokeWidth={2.4} strokeCap="round" strokeJoin="round" color="rgba(255,255,255,0.85)" />
+                  </Group>
+                </Group>
+              ))}
+            </>
+          ) : (
+            <>
+              <Shadow w={30} />
+              <Path path={MOUND}>
+                <RadialGradient c={vec(40, 56)} r={46} colors={['#D79A62', '#A86A3C', '#7A4824']} />
+              </Path>
+              {[[30, 76], [44, 81], [62, 78], [70, 70], [38, 69]].map(([x, y], i) => (
+                <Circle key={i} cx={x} cy={y} r={1.8} color="rgba(90,50,25,0.45)" />
+              ))}
+              <Path path={GRASS}>
+                <LinearGradient start={vec(50, 45)} end={vec(50, 66)} colors={['#A8E86A', '#55B84A']} />
+              </Path>
+              <Oval x={28} y={49} width={16} height={6} color="rgba(255,255,255,0.45)">
+                <BlurMask blur={2} style="normal" />
+              </Oval>
+              <Group transform={sprout}>
+                <Path path={STEM} style="stroke" strokeWidth={3.2} strokeCap="round" color="#4DAA45" />
+                <Group transform={leafL}>
+                  <Path path={LEAF_L}>
+                    <LinearGradient start={vec(34, 18)} end={vec(50, 30)} colors={['#B6F07A', '#5DBE4C']} />
+                  </Path>
+                </Group>
+                <Group transform={leafR}>
+                  <Path path={LEAF_R}>
+                    <LinearGradient start={vec(64, 14)} end={vec(50, 28)} colors={['#B6F07A', '#5DBE4C']} />
+                  </Path>
+                </Group>
+              </Group>
+            </>
+          )}
+        </Group>
+      </Group>
     </Canvas>
   );
 }
