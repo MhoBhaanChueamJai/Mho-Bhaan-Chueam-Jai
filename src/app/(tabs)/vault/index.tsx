@@ -6,9 +6,8 @@
 import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router, useFocusEffect } from 'expo-router';
-import { setStatusBarStyle } from 'expo-status-bar';
-import React, { useCallback, useMemo, useState } from 'react';
+import { router } from 'expo-router';
+import React, { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, View, type ImageSourcePropType } from 'react-native';
 import Animated, { FadeIn, FadeInDown, LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -85,18 +84,11 @@ export default function Vault() {
   const list = useMemo(() => (kind === 'all' ? wisdoms : wisdoms.filter((w) => w.kind === kind)), [wisdoms, kind]);
   const count = (k: Wisdom['kind']) => wisdoms.filter((w) => w.kind === k).length;
 
-  // แถบสถานะตัวอักษรขาวบน Hero (คืนค่าเมื่อออกจากแท็บ)
-  useFocusEffect(
-    useCallback(() => {
-      setStatusBarStyle('light');
-      return () => setStatusBarStyle('dark');
-    }, []),
-  );
-
   return (
     <ScrollView contentInsetAdjustmentBehavior="never" style={{ backgroundColor: palette.bg }} contentContainerStyle={{ paddingBottom: 130 }} showsVerticalScrollIndicator={false}>
       {/* ── Hero: สันหนังสือบนหิ้ง (เบลอ) ── */}
-      <View style={[styles.hero, { paddingTop: insets.top + 10 }]}>
+      <View style={[styles.heroWrap, { marginTop: insets.top + 8 }, elevation.e3]}>
+      <View style={styles.hero}>
         <Image source={COVER.shelf} style={StyleSheet.absoluteFill} contentFit="cover" />
         <BlurView intensity={18} tint="dark" style={StyleSheet.absoluteFill} />
         <LinearGradient colors={['rgba(6,20,13,0.55)', 'rgba(6,20,13,0.35)', 'rgba(6,20,13,0.88)']} locations={[0, 0.4, 1]} style={StyleSheet.absoluteFill} />
@@ -145,6 +137,7 @@ export default function Vault() {
             <T v="bodyStrong" color="#FFFFFF">สแกนรับตำรา</T>
           </PressableScale>
         </View>
+      </View>
       </View>
 
       {/* ── เรื่องล่าสุด ── */}
@@ -202,7 +195,8 @@ export default function Vault() {
 
 const CARD_W = 272;
 const styles = StyleSheet.create({
-  hero: { paddingHorizontal: 20, paddingBottom: 22, borderBottomLeftRadius: 32, borderBottomRightRadius: 32, borderCurve: 'continuous', overflow: 'hidden', backgroundColor: '#14261c' },
+  heroWrap: { marginHorizontal: 16, borderRadius: 30, borderCurve: 'continuous', backgroundColor: '#14261c' },
+  hero: { paddingHorizontal: 20, paddingTop: 18, paddingBottom: 20, borderRadius: 30, borderCurve: 'continuous', overflow: 'hidden' },
   heroTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 },
   eyebrow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   glassBtn: { width: 42, height: 42, borderRadius: 21, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.45)' },
