@@ -63,6 +63,8 @@ const MAP: Record<string, keyof typeof Ionicons.glyphMap> = {
   'person.fill': 'person',
   'person.wave.2.fill': 'person',
   'phone.fill': 'call',
+  'flashlight.on.fill': 'flashlight',
+  'flashlight.off.fill': 'flashlight-outline',
   'photo.on.rectangle': 'images-outline',
   pills: 'medkit-outline',
   plus: 'add',

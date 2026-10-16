@@ -39,6 +39,7 @@ function Root() {
         <Stack.Screen name="login" options={{ animation: 'fade', gestureEnabled: false }} />
         <Stack.Screen name="capture" options={{ presentation: 'fullScreenModal', animation: 'fade_from_bottom' }} />
         <Stack.Screen name="scan" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
+        <Stack.Screen name="id-scan" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
         <Stack.Screen name="assistant" />
         <Stack.Screen name="verify" options={{ presentation: 'modal', headerShown: true, title: 'ยืนยันตัวตน', headerShadowVisible: false, headerStyle: { backgroundColor: '#FFFFFF' } }} />
         <Stack.Screen name="privacy" options={{ presentation: 'modal', headerShown: true, title: 'นโยบายความเป็นส่วนตัว', headerShadowVisible: false, headerStyle: { backgroundColor: '#FFFFFF' } }} />

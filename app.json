@@ -37,6 +37,13 @@
     },
     "plugins": [
       [
+        "expo-camera",
+        {
+          "cameraPermission": "ใช้กล้องเพื่อสแกนตำรายา สมุดข่อย และบัตรประชาชนผู้ป่วย",
+          "recordAudioAndroid": false
+        }
+      ],
+      [
         "expo-audio",
         {
           "microphonePermission": "ใช้ไมโครโฟนเพื่อบันทึกเสียงเล่าอาการและภูมิปัญญา"
@@ -46,7 +53,7 @@
       [
         "expo-image-picker",
         {
-          "cameraPermission": "ใช้กล้องเพื่อสแกนตำรายาและสมุดข่อย"
+          "cameraPermission": "ใช้กล้องเพื่อสแกนตำรายา สมุดข่อย และบัตรประชาชนผู้ป่วย"
         }
       ],
       "expo-router",
