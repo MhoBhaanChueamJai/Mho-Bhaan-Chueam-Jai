@@ -116,8 +116,29 @@ export function speakable(text: string, strict = false): string {
   return t.replace(/\s+/g, ' ').trim();
 }
 
-/** ข้อความ → ไฟล์เสียง (คืนค่า uri ในเครื่อง) — ใช้เสียงครูปัญญาเสมอ */
+/**
+ * ข้อความ → ไฟล์เสียง (คืนค่า uri ในเครื่อง) — เสียงครูปัญญาเสมอ
+ * 1) ElevenLabs (ผ่าน proxy ของเซิร์ฟเวอร์ vox-cpm) — เสียงผู้ชาย เป็นธรรมชาติเหมือนคนจริง
+ * 2) สำรอง: VoxCPM เสียง male_eugene
+ */
 export async function synthesize(text: string, voice = KRU_VOICE): Promise<string> {
+  const save = (buf: Uint8Array, ext: string) => {
+    const file = new File(Paths.cache, `tts-${Date.now()}.${ext}`);
+    file.write(buf);
+    return file.uri;
+  };
+  try {
+    return await withTimeout(async (signal) => {
+      const res = await fetch(`${ENDPOINTS.tts}/v1/audio/elevenlabs`, {
+        method: 'POST',
+        signal,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: text.replace(/[•*#_`>|~]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 600), voice: 'male' }),
+      });
+      if (!res.ok) throw new Error(`EL ${res.status}`);
+      return save(new Uint8Array(await res.arrayBuffer()), 'mp3');
+    }, 45_000);
+  } catch {}
   const call = (input: string) =>
     withTimeout(async (signal) => {
       const res = await fetch(`${ENDPOINTS.tts}/v1/audio/speech`, {
@@ -127,15 +148,11 @@ export async function synthesize(text: string, voice = KRU_VOICE): Promise<strin
         body: JSON.stringify({ model: 'voxcpm-thai', input: input.slice(0, 600), voice, response_format: 'wav', speed: 0.95 }),
       });
       if (!res.ok) throw new Error(`TTS ${res.status}`);
-      const buf = new Uint8Array(await res.arrayBuffer());
-      const file = new File(Paths.cache, `tts-${Date.now()}.wav`);
-      file.write(buf);
-      return file.uri;
+      return save(new Uint8Array(await res.arrayBuffer()), 'wav');
     }, 90_000);
   try {
     return await call(speakable(text));
   } catch {
-    // ลองใหม่ด้วยข้อความที่ตัดสัญลักษณ์ทั้งหมดออก
     return call(speakable(text, true));
   }
 }

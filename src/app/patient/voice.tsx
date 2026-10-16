@@ -216,7 +216,6 @@ export default function VoiceIntake() {
         <View style={styles.statusPill}>
           {phase === 'listening' ? <View style={styles.liveDot} /> : null}
           <T v="subhead" color="rgba(255,255,255,0.85)">{status}</T>
-          {phase === 'listening' ? <T v="caption" color="rgba(255,255,255,0.55)">· แตะดอกไม้เมื่อพูดจบ</T> : null}
         </View>
         {phase === 'listening' ? (
           <View style={{ width: 180, marginTop: 10 }}>

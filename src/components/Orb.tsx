@@ -30,6 +30,7 @@ import Animated, {
   cancelAnimation,
   useAnimatedStyle,
   useDerivedValue,
+  useFrameCallback,
   useSharedValue,
   withRepeat,
   withSpring,
@@ -346,21 +347,77 @@ export function IridescentPill({ children, style }: { children: React.ReactNode;
   );
 }
 
-/** ดอกไม้ AI (ภาพสร้างด้วย Qwen-Image) — หมุนช้าและหายใจ, active = เร็วขึ้นและขยายตามเสียง */
-const FLOWER = require('../../assets/ai/flower.png');
-export function AIFlower({ size = 120, active, level }: { size?: number; active?: boolean; level?: SharedValue<number> }) {
-  const spin = useClock(active ? 6000 : 22000);
-  const breathe = useSharedValue(0);
-  useEffect(() => {
-    breathe.value = withRepeat(withTiming(1, { duration: 2400, easing: Easing.inOut(Easing.sin) }), -1, true);
-    return () => cancelAnimation(breathe);
-  }, [breathe]);
-  const st = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${spin.value * 360}deg` }, { scale: 0.94 + breathe.value * 0.06 + (level ? level.value * 0.18 : 0) }],
-  }));
+/**
+ * ดอกไม้ AI — วาดด้วย Skia ทีละกลีบ (เลียนแบบภาพเดิม assets/ai/flower.png: กลีบแก้วใสหลากสี)
+ * กลีบนอก 8 + กลีบใน 6 แต่ละกลีบพลิ้วไหวคนละจังหวะ: โบกซ้ายขวา · พลิก (บีบกว้าง) · ยืด-หด
+ * active = พลิ้วเร็วขึ้น · level (0..1) = กลีบบานออกตามระดับเสียง
+ */
+const PETAL = Skia.Path.MakeFromSVGString('M0 0 C -9 -9 -15 -24 -11 -33 C -8 -40 -3 -43 0 -44 C 3 -43 8 -40 11 -33 C 15 -24 9 -9 0 0 Z')!;
+const PETAL_HUES = ['#FF9A4D', '#FF5FA8', '#C85BFF', '#8C74FF', '#4FA9FF', '#59DDF5', '#FFB86B', '#FF6F7D'];
+const OUTER = Array.from({ length: 8 }, (_, i) => ({ a: (i / 8) * Math.PI * 2, hue: PETAL_HUES[i], len: 1, ph: i * 1.7 }));
+const INNER = Array.from({ length: 6 }, (_, i) => ({ a: (i / 6) * Math.PI * 2 + 0.4, hue: PETAL_HUES[(i * 3 + 2) % 8], len: 0.72, ph: i * 2.3 + 0.6 }));
+
+function FlowerPetal({ p, t, speed, lv, inner }: { p: { a: number; hue: string; len: number; ph: number }; t: SharedValue<number>; speed: SharedValue<number>; lv: SharedValue<number>; inner?: boolean }) {
+  const tr = useDerivedValue(() => {
+    const k = t.value * speed.value;
+    const sway = Math.sin(k * 1.6 + p.ph) * (0.05 + 0.06 * lv.value) * (inner ? 1.3 : 1);
+    const flip = 0.82 + 0.18 * Math.cos(k * 2.1 + p.ph * 1.3); // พลิกกลีบ (มิติ 3D)
+    const grow = p.len * (1 + Math.sin(k * 1.2 + p.ph) * 0.05 + lv.value * (inner ? 0.12 : 0.2));
+    return [{ translateX: 50 }, { translateY: 50 }, { rotate: p.a + sway }, { scaleX: flip * (inner ? 0.95 : 1) }, { scaleY: grow }];
+  });
   return (
-    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }} pointerEvents="none">
-      <Animated.Image source={FLOWER} style={[{ width: size, height: size }, st]} resizeMode="contain" />
+    <Group transform={tr}>
+      <SkPath path={PETAL} opacity={inner ? 0.95 : 0.92}>
+        <SkLinear start={vec(0, -6)} end={vec(0, -44)} colors={inner ? [p.hue, `${p.hue}E6`, 'rgba(255,255,255,0.92)'] : [`${p.hue}F2`, p.hue, `${p.hue}99`]} />
+      </SkPath>
+      {/* ขอบแก้วใส */}
+      <SkPath path={PETAL} style="stroke" strokeWidth={0.8} color="rgba(255,255,255,0.8)" />
+      {/* ไฮไลต์บนกลีบ */}
+      <Oval x={-5} y={-36} width={4} height={18} color="rgba(255,255,255,0.55)">
+        <BlurMask blur={1.6} style="normal" />
+      </Oval>
+    </Group>
+  );
+}
+
+export function AIFlower({ size = 120, active, level }: { size?: number; active?: boolean; level?: SharedValue<number> }) {
+  const t = useSharedValue(0);
+  const zero = useSharedValue(0);
+  const lvSrc = level ?? zero;
+  const speed = useSharedValue(active ? 1.8 : 0.7);
+  useEffect(() => {
+    speed.value = withTiming(active ? 1.8 : 0.7, { duration: 600 });
+  }, [active, speed]);
+  useFrameCallback((f) => {
+    t.value += (f.timeSincePreviousFrame ?? 16) / 1000;
+  });
+  // ระดับเสียงแบบนุ่ม
+  const lv = useDerivedValue(() => withTiming(Math.min(1, lvSrc.value), { duration: 110 }));
+  const spin = useDerivedValue(() => [{ translateX: 50 }, { translateY: 50 }, { rotate: t.value * 0.12 * speed.value }, { scale: 0.96 + Math.sin(t.value * 1.3) * 0.03 + lv.value * 0.08 }, { translateX: -50 }, { translateY: -50 }]);
+  const coreR = useDerivedValue(() => 9 + lv.value * 5);
+  return (
+    <View style={{ width: size, height: size }} pointerEvents="none">
+      <Canvas style={{ width: size, height: size }}>
+        <Group transform={[{ scale: size / 100 }]}>
+          {/* แสงเรืองหลังดอก */}
+          <Circle cx={50} cy={50} r={38} opacity={0.55}>
+            <RadialGradient c={vec(50, 50)} r={40} colors={['rgba(255,140,200,0.7)', 'rgba(140,116,255,0.35)', 'rgba(89,221,245,0)']} />
+            <BlurMask blur={8} style="normal" />
+          </Circle>
+          <Group transform={spin}>
+            {OUTER.map((p, i) => (
+              <FlowerPetal key={`o${i}`} p={p} t={t} speed={speed} lv={lv} />
+            ))}
+            {INNER.map((p, i) => (
+              <FlowerPetal key={`i${i}`} p={p} t={t} speed={speed} lv={lv} inner />
+            ))}
+            {/* แกนกลางเรืองแสง */}
+            <Circle cx={50} cy={50} r={coreR}>
+              <RadialGradient c={vec(50, 50)} r={14} colors={['rgba(255,255,255,0.95)', 'rgba(255,150,210,0.55)', 'rgba(255,150,210,0)']} />
+            </Circle>
+          </Group>
+        </Group>
+      </Canvas>
     </View>
   );
 }
