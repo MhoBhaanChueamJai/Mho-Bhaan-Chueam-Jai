@@ -4,10 +4,10 @@
  * ไม่ได้เลือก = ภาพนิ่ง · เลือก = เล่นแอนิเมชันของธาตุ
  *   ไฟ  — เปลวไฟอ้วนกลม 2 ชั้น พลิ้วไหว ยืดหด + ประกายไฟลอยขึ้น
  *   น้ำ — หยดน้ำใสมันวาว เด้งดึ๋ง + วงน้ำกระเพื่อมที่พื้น
- *   ลม — ริ้วลมม้วนเป็นหลอดนุ่ม ไหลเลื่อนเป็นจังหวะ
- *   ดิน — ก้อนดินกลมมนมีหญ้าคลุม + ต้นอ่อนแตกใบ โตขึ้นและใบโบกไหว
+ *   ลม — พายุหมุน (ทอร์นาโด) วงกรวยซ้อน บิดส่ายเป็นเกลียว + เศษใบไม้/หินหมุนรอบ
+ *   ดิน — ภูเขาหิน 2 ยอด หิมะบนยอด ก้อนหินที่ฐาน + เมฆลอยผ่าน หินกระโดดดึ๋ง
  */
-import { BlurMask, Canvas, Circle, Group, LinearGradient, Oval, Path, RadialGradient, Skia, vec } from '@shopify/react-native-skia';
+import { BlurMask, Canvas, Circle, CornerPathEffect, Group, LinearGradient, Oval, Path, RadialGradient, Skia, vec } from '@shopify/react-native-skia';
 import React, { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Easing, useDerivedValue, useFrameCallback, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
@@ -23,18 +23,17 @@ const FLAME_OUT = P('M50 8 C 60 24 80 36 79 60 C 78 79 65 91 50 91 C 35 91 22 79
 const FLAME_IN = P('M50 40 C 58 51 66 60 65 72 C 64 83 57 88 50 88 C 43 88 36 83 35 72 C 34 62 43 53 50 40 Z');
 // น้ำ
 const DROP = P('M50 8 C 58 24 77 42 77 62 C 77 79 65 91 50 91 C 35 91 23 79 23 62 C 23 42 42 24 50 8 Z');
-// ลม (ริ้วม้วน)
-const WIND_A = P('M14 38 H56 C67 38 71 27 64 21 C58 16 50 20 51 27');
-const WIND_B = P('M10 54 H70 C83 54 87 69 78 75 C71 80 62 76 64 68');
-const WIND_C = P('M22 70 H46');
-// ดิน
-const MOUND = P('M16 70 C 16 52 32 44 50 44 C 68 44 84 52 84 70 C 84 82 70 88 50 88 C 30 88 16 82 16 70 Z');
-const GRASS = P('M17 64 C 20 52 34 45 50 45 C 66 45 80 52 83 64 C 78 61 74 66 70 62 C 66 66 61 61 57 64 C 53 60 48 65 44 61 C 40 65 35 60 31 64 C 27 60 22 66 17 64 Z');
-const STEM = P('M50 46 C 50 38 49 32 50 26');
-const LEAF_L = P('M50 30 C 42 30 35 25 34 18 C 42 17 49 22 50 30 Z');
-const LEAF_R = P('M50 28 C 57 27 63 21 64 14 C 56 14 50 20 50 28 Z');
+// ดิน = ภูเขาหิน 2 ยอด (แบ่งด้านรับแสง/ด้านเงา) + หิมะบนยอด
+const BACK_LIT = P('M68 34 L50 86 L70 86 Z');
+const BACK_SH = P('M68 34 L70 86 L93 86 Z');
+const FRONT_LIT = P('M40 20 L8 86 L44 86 Z');
+const FRONT_SH = P('M40 20 L44 86 L74 86 Z');
+const SNOW_F = P('M40 20 L49.5 39.5 L45 37 L41 42 L37 37 L31 40.5 Z');
+const SNOW_B = P('M68 34 L75.5 49 L72 47 L68.5 50 L65 46.5 L61.5 48.5 Z');
+const ROCK_A = P('M14 86 C 14 80 19 77 24 78 C 29 77 33 81 32 86 Z');
+const ROCK_B = P('M70 86 C 70 81 74 79 78 80 C 82 80 85 83 84 86 Z');
 
-const TINT: Record<El, string> = { ไฟ: '#FF7A2F', น้ำ: '#2BA7F0', ลม: '#4FBFD0', ดิน: '#9A6A3F' };
+const TINT: Record<El, string> = { ไฟ: '#FF7A2F', น้ำ: '#2BA7F0', ลม: '#4FBFD0', ดิน: '#8C7461' };
 
 function Shadow({ w = 26 }: { w?: number }) {
   return (
@@ -95,18 +94,25 @@ function ElementIcon({ el, active, size = 58 }: { el: El; active: boolean; size?
   const r0y = useDerivedValue(() => 89 - (2 + r0.value * 3)), r0h = useDerivedValue(() => (2 + r0.value * 3) * 2);
   const r1y = useDerivedValue(() => 89 - (2 + r1.value * 3)), r1h = useDerivedValue(() => (2 + r1.value * 3) * 2);
 
-  // ── ลม ── ริ้วลมไหลเลื่อนคนละจังหวะ
-  const wA = useDerivedValue(() => [{ translateX: Math.sin(t.value * 4) * 5 * e.value }]);
-  const wB = useDerivedValue(() => [{ translateX: Math.sin(t.value * 4 + 1.6) * 6 * e.value }]);
-  const wC = useDerivedValue(() => [{ translateX: Math.sin(t.value * 4 + 3.1) * 7 * e.value }]);
+  // ── ลม (พายุหมุน) ── วงกรวยบิดส่ายเป็นเกลียว + เศษใบไม้/หินหมุนรอบ
+  const ringX = (i: number) =>
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    useDerivedValue(() => [{ translateX: Math.sin(t.value * 5 - i * 0.8) * (2 + i * 1.2) * e.value + i * 1.3 }]);
+  const tw = [ringX(0), ringX(1), ringX(2), ringX(3), ringX(4), ringX(5)];
+  const orb = (ph: number, rad: number, y: number) =>
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    useDerivedValue(() => {
+      const a = t.value * 4 + ph;
+      return [{ translateX: 50 + Math.cos(a) * rad }, { translateY: y + Math.sin(a) * rad * 0.28 }, { rotate: a }];
+    });
+  const deb1 = orb(0, 30, 34), deb2 = orb(2.4, 24, 52), deb3 = orb(4.2, 18, 66);
+  const debO = useDerivedValue(() => e.value);
 
-  // ── ดิน ── ต้นอ่อนโต + ใบโบก
-  const sprout = useDerivedValue(() => {
-    const g = 0.75 + 0.3 * e.value;
-    return [{ translateX: 50 }, { translateY: 46 }, { scale: g }, { rotate: Math.sin(t.value * 3) * 0.12 * e.value }, { translateX: -50 }, { translateY: -46 }];
-  });
-  const leafL = useDerivedValue(() => [{ translateX: 50 }, { translateY: 30 }, { rotate: Math.sin(t.value * 5) * 0.25 * e.value }, { translateX: -50 }, { translateY: -30 }]);
-  const leafR = useDerivedValue(() => [{ translateX: 50 }, { translateY: 28 }, { rotate: -Math.sin(t.value * 5 + 0.8) * 0.25 * e.value }, { translateX: -50 }, { translateY: -28 }]);
+  // ── ดิน (ภูเขาหิน) ── เมฆลอยผ่านหลังภูเขา + ก้อนหินกระโดดดึ๋ง
+  const cloudX = useDerivedValue(() => 8 + ((t.value * 14) % 90));
+  const cloudO = useDerivedValue(() => 0.9 * e.value);
+  const hopA = useDerivedValue(() => [{ translateY: -Math.abs(Math.sin(t.value * 5)) * 7 * e.value }]);
+  const hopB = useDerivedValue(() => [{ translateY: -Math.abs(Math.sin(t.value * 5 + 1.4)) * 6 * e.value }]);
 
   return (
     <Canvas style={{ width: size, height: size }}>
@@ -160,51 +166,124 @@ function ElementIcon({ el, active, size = 58 }: { el: El; active: boolean; size?
             </>
           ) : el === 'ลม' ? (
             <>
-              <Shadow w={20} />
-              {[{ p: WIND_A, tr: wA }, { p: WIND_B, tr: wB }, { p: WIND_C, tr: wC }].map(({ p, tr }, i) => (
-                <Group key={i} transform={tr}>
-                  {/* เงาใต้หลอด → มิติ 3D */}
-                  <Group transform={[{ translateY: 2.2 }]}>
-                    <Path path={p} style="stroke" strokeWidth={9} strokeCap="round" strokeJoin="round" color="rgba(40,140,160,0.35)">
-                      <BlurMask blur={1.2} style="normal" />
-                    </Path>
-                  </Group>
-                  <Path path={p} style="stroke" strokeWidth={9} strokeCap="round" strokeJoin="round">
-                    <LinearGradient start={vec(10, 20)} end={vec(85, 80)} colors={['#F2FDFF', '#A8ECF6', '#62CBDD']} />
-                  </Path>
-                  <Group transform={[{ translateY: -1.8 }]}>
-                    <Path path={p} style="stroke" strokeWidth={2.4} strokeCap="round" strokeJoin="round" color="rgba(255,255,255,0.85)" />
-                  </Group>
+              <Shadow w={16} />
+              <Group transform={tw[5]}>
+                <Oval x={44.0} y={77} width={12} height={13}>
+                  <LinearGradient start={vec(44.0, 77)} end={vec(56.0, 90)} colors={['#F3FBFE', '#B9DCE8', '#7FA9BC']} />
+                </Oval>
+                <Oval x={45.44} y={79} width={4.199999999999999} height={4} color="rgba(255,255,255,0.7)">
+                  <BlurMask blur={1} style="normal" />
+                </Oval>
+              </Group>
+              <Group transform={tw[4]}>
+                <Oval x={39.5} y={67} width={21} height={13}>
+                  <LinearGradient start={vec(39.5, 67)} end={vec(60.5, 80)} colors={['#F3FBFE', '#B9DCE8', '#7FA9BC']} />
+                </Oval>
+                <Oval x={42.02} y={69} width={7.35} height={4} color="rgba(255,255,255,0.7)">
+                  <BlurMask blur={1} style="normal" />
+                </Oval>
+              </Group>
+              <Group transform={tw[3]}>
+                <Oval x={34.5} y={56} width={31} height={13}>
+                  <LinearGradient start={vec(34.5, 56)} end={vec(65.5, 69)} colors={['#F3FBFE', '#B9DCE8', '#7FA9BC']} />
+                </Oval>
+                <Oval x={38.22} y={58} width={10.85} height={4} color="rgba(255,255,255,0.7)">
+                  <BlurMask blur={1} style="normal" />
+                </Oval>
+              </Group>
+              <Group transform={tw[2]}>
+                <Oval x={29.0} y={44} width={42} height={13}>
+                  <LinearGradient start={vec(29.0, 44)} end={vec(71.0, 57)} colors={['#F3FBFE', '#B9DCE8', '#7FA9BC']} />
+                </Oval>
+                <Oval x={34.04} y={46} width={14.7} height={4} color="rgba(255,255,255,0.7)">
+                  <BlurMask blur={1} style="normal" />
+                </Oval>
+              </Group>
+              <Group transform={tw[1]}>
+                <Oval x={23.0} y={32} width={54} height={13}>
+                  <LinearGradient start={vec(23.0, 32)} end={vec(77.0, 45)} colors={['#F3FBFE', '#B9DCE8', '#7FA9BC']} />
+                </Oval>
+                <Oval x={29.48} y={34} width={18.9} height={4} color="rgba(255,255,255,0.7)">
+                  <BlurMask blur={1} style="normal" />
+                </Oval>
+              </Group>
+              <Group transform={tw[0]}>
+                <Oval x={17.0} y={20} width={66} height={13}>
+                  <LinearGradient start={vec(17.0, 20)} end={vec(83.0, 33)} colors={['#F3FBFE', '#B9DCE8', '#7FA9BC']} />
+                </Oval>
+                <Oval x={24.92} y={22} width={23.099999999999998} height={4} color="rgba(255,255,255,0.7)">
+                  <BlurMask blur={1} style="normal" />
+                </Oval>
+              </Group>
+              {/* ปากกรวยด้านบน */}
+              <Group transform={tw[0]}>
+                <Oval x={22} y={21} width={56} height={8} color="rgba(90,130,150,0.35)">
+                  <BlurMask blur={1.2} style="normal" />
+                </Oval>
+              </Group>
+              {/* เศษใบไม้/หินหมุนรอบพายุ */}
+              <Group opacity={debO}>
+                <Group transform={deb1}>
+                  <Oval x={-4} y={-2} width={8} height={4} color="#6CC24A" />
                 </Group>
-              ))}
+                <Group transform={deb2}>
+                  <Circle cx={0} cy={0} r={2.4} color="#9C8B7A" />
+                </Group>
+                <Group transform={deb3}>
+                  <Oval x={-3.5} y={-1.6} width={7} height={3.2} color="#8BD45E" />
+                </Group>
+              </Group>
             </>
           ) : (
             <>
-              <Shadow w={30} />
-              <Path path={MOUND}>
-                <RadialGradient c={vec(40, 56)} r={46} colors={['#D79A62', '#A86A3C', '#7A4824']} />
+              <Shadow w={38} />
+              {/* เมฆลอยด้านหลัง */}
+              <Group opacity={cloudO}>
+                <Oval x={cloudX} y={22} width={20} height={9} color="#FFFFFF">
+                  <BlurMask blur={1.2} style="normal" />
+                </Oval>
+              </Group>
+              {/* ยอดหลัง */}
+              <Path path={BACK_LIT}>
+                <CornerPathEffect r={5} />
+                <LinearGradient start={vec(60, 34)} end={vec(60, 86)} colors={['#B3A698', '#8E8174']} />
               </Path>
-              {[[30, 76], [44, 81], [62, 78], [70, 70], [38, 69]].map(([x, y], i) => (
-                <Circle key={i} cx={x} cy={y} r={1.8} color="rgba(90,50,25,0.45)" />
-              ))}
-              <Path path={GRASS}>
-                <LinearGradient start={vec(50, 45)} end={vec(50, 66)} colors={['#A8E86A', '#55B84A']} />
+              <Path path={BACK_SH}>
+                <CornerPathEffect r={5} />
+                <LinearGradient start={vec(80, 34)} end={vec(80, 86)} colors={['#86796C', '#5F554C']} />
               </Path>
-              <Oval x={28} y={49} width={16} height={6} color="rgba(255,255,255,0.45)">
-                <BlurMask blur={2} style="normal" />
-              </Oval>
-              <Group transform={sprout}>
-                <Path path={STEM} style="stroke" strokeWidth={3.2} strokeCap="round" color="#4DAA45" />
-                <Group transform={leafL}>
-                  <Path path={LEAF_L}>
-                    <LinearGradient start={vec(34, 18)} end={vec(50, 30)} colors={['#B6F07A', '#5DBE4C']} />
-                  </Path>
-                </Group>
-                <Group transform={leafR}>
-                  <Path path={LEAF_R}>
-                    <LinearGradient start={vec(64, 14)} end={vec(50, 28)} colors={['#B6F07A', '#5DBE4C']} />
-                  </Path>
-                </Group>
+              <Path path={SNOW_B} color="#F4F8FF">
+                <CornerPathEffect r={2} />
+              </Path>
+              {/* ยอดหน้า */}
+              <Path path={FRONT_LIT}>
+                <CornerPathEffect r={6} />
+                <LinearGradient start={vec(28, 20)} end={vec(28, 86)} colors={['#D2C1AE', '#A48F79']} />
+              </Path>
+              <Path path={FRONT_SH}>
+                <CornerPathEffect r={6} />
+                <LinearGradient start={vec(58, 20)} end={vec(58, 86)} colors={['#8F7B68', '#66574A']} />
+              </Path>
+              <Path path={SNOW_F}>
+                <CornerPathEffect r={2} />
+                <LinearGradient start={vec(36, 20)} end={vec(44, 42)} colors={['#FFFFFF', '#DDE8F5']} />
+              </Path>
+              {/* ไฮไลต์สันเขาด้านรับแสง */}
+              <Group transform={[{ translateX: 30 }, { translateY: 52 }, { rotate: 0.45 }, { translateX: -30 }, { translateY: -52 }]}>
+                <Oval x={27} y={42} width={5} height={22} color="rgba(255,255,255,0.4)">
+                  <BlurMask blur={1.6} style="normal" />
+                </Oval>
+              </Group>
+              {/* ก้อนหินที่ฐาน (กระโดดเมื่อเลือก) */}
+              <Group transform={hopA}>
+                <Path path={ROCK_A}>
+                  <LinearGradient start={vec(22, 77)} end={vec(22, 86)} colors={['#B9AA9A', '#7C6D60']} />
+                </Path>
+              </Group>
+              <Group transform={hopB}>
+                <Path path={ROCK_B}>
+                  <LinearGradient start={vec(77, 79)} end={vec(77, 86)} colors={['#A99A8B', '#6F6156']} />
+                </Path>
               </Group>
             </>
           )}
@@ -222,11 +301,14 @@ export function ElementPicker({ value, onChange }: { value: El | null; onChange:
       {ORDER.map((el) => {
         const on = value === el;
         return (
-          <PressableScale key={el} haptic="select" scaleTo={0.94} onPress={() => onChange(el)} style={styles.item} accessibilityRole="radio" accessibilityState={{ selected: on }} accessibilityLabel={`ธาตุ${el}`}>
+          <PressableScale key={el} haptic="select" scaleTo={0.94} hitSlop={6} onPress={() => onChange(el)} style={styles.item} accessibilityRole="radio" accessibilityState={{ selected: on }} accessibilityLabel={`ธาตุ${el}`}>
             {/* ปุ่มวงกลม Liquid Glass ใส่ไอคอน · ชื่อธาตุอยู่นอกวง */}
             <View style={[styles.circleShadow, on && { boxShadow: `0px 8px 20px ${TINT[el]}66` }]}>
-              <Glass interactive tint={on ? `${TINT[el]}2E` : 'rgba(255,255,255,0.6)'} style={[styles.circle, { borderColor: on ? TINT[el] : 'rgba(255,255,255,0.95)' }]}>
-                <ElementIcon el={el} active={on} size={50} />
+              {/* ไม่ใช้ glass แบบ interactive และให้ภาพไอคอนไม่รับการแตะ → แตะแล้วเลือกได้ทันที ไม่ต้องรอแอนิเมชัน */}
+              <Glass tint={on ? `${TINT[el]}2E` : 'rgba(255,255,255,0.6)'} style={[styles.circle, { borderColor: on ? TINT[el] : 'rgba(255,255,255,0.95)' }]}>
+                <View pointerEvents="none">
+                  <ElementIcon el={el} active={on} size={50} />
+                </View>
               </Glass>
             </View>
             <T v="subhead" color={on ? TINT[el] : palette.ink} style={{ fontWeight: on ? '700' : '500', marginTop: 8 }}>{el}</T>
