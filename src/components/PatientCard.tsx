@@ -77,7 +77,6 @@ export function PatientCard({ p, avatar }: { p: Patient; avatar: number }) {
   const prof = ELEMENT_PROFILE[p.element];
   const ag = ageSamutthan(p.age);
   const ss = seasonNow();
-  const hn = `HN ${p.id.toUpperCase().replace(/[^A-Z0-9]/g, '').padStart(6, '0').slice(-6)}`;
 
   const Glare = () => (
     <Animated.View pointerEvents="none" style={[styles.glare, { width: cw * 0.7, height: ch * 2, top: -ch * 0.5, left: cw * 0.15 }, glareSt]}>
@@ -100,7 +99,6 @@ export function PatientCard({ p, avatar }: { p: Patient; avatar: number }) {
                 <Sym name="leaf.fill" size={12} color="#FFFFFF" />
               </View>
               <T v="caption" color={palette.primaryDeep} style={{ fontWeight: '700', flex: 1 }}>บัตรผู้ป่วย · หมอบ้านเชื่อมใจ</T>
-              <T v="caption" color="rgba(31,42,36,0.45)" style={{ fontVariant: ['tabular-nums'] }}>{hn}</T>
             </View>
             <View style={styles.frontBody}>
               <View style={styles.avatarRing}>
