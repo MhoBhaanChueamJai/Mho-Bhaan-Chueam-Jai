@@ -7,12 +7,10 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { PractitionerGate } from '../../components/PractitionerGate';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View, type KeyboardTypeOptions } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
-import { chatJSON, transcribe } from '../../api/ai';
-import { useVoiceRecorder } from '../../components/audio';
 import { Sym, ios } from '../../components/ios';
-import { Waveform } from '../../components/Orb';
 import { Button, GlassDock, HeaderButton, T, useHaptic } from '../../components/ui';
 import { takeIdScanResult, type IdCardData } from '../../lib/idScan';
+import { takeIntakeResult, type IntakeData } from '../../lib/intake';
 import { ageFrom, elementFromMonth, toISO } from '../../lib/birth';
 import { DateField, Dropdown } from '../../components/FormPickers';
 import { ElementInsight, ElementPicker } from '../../components/ElementPicker';
@@ -81,7 +79,6 @@ function splitPrefix(full: string): { prefix: string; name: string } {
   const p = [...PREFIXES].sort((a, b) => b.label.length - a.label.length).find((x) => t.startsWith(x.label));
   return p ? { prefix: p.label, name: t.slice(p.label.length).trim() } : { prefix: '', name: t };
 }
-const SAMPLE = 'นางสมศรี คำมา อายุหกสิบแปด บ้านเลขที่สิบสอง หมู่สี่ บ้านป่าไผ่ เบอร์ศูนย์แปดเก้า หนึ่งสองสาม สี่ห้าหกเจ็ด เป็นเบาหวาน แพ้ยาเพนนิซิลลิน หนักห้าสิบห้า สูงร้อยห้าสิบ';
 
 /** ช่องกรอก: ป้ายด้านบน + ช่องแคปซูลพื้นมิ้นต์ (โฟกัส = พื้นขาว ขอบเขียว) */
 function Field({ label, value, onChange, placeholder, keyboard, flex, multiline }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; keyboard?: KeyboardTypeOptions; flex?: number; multiline?: boolean }) {
@@ -123,9 +120,8 @@ function Section({ title, icon, footer, children }: { title: string; icon: strin
 function NewPatientInner() {
   const { addPatient } = useApp();
   const h = useHaptic();
-  const rec = useVoiceRecorder();
   const [f, setF] = useState<Form>(EMPTY);
-  const [aiBusy, setAiBusy] = useState<'' | 'voice' | 'card'>('');
+  const aiBusy = '' as '' | 'voice' | 'card';
   const [aiNote, setAiNote] = useState('');
   // เลือกธาตุแล้วหรือยัง (จากวันเกิดอัตโนมัติ หรือหมอเลือกเอง)
   const [elPicked, setElPicked] = useState(false);
@@ -139,59 +135,25 @@ function NewPatientInner() {
     setElPicked(true);
   }, [birthISO]);
 
-  /** พูด → ถอดเสียง → AI แยกข้อมูลลงช่อง */
-  const fillByVoice = async () => {
-    if (!rec.isRecording) {
-      h.press();
-      setAiNote('');
-      rec.start().catch(() => setAiNote('เปิดไมโครโฟนไม่ได้'));
-      return;
-    }
-    h.heavy();
-    const uri = await rec.stop().catch(() => null);
-    setAiBusy('voice');
-    let text = '';
-    try {
-      if (uri && rec.durationMs > 1200) text = await transcribe(uri);
-    } catch {}
-    if (!text) text = SAMPLE;
-    try {
-      const r = await chatJSON<Partial<Form>>([
-        {
-          role: 'user',
-          content: `แยกข้อมูลผู้ป่วยจากคำพูดนี้: "${text}"\nตอบ JSON เท่านั้น ช่องที่ไม่ได้กล่าวถึงให้เป็น "" (ห้ามเดา) ตัวเลขเป็นเลขอารบิก:
-{"name":"ชื่อ-สกุล พร้อมคำนำหน้า","sex":"ชาย|หญิง","age":"","bDay":"วันเกิด 1-31","bMonth":"เดือนเกิด 1-12","bYear":"ปีเกิด พ.ศ. 4 หลัก","address":"ที่อยู่เต็มตามที่พูด รวมเลขที่ หมู่ ซอย ถนน หมู่บ้าน ตำบล อำเภอ จังหวัด","phone":"รูปแบบ 0XX-XXX-XXXX","chronic":"โรคประจำตัว","allergies":"การแพ้ยา/อาหาร","weight":"","height":""}`,
-        },
-      ]);
-      setF((x) => {
-        const next = { ...x };
-        (Object.keys(r) as (keyof Form)[]).forEach((k) => {
-          const v = String(r[k] ?? '').trim();
-          if (!v) return;
-          if (k === 'name') {
-            const sp = splitPrefix(v);
-            next.name = sp.name;
-            if (sp.prefix) {
-              next.prefix = sp.prefix;
-              next.sex = PREFIXES.find((x) => x.label === sp.prefix)!.sex;
-            }
-          } else (next as any)[k] = k === 'sex' ? (v.includes('ชาย') ? 'ชาย' : 'หญิง') : v;
-        });
-        // ใช้ข้อความที่อยู่เต็มตามที่พูด (มีซอย/ถนนได้) — ถ้าไม่มีค่อยประกอบจากส่วนย่อย
-        if (!String(r.address ?? '').trim()) {
-          const addr = formatAddress(next);
-          if (addr) next.address = addr;
-        }
-        return next;
+  /** ใส่ข้อมูลจากครูปัญญาซักประวัติ (โหมดเสียง) ลงฟอร์ม */
+  const applyIntake = (d: IntakeData) => {
+    setF((x) => {
+      const next = { ...x };
+      (['bDay', 'bMonth', 'bYear', 'age', 'phone', 'address', 'chronic', 'allergies', 'weight', 'height'] as const).forEach((k) => {
+        const v = String(d[k] ?? '').trim();
+        if (v) (next as any)[k] = v;
       });
-      setAiNote('');
-      h.success();
-    } catch {
-      setAiNote('เชื่อมต่อ AI ไม่ได้ กรุณากรอกเอง');
-      h.warn();
-    } finally {
-      setAiBusy('');
-    }
+      if (d.name) {
+        const sp = splitPrefix([d.prefix, d.name].filter(Boolean).join(' '));
+        next.name = sp.name;
+        if (sp.prefix) {
+          next.prefix = sp.prefix;
+          next.sex = PREFIXES.find((p) => p.label === sp.prefix)!.sex;
+        }
+      }
+      return next;
+    });
+    h.success();
   };
 
   /** ใส่ข้อมูลที่อ่านจากบัตร (หน้ากล้องอ่านให้แล้ว) ลงฟอร์ม */
@@ -227,6 +189,8 @@ function NewPatientInner() {
     useCallback(() => {
       const r = takeIdScanResult();
       if (r) applyCard(r);
+      const it = takeIntakeResult();
+      if (it) applyIntake(it);
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []),
   );
@@ -253,7 +217,7 @@ function NewPatientInner() {
     router.replace(`/patient/${id}`);
   };
 
-  const recording = rec.isRecording;
+  const recording = false;
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: palette.bg }}>
@@ -262,7 +226,7 @@ function NewPatientInner() {
         options={{
           headerRight: () => (
             <View style={{ flexDirection: 'row', gap: 4 }}>
-              <HeaderButton label={recording ? 'หยุดฟัง' : 'พูดให้ AI กรอก'} onPress={aiBusy ? undefined : fillByVoice}>
+              <HeaderButton label="ครูปัญญาซักประวัติด้วยเสียง" onPress={aiBusy ? undefined : () => router.push('/patient/voice')}>
                 {aiBusy === 'voice' ? <ActivityIndicator color={palette.primary} /> : <Sym name={recording ? 'stop.fill' : 'mic.fill'} size={20} color={recording ? palette.coral : palette.primary} weight="semibold" />}
               </HeaderButton>
               <HeaderButton label="สแกนบัตรประชาชน" onPress={aiBusy || recording ? undefined : scanIdCard}>
@@ -281,7 +245,6 @@ function NewPatientInner() {
               <T v="title" color={recording ? palette.white : palette.ink}>
                 {recording ? 'กำลังฟัง… แตะปุ่มหยุดมุมขวาบนเมื่อพูดจบ' : aiBusy === 'card' ? 'กำลังอ่านบัตรประชาชน…' : 'ครูปัญญากำลังกรอกให้…'}
               </T>
-              {recording ? <Waveform level={rec.level} bars={22} /> : null}
             </View>
           </Animated.View>
         ) : aiNote ? (
