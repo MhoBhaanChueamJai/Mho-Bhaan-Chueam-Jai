@@ -13,6 +13,7 @@ import { Avatar, HeaderBack, PressableScale, T, useHaptic } from '../components/
 import { avatars, doctor, doctorTypes, fullAddress } from '../data/mock';
 import { TYPE_LABEL } from './verify';
 import { DIALECTS } from '../lib/dialect';
+import { AISphere } from '../components/AISphere';
 import { supabase } from '../lib/supabase';
 import { useApp } from '../store/app';
 import { authenticateBiometric, biometricInfo, clearPin } from '../store/security';
@@ -158,30 +159,17 @@ export default function Settings() {
         </PressableScale>
         </Animated.View>
 
-        {/* ── ภาษาที่ใช้คุย ── */}
-        <Section i={1} title="ภาษาที่ใช้คุย" footer="ครูปัญญาจะฟังและเข้าใจภาษาถิ่นที่เลือกได้แม่นขึ้น">
-          <View style={styles.dialects}>
-            {DIALECTS.map((d) => {
-              const on = dialect === d.id;
-              return (
-                <PressableScale
-                  key={d.id}
-                  haptic="select"
-                  scaleTo={0.97}
-                  onPress={() => update({ dialect: d.id })}
-                  style={[styles.dialect, elevation.e1, on && styles.dialectOn]}
-                  accessibilityRole="radio"
-                  accessibilityState={{ selected: on }}
-                  accessibilityLabel={d.label}
-                >
-                  <View style={{ flex: 1 }}>
-                    <T v="title" color={on ? palette.primaryDeep : ios.label}>{d.label}</T>
-                    <T v="caption" color={ios.secondary}>{d.note}</T>
-                  </View>
-                  <View style={[styles.radio, on && styles.radioOn]}>{on ? <Sym name="checkmark" size={12} color="#FFFFFF" weight="bold" /> : null}</View>
-                </PressableScale>
-              );
-            })}
+        {/* ── ตั้งค่า AI (หน้าของตัวเอง) ── */}
+        <Section i={1} title="ครูปัญญา AI">
+          <View style={[styles.card, elevation.e1]}>
+            <Row
+              icon={<View style={styles.aiIcon}><AISphere size={30} active={false} /></View>}
+              title="ตั้งค่า AI"
+              value={DIALECTS.find((d) => d.id === dialect)?.label}
+              onPress={() => router.push('/ai-settings')}
+              chevron
+              last
+            />
           </View>
         </Section>
 
@@ -238,11 +226,7 @@ const styles = StyleSheet.create({
   verifyBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14, height: 48, paddingHorizontal: 20, borderRadius: 24, backgroundColor: palette.primary },
   secTitle: { marginBottom: 10, marginLeft: 4 },
   secFooter: { paddingHorizontal: 6, marginTop: 8 },
-  dialects: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  dialect: { width: '48.4%', flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: palette.surface, borderRadius: 18, borderCurve: 'continuous', paddingVertical: 14, paddingHorizontal: 14, borderWidth: 1.5, borderColor: 'transparent' },
-  dialectOn: { borderColor: palette.primary, backgroundColor: '#F4FBF7' },
-  radio: { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: 'rgba(60,60,67,0.25)', alignItems: 'center', justifyContent: 'center' },
-  radioOn: { backgroundColor: palette.primary, borderColor: palette.primary },
+  aiIcon: { width: 30, height: 30, borderRadius: 8, backgroundColor: '#05090A', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   row: { flexDirection: 'row', alignItems: 'center', paddingLeft: 16, gap: 14 },
   rowMain: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: control.row, paddingRight: 16, paddingVertical: 8 },
   sep: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: ios.separator },
