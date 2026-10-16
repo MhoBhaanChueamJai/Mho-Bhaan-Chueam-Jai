@@ -43,8 +43,15 @@ ${text.slice(0, 14000)}
    - origin = ${f.origin.label} (ถ้ามีกล่าวถึง)
    - pages = ${f.summary.big ? f.summary.label : 'เนื้อหาหลัก/คำอธิบาย'} ที่เรียบเรียงแล้ว
 2) เรียบเรียงภาษาให้สละสลวย อ่านง่าย ถูกต้องตามหลักภาษา คงความหมายและรายละเอียดเดิมทั้งหมด ห้ามย่อหรือตัดทอน ห้ามเพิ่มข้อมูลที่ต้นฉบับไม่ได้กล่าว ${keep}
-3) แบ่ง pages เป็นหน้าละประมาณ 450-520 ตัวอักษร (ไม่เกิน 520 = 1 หน้าหนังสือ) ตัดที่จบประโยคหรือจบหัวข้อย่อย หน้าละ 1-3 ย่อหน้า
-4) ถ้าชื่อเรื่องหรือ${f.indication.label}ยังไม่ระบุ ให้ตั้งจากเนื้อหา
+3) จัดรูปแบบเนื้อหาใน pages ให้อ่านง่ายแบบหนังสือ:
+   - แบ่งย่อหน้าตามใจความ ย่อหน้าละ 2-5 ประโยค คั่นย่อหน้าด้วยบรรทัดว่าง (\\n\\n)
+   - หัวข้อย่อยให้อยู่บรรทัดของตัวเอง แล้วขึ้นบรรทัดใหม่ก่อนเนื้อหา
+   - รายการหลายข้อ ให้ขึ้นบรรทัดใหม่ทีละข้อ นำหน้าด้วย "• " หรือเลขลำดับ "1. "
+   - ใช้ช่องว่างคั่นวลี/ประโยคแบบภาษาไทย ไม่ใส่ช่องว่างซ้อน ไม่ใส่ markdown (** # ฯลฯ)
+   - บทคาถา: คงถ้อยคำเดิม แต่ตัดวรรคให้ขึ้นบรรทัดใหม่ทีละวรรค
+   - ใน steps / ingredients ให้เป็นข้อความสั้นกระชับต่อข้อ ไม่ต้องใส่เลขหรือสัญลักษณ์นำหน้า
+4) แบ่ง pages เป็นหน้าละประมาณ 450-520 ตัวอักษร (ไม่เกิน 520 = 1 หน้าหนังสือ) ตัดที่จบย่อหน้าหรือจบหัวข้อย่อย ไม่ตัดกลางประโยค
+5) ถ้าชื่อเรื่องหรือ${f.indication.label}ยังไม่ระบุ ให้ตั้งจากเนื้อหา
 ข้อมูลส่วนไหนไม่มีให้เป็นค่าว่าง ห้ามเดา
 ตอบ JSON เท่านั้น:
 {"title":"","indication":"","pages":["หน้า 1","หน้า 2"],"ingredients":[],"steps":[],"extra":"","caution":"","origin":""}`,
@@ -52,13 +59,21 @@ ${text.slice(0, 14000)}
   ]);
   const arr = (v: unknown) => (Array.isArray(v) ? v : typeof v === 'string' && v ? v.split(/\n+/) : []).map((x) => String(x).trim()).filter(Boolean);
   const str = (v: unknown) => (typeof v === 'string' ? v.trim() : Array.isArray(v) ? v.join(' ').trim() : '');
-  const pages = arr(r.pages);
+  const tidy = (t: string) =>
+    t
+      .replace(/\*\*|__|^#+\s*/gm, '')
+      .replace(/[ \t]+\n/g, '\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .replace(/ {2,}/g, ' ')
+      .trim();
+  const item = (t: string) => t.replace(/^\s*(?:[-•*]|\d+[.)])\s*/, '').trim();
+  const pages = (Array.isArray(r.pages) ? r.pages : typeof r.pages === 'string' ? [r.pages] : []).map((x) => tidy(String(x))).filter(Boolean);
   return {
     title: str(r.title) || title,
     indication: str(r.indication) || indication,
     pages: pages.length ? pages : draft.filter((p) => p.trim()),
-    ingredients: arr(r.ingredients),
-    steps: arr(r.steps),
+    ingredients: arr(r.ingredients).map(item).filter(Boolean),
+    steps: arr(r.steps).map(item).filter(Boolean),
     extra: str(r.extra),
     caution: str(r.caution),
     origin: str(r.origin),

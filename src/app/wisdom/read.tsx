@@ -2,7 +2,7 @@
  * อ่านแบบหนังสือ — เนื้อหายาวแบ่งเป็นหน้า ปัดซ้าย/ขวาเพื่อพลิกหน้า
  * หน้าแรก = ปกหนังสือ (แบบเดียวกับในคลังภูมิ) · หน้าปกใน (ชื่อเรื่อง ประเภท ที่มา) · เนื้อหา (ตัดหน้าให้พอดีจอ) · ท้ายเล่ม = ตัวยา/ขั้นตอน/ข้อห้าม
  * ตัวอักษรในเล่ม: Noto Serif Thai (แบบมีหัว ทางการ)
- * พลิกหน้าแบบหนังสือจริง: หน้ากระดาษหมุนรอบสันซ้าย (3D) ตามนิ้วลาก มีเงาบนหน้าที่พลิกและหน้าที่เผยด้านล่าง · แตะขวา/ซ้ายเพื่อพลิก
+ * พลิกหน้าแบบกระดาษจริง: แผ่นกระดาษม้วนโค้งตามนิ้วลาก เห็นหลังกระดาษ มีเงาทอดลงหน้าถัดไป · แตะขวา/ซ้ายเพื่อพลิก
  */
 import { NotoSerifThai_400Regular, NotoSerifThai_700Bold, useFonts } from '@expo-google-fonts/noto-serif-thai';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -26,24 +26,103 @@ const ORIGIN_RE = /\n*(ได้รับสืบทอดจาก|แหล�
 
 type Page = { kind: 'cover' } | { kind: 'title' } | { kind: 'text'; heading?: string; text: string } | { kind: 'list'; heading: string; items: string[]; numbered?: boolean };
 
-/** หน้าหนึ่งในเล่ม: pos = ตำแหน่งหน้าแบบทศนิยม (3.4 = กำลังพลิกจากหน้า 3 ไป 4 ได้ 40%) */
-function FlipPage({ k, pos, spine, render }: { k: number; pos: SharedValue<number>; spine: number; render: (shade: React.ReactNode) => React.ReactNode }) {
-  const turn = useAnimatedStyle(() => {
-    const f = Math.min(1, Math.max(0, pos.value - k)); // 0 = วางราบ · 1 = พลิกไปแล้ว
-    return {
-      zIndex: 1000 - k,
-      opacity: f >= 0.999 ? 0 : 1,
-      transform: [{ perspective: 2200 }, { rotateY: `${-180 * f}deg` }],
-    };
-  });
-  const shade = useAnimatedStyle(() => {
+/** ── พลิกหน้าแบบกระดาษโค้ง ──
+ * หน้าที่กำลังพลิกถูกหั่นเป็นแถบแนวตั้ง แต่ละแถบวางตามกระดาษที่ม้วนรอบทรงกระบอก (รัศมี R) ตามเส้นพับ c
+ * ส่วนที่ม้วนพ้นครึ่งวงจะกลับด้าน (เห็นหลังกระดาษจางๆ) และวางทับอยู่ด้านบน · คำนวณบน UI thread ทั้งหมด
+ * pos = ตำแหน่งหน้าแบบทศนิยม (3.4 = กำลังพลิกจากหน้า 3 ไป 4 ได้ 40%)
+ */
+const STRIPS = 16;
+const PERSP = 1600;
+function curlAt(x: number, f: number, Wp: number) {
+  'worklet';
+  const R = Wp * 0.14;
+  const c = Wp + 2 - f * (Wp + (Math.PI * R) / 2 + Wp * 0.08); // เส้นพับเลื่อนจากขอบขวาไปซ้าย
+  const a = x - c;
+  let X = x;
+  let Z = 0;
+  let phi = 0;
+  if (a > 0 && a <= Math.PI * R) {
+    phi = a / R;
+    X = c + R * Math.sin(phi);
+    Z = R * (1 - Math.cos(phi));
+  } else if (a > Math.PI * R) {
+    phi = Math.PI;
+    X = c - (a - Math.PI * R);
+    Z = 2 * R;
+  }
+  const k = PERSP / (PERSP - Z); // ใกล้ตา = ใหญ่ขึ้นเล็กน้อย
+  return { X: Wp / 2 + (X - Wp / 2) * k, k, phi, c, R };
+}
+
+function Strip({ i, s, k, pos, Wp, H, content, paper }: { i: number; s: number; k: number; pos: SharedValue<number>; Wp: number; H: number; content: React.ReactNode; paper: string }) {
+  const x0 = i * s;
+  const st = useAnimatedStyle(() => {
     const f = Math.min(1, Math.max(0, pos.value - k));
-    const under = pos.value > k - 1 && pos.value < k ? k - pos.value : 0; // หน้าที่กำลังถูกเผยด้านล่าง
-    return { opacity: f > 0 ? Math.min(0.5, f * 0.9) : under * 0.4 };
+    if (f <= 0) return { transform: [{ translateX: 0 }, { scaleX: 1 }, { scaleY: 1 }] };
+    const p0 = curlAt(x0, f, Wp);
+    const p1 = curlAt(x0 + s, f, Wp);
+    let sx = (p1.X - p0.X) / s;
+    if (Math.abs(sx) < 0.003) sx = sx < 0 ? -0.003 : 0.003;
+    return { transform: [{ translateX: p0.X - x0 }, { scaleX: sx }, { scaleY: (p0.k + p1.k) / 2 }] };
+  });
+  // แสงเงาบนแผ่นที่โค้ง: ด้านหน้าหมองลงเมื่อเอียงหนีแสง · ด้านหลังเป็นสีกระดาษเห็นตัวอักษรทะลุจางๆ
+  const dark = useAnimatedStyle(() => {
+    const f = Math.min(1, Math.max(0, pos.value - k));
+    if (f <= 0) return { opacity: 0 };
+    const phi = (curlAt(x0, f, Wp).phi + curlAt(x0 + s, f, Wp).phi) / 2;
+    return { opacity: phi < Math.PI / 2 ? 0.32 * Math.sin(phi) ** 1.5 : 0.1 + 0.22 * Math.sin(phi) };
+  });
+  const back = useAnimatedStyle(() => {
+    const f = Math.min(1, Math.max(0, pos.value - k));
+    if (f <= 0) return { opacity: 0 };
+    const phi = (curlAt(x0, f, Wp).phi + curlAt(x0 + s, f, Wp).phi) / 2;
+    return { opacity: phi > Math.PI / 2 ? 0.86 : 0 };
   });
   return (
-    <Animated.View style={[StyleSheet.absoluteFill, styles.flip, { transformOrigin: [spine, '50%', 0] }, turn]}>
-      {render(<Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.shade, shade]} />)}
+    <Animated.View style={[{ position: 'absolute', left: x0, top: 0, width: s + 1, height: H, overflow: 'hidden', transformOrigin: 'left center' }, st]}>
+      <View style={{ position: 'absolute', left: -x0, top: 0, width: Wp, height: H }}>{content}</View>
+      <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: paper }, back]} />
+      <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.shade, dark]} />
+    </Animated.View>
+  );
+}
+
+function FlipPage({ k, pos, frame, curl, paper, render }: { k: number; pos: SharedValue<number>; frame: { left: number; top: number; width: number; height: number }; curl: boolean; paper: string; render: (shade: React.ReactNode) => React.ReactNode }) {
+  const Wp = frame.width;
+  const s = Wp / STRIPS;
+  const box = useAnimatedStyle(() => {
+    const f = Math.min(1, Math.max(0, pos.value - k));
+    return { zIndex: 1000 - k, opacity: f >= 0.995 ? 0 : 1 };
+  });
+  // หน้าที่ถูกเผยด้านล่าง: มืดลงนิดๆ แล้วสว่างขึ้นเมื่อแผ่นบนพลิกพ้น
+  const shade = useAnimatedStyle(() => {
+    const under = pos.value > k - 1 && pos.value < k ? k - pos.value : 0;
+    return { opacity: under * 0.28 };
+  });
+  // เงาที่แผ่นโค้งทอดลงบนหน้าถัดไป (ขวาของสันโค้ง)
+  const cast = useAnimatedStyle(() => {
+    const f = Math.min(1, Math.max(0, pos.value - k));
+    if (f <= 0 || f >= 1) return { opacity: 0 };
+    const p = curlAt(Wp, f, Wp);
+    const edge = Math.max(p.X, Wp / 2 + (p.c + p.R - Wp / 2) * (PERSP / (PERSP - p.R)));
+    return { opacity: Math.min(1, f * 10) * (1 - f) * 0.9, transform: [{ translateX: edge }] };
+  });
+  const shadeEl = <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.shade, shade]} />;
+  const content = render(shadeEl);
+  return (
+    <Animated.View style={[{ position: 'absolute', ...frame }, box]}>
+      {curl ? (
+        <>
+          <Animated.View pointerEvents="none" style={[styles.cast, cast]}>
+            <LinearGradient colors={['rgba(0,0,0,0.38)', 'rgba(0,0,0,0)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} />
+          </Animated.View>
+          {Array.from({ length: STRIPS }, (_, i) => (
+            <Strip key={i} i={i} s={s} k={k} pos={pos} Wp={Wp} H={frame.height} content={content} paper={paper} />
+          ))}
+        </>
+      ) : (
+        content
+      )}
     </Animated.View>
   );
 }
@@ -67,7 +146,7 @@ export default function ReadBook() {
   const bookW = Math.min(W - 28, areaH / COVER_RATIO);
   const bookH = bookW * COVER_RATIO;
   const bx = (W - bookW) / 2;
-  const frame = { position: 'absolute' as const, left: bx, top: areaTop + (areaH - bookH) / 2, width: bookW, height: bookH };
+  const frame = { left: bx, top: areaTop + (areaH - bookH) / 2, width: bookW, height: bookH };
   // ตัวอักษรต่อหน้า ตามขนาดกระดาษจริงของเครื่อง (บรรทัด × ตัวอักษรต่อบรรทัด เผื่อหัวข้อ)
   const perPage = Math.round(Math.floor((bookH - 102) / 32) * ((bookW - 54) / 7.5) * 0.78);
   const pages = useMemo<Page[]>(() => {
@@ -96,7 +175,7 @@ export default function ReadBook() {
   };
   const settle = (t: number) => {
     'worklet';
-    pos.value = withTiming(t, { duration: 560, easing: Easing.out(Easing.cubic) });
+    pos.value = withTiming(t, { duration: 650, easing: Easing.out(Easing.quad) });
     runOnJS(landed)(t);
   };
   const pan = Gesture.Pan()
@@ -125,12 +204,12 @@ export default function ReadBook() {
 
   const renderPage = (item: Page, index: number, shade: React.ReactNode) =>
     item.kind === 'cover' ? (
-      <View style={frame}>
+      <View style={{ flex: 1 }}>
         <BookCover w={w} width={bookW} />
         <View style={[StyleSheet.absoluteFill, { borderRadius: 5, overflow: 'hidden' }]} pointerEvents="none">{shade}</View>
       </View>
     ) : (
-    <View style={frame}>
+    <View style={{ flex: 1 }}>
       <View style={styles.paper}>
         <LinearGradient colors={['rgba(255,255,255,0.35)', 'rgba(255,255,255,0)', 'rgba(120,90,40,0.10)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
         {/* เงาสันกระดาษด้านซ้าย */}
@@ -151,7 +230,17 @@ export default function ReadBook() {
         ) : item.kind === 'text' ? (
           <View style={styles.textPage}>
             {item.heading ? <Text style={[styles.heading, F.b]}>{item.heading}</Text> : null}
-            <Text style={[styles.body, F.r, w.kind === 'คาถา/พิธี' && item.heading === kf.summary.label && styles.chant]}>{item.text}</Text>
+            {item.text.split(/\n{2,}/).map((para, j) => {
+              const chant = w.kind === 'คาถา/พิธี' && (item.heading ?? kf.summary.label) === kf.summary.label;
+              // ย่อหน้าแบบหนังสือ: เยื้องบรรทัดแรก (ยกเว้นรายการ/บทคาถา/หน้าที่ต่อจากหน้าก่อน)
+              const indent = !chant && !/^\s*(?:[•\-*]|\d+[.)])/.test(para) && (j > 0 || !!item.heading);
+              return (
+                <Text key={j} style={[styles.body, F.r, chant && styles.chant, j > 0 && { marginTop: 10 }]}>
+                  {indent ? '\u2003\u2003' : ''}
+                  {para.trim()}
+                </Text>
+              );
+            })}
           </View>
         ) : (
           <View style={styles.textPage}>
@@ -181,7 +270,7 @@ export default function ReadBook() {
             .filter(({ k }) => k >= page - 2 && k <= page + 2)
             .reverse()
             .map(({ item, k }) => (
-              <FlipPage key={k} k={k} pos={pos} spine={bx} render={(shade) => renderPage(item, k, shade)} />
+              <FlipPage key={k} k={k} pos={pos} frame={frame} curl={k >= page - 1 && k <= page + 1} paper={item.kind === 'cover' ? '#E9DFC8' : PAPER} render={(shade) => renderPage(item, k, shade)} />
             ))}
         </View>
       </GestureDetector>
@@ -203,7 +292,7 @@ export default function ReadBook() {
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: '#1A140E' },
   paper: { flex: 1, backgroundColor: PAPER, borderRadius: 6, borderTopRightRadius: 14, borderBottomRightRadius: 14, overflow: 'hidden', boxShadow: '0px 18px 40px rgba(0,0,0,0.5)' },
-  flip: { backfaceVisibility: 'hidden' },
+  cast: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 34 },
   shade: { backgroundColor: '#000' },
   gutter: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 26 },
   titlePage: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 30 },
