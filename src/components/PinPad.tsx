@@ -32,7 +32,7 @@ function Dot({ filled, color }: { filled: boolean; color: string }) {
 
 function Key({ label, onPress, color, light }: { label: string; onPress: () => void; color: string; light?: boolean }) {
   return (
-    <PressableScale haptic="tap" scaleTo={0.88} onPress={onPress} style={[styles.key, { backgroundColor: light ? 'rgba(255,255,255,0.14)' : '#F1F4F1' }]} accessibilityLabel={label}>
+    <PressableScale haptic="tap" scaleTo={0.88} onPress={onPress} style={[styles.key, { backgroundColor: light ? 'rgba(255,255,255,0.14)' : palette.mint }]} accessibilityLabel={label}>
       <Text style={[styles.keyNum, { color }]}>{label}</Text>
     </PressableScale>
   );
@@ -95,7 +95,7 @@ export const PinPad = React.forwardRef<
 const K = 74;
 const styles = StyleSheet.create({
   dots: { flexDirection: 'row', gap: 14, marginBottom: 30 },
-  dotSlot: { width: 16, height: 16, borderRadius: 8, backgroundColor: 'rgba(120,135,118,0.22)', alignItems: 'center', justifyContent: 'center' },
+  dotSlot: { width: 16, height: 16, borderRadius: 8, backgroundColor: palette.cyan, alignItems: 'center', justifyContent: 'center' },
   dotFill: { width: 16, height: 16, borderRadius: 8 },
   grid: { width: K * 3 + 28 * 2, flexDirection: 'row', flexWrap: 'wrap', columnGap: 28, rowGap: 14 },
   key: { width: K, height: K, borderRadius: K / 2, alignItems: 'center', justifyContent: 'center' },

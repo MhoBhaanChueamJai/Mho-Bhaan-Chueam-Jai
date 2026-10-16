@@ -89,13 +89,13 @@ export default function PinSetup() {
   const topLeft =
     mode !== 'onboard' ? (
       <PressableScale onPress={() => router.back()} style={styles.topBtn} accessibilityLabel="ยกเลิก">
-        <T v="body" color={palette.primary}>ยกเลิก</T>
+        <T v="body" color="#FFFFFF">ยกเลิก</T>
       </PressableScale>
     ) : null;
   const topRight =
     mode === 'onboard' ? (
       <PressableScale onPress={skip} style={styles.topBtn} accessibilityLabel="ไว้ทีหลัง">
-        <T v="body" color={palette.primary}>ไว้ทีหลัง</T>
+        <T v="body" color="#FFFFFF" style={{ fontWeight: '600' }}>ไว้ทีหลัง</T>
       </PressableScale>
     ) : null;
 
@@ -106,7 +106,7 @@ export default function PinSetup() {
       hero={
         <HeroRing>
           <View style={styles.badge}>
-            <Sym name={step === 'face' ? bio.icon : 'lock.fill'} size={22} color={palette.primary} />
+            <Sym name={step === 'face' ? bio.icon : 'lock.fill'} size={24} color={palette.primary} />
           </View>
         </HeroRing>
       }
@@ -141,7 +141,7 @@ export default function PinSetup() {
 
 const styles = StyleSheet.create({
   topBtn: { height: 44, justifyContent: 'center', paddingHorizontal: 8 },
-  badge: { width: 56, height: 56, borderRadius: 28, backgroundColor: palette.primarySoft, alignItems: 'center', justifyContent: 'center' },
+  badge: { width: 60, height: 60, borderRadius: 30, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
   faceArt: { alignSelf: 'center', width: 112, height: 112, borderRadius: 30, backgroundColor: palette.primarySoft, alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
   later: { height: 50, alignItems: 'center', justifyContent: 'center' },
   steps: { flexDirection: 'row', gap: 6, marginTop: 18 },
