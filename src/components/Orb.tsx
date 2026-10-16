@@ -9,6 +9,8 @@ import {
   BlurMask,
   Canvas,
   Circle,
+  BackdropBlur,
+  Fill,
   Group,
   LinearGradient as SkLinear,
   Oval,
@@ -365,17 +367,49 @@ function FlowerPetal({ p, t, speed, lv, inner }: { p: { a: number; hue: string; 
     const grow = p.len * (1 + Math.sin(k * 1.2 + p.ph) * 0.05 + lv.value * (inner ? 0.12 : 0.2));
     return [{ translateX: 50 }, { translateY: 50 }, { rotate: p.a + sway }, { scaleX: flip * (inner ? 0.95 : 1) }, { scaleY: grow }];
   });
+  // ตอบสนองเสียง AI: ขอบแก้วสว่างขึ้น + แสงแยกสี (dispersion) กว้างขึ้น + แสงรวม (caustic) เข้มขึ้น
+  const rimO = useDerivedValue(() => 0.7 + 0.3 * lv.value);
+  const fringeL = useDerivedValue(() => [{ translateX: -(0.5 + 1.4 * lv.value) }]);
+  const fringeR = useDerivedValue(() => [{ translateX: 0.5 + 1.4 * lv.value }]);
+  const causO = useDerivedValue(() => 0.4 + 0.45 * lv.value);
   return (
     <Group transform={tr}>
-      <SkPath path={PETAL} opacity={inner ? 0.95 : 0.92}>
-        <SkLinear start={vec(0, -6)} end={vec(0, -44)} colors={inner ? [p.hue, `${p.hue}E6`, 'rgba(255,255,255,0.92)'] : [`${p.hue}F2`, p.hue, `${p.hue}99`]} />
+      {/* หักเหแสง: เบลอสิ่งที่อยู่หลังกลีบ (กลีบชั้นนอก/แสงหลังดอก) เหมือนมองผ่านแก้ว */}
+      {inner ? (
+        <BackdropBlur blur={2.2} clip={PETAL}>
+          <Fill color="rgba(255,255,255,0.05)" />
+        </BackdropBlur>
+      ) : null}
+      {/* เนื้อแก้วใส อมสีจางๆ */}
+      <SkPath path={PETAL}>
+        <SkLinear start={vec(0, 0)} end={vec(0, -44)} colors={inner ? [`${p.hue}80`, `${p.hue}38`, 'rgba(255,255,255,0.18)'] : [`${p.hue}A0`, `${p.hue}55`, 'rgba(255,255,255,0.32)']} />
       </SkPath>
-      {/* ขอบแก้วใส */}
-      <SkPath path={PETAL} style="stroke" strokeWidth={0.8} color="rgba(255,255,255,0.8)" />
-      {/* ไฮไลต์บนกลีบ */}
-      <Oval x={-5} y={-36} width={4} height={18} color="rgba(255,255,255,0.55)">
-        <BlurMask blur={1.6} style="normal" />
+      {/* แสงรวมในเนื้อแก้ว (caustic) */}
+      <Group opacity={causO}>
+        <Oval x={-5} y={-31} width={10} height={20} color={p.hue}>
+          <BlurMask blur={4.5} style="normal" />
+        </Oval>
+      </Group>
+      {/* แสงขอบด้านใน */}
+      <SkPath path={PETAL} style="stroke" strokeWidth={3} color={`${p.hue}88`}>
+        <BlurMask blur={2} style="normal" />
+      </SkPath>
+      {/* แสงแยกสีรุ้งที่ขอบ (ฟ้า / ชมพู เหลื่อมกัน) */}
+      <Group transform={fringeL} opacity={rimO}>
+        <SkPath path={PETAL} style="stroke" strokeWidth={0.7} color="rgba(90,225,255,0.75)" />
+      </Group>
+      <Group transform={fringeR} opacity={rimO}>
+        <SkPath path={PETAL} style="stroke" strokeWidth={0.7} color="rgba(255,95,200,0.75)" />
+      </Group>
+      {/* ขอบแก้วคม */}
+      <Group opacity={rimO}>
+        <SkPath path={PETAL} style="stroke" strokeWidth={0.9} color="rgba(255,255,255,0.95)" />
+      </Group>
+      {/* ไฮไลต์สะท้อน + ประกาย */}
+      <Oval x={-6.5} y={-38} width={3} height={20} color="rgba(255,255,255,0.8)">
+        <BlurMask blur={0.8} style="normal" />
       </Oval>
+      {inner ? <Circle cx={4} cy={-35} r={0.9} color="rgba(255,255,255,0.8)" /> : null}
     </Group>
   );
 }
