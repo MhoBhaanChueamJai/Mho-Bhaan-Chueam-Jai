@@ -71,6 +71,7 @@ const MAP: Record<string, keyof typeof Ionicons.glyphMap> = {
   'book.pages.fill': 'book',
   'book.pages': 'book-outline',
   sum: 'calculator-outline',
+  number: 'keypad-outline',
   'doc.plaintext': 'document-text-outline',
   'clock.fill': 'time',
   'person.crop.circle': 'person-circle-outline',

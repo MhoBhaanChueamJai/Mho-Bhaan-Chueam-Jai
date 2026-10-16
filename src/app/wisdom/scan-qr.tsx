@@ -1,17 +1,18 @@
 /**
  * สแกนคิวอาร์โค้ดรับตำราจากเพื่อน — เปิดกล้องทันที กรอบสี่เหลี่ยมกลางจอ
- * เจอรหัสแชร์ → ไปหน้ารับตำรา (ดูตัวอย่างก่อนเก็บเข้าคลัง) · ไม่มี QR กรอกรหัสเองได้
+ * เจอรหัสแชร์ → ไปหน้ารับตำรา (ดูตัวอย่างก่อนเก็บเข้าคลัง)
+ * แท็บด้านล่างสลับโหมด: สแกน | รหัส (กรอกรหัสแชร์ 8 ตัวในหน้านี้เลย)
  */
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useRef, useState } from 'react';
-import { StyleSheet, View, useWindowDimensions } from 'react-native';
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
+import { StyleSheet, TextInput, View, useWindowDimensions } from 'react-native';
+import Animated, { Easing, FadeIn, FadeOut, useAnimatedKeyboard, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Sym } from '../../components/ios';
-import { Button, PressableScale, T, useHaptic } from '../../components/ui';
-import { codeFromScan } from '../../lib/wisdomShare';
+import { Button, Glass, PressableScale, T, useHaptic } from '../../components/ui';
+import { cleanCode, codeFromScan } from '../../lib/wisdomShare';
 
 export default function ScanQr() {
   const insets = useSafeAreaInsets();
@@ -21,6 +22,24 @@ export default function ScanQr() {
   const [torch, setTorch] = useState(false);
   const [bad, setBad] = useState(false);
   const done = useRef(false);
+  const [mode, setMode] = useState<'scan' | 'code'>('scan');
+  const [code, setCode] = useState('');
+  const input = useRef<TextInput>(null);
+  // แท็บและปุ่มยกขึ้นตามคีย์บอร์ด (โหมดกรอกรหัส)
+  const kb = useAnimatedKeyboard();
+  const lift = useAnimatedStyle(() => ({ transform: [{ translateY: -Math.max(0, kb.height.value - insets.bottom - 8) }] }));
+  const switchMode = (m: 'scan' | 'code') => {
+    if (m === mode) return;
+    h.select();
+    setMode(m);
+    if (m === 'code') setTimeout(() => input.current?.focus(), 250);
+    else input.current?.blur();
+  };
+  const submit = () => {
+    if (code.length < 8) return;
+    h.success();
+    router.replace({ pathname: '/wisdom/receive', params: { code } });
+  };
   const size = Math.min(W - 96, 300);
   const fx = (W - size) / 2, fy = H * 0.42 - size / 2;
 
@@ -66,9 +85,10 @@ export default function ScanQr() {
   return (
     <View style={styles.page}>
       <StatusBar style="light" />
-      <CameraView style={StyleSheet.absoluteFill} facing="back" enableTorch={torch} barcodeScannerSettings={{ barcodeTypes: ['qr'] }} onBarcodeScanned={onScan} />
+      <CameraView style={StyleSheet.absoluteFill} facing="back" enableTorch={torch} barcodeScannerSettings={{ barcodeTypes: ['qr'] }} onBarcodeScanned={mode === 'scan' ? onScan : undefined} />
       {/* ม่านมืดรอบกรอบ */}
-      <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+      {mode === 'scan' ? (
+      <Animated.View entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)} pointerEvents="none" style={StyleSheet.absoluteFill}>
         <View style={[styles.dim, { top: 0, left: 0, right: 0, height: fy }]} />
         <View style={[styles.dim, { top: fy + size, left: 0, right: 0, bottom: 0 }]} />
         <View style={[styles.dim, { top: fy, left: 0, width: fx, height: size }]} />
@@ -83,7 +103,37 @@ export default function ScanQr() {
           <T v="title" color="#FFFFFF" center>สแกนคิวอาร์โค้ดรับตำรา</T>
           <T v="subhead" color="rgba(255,255,255,0.8)" center style={{ marginTop: 4 }}>{bad ? 'ไม่ใช่คิวอาร์โค้ดตำราของหมอบ้านเชื่อมใจ' : 'ให้เพื่อนเปิดหน้าแชร์ตำรา แล้วส่องกล้องที่คิวอาร์โค้ด'}</T>
         </View>
-      </View>
+      </Animated.View>
+      ) : (
+        // โหมดกรอกรหัส: ม่านทึบ + ช่องรหัส 8 ตัว (ABCD-EFGH)
+        <Animated.View entering={FadeIn.duration(220)} exiting={FadeOut.duration(150)} style={[StyleSheet.absoluteFill, styles.codePage, { paddingTop: insets.top + 110 }]}>
+          <Sym name="number" size={30} color="#7CF0A8" />
+          <T v="title" color="#FFFFFF" center style={{ marginTop: 12 }}>กรอกรหัสรับตำรา</T>
+          <T v="subhead" color="rgba(255,255,255,0.7)" center style={{ marginTop: 4 }}>รหัส 8 ตัวที่เพื่อนส่งให้ทาง LINE หรือข้อความ</T>
+          <PressableScale onPress={() => input.current?.focus()} style={styles.boxes} accessibilityLabel="ช่องกรอกรหัส">
+            {Array.from({ length: 8 }, (_, i) => (
+              <React.Fragment key={i}>
+                {i === 4 ? <T v="title" color="rgba(255,255,255,0.4)">–</T> : null}
+                <View style={[styles.box, i === code.length && styles.boxOn, !!code[i] && styles.boxFilled]}>
+                  <T v="h2" color="#FFFFFF">{code[i] ?? ''}</T>
+                </View>
+              </React.Fragment>
+            ))}
+          </PressableScale>
+          <TextInput
+            ref={input}
+            value={code}
+            onChangeText={(t) => setCode(cleanCode(t).slice(0, 8))}
+            autoCapitalize="characters"
+            autoCorrect={false}
+            keyboardType="ascii-capable"
+            returnKeyType="done"
+            onSubmitEditing={submit}
+            style={styles.hiddenInput}
+            accessibilityLabel="รหัสรับตำรา"
+          />
+        </Animated.View>
+      )}
 
       <View style={[styles.top, { top: insets.top + 8 }]}>
         <PressableScale onPress={() => router.back()} style={styles.round} accessibilityLabel="ปิด">
@@ -94,12 +144,28 @@ export default function ScanQr() {
         </PressableScale>
       </View>
 
-      <View style={[styles.bottom, { bottom: insets.bottom + 28 }]}>
-        <PressableScale haptic="select" onPress={() => router.replace('/wisdom/receive')} style={styles.manual} accessibilityLabel="กรอกรหัสเอง">
-          <Sym name="keyboard" size={17} color="#FFFFFF" />
-          <T v="bodyStrong" color="#FFFFFF">กรอกรหัสเอง</T>
-        </PressableScale>
-      </View>
+      <Animated.View style={[styles.bottom, { bottom: insets.bottom + 24 }, lift]}>
+        {mode === 'code' ? (
+          <Animated.View entering={FadeIn.duration(200)} style={{ alignSelf: 'stretch', paddingHorizontal: 24, marginBottom: 14 }}>
+            <Button label="รับตำรา" icon={<Sym name="tray.and.arrow.down.fill" size={17} color="#04150E" />} disabled={code.length < 8} onPress={submit} style={{ height: 52, backgroundColor: '#7CF0A8' }} />
+          </Animated.View>
+        ) : null}
+        {/* แท็บสลับโหมด: สแกน | รหัส */}
+        <Glass tint="rgba(255,255,255,0.14)" style={styles.tabs}>
+          {([
+            { k: 'scan', l: 'สแกน', i: 'qrcode.viewfinder' },
+            { k: 'code', l: 'รหัส', i: 'number' },
+          ] as const).map((t) => {
+            const on = mode === t.k;
+            return (
+              <PressableScale key={t.k} scaleTo={0.96} onPress={() => switchMode(t.k)} style={[styles.tab, on && styles.tabOn]} accessibilityLabel={t.l} accessibilityState={{ selected: on }}>
+                <Sym name={t.i} size={16} color={on ? '#04150E' : '#FFFFFF'} weight="semibold" />
+                <T v="bodyStrong" color={on ? '#04150E' : '#FFFFFF'}>{t.l}</T>
+              </PressableScale>
+            );
+          })}
+        </Glass>
+      </Animated.View>
     </View>
   );
 }
@@ -119,5 +185,13 @@ const styles = StyleSheet.create({
   top: { position: 'absolute', left: 16, right: 16, flexDirection: 'row', justifyContent: 'space-between' },
   round: { width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' },
   bottom: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
-  manual: { flexDirection: 'row', alignItems: 'center', gap: 8, height: 50, paddingHorizontal: 24, borderRadius: 25, backgroundColor: 'rgba(255,255,255,0.18)' },
+  tabs: { flexDirection: 'row', padding: 4, borderRadius: 30, gap: 4 },
+  tab: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, height: 48, width: 128, borderRadius: 24 },
+  tabOn: { backgroundColor: '#FFFFFF' },
+  codePage: { backgroundColor: 'rgba(0,0,0,0.88)', alignItems: 'center', paddingHorizontal: 24 },
+  boxes: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 28 },
+  box: { width: 36, height: 48, borderRadius: 10, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.22)', alignItems: 'center', justifyContent: 'center' },
+  boxOn: { borderColor: '#7CF0A8' },
+  boxFilled: { backgroundColor: 'rgba(255,255,255,0.08)' },
+  hiddenInput: { position: 'absolute', width: 1, height: 1, opacity: 0 },
 });
