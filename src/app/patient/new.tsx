@@ -6,7 +6,7 @@ import { Stack, router, useFocusEffect } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { PractitionerGate } from '../../components/PractitionerGate';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View, type KeyboardTypeOptions } from 'react-native';
-import Animated, { FadeIn } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeInDown, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { Sym, ios } from '../../components/ios';
 import { Button, GlassDock, HeaderButton, T, useHaptic } from '../../components/ui';
 import { takeIdScanResult, type IdCardData } from '../../lib/idScan';
@@ -18,6 +18,9 @@ import { formatAddress, parseAddress } from '../../lib/address';
 import type { Patient } from '../../data/mock';
 import { useApp } from '../../store/app';
 import { elevation, palette } from '../../theme';
+
+/** แอนิเมชันเลย์เอาต์มาตรฐาน: ส่วนที่ขยาย/หด และส่วนข้างเคียงเลื่อนตามแบบสปริงนุ่ม */
+const SMOOTH = LinearTransition.springify().damping(20).stiffness(170).mass(0.8);
 
 type Form = {
   prefix: string;
@@ -104,16 +107,16 @@ function Field({ label, value, onChange, placeholder, keyboard, flex, multiline 
 
 function Section({ title, icon, footer, children }: { title: string; icon: string; footer?: string; children: React.ReactNode }) {
   return (
-    <View style={[styles.card, elevation.e1]}>
+    <Animated.View layout={SMOOTH} style={[styles.card, elevation.e1]}>
       <View style={styles.cardHead}>
         <View style={styles.cardIcon}>
           <Sym name={icon as any} size={15} color={palette.primary} />
         </View>
         <T v="title">{title}</T>
       </View>
-      <View style={{ gap: 14 }}>{children}</View>
+      <Animated.View layout={SMOOTH} style={{ gap: 14 }}>{children}</Animated.View>
       {footer ? <T v="caption" color={ios.secondary} style={{ marginTop: 12 }}>{footer}</T> : null}
-    </View>
+    </Animated.View>
   );
 }
 
@@ -261,7 +264,7 @@ function NewPatientInner() {
       <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.page} keyboardDismissMode="interactive" keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         {/* สถานะ AI (แสดงเมื่อกำลังฟัง/ประมวลผล/มีผล) — ปุ่มพูดและสแกนบัตรอยู่ในแถบเครื่องมือด้านล่าง */}
         {recording || aiBusy ? (
-          <Animated.View entering={FadeIn} style={[styles.status, recording && styles.statusOn, elevation.e1]}>
+          <Animated.View entering={FadeInDown.springify().damping(18)} exiting={FadeOut.duration(180)} layout={SMOOTH} style={[styles.status, recording && styles.statusOn, elevation.e1]}>
             {recording ? <Sym name="waveform" size={20} color={palette.white} /> : <ActivityIndicator color={palette.primary} />}
             <View style={{ flex: 1, gap: 2 }}>
               <T v="title" color={recording ? palette.white : palette.ink}>
@@ -270,7 +273,7 @@ function NewPatientInner() {
             </View>
           </Animated.View>
         ) : aiNote ? (
-          <Animated.View entering={FadeIn} style={styles.note}>
+          <Animated.View entering={FadeIn.duration(250)} exiting={FadeOut.duration(150)} layout={SMOOTH} style={styles.note}>
             <Sym name="sparkles" size={14} color={palette.primary} />
             <T v="caption" color={palette.primary} style={{ flex: 1 }}>{aiNote}</T>
           </Animated.View>
