@@ -11,7 +11,7 @@ import { Sym, ios } from '../../components/ios';
 import { Button, GlassDock, HeaderButton, T, useHaptic } from '../../components/ui';
 import { takeIdScanResult, type IdCardData } from '../../lib/idScan';
 import { onIntakeResult, takeIntakeResult, type IntakeData } from '../../lib/intake';
-import { ageFrom, elementFromMonth, toISO } from '../../lib/birth';
+import { ageFrom, elementFromMonth, normalizeBirth, toISO } from '../../lib/birth';
 import { DateField, Dropdown } from '../../components/FormPickers';
 import { ElementInsight, ElementPicker } from '../../components/ElementPicker';
 import { formatAddress, parseAddress } from '../../lib/address';
@@ -139,10 +139,14 @@ function NewPatientInner() {
   const applyIntake = (d: IntakeData) => {
     setF((x) => {
       const next = { ...x };
-      (['bDay', 'bMonth', 'bYear', 'age', 'phone', 'address', 'chronic', 'allergies', 'weight', 'height'] as const).forEach((k) => {
+      (['age', 'phone', 'address', 'chronic', 'allergies', 'weight', 'height'] as const).forEach((k) => {
         const v = String(d[k] ?? '').trim();
         if (v) (next as any)[k] = v;
       });
+      // วันเกิด: แปลงชื่อเดือน/ปี ค.ศ./วันที่ทั้งก้อน → วัน/เดือนเลข/ปี พ.ศ.
+      const b = normalizeBirth(d);
+      if (b.bDay && b.bMonth && b.bYear) Object.assign(next, b);
+      else if (b.bYear && !next.age) next.age = String(new Date().getFullYear() + 543 - Number(b.bYear));
       if (d.name) {
         const sp = splitPrefix([d.prefix, d.name].filter(Boolean).join(' '));
         next.name = sp.name;
@@ -160,7 +164,9 @@ function NewPatientInner() {
   const applyCard = (r: IdCardData) => {
     setF((x) => {
       const next = { ...x };
-      (['bDay', 'bMonth', 'bYear', 'houseNo', 'moo', 'village', 'subdistrict', 'district', 'province'] as (keyof Form)[]).forEach((k) => {
+      const b = normalizeBirth(r);
+      if (b.bDay && b.bMonth && b.bYear) Object.assign(next, b);
+      (['houseNo', 'moo', 'village', 'subdistrict', 'district', 'province'] as (keyof Form)[]).forEach((k) => {
         const v = String((r as any)[k] ?? '').trim();
         if (v) (next as any)[k] = v;
       });

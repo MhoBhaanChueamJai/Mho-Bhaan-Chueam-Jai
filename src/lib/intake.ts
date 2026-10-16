@@ -66,7 +66,7 @@ ${history.slice(-6).map((h) => `${h.role === 'ai' ? 'ครูปัญญา' :
    ห้ามใช้ไม้ยมก (ๆ) ให้เขียนคำซ้ำเต็ม เช่น "ค่อยค่อย"
 3) ถ้าครบทุกเรื่องแล้ว หรือหมอบอกว่าพอแล้ว ให้ done=true และ reply เป็นการสรุปสั้นๆ อบอุ่น ว่าได้ข้อมูลอะไรบ้าง
 ตอบ JSON เท่านั้น:
-{"fields":{"prefix":"","name":"ชื่อ สกุล (ไม่มีคำนำหน้า)","bDay":"","bMonth":"","bYear":"","age":"","phone":"","address":"","chronic":"","allergies":"","weight":"","height":""},"reply":"คำพูดถัดไป","done":false}`,
+{"fields":{"prefix":"","name":"ชื่อ สกุล (ไม่มีคำนำหน้า)","bDay":"วันที่ 1-31 (ตัวเลข)","bMonth":"เดือน 1-12 (ตัวเลข)","bYear":"ปี พ.ศ. 4 หลัก","age":"","phone":"","address":"","chronic":"","allergies":"","weight":"","height":""},"reply":"คำพูดถัดไป","done":false}`,
       },
     ]);
     const data = { ...known };
