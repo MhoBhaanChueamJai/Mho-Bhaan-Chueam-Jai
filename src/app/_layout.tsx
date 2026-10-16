@@ -46,7 +46,7 @@ function Root() {
         <Stack.Screen name="patient/search" options={{ animation: 'fade', animationDuration: 120, gestureEnabled: false }} />
         <Stack.Screen name="herb/search" options={{ animation: 'fade', animationDuration: 120, gestureEnabled: false }} />
         <Stack.Screen name="wisdom/search" options={{ animation: 'fade', animationDuration: 120, gestureEnabled: false }} />
-        <Stack.Screen name="patient/new" options={{ presentation: 'modal', headerShown: true, title: 'ผู้ป่วยใหม่', headerStyle: { backgroundColor: palette.bg }, headerShadowVisible: false }} />
+        <Stack.Screen name="patient/new" options={{ headerShown: true, title: 'เพิ่มผู้ป่วย', headerBackTitle: 'ผู้ป่วย', headerTintColor: palette.primary, headerShadowVisible: false, headerStyle: { backgroundColor: palette.bg }, contentStyle: { backgroundColor: palette.bg } }} />
         <Stack.Screen name="settings" options={{ headerShown: true, title: 'ตั้งค่า', headerLargeTitle: true, headerTransparent: true, headerShadowVisible: false, headerLargeTitleShadowVisible: false, headerBackVisible: false }} />
       </Stack>
       {lockEnabled && !unlocked ? <LockScreen /> : null}
