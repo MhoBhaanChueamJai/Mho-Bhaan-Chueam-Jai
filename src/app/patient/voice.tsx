@@ -34,7 +34,7 @@ export default function VoiceIntake() {
       noBye="ได้ครับ ผมใส่ข้อมูลไว้ในฟอร์มให้แล้ว แก้ไขได้เลยครับ"
       doneLabel="ซักประวัติเสร็จแล้ว"
       canUse={(d) => !!d.name}
-      dockLabel={(_, got, total, done) => (done ? 'ใช้ข้อมูลนี้' : `ใช้ข้อมูลนี้ (${got}/${total})`)}
+      dockLabel={() => 'ใช้ข้อมูลนี้'}
       onFinish={(d, save) => {
         setIntakeResult({ ...(d as IntakeData), save });
         router.back();

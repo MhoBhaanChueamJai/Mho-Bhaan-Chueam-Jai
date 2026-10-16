@@ -29,7 +29,7 @@ function VisitInner() {
       dockSaves
       doneLabel="บันทึกเสร็จแล้ว"
       canUse={(d) => !!(d.symptoms || d.diagnosis || d.treatment)}
-      dockLabel={(_, got, total) => `บันทึกการรักษา (${got}/${total})`}
+      dockLabel={() => 'บันทึกการรักษา'}
       onFinish={(d, save) => {
         if (save) {
           const v = d as VisitData;

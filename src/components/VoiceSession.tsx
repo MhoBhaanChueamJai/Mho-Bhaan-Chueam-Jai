@@ -353,7 +353,7 @@ export function VoiceSession({ title, opening, topics, has, turn, closing, confi
       </View>
 
       {/* ข้อมูลที่ได้แล้ว */}
-      <View style={[styles.chips, { bottom: insets.bottom + 170 }]}>
+      <View style={[styles.chips, { bottom: insets.bottom + (got.length === topics.length ? 170 : 110) }]}>
         {topics.map((t) => {
           const ok = got.includes(t);
           return (
@@ -385,7 +385,12 @@ export function VoiceSession({ title, opening, topics, has, turn, closing, confi
             <Sym name="arrow.up" size={17} color={draft.trim() ? '#FFFFFF' : 'rgba(255,255,255,0.35)'} weight="bold" />
           </PressableScale>
         </View>
-        {kbOpen ? null : <Button label={dockLabel(data, got.length, topics.length, phase === 'done')} disabled={!canUse(data)} onPress={useData} style={{ height: 52 }} />}
+        {/* ปุ่มบันทึกแสดงเมื่อถามครบทุกหัวข้อแล้วเท่านั้น */}
+        {!kbOpen && got.length === topics.length ? (
+          <Animated.View entering={FadeIn.duration(300)}>
+            <Button label={dockLabel(data, got.length, topics.length, phase === 'done')} disabled={!canUse(data)} onPress={useData} style={{ height: 52 }} />
+          </Animated.View>
+        ) : null}
       </GlassDock>
     </KeyboardAvoidingView>
   );
