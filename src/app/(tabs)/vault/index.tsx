@@ -1,6 +1,6 @@
 /**
  * แท็บคลังภูมิปัญญา — สมุดข่อยดิจิทัลของคุณหมอ
- * Hero (การ์ด): พื้นหลังสันหนังสือ/ตำราเรียงบนหิ้ง (เบลอ) + ชื่อหน้า + KPI จำนวนตามประเภท + ปุ่มเพิ่ม · สแกน QR รับตำรา
+ * Hero (การ์ด): พื้นหลังสันหนังสือ/ตำราเรียงบนหิ้ง (เบลอ) + ชื่อหน้า + KPI จำนวนตามประเภท · ปุ่มไอคอน Liquid Glass (สแกน QR รับตำรา · เพิ่ม) มุมขวาบน
  * → เรื่องล่าสุด (การ์ดภาพใหญ่เลื่อนแนวนอน) → รายการทั้งหมด
  */
 import { BlurView } from 'expo-blur';
@@ -13,7 +13,7 @@ import Animated, { FadeIn, FadeInDown, LinearTransition } from 'react-native-rea
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CircleIcon } from '../../../components/ListRow';
 import { Sym, ios } from '../../../components/ios';
-import { PressableScale, T } from '../../../components/ui';
+import { GlassCircle, PressableScale, T } from '../../../components/ui';
 import { herbs } from '../../../data/herbs';
 import { legacy, type Wisdom } from '../../../data/mock';
 import { useApp } from '../../../store/app';
@@ -97,10 +97,15 @@ export default function Vault() {
             <Sym name="books.vertical.fill" size={13} color="#F3D9A4" />
             <T v="subhead" color="#F3D9A4" style={{ fontWeight: '600' }}>สมุดข่อยดิจิทัล</T>
           </View>
-          <PressableScale haptic="select" onPress={() => router.push('/wisdom/search')} style={styles.glassBtn} accessibilityLabel="ค้นหาภูมิปัญญา">
-            <BlurView intensity={30} tint="light" style={StyleSheet.absoluteFill} />
-            <Sym name="magnifyingglass" size={18} color="#FFFFFF" weight="semibold" />
-          </PressableScale>
+          {/* ปุ่มไอคอน Liquid Glass: สแกน QR รับตำรา · เพิ่มภูมิปัญญา */}
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <GlassCircle label="สแกนคิวอาร์โค้ดรับตำรา" onPress={() => router.push('/wisdom/scan-qr')} tint="rgba(255,255,255,0.14)">
+              <Sym name="qrcode.viewfinder" size={19} color="#FFFFFF" />
+            </GlassCircle>
+            <GlassCircle label="เพิ่มภูมิปัญญา" onPress={() => router.push('/wisdom/new')} tint="rgba(255,255,255,0.14)">
+              <Sym name="plus" size={20} color="#FFFFFF" weight="semibold" />
+            </GlassCircle>
+          </View>
         </View>
 
         <Animated.View entering={FadeInDown.duration(420)}>
@@ -120,19 +125,6 @@ export default function Vault() {
               <T v="micro" color="rgba(255,255,255,0.82)" numberOfLines={1} style={{ fontWeight: '600' }}>{k}</T>
             </Animated.View>
           ))}
-        </View>
-
-        {/* ปุ่มหลัก: เพิ่ม · สแกน QR รับตำราจากเพื่อน */}
-        <View style={styles.heroBtns}>
-          <PressableScale haptic="press" onPress={() => router.push('/wisdom/new')} style={[styles.btn, styles.btnMain]} accessibilityLabel="เพิ่มภูมิปัญญา">
-            <Sym name="plus" size={17} color={palette.primaryDeep} weight="bold" />
-            <T v="bodyStrong" color={palette.primaryDeep}>เพิ่มภูมิปัญญา</T>
-          </PressableScale>
-          <PressableScale haptic="press" onPress={() => router.push('/wisdom/scan-qr')} style={[styles.btn, styles.btnGlass]} accessibilityLabel="สแกนคิวอาร์โค้ดรับตำรา">
-            <BlurView intensity={30} tint="light" style={StyleSheet.absoluteFill} />
-            <Sym name="qrcode.viewfinder" size={18} color="#FFFFFF" />
-            <T v="bodyStrong" color="#FFFFFF">สแกนรับตำรา</T>
-          </PressableScale>
         </View>
       </View>
       </View>
@@ -196,15 +188,10 @@ const styles = StyleSheet.create({
   hero: { paddingHorizontal: 20, paddingTop: 18, paddingBottom: 20, borderRadius: 30, borderCurve: 'continuous', overflow: 'hidden' },
   heroTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 },
   eyebrow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  glassBtn: { width: 42, height: 42, borderRadius: 21, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.45)' },
   title: { marginBottom: 4 },
   kpis: { flexDirection: 'row', gap: 8, marginTop: 18 },
   kpi: { flex: 1, paddingVertical: 12, paddingHorizontal: 10, borderRadius: 18, borderCurve: 'continuous', overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.35)' },
   kpiIcon: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
-  heroBtns: { flexDirection: 'row', gap: 10, marginTop: 18 },
-  btn: { flex: 1, height: 50, borderRadius: 25, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, overflow: 'hidden' },
-  btnMain: { backgroundColor: '#FFFFFF' },
-  btnGlass: { borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.5)' },
   secHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', paddingHorizontal: 20, marginTop: 24, marginBottom: 2 },
   rail: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 22, gap: 14 },
   feature: { width: CARD_W, height: 320, borderRadius: 26, borderCurve: 'continuous', backgroundColor: palette.surface },
