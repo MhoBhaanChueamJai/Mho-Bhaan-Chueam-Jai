@@ -53,6 +53,13 @@ function Section({ icon, color, title, children, i, reading, onY }: { icon: stri
   );
 }
 
+/** แยก "ชื่อตัวยา ปริมาณ" → ชื่อ / ปริมาณ (ปริมาณ = ตั้งแต่ตัวเลขแรกจนจบ ถ้าไม่ยาวเกิน) */
+function splitAmount(x: string): { name: string; amount: string } {
+  const m = x.match(/^(.+?)\s+([\d๐-๙][\d๐-๙.,/x×–\-\s]*\S*(?:\s+\S+)?)$/);
+  if (m && m[2].length <= 18) return { name: m[1].trim(), amount: m[2].trim() };
+  return { name: x, amount: '' };
+}
+
 export default function WisdomDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { wisdoms, updateWisdom, removeWisdom, profile } = useApp();
@@ -264,32 +271,38 @@ export default function WisdomDetail() {
 
           {w.ingredients?.length ? (
             <Section reading={reading === 'ingredients'} onY={(v) => (posY.current['ingredients'] = v)} i={2} icon="leaf.fill" color={palette.primary} title={`${L.ingredients} · ${w.ingredients.length} รายการ`}>
-              <View style={{ marginTop: 4 }}>
+              {/* ตำรับแบบตาราง: ชื่อ ........ ปริมาณ */}
+              <View style={{ marginTop: 2 }}>
                 {w.ingredients.map((x, i) => {
                   const h = herbOf(x);
+                  const { name, amount } = splitAmount(x);
                   const row = (
                     <View style={styles.ing}>
-                      {h ? <Image source={h.image} style={styles.herbImg} contentFit="cover" /> : (
+                      {h ? (
+                        <Image source={h.image} style={styles.herbImg} contentFit="cover" />
+                      ) : (
                         <View style={styles.num}>
-                          <T v="subhead" color={palette.primaryDeep} style={{ fontWeight: '700' }}>{i + 1}</T>
+                          <T v="micro" color={palette.primaryDeep} style={{ fontWeight: '700' }}>{i + 1}</T>
                         </View>
                       )}
-                      <View style={{ flex: 1 }}>
-                        <T v="body" style={{ fontWeight: '600' }}>{x}</T>
-                        {h ? <T v="caption" color={ios.secondary} numberOfLines={1}>{h.uses.slice(0, 2).join(' · ')}</T> : null}
-                      </View>
-                      {h ? <Sym name="chevron.right" size={13} color={ios.tertiary} weight="semibold" /> : null}
+                      <T v="body" style={styles.ingName}>{name}</T>
+                      {amount ? (
+                        <>
+                          <View style={styles.leader} />
+                          <T v="body" style={styles.ingAmt}>{amount}</T>
+                        </>
+                      ) : (
+                        <View style={{ flex: 1 }} />
+                      )}
+                      {h ? <Sym name="chevron.right" size={12} color={ios.tertiary} weight="semibold" /> : null}
                     </View>
                   );
-                  return (
-                    <View key={`${x}${i}`}>
-                      {i ? <View style={styles.sep} /> : null}
-                      {h ? (
-                        <PressableScale scaleTo={0.98} haptic="select" onPress={() => router.push(`/herb/${h.id}`)} accessibilityLabel={`ดูสมุนไพร ${h.name}`}>
-                          {row}
-                        </PressableScale>
-                      ) : row}
-                    </View>
+                  return h ? (
+                    <PressableScale key={`${x}${i}`} scaleTo={0.98} haptic="select" onPress={() => router.push(`/herb/${h.id}`)} accessibilityLabel={`ดูสมุนไพร ${h.name}`}>
+                      {row}
+                    </PressableScale>
+                  ) : (
+                    <View key={`${x}${i}`}>{row}</View>
                   );
                 })}
               </View>
@@ -299,13 +312,17 @@ export default function WisdomDetail() {
           {w.method && !kf.method.hidden ? (
             <Section reading={reading === 'method'} onY={(v) => (posY.current['method'] = v)} i={3} icon="flame.fill" color="#D9921A" title={L.method}>
               {kf.method.steps && steps.length > 1 ? (
-                <View style={{ gap: 12, marginTop: 4 }}>
-                  {steps.map((s, i) => (
-                    <View key={i} style={{ flexDirection: 'row', gap: 12 }}>
-                      <View style={styles.stepNum}>
-                        <T v="caption" color="#FFFFFF" style={{ fontWeight: '700' }}>{i + 1}</T>
+                // ไทม์ไลน์: เลขในวงกลมเชื่อมด้วยเส้นแนวตั้ง
+                <View style={{ marginTop: 4 }}>
+                  {steps.map((st, i) => (
+                    <View key={i} style={styles.stepRow}>
+                      <View style={styles.stepRail}>
+                        <View style={styles.stepNum}>
+                          <T v="caption" color="#FFFFFF" style={{ fontWeight: '700' }}>{i + 1}</T>
+                        </View>
+                        {i < steps.length - 1 ? <View style={styles.stepLine} /> : null}
                       </View>
-                      <T v="body" style={{ flex: 1 }}>{s}</T>
+                      <T v="body" style={[styles.stepText, i === steps.length - 1 && { paddingBottom: 0 }]}>{st}</T>
                     </View>
                   ))}
                 </View>
@@ -326,13 +343,9 @@ export default function WisdomDetail() {
           ) : null}
 
           {w.caution ? (
-            <Animated.View onLayout={(e) => (posY.current.caution = e.nativeEvent.layout.y)} entering={FadeInDown.delay(360).duration(380)} style={[styles.warn, reading === 'caution' && styles.reading]}>
-              <Sym name="exclamationmark.triangle.fill" size={18} color={palette.coral} />
-              <View style={{ flex: 1, gap: 2 }}>
-                <T v="title" color={palette.coral}>{L.caution}</T>
-                <T v="body">{w.caution}</T>
-              </View>
-            </Animated.View>
+            <Section reading={reading === 'caution'} onY={(v) => (posY.current['caution'] = v)} i={4} icon="exclamationmark.triangle.fill" color={palette.coral} title={L.caution}>
+              <T v="body" style={styles.para}>{w.caution}</T>
+            </Section>
           ) : null}
 
           {/* แหล่งอ้างอิง */}
@@ -398,15 +411,22 @@ const styles = StyleSheet.create({
   card: { backgroundColor: palette.surface, borderRadius: 22, borderCurve: 'continuous', padding: 18 },
   cardHead: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
   para: { lineHeight: 26 },
-  ing: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 },
-  herbImg: { width: 44, height: 44, borderRadius: 12 },
-  num: { width: 44, height: 44, borderRadius: 12, backgroundColor: palette.primarySoft, alignItems: 'center', justifyContent: 'center' },
+  ing: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 9 },
+  herbImg: { width: 28, height: 28, borderRadius: 14 },
+  num: { width: 28, height: 28, borderRadius: 14, backgroundColor: palette.primarySoft, alignItems: 'center', justifyContent: 'center' },
+  ingName: { flexShrink: 1, fontWeight: '600' },
+  leader: { flex: 1, minWidth: 14, height: 1, marginTop: 10, borderBottomWidth: 1.5, borderStyle: 'dotted', borderColor: 'rgba(60,60,67,0.28)' },
+  ingAmt: { fontWeight: '700', color: palette.primaryDeep },
+  stepRow: { flexDirection: 'row', gap: 12 },
+  stepRail: { width: 26, alignItems: 'center' },
+  stepLine: { flex: 1, width: 2, borderRadius: 1, marginVertical: 4, backgroundColor: '#F2DDBB' },
+  stepText: { flex: 1, paddingTop: 1, paddingBottom: 18 },
   sep: { height: StyleSheet.hairlineWidth, backgroundColor: ios.separator, marginLeft: 56 },
   chant: { fontSize: 19, lineHeight: 32, textAlign: 'center', fontWeight: '500' },
   original: { fontStyle: 'italic', color: '#5B4A2A' },
   originRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12, paddingTop: 12, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: ios.separator },
   extra: { flexDirection: 'row', gap: 10, marginTop: 14, padding: 12, borderRadius: 14, backgroundColor: '#FDF3E3' },
-  stepNum: { width: 24, height: 24, borderRadius: 12, backgroundColor: '#D9921A', alignItems: 'center', justifyContent: 'center', marginTop: 2 },
+  stepNum: { width: 26, height: 26, borderRadius: 13, backgroundColor: '#D9921A', alignItems: 'center', justifyContent: 'center' },
   refs: { padding: 16, borderRadius: 22, borderCurve: 'continuous', backgroundColor: palette.surface, gap: 12 },
   refsHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   refRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 6 },
