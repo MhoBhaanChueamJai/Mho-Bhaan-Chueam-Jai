@@ -357,7 +357,7 @@ export default function Login() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#071A11', overflow: 'hidden' },
+  root: { flex: 1, backgroundColor: '#0B6E45', overflow: 'hidden' },
   sheet: { position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: '#FFFFFF', borderTopLeftRadius: 32, borderTopRightRadius: 32, borderCurve: 'continuous', paddingHorizontal: 24, paddingTop: 28 },
   group: { marginTop: 20, gap: 12 },
   field: { flexDirection: 'row', alignItems: 'center', gap: 10, height: 54, borderRadius: 27, paddingLeft: 18, paddingRight: 6, backgroundColor: palette.mint, borderWidth: 1.5, borderColor: 'transparent' },
