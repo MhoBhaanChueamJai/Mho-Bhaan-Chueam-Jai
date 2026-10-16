@@ -17,7 +17,7 @@ import { rmsLevel, useVoiceRecorder } from './audio';
 import { Sym } from './ios';
 import { AISphere } from './AISphere';
 import { AIGlow, Waveform } from './Orb';
-import { Button, Glass, GlassCircle, PressableScale, T, useHaptic } from './ui';
+import { Button, GlassCircle, PressableScale, T, useHaptic } from './ui';
 import type { Turn } from '../lib/intake';
 import { palette } from '../theme';
 
