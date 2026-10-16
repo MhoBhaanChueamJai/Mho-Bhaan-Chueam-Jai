@@ -32,6 +32,8 @@ export type VoiceSessionProps = {
   turn: (known: VoiceData, history: Turn[], answer: string) => Promise<{ data: VoiceData; reply: string; done: boolean; options?: string[] }>;
   /** ชิปตัวเลือกของคำถามแรก */
   initialOptions?: string[];
+  /** ปุ่มเครื่องมือมุมขวาบน (ได้ฟังก์ชันหยุดเสียง/ไมค์ก่อนเปลี่ยนโหมด) */
+  topRight?: (stop: () => void) => React.ReactNode;
   /** ข้อความเพิ่มท้ายสรุป ก่อนถามยืนยัน (เช่น วิเคราะห์ธาตุ) */
   closing?: (d: VoiceData) => string;
   confirmQ: string;
@@ -47,7 +49,7 @@ export type VoiceSessionProps = {
   onFinish: (d: VoiceData, save: boolean) => void;
 };
 
-export function VoiceSession({ initialOptions, title, opening, topics, has, turn, closing, confirmQ, yesBye, noBye, noContinues, dockLabel, canUse, dockSaves, doneLabel, onFinish }: VoiceSessionProps) {
+export function VoiceSession({ topRight, initialOptions, title, opening, topics, has, turn, closing, confirmQ, yesBye, noBye, noContinues, dockLabel, canUse, dockSaves, doneLabel, onFinish }: VoiceSessionProps) {
   const insets = useSafeAreaInsets();
   const h = useHaptic();
   const rec = useVoiceRecorder();
@@ -342,7 +344,7 @@ export function VoiceSession({ initialOptions, title, opening, topics, has, turn
           <Sym name="xmark" size={17} color="#FFFFFF" weight="semibold" />
         </GlassCircle>
         <T v="title" color="#FFFFFF">{title}</T>
-        <View style={{ width: 44 }} />
+        {topRight ? topRight(stopAll) : <View style={{ width: 44 }} />}
       </View>
 
       {/* ดอกไม้ AI ตอบสนองเสียง */}

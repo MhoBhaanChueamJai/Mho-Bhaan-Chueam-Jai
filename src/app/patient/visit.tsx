@@ -6,6 +6,8 @@ import { router, useLocalSearchParams } from 'expo-router';
 import React from 'react';
 import { PractitionerGate } from '../../components/PractitionerGate';
 import { VoiceSession } from '../../components/VoiceSession';
+import { Sym } from '../../components/ios';
+import { GlassCircle } from '../../components/ui';
 import { VISIT_TOPICS, optionsFor, visitHas, visitOpening, visitTurn, type VisitData } from '../../lib/visit';
 import { useApp } from '../../store/app';
 
@@ -18,6 +20,19 @@ function VisitInner() {
   return (
     <VoiceSession
       title={`บันทึกการรักษาครั้งที่ ${no}`}
+      topRight={(stop) => (
+        // โหมดฟังบทสนทนา: ครูปัญญาฟังหมอคุยกับผู้ป่วยแล้วจัดลงหัวข้อให้
+        <GlassCircle
+          label="ฟังบทสนทนา"
+          tint="rgba(255,255,255,0.12)"
+          onPress={() => {
+            stop();
+            router.replace({ pathname: '/patient/scribe', params: { pid: p.id } });
+          }}
+        >
+          <Sym name="ear" size={19} color="#FFFFFF" />
+        </GlassCircle>
+      )}
       opening={visitOpening(p)}
       initialOptions={optionsFor(p, 'symptoms')}
       topics={VISIT_TOPICS as { key: string; label: string }[]}

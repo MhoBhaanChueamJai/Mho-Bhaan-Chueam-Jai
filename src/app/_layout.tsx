@@ -42,6 +42,7 @@ function Root() {
         <Stack.Screen name="id-scan" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
         <Stack.Screen name="patient/voice" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
         <Stack.Screen name="patient/visit" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
+        <Stack.Screen name="patient/scribe" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
         <Stack.Screen name="assistant" />
         <Stack.Screen name="verify" options={{ presentation: 'modal', headerShown: true, title: 'ยืนยันตัวตน', headerShadowVisible: false, headerStyle: { backgroundColor: '#FFFFFF' } }} />
         <Stack.Screen name="privacy" options={{ presentation: 'modal', headerShown: true, title: 'นโยบายความเป็นส่วนตัว', headerShadowVisible: false, headerStyle: { backgroundColor: '#FFFFFF' } }} />
