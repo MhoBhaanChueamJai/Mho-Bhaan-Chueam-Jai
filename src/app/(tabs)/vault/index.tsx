@@ -87,6 +87,9 @@ export default function Vault() {
       options={{
         headerRight: () => (
           <View style={{ flexDirection: 'row', gap: 4 }}>
+            <HeaderButton label="ค้นหาภูมิปัญญา" onPress={() => router.push('/wisdom/search')}>
+              <Sym name="magnifyingglass" size={20} color={palette.primary} weight="semibold" />
+            </HeaderButton>
             <HeaderButton label="สแกนคิวอาร์โค้ดรับตำรา" onPress={() => router.push('/wisdom/scan-qr')}>
               <Sym name="qrcode.viewfinder" size={20} color={palette.primary} weight="semibold" />
             </HeaderButton>
