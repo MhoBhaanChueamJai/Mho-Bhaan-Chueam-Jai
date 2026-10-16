@@ -60,6 +60,37 @@ function splitAmount(x: string): { name: string; amount: string } {
   return { name: x, amount: '' };
 }
 
+/** แยกข้อความวิธีใช้เป็นแถวตามรูปแบบยา ("ชนิดชง …" / "ชนิดผง ชนิดแคปซูล … ") + ข้อความเตือน ("ไม่ควร…/ห้าม…") */
+function usageRows(text: string): { rows: { label: string; body: string }[]; warns: string[] } {
+  const rows: { label: string[]; body: string[] }[] = [];
+  const warns: string[] = [];
+  let mode: 'body' | 'warn' = 'body';
+  for (const tok of text.split(/\s+/).filter(Boolean)) {
+    const kind = tok.match(/^(?:และ)?ชนิด(.+)$/);
+    if (kind) {
+      const names = kind[1].split(/และ(?:ชนิด)?/).filter(Boolean);
+      const cur = rows[rows.length - 1];
+      if (!cur || cur.body.length || mode === 'warn') rows.push({ label: names, body: [] });
+      else cur.label.push(...names);
+      mode = 'body';
+    } else if (/^กรณี/.test(tok) && rows.length && rows[rows.length - 1].body.length) {
+      rows.push({ label: [], body: [tok] }); // แต่ละกรณีขึ้นแถวใหม่
+      mode = 'body';
+    } else if (/^(ไม่ควร|ห้าม)/.test(tok)) {
+      warns.push(tok);
+      mode = 'warn';
+    } else if (tok === 'และ' && rows.length && !rows[rows.length - 1].body.length) {
+      continue;
+    } else if (mode === 'warn') {
+      warns[warns.length - 1] += ` ${tok}`;
+    } else {
+      if (!rows.length) rows.push({ label: [], body: [] });
+      rows[rows.length - 1].body.push(tok);
+    }
+  }
+  return { rows: rows.filter((r) => r.body.length).map((r) => ({ label: r.label.length ? `ชนิด${r.label.join(' · ')}` : '', body: r.body.join(' ') })), warns };
+}
+
 export default function WisdomDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { wisdoms, updateWisdom, removeWisdom, profile } = useApp();
@@ -106,6 +137,7 @@ export default function WisdomDetail() {
   const kf = KIND_FORM[w.kind] ?? KIND_FORM['ตำรับยา'];
   const { steps, extra } = splitMethod(w.kind, w.method);
   const ingRows = (w.ingredients ?? []).filter((x) => !/^\s*\(/.test(x));
+  const usage = usageRows(extra);
   const ingNotes = (w.ingredients ?? []).filter((x) => /^\s*\(/.test(x)).map((x) => x.trim().replace(/^\(|\)$/g, ''));
   const ORIGIN_RE = /\n*(ได้รับสืบทอดจาก|แหล่งที่มา):\s*(.+)$/;
   const om = (w.summary ?? '').match(ORIGIN_RE);
@@ -273,44 +305,41 @@ export default function WisdomDetail() {
 
           {w.ingredients?.length ? (
             <Section reading={reading === 'ingredients'} onY={(v) => (posY.current['ingredients'] = v)} i={2} icon="leaf.fill" color={palette.primary} title={`${L.ingredients} · ${ingRows.length} รายการ`}>
-              {/* ตำรับแบบตาราง: ชื่อ ........ ปริมาณ · บรรทัดในวงเล็บ = หมายเหตุสรุปท้ายตาราง */}
-              <View>
+              {/* สรุปสูตร (บรรทัดในวงเล็บของตำรับ) */}
+              {ingNotes.length ? (
+                <View style={styles.ingSummary}>
+                  <Sym name="scalemass.fill" size={12} color={palette.primaryDeep} />
+                  <T v="caption" color={palette.primaryDeep} style={{ flex: 1, fontWeight: '600' }}>{ingNotes.join(' · ')}</T>
+                </View>
+              ) : null}
+              {/* การ์ดตัวยา 2 คอลัมน์: รูป/ไอคอน · ชื่อ · ปริมาณ */}
+              <View style={styles.ingGrid}>
                 {ingRows.map((x, i) => {
                   const h = herbOf(x);
                   const { name, amount } = splitAmount(x);
-                  const row = (
-                    <View style={[styles.ing, i > 0 && styles.ingSep]}>
+                  const tile = (
+                    <View style={styles.tile}>
                       {h ? (
-                        <Image source={h.image} style={styles.herbImg} contentFit="cover" />
+                        <Image source={h.image} style={styles.tileImg} contentFit="cover" />
                       ) : (
-                        <T v="caption" color={ios.tertiary} style={styles.ingIdx}>{i + 1}</T>
+                        <View style={styles.tileIcon}>
+                          <KindIcon kind={w.kind} size={14} color={palette.primary} />
+                        </View>
                       )}
-                      <T v="body" style={styles.ingName}>{name}</T>
-                      {amount ? (
-                        <>
-                          <View style={styles.leader} />
-                          <T v="body" style={styles.ingAmt}>{amount}</T>
-                        </>
-                      ) : (
-                        <View style={{ flex: 1 }} />
-                      )}
-                      {h ? <Sym name="chevron.right" size={11} color={ios.tertiary} weight="semibold" /> : null}
+                      <View style={{ flex: 1, gap: 1 }}>
+                        <T v="subhead" numberOfLines={3} style={{ fontWeight: '600' }}>{name}</T>
+                        {amount ? <T v="caption" color={palette.primaryDeep} style={{ fontWeight: '700' }}>{amount}</T> : null}
+                      </View>
                     </View>
                   );
                   return h ? (
-                    <PressableScale key={`${x}${i}`} scaleTo={0.98} haptic="select" onPress={() => router.push(`/herb/${h.id}`)} accessibilityLabel={`ดูสมุนไพร ${h.name}`}>
-                      {row}
+                    <PressableScale key={`${x}${i}`} scaleTo={0.97} haptic="select" onPress={() => router.push(`/herb/${h.id}`)} style={styles.tileWrap} accessibilityLabel={`ดูสมุนไพร ${h.name}`}>
+                      {tile}
                     </PressableScale>
                   ) : (
-                    <View key={`${x}${i}`}>{row}</View>
+                    <View key={`${x}${i}`} style={styles.tileWrap}>{tile}</View>
                   );
                 })}
-                {ingNotes.map((n, i) => (
-                  <View key={i} style={styles.ingNote}>
-                    <Sym name="sum" size={13} color={palette.primaryDeep} />
-                    <T v="subhead" color={palette.primaryDeep} style={{ flex: 1, fontWeight: '600' }}>{n}</T>
-                  </View>
-                ))}
               </View>
             </Section>
           ) : null}
@@ -336,18 +365,30 @@ export default function WisdomDetail() {
               ) : (
                 <T v="body" style={[styles.para, w.kind === 'ตำราโบราณ' && styles.original]}>{steps.join('\n')}</T>
               )}
-              {/* บรรทัดเสริม: วิธีใช้ / ระยะเวลา */}
-              {extra && kf.extra ? (
-                <View style={styles.extra}>
-                  <View style={styles.extraIcon}>
-                    <Sym name={w.kind === 'วิธีรักษา' ? 'clock.fill' : 'drop.fill'} size={13} color="#B26A12" />
+            </Section>
+          ) : null}
+
+          {/* วิธีใช้ / ระยะเวลา: แยกแถวตามรูปแบบยา + ข้อความเตือนแยกแถว */}
+          {extra && kf.extra ? (
+            <Section reading={false} onY={() => {}} i={3} icon={w.kind === 'วิธีรักษา' ? 'clock.fill' : 'drop.fill'} color="#B26A12" title={kf.extra.label}>
+              <View style={{ gap: 10 }}>
+                {usage.rows.map((r, i) => (
+                  <View key={i} style={styles.useRow}>
+                    {r.label ? (
+                      <View style={styles.usePill}>
+                        <T v="caption" color="#9A5A0C" style={{ fontWeight: '700' }}>{r.label}</T>
+                      </View>
+                    ) : null}
+                    <T v="body" style={styles.para}>{r.body}</T>
                   </View>
-                  <View style={{ flex: 1, gap: 2 }}>
-                    <T v="subhead" color="#B26A12" style={{ fontWeight: '700' }}>{kf.extra.label}</T>
-                    <T v="body" style={styles.para}>{extra}</T>
+                ))}
+                {usage.warns.map((x, i) => (
+                  <View key={`w${i}`} style={styles.useWarn}>
+                    <Sym name="exclamationmark.circle.fill" size={14} color={palette.coral} />
+                    <T v="subhead" color={palette.coral} style={{ flex: 1, fontWeight: '600' }}>{x}</T>
                   </View>
-                </View>
-              ) : null}
+                ))}
+              </View>
             </Section>
           ) : null}
 
@@ -427,6 +468,15 @@ const styles = StyleSheet.create({
   ingName: { flexShrink: 1 },
   leader: { flex: 1, minWidth: 12, height: 1, marginTop: 8, borderBottomWidth: 1, borderStyle: 'dotted', borderColor: 'rgba(60,60,67,0.22)' },
   ingAmt: { fontWeight: '600', color: palette.ink },
+  ingSummary: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', marginBottom: 12, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999, backgroundColor: palette.primarySoft },
+  ingGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  tileWrap: { width: '48.5%' },
+  tile: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 58, paddingHorizontal: 10, paddingVertical: 9, borderRadius: 14, borderCurve: 'continuous', backgroundColor: palette.bg },
+  tileImg: { width: 32, height: 32, borderRadius: 16 },
+  tileIcon: { width: 32, height: 32, borderRadius: 16, backgroundColor: palette.primarySoft, alignItems: 'center', justifyContent: 'center' },
+  useRow: { gap: 6 },
+  usePill: { alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999, backgroundColor: '#FCEBD2' },
+  useWarn: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, paddingTop: 10, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: ios.separator },
   ingNote: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 12, backgroundColor: palette.primarySoft },
   stepRow: { flexDirection: 'row', gap: 12 },
   stepRail: { width: 26, alignItems: 'center' },
