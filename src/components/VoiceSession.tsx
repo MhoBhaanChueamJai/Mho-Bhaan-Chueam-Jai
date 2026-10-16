@@ -344,8 +344,8 @@ export function VoiceSession({ title, opening, topics, has, turn, closing, confi
           </View>
         ) : null}
 
-        <Animated.View key={aiText} entering={FadeInDown.duration(320)} style={{ paddingHorizontal: 28, marginTop: 22 }}>
-          <T v="h2" color="#FFFFFF" center>{aiText}</T>
+        <Animated.View key={aiText} entering={FadeInDown.duration(320)} style={{ paddingHorizontal: 36, marginTop: 18 }}>
+          <T v="body" color="rgba(255,255,255,0.9)" center>{aiText}</T>
         </Animated.View>
         {userText ? (
           <Animated.View entering={FadeIn.duration(250)} style={styles.userBubble}>
