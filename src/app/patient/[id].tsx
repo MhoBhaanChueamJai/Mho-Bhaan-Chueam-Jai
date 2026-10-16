@@ -4,12 +4,13 @@ import { PractitionerGate } from '../../components/PractitionerGate';
 import { Linking, ScrollView, Share, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn, LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Group, IOSCard, SectionTitle, Sym, ios } from '../../components/ios';
-import { Avatar, Button, GlassDock, HeaderBack, HeaderButton, PressableScale, T } from '../../components/ui';
+import { CircleIcon, ListRow, ListSection, PAGE_PAD } from '../../components/ListRow';
+import { Sym, ios } from '../../components/ios';
+import { Avatar, Button, GlassDock, HeaderBack, PressableScale, T } from '../../components/ui';
 import { avatarFor, fullAddress, type MB5Visit, type Patient } from '../../data/mock';
-import { statusTone } from '../../data/tones';
+import { statusLabel, statusTone } from '../../data/tones';
 import { useApp } from '../../store/app';
-import { elementColor, palette } from '../../theme';
+import { elementColor, elevation, palette } from '../../theme';
 
 /** ข้อความสำหรับส่งออก (รูปแบบทะเบียนการรักษาของกรมการแพทย์แผนไทยฯ) */
 function exportText(p: Patient) {
@@ -33,55 +34,66 @@ function exportText(p: Patient) {
 }
 
 const DETAIL: { k: keyof MB5Visit; l: string }[] = [
-  { k: 'symptoms', l: 'อาการเจ็บป่วย' },
+  { k: 'symptoms', l: 'อาการ' },
   { k: 'exam', l: 'ตรวจร่างกาย' },
   { k: 'treatment', l: 'การรักษา' },
   { k: 'followUp', l: 'การติดตามผล' },
   { k: 'note', l: 'หมายเหตุ' },
 ];
 
-/** แถวข้อมูลแบบ Contacts: ป้ายเล็กด้านบน ค่าอยู่ด้านล่าง */
-function InfoRow({ label, value, tint }: { label: string; value: string; tint?: string }) {
+/** ปุ่มลัดวงกลม (แบบ Contacts): ไอคอนในวงกลม + ป้ายใต้ปุ่ม */
+function QuickAction({ sym, label, onPress, primary }: { sym: any; label: string; onPress?: () => void; primary?: boolean }) {
   return (
-    <View style={styles.info}>
+    <PressableScale haptic="press" scaleTo={0.94} onPress={onPress} style={styles.qa} accessibilityLabel={label}>
+      <View style={[styles.qaCircle, primary ? { backgroundColor: palette.primary } : { backgroundColor: palette.surface }, elevation.e1]}>
+        <Sym name={sym} size={22} color={primary ? '#FFFFFF' : palette.primary} />
+      </View>
+      <T v="subhead" color={primary ? palette.primaryDeep : ios.label} style={{ fontWeight: '600' }}>{label}</T>
+    </PressableScale>
+  );
+}
+
+/** ช่องตัวเลขสรุป (อายุ / ธาตุ / BMI) */
+function Stat({ label, value, tint }: { label: string; value: string; tint?: string }) {
+  return (
+    <View style={styles.stat}>
       <T v="caption" color={ios.secondary}>{label}</T>
-      <T v="body" color={tint ?? ios.label}>{value}</T>
+      <T v="title" color={tint ?? ios.label} style={{ marginTop: 2 }}>{value}</T>
     </View>
   );
 }
 
-function Action({ sym, label, onPress }: { sym: any; label: string; onPress?: () => void }) {
+/** ประวัติการรักษาแบบไทม์ไลน์: จุด+เส้นด้านซ้าย การ์ดด้านขวา แตะเพื่อดูรายละเอียด */
+function VisitItem({ v, open, onToggle, last }: { v: MB5Visit; open: boolean; onToggle: () => void; last: boolean }) {
   return (
-    <IOSCard onPress={onPress} containerStyle={{ flex: 1 }} style={styles.action}>
-      <Sym name={sym} size={22} color={palette.primary} />
-      <T v="caption" color={palette.primary} style={{ fontWeight: '600' }}>{label}</T>
-    </IOSCard>
-  );
-}
-
-function VisitRow({ v, open, onToggle }: { v: MB5Visit; open: boolean; onToggle: () => void }) {
-  return (
-    <Animated.View layout={LinearTransition.duration(220)}>
-      <PressableScale onPress={onToggle} scaleTo={0.99} haptic="select" style={styles.visit}>
-        <View style={styles.no}>
-          <T v="callout" color={palette.primary} style={{ fontWeight: '700' }}>{v.no}</T>
+    <Animated.View layout={LinearTransition.duration(260)} style={styles.tlRow}>
+      <View style={styles.tlRail}>
+        <View style={[styles.tlDot, open && { backgroundColor: palette.primary }]}>
+          <T v="caption" color={open ? '#FFFFFF' : palette.primaryDeep} style={{ fontWeight: '700' }}>{v.no}</T>
         </View>
-        <View style={{ flex: 1 }}>
-          <T v="body" numberOfLines={open ? undefined : 1} style={{ fontWeight: '600' }}>{v.diagnosis}</T>
-          <T v="caption" color={ios.secondary}>{v.date} · {v.result}</T>
+        {!last ? <View style={styles.tlLine} /> : null}
+      </View>
+      <PressableScale onPress={onToggle} scaleTo={0.99} haptic="select" style={[styles.tlCard, elevation.e1]} accessibilityLabel={`การรักษาครั้งที่ ${v.no}`}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <T v="caption" color={ios.secondary} style={{ flex: 1 }}>{v.date}</T>
+          <View style={styles.result}>
+            <T v="micro" color={palette.primaryDeep}>{v.result}</T>
+          </View>
+          <Sym name={open ? 'chevron.up' : 'chevron.down'} size={12} color={ios.tertiary} weight="semibold" />
         </View>
-        <Sym name={open ? 'chevron.up' : 'chevron.down'} size={13} color={ios.tertiary} weight="semibold" />
+        <T v="title" numberOfLines={open ? undefined : 1} style={{ marginTop: 4 }}>{v.diagnosis}</T>
+        {!open ? <T v="subhead" color={ios.secondary} numberOfLines={1} style={{ marginTop: 2 }}>{v.symptoms}</T> : null}
+        {open ? (
+          <Animated.View entering={FadeIn.duration(200)} style={styles.detail}>
+            {DETAIL.filter((d) => v[d.k]).map((d) => (
+              <View key={d.k} style={{ gap: 2 }}>
+                <T v="caption" color={ios.secondary} style={{ fontWeight: '600' }}>{d.l}</T>
+                <T v="subhead">{String(v[d.k])}</T>
+              </View>
+            ))}
+          </Animated.View>
+        ) : null}
       </PressableScale>
-      {open ? (
-        <Animated.View entering={FadeIn.duration(180)} style={styles.detail}>
-          {DETAIL.filter((d) => v[d.k]).map((d) => (
-            <View key={d.k} style={{ gap: 1 }}>
-              <T v="caption" color={ios.secondary}>{d.l}</T>
-              <T v="callout">{String(v[d.k])}</T>
-            </View>
-          ))}
-        </Animated.View>
-      ) : null}
     </Animated.View>
   );
 }
@@ -101,8 +113,10 @@ function PatientDetailInner() {
   const st = statusTone[p.status];
   const bmi = p.weight && p.height ? p.weight / (p.height / 100) ** 2 : 0;
   const share = () => Share.share({ message: exportText(p), title: p.name });
+  const call = () => Linking.openURL(`tel:${p.phone.replace(/[^0-9]/g, '')}`);
   // บันทึกการรักษาด้วยเสียง (ครูปัญญาถามทีละเรื่อง)
   const record = () => router.push({ pathname: '/patient/visit', params: { pid: p.id } });
+  const allergic = p.allergies && p.allergies !== 'ไม่มี';
 
   return (
     <>
@@ -116,82 +130,101 @@ function PatientDetailInner() {
           headerBackButtonDisplayMode: 'minimal',
           headerBackVisible: false,
           headerLeft: () => <HeaderBack fallback="/patients" color={palette.primary} />,
-          headerRight: () => (
-            <HeaderButton onPress={share} label="ส่งออก">
-              <Sym name="square.and.arrow.up" size={20} color={palette.primary} weight="semibold" />
-            </HeaderButton>
-          ),
         }}
       />
-      <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 110 }} showsVerticalScrollIndicator={false}>
-        {/* ส่วนบนแบบ Contacts */}
-        <View style={styles.hero}>
-          <Avatar name={p.name} src={avatarFor(p)} size={96} />
-          <T v="h1" center style={{ marginTop: 10 }}>{p.name}</T>
-          <T v="callout" color={ios.secondary} center>
-            {p.sex} · {p.age} ปี · {el.label}
-          </T>
-          <View style={[styles.status, { backgroundColor: st.bg }]}>
-            <T v="caption" color={st.fg} style={{ fontWeight: '600' }}>{p.status}</T>
+      <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingBottom: insets.bottom + 120 }} showsVerticalScrollIndicator={false}>
+        {/* ── ส่วนหัว: รูป ชื่อ สถานะ + ตัวเลขสรุป ── */}
+        <Animated.View entering={FadeIn.duration(350)} style={[styles.hero, elevation.e1]}>
+          <View style={styles.avatarRing}>
+            <Avatar name={p.name} src={avatarFor(p)} size={92} />
           </View>
+          <T v="h2" center style={{ marginTop: 12 }}>{p.name}</T>
+          <View style={[styles.status, { backgroundColor: st.bg }]}>
+            <View style={[styles.statusDot, { backgroundColor: st.fg }]} />
+            <T v="caption" color={st.fg} style={{ fontWeight: '700' }}>{statusLabel(p.status)}</T>
+          </View>
+          <View style={styles.stats}>
+            <Stat label="เพศ · อายุ" value={`${p.sex} ${p.age} ปี`} />
+            <View style={styles.statSep} />
+            <Stat label="ธาตุเจ้าเรือน" value={el.label} tint={el.fg} />
+            <View style={styles.statSep} />
+            <Stat label="BMI" value={bmi ? bmi.toFixed(1) : '-'} />
+          </View>
+        </Animated.View>
+
+        {/* ── ปุ่มลัด ── */}
+        <View style={styles.qaRow}>
+          <QuickAction sym="phone.fill" label="โทร" onPress={call} />
+          <QuickAction sym="mic.fill" label="บันทึกการรักษา" onPress={record} primary />
+          <QuickAction sym="square.and.arrow.up" label="ส่งออก" onPress={share} />
         </View>
 
-        <View style={styles.actions}>
-          <Action sym="phone.fill" label="โทร" onPress={() => Linking.openURL(`tel:${p.phone.replace(/[^0-9]/g, '')}`)} />
-          <Action sym="mic.fill" label="บันทึก" onPress={record} />
-          <Action sym="square.and.arrow.up" label="ส่งออก" onPress={share} />
-        </View>
-
-        <SectionTitle title="ข้อมูลทั่วไป" />
-        <Group inset={16}>
-          <InfoRow label="ที่อยู่" value={fullAddress(p.address) || 'ยังไม่ระบุ'} />
-          <InfoRow label="เบอร์โทรศัพท์" value={p.phone} tint={palette.primary} />
-          <InfoRow label="โรคประจำตัว" value={p.chronic} />
-          <InfoRow label="การแพ้ยา / อาหาร" value={p.allergies} tint={p.allergies !== 'ไม่มี' ? palette.coral : undefined} />
-          <InfoRow label="น้ำหนัก / ส่วนสูง" value={bmi ? `${p.weight} กก. · ${p.height} ซม. · BMI ${bmi.toFixed(1)}` : 'ยังไม่ระบุ'} />
-          {p.meds.length ? <InfoRow label="ยาที่ใช้อยู่" value={p.meds.join(', ')} /> : null}
-        </Group>
+        {/* ── ข้อมูลทั่วไป ── */}
+        <ListSection i={1} title="ข้อมูลทั่วไป">
+          <ListRow icon={<CircleIcon name="house.fill" color="#3B7DD8" />} overline="ที่อยู่" title={fullAddress(p.address) || 'ยังไม่ระบุ'} titleLines={3} />
+          <ListRow icon={<CircleIcon name="phone.fill" color={palette.primary} />} overline="เบอร์โทรศัพท์" title={p.phone} onPress={call} chevron />
+          <ListRow icon={<CircleIcon name="heart.fill" color="#C2564B" />} overline="โรคประจำตัว" title={p.chronic} titleLines={2} />
+          <ListRow icon={<CircleIcon name="exclamationmark.triangle.fill" color={allergic ? palette.coral : '#8E8E93'} />} overline="การแพ้ยา / อาหาร" title={p.allergies} titleLines={2} />
+          <ListRow icon={<CircleIcon name="scalemass.fill" color="#7A5CC8" />} overline="น้ำหนัก / ส่วนสูง" title={p.weight && p.height ? `${p.weight} กก. · ${p.height} ซม.` : 'ยังไม่ระบุ'} last={!p.meds.length} />
+          {p.meds.length ? <ListRow icon={<CircleIcon name="pills.fill" color="#D9921A" />} overline="ยาที่ใช้อยู่" title={p.meds.join(', ')} titleLines={2} last /> : null}
+        </ListSection>
 
         {p.meds.length ? (
-          <View style={styles.note}>
-            <Sym name="sparkles" size={16} color={ios.secondary} />
-            <T v="caption" color={ios.secondary} style={{ flex: 1 }}>
+          <View style={styles.aiNote}>
+            <Sym name="sparkles" size={15} color={palette.primary} />
+            <T v="subhead" color={palette.primaryDeep} style={{ flex: 1 }}>
               ครูปัญญา: ใช้ {p.meds[0]} อยู่ ควรเลี่ยงสมุนไพรรสร้อนจัด และวัดความดันทุกครั้ง
             </T>
           </View>
         ) : null}
 
-        <SectionTitle title="ประวัติการรักษา" action={`${p.visits.length} ครั้ง`} />
+        {/* ── ประวัติการรักษา (ไทม์ไลน์) ── */}
+        <View style={styles.histHead}>
+          <T v="h3">ประวัติการรักษา</T>
+          <T v="subhead" color={ios.secondary}>{p.visits.length} ครั้ง</T>
+        </View>
         {p.visits.length ? (
-          <Group>
-            {p.visits.map((v) => (
-              <VisitRow key={v.no} v={v} open={openNo === v.no} onToggle={() => setOpenNo(openNo === v.no ? null : v.no)} />
+          <View>
+            {p.visits.map((v, i) => (
+              <VisitItem key={v.no} v={v} last={i === p.visits.length - 1} open={openNo === v.no} onToggle={() => setOpenNo(openNo === v.no ? null : v.no)} />
             ))}
-          </Group>
+          </View>
         ) : (
-          <IOSCard>
-            <T v="callout" color={ios.secondary} center>ยังไม่มีประวัติการรักษา</T>
-          </IOSCard>
+          <View style={[styles.empty, elevation.e1]}>
+            <Sym name="doc.text" size={26} color={ios.tertiary} />
+            <T v="subhead" color={ios.secondary} center>ยังไม่มีประวัติการรักษา</T>
+          </View>
         )}
       </ScrollView>
 
       <GlassDock>
-        <Button style={{ flex: 1 }} label={`บันทึกการรักษาครั้งที่ ${(p.visits[0]?.no ?? 0) + 1}`} icon={<Sym name="mic.fill" size={18} color="#FFFFFF" />} onPress={record} />
+        <Button style={{ flex: 1, height: 52 }} label={`บันทึกการรักษาครั้งที่ ${(p.visits[0]?.no ?? 0) + 1}`} icon={<Sym name="mic.fill" size={18} color="#FFFFFF" />} onPress={record} />
       </GlassDock>
     </>
   );
 }
 
 const styles = StyleSheet.create({
-  hero: { alignItems: 'center', paddingTop: 8 },
-  status: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 999, marginTop: 8 },
-  actions: { flexDirection: 'row', gap: 10, marginTop: 20 },
-  action: { alignItems: 'center', gap: 6, paddingVertical: 12 },
-  info: { paddingHorizontal: 16, paddingVertical: 11, gap: 2 },
-  note: { flexDirection: 'row', gap: 8, alignItems: 'flex-start', paddingHorizontal: 16, paddingTop: 10 },
-  visit: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 12, minHeight: 60 },
-  no: { width: 32, height: 32, borderRadius: 16, backgroundColor: palette.primarySoft, alignItems: 'center', justifyContent: 'center' },
-  detail: { paddingLeft: 60, paddingRight: 16, paddingBottom: 14, gap: 10 },
+  hero: { alignItems: 'center', marginTop: 8, paddingTop: 24, paddingBottom: 18, paddingHorizontal: 16, borderRadius: 22, borderCurve: 'continuous', backgroundColor: palette.surface },
+  avatarRing: { padding: 4, borderRadius: 999, backgroundColor: palette.primarySoft },
+  status: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999, marginTop: 8 },
+  statusDot: { width: 7, height: 7, borderRadius: 4 },
+  stats: { flexDirection: 'row', alignItems: 'center', alignSelf: 'stretch', marginTop: 18, paddingTop: 14, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: ios.separator },
+  stat: { flex: 1, alignItems: 'center' },
+  statSep: { width: StyleSheet.hairlineWidth, alignSelf: 'stretch', backgroundColor: ios.separator },
+  qaRow: { flexDirection: 'row', justifyContent: 'space-around', marginTop: 22 },
+  qa: { alignItems: 'center', gap: 8, width: 110 },
+  qaCircle: { width: 60, height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center' },
+  aiNote: { flexDirection: 'row', gap: 8, alignItems: 'flex-start', marginTop: 12, padding: 14, borderRadius: 18, backgroundColor: palette.primarySoft },
+  histHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginTop: 32, marginBottom: 12, paddingHorizontal: 4 },
+  tlRow: { flexDirection: 'row', gap: 12 },
+  tlRail: { width: 30, alignItems: 'center' },
+  tlDot: { width: 30, height: 30, borderRadius: 15, backgroundColor: palette.primarySoft, alignItems: 'center', justifyContent: 'center', marginTop: 14 },
+  tlLine: { flex: 1, width: 2, backgroundColor: palette.primarySoft, marginTop: 4 },
+  tlCard: { flex: 1, backgroundColor: palette.surface, borderRadius: 20, borderCurve: 'continuous', padding: 16, marginBottom: 12 },
+  result: { paddingHorizontal: 9, paddingVertical: 3, borderRadius: 999, backgroundColor: palette.primarySoft },
+  detail: { marginTop: 12, paddingTop: 12, gap: 12, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: ios.separator },
+  empty: { alignItems: 'center', gap: 8, paddingVertical: 28, borderRadius: 20, backgroundColor: palette.surface },
 });
 
 export default function PatientDetail() {
