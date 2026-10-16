@@ -2,7 +2,6 @@
  * แท็บคลังสมุนไพร — โครงเดียวกับคลังภูมิ (DESIGN_SYSTEM.md)
  * การ์ดฟีเจอร์ใหม่ "สแกนหาสมุนไพร" (เปิดกล้อง) → สมุนไพรประจำวัน → กรองตามรสยา → ตาราง 2 คอลัมน์
  */
-import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, router } from 'expo-router';
@@ -74,27 +73,23 @@ export default function Herbs() {
         }}
       />
       <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
-        {/* ── ฟีเจอร์ใหม่: สแกนหาสมุนไพรด้วยกล้อง ── */}
+        {/* ── ฟีเจอร์ใหม่: สแกนหาสมุนไพรด้วยกล้อง (การ์ดกะทัดรัด พื้นหลังภาพสมุนไพรบนพื้นเขียวเข้ม) ── */}
         <Animated.View entering={FadeInDown.duration(420)}>
-          <PressableScale scaleTo={0.98} haptic="press" onPress={() => router.push('/herb/scan')} style={[styles.heroWrap, elevation.e3]} accessibilityLabel="สแกนหาสมุนไพรด้วยกล้อง">
+          <PressableScale scaleTo={0.98} haptic="press" onPress={() => router.push('/herb/scan')} style={[styles.heroWrap, elevation.e2]} accessibilityLabel="สแกนหาสมุนไพรด้วยกล้อง">
             <View style={styles.hero}>
-              <Image source={today.image} style={StyleSheet.absoluteFill} contentFit="cover" />
-              <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFill} />
-              <LinearGradient colors={['rgba(6,20,13,0.55)', 'rgba(6,20,13,0.35)', 'rgba(6,20,13,0.9)']} locations={[0, 0.4, 1]} style={StyleSheet.absoluteFill} />
-              <View style={styles.heroTop}>
+              <Image source={require('../../../../assets/herbs/scan-banner.jpg')} style={StyleSheet.absoluteFill} contentFit="cover" contentPosition="right" />
+              <LinearGradient colors={['rgba(8,26,16,0.92)', 'rgba(8,26,16,0.55)', 'rgba(8,26,16,0)']} locations={[0, 0.5, 0.85]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} />
+              <View style={{ width: '64%' }}>
                 <View style={styles.newBadge}>
-                  <Sym name="sparkles" size={11} color="#04150E" />
+                  <Sym name="sparkles" size={10} color="#04150E" />
                   <T v="micro" color="#04150E" style={{ fontWeight: '800' }}>ฟีเจอร์ใหม่</T>
                 </View>
-                <View style={styles.scanIcon}>
-                  <Sym name="camera.viewfinder" size={30} color="#7CF0A8" />
+                <T v="h3" color="#FFFFFF" style={{ marginTop: 8 }}>สแกนหาสมุนไพร</T>
+                <T v="caption" color="rgba(255,255,255,0.82)" numberOfLines={2} style={{ marginTop: 2 }}>ส่องกล้องที่ใบหรือเหง้า ครูปัญญาบอกชื่อและสรรพคุณให้</T>
+                <View style={styles.scanBtn}>
+                  <Sym name="camera.viewfinder" size={15} color="#04150E" weight="semibold" />
+                  <T v="subhead" color="#04150E" style={{ fontWeight: '700' }}>เปิดกล้อง</T>
                 </View>
-              </View>
-              <T v="h1" color="#FFFFFF" style={{ marginTop: 14, marginBottom: 4 }}>สแกนหาสมุนไพร</T>
-              <T v="callout" color="rgba(255,255,255,0.82)">ส่องกล้องที่ต้น ใบ หรือเหง้า ครูปัญญาบอกชื่อ สรรพคุณ วิธีใช้ และข้อควรระวังให้ทันที</T>
-              <View style={styles.scanBtn}>
-                <Sym name="camera.fill" size={17} color="#04150E" />
-                <T v="bodyStrong" color="#04150E">เปิดกล้องสแกน</T>
               </View>
             </View>
           </PressableScale>
@@ -151,12 +146,10 @@ export default function Herbs() {
 
 const styles = StyleSheet.create({
   page: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 130 },
-  heroWrap: { borderRadius: 30, borderCurve: 'continuous', backgroundColor: '#14261c' },
-  hero: { paddingHorizontal: 20, paddingTop: 18, paddingBottom: 20, borderRadius: 30, borderCurve: 'continuous', overflow: 'hidden' },
-  heroTop: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
-  newBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 9, paddingVertical: 4, borderRadius: 999, backgroundColor: '#7CF0A8' },
-  scanIcon: { width: 56, height: 56, borderRadius: 18, backgroundColor: 'rgba(124,240,168,0.14)', borderWidth: 1, borderColor: 'rgba(124,240,168,0.35)', alignItems: 'center', justifyContent: 'center' },
-  scanBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 50, marginTop: 18, borderRadius: 25, backgroundColor: '#7CF0A8' },
+  heroWrap: { borderRadius: 24, borderCurve: 'continuous', backgroundColor: '#0d2015' },
+  hero: { paddingHorizontal: 18, paddingVertical: 16, borderRadius: 24, borderCurve: 'continuous', overflow: 'hidden' },
+  newBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, backgroundColor: '#7CF0A8' },
+  scanBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', height: 36, paddingHorizontal: 14, marginTop: 12, borderRadius: 18, backgroundColor: '#7CF0A8' },
   sec: { marginTop: 28, marginBottom: 12, marginLeft: 4 },
   secRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginTop: 28, marginBottom: 10, paddingHorizontal: 4 },
   today: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 12, borderRadius: 24, borderCurve: 'continuous', backgroundColor: palette.surface },
