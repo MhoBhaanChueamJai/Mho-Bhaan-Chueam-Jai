@@ -119,6 +119,23 @@ export default function Login() {
   };
 
   /** เข้าสู่ระบบ / สมัครบัญชี ด้วย Supabase Auth (ชื่อผู้ใช้ → อีเมลภายในแอป) */
+  /** ทดลองใช้งานด้วยบัญชีสาธิต */
+  const demo = async () => {
+    if (busy) return;
+    setBusy(true);
+    setError('');
+    setInfo('');
+    try {
+      const { data, error: e } = await supabase.auth.signInWithPassword({ email: usernameToEmail('somchai'), password: '123456' });
+      if (e) return fail('เข้าโหมดทดลองไม่สำเร็จ ลองใหม่อีกครั้ง');
+      const md = data.user?.user_metadata ?? {};
+      await reloadCloud();
+      enter(md.first_name ? `${md.first_name} ${md.last_name ?? ''}`.trim() : 'somchai');
+    } catch {
+      fail('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ ตรวจสอบอินเทอร์เน็ต');
+    }
+  };
+
   const submit = async () => {
     if (!canSubmit) return;
     setBusy(true);
@@ -297,9 +314,16 @@ export default function Login() {
         />
 
         {mode === 'login' ? (
-          <PressableScale haptic="select" onPress={() => setError('ติดต่อ สสจ. หรือ รพ.สต. เพื่อตั้งรหัสผ่านใหม่')} style={styles.link}>
-            <T v="callout" color={palette.primary}>ลืมรหัสผ่าน?</T>
-          </PressableScale>
+          <View style={styles.linkRow}>
+            <PressableScale haptic="select" onPress={() => setError('ติดต่อ สสจ. หรือ รพ.สต. เพื่อตั้งรหัสผ่านใหม่')} style={styles.link}>
+              <T v="callout" color={palette.primary}>ลืมรหัสผ่าน?</T>
+            </PressableScale>
+            {/* ทดลองใช้: เข้าด้วยบัญชีสาธิต (พ่อหมอสมบัติ) */}
+            <PressableScale haptic="select" onPress={demo} disabled={busy} style={styles.demo} accessibilityLabel="ทดลองใช้งาน">
+              <Sym name="play.circle.fill" size={15} color={palette.primaryDeep} />
+              <T v="subhead" color={palette.primaryDeep} style={{ fontWeight: '600' }}>ทดลองใช้</T>
+            </PressableScale>
+          </View>
         ) : (
           <T v="caption" color={ios.tertiary} center style={styles.note}>
             สมาชิกใช้งานได้ทุกส่วน ยกเว้นการรักษาผู้ป่วย ซึ่งต้องยืนยันตัวตนหมอพื้นบ้านก่อน
@@ -366,7 +390,9 @@ const styles = StyleSheet.create({
   eye: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   msg: { minHeight: 30, justifyContent: 'center', paddingHorizontal: 4 },
   error: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  link: { alignSelf: 'center', minHeight: 44, justifyContent: 'center', paddingHorizontal: 12, marginTop: 2 },
+  linkRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 2 },
+  link: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 8 },
+  demo: { flexDirection: 'row', alignItems: 'center', gap: 5, height: 32, paddingHorizontal: 12, borderRadius: 16, backgroundColor: palette.primarySoft },
   note: { minHeight: 44, marginTop: 6, paddingHorizontal: 12 },
   consent: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 16, paddingHorizontal: 4 },
   check: { width: 24, height: 24, borderRadius: 7, borderWidth: 1.5, borderColor: 'rgba(60,60,67,0.3)', alignItems: 'center', justifyContent: 'center' },
