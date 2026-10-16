@@ -1,24 +1,17 @@
 import { Image } from 'expo-image';
 import { Stack, router } from 'expo-router';
 import { ShieldCheck } from '../../../components/icons';
-import React, { useMemo, useState } from 'react';
-import { FlatList, ScrollView, StyleSheet, View } from 'react-native';
+import React from 'react';
+import { FlatList, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
 import { Sym, ios } from '../../../components/ios';
-import { Button, Chip, HeaderButton, PressableScale, T } from '../../../components/ui';
+import { Button, HeaderButton, PressableScale, T } from '../../../components/ui';
 import { herbs, tastes, tasteTone } from '../../../data/herbs';
 import { elevation, palette, radius, space } from '../../../theme';
 
 export default function Herbs() {
-  const [taste, setTaste] = useState<string>('ทั้งหมด');
 
-  const list = useMemo(
-    () =>
-      herbs.filter(
-        (h) => taste === 'ทั้งหมด' || h.taste === taste,
-      ),
-    [taste],
-  );
+  const list = herbs;
 
   return (
     <>
@@ -44,11 +37,6 @@ export default function Herbs() {
         ListHeaderComponent={
           <View style={{ marginBottom: space.sm }}>
             <T v="callout" color={ios.secondary} style={{ paddingHorizontal: 4 }}>{herbs.length} ชนิด · อ้างอิงบัญชียาหลักแห่งชาติ</T>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -space.xl, marginTop: space.lg - 20, marginBottom: -20 }} contentContainerStyle={{ gap: 8, paddingHorizontal: space.xl, paddingVertical: 28 }}>
-              {tastes.map((t) => (
-                <Chip key={t} label={t === 'ทั้งหมด' ? 'ทั้งหมด' : `รส${t}`} active={taste === t} onPress={() => setTaste(t)} />
-              ))}
-            </ScrollView>
           </View>
         }
         ListEmptyComponent={

@@ -1,21 +1,19 @@
 import { Stack, router } from 'expo-router';
 import { BookHeart, CircleCheck, EllipsisVertical, Mic, ScrollText } from '../../../components/icons';
-import React, { useState } from 'react';
+import React from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
 import { Sym, ios } from '../../../components/ios';
-import { Badge, Button, Card, Chip, HeaderButton, IconTile, PressableScale, T } from '../../../components/ui';
+import { Badge, Button, Card, HeaderButton, IconTile, PressableScale, T } from '../../../components/ui';
 import { legacy } from '../../../data/mock';
 import { useApp } from '../../../store/app';
 import { elevation, palette, radius, space } from '../../../theme';
 
-const FILTERS = ['ทั้งหมด', 'เสียงเล่า', 'สแกนตำรา', 'รอตรวจทาน'] as const;
 
 export default function Vault() {
   const { wisdoms } = useApp();
-  const [f, setF] = useState<(typeof FILTERS)[number]>('ทั้งหมด');
   const recorded = legacy.recorded + (wisdoms.length - 3);
-  const list = wisdoms.filter((w) => (f === 'ทั้งหมด' ? true : f === 'รอตรวจทาน' ? !w.verified : w.source === f));
+  const list = wisdoms;
 
   return (
     <>
@@ -36,11 +34,6 @@ export default function Vault() {
       <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={{ paddingTop: 4, paddingHorizontal: space.xl, paddingBottom: 140 }} showsVerticalScrollIndicator={false} keyboardDismissMode="on-drag">
         <T v="callout" color={ios.secondary} style={{ paddingHorizontal: 4 }}>สมุดข่อยดิจิทัลของคุณหมอ</T>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -space.xl, marginTop: space.xl - 20, marginBottom: -20 }} contentContainerStyle={{ gap: 8, paddingHorizontal: space.xl, paddingVertical: 28 }}>
-          {FILTERS.map((x) => (
-            <Chip key={x} label={x} active={f === x} onPress={() => setF(x)} />
-          ))}
-        </ScrollView>
 
 
         {/* สรุปแบบการ์ด Total records ใน ref */}
