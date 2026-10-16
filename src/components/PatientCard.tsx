@@ -3,7 +3,7 @@
  * - ด้านหน้า: รูป ชื่อ สถานะ เลขประจำตัว ข้อมูลสรุป (เพศ/อายุ · ธาตุ · BMI) แถบโฮโลแกรม
  * - ด้านหลัง: ไอคอนธาตุพร้อมแอนิเมชัน + วิเคราะห์ธาตุเจ้าเรือน
  * - แตะเพื่อพลิกบัตร (หมุนรอบแกน Y แบบมีมุมมอง)
- * - เอียงมือถือ (DeviceMotion): บัตรเอียงตาม แสงสะท้อนบนผิวบัตรเลื่อนตามมุมแสง เงาใต้บัตรขยับสวนทาง
+ * - เอียงมือถือ (DeviceMotion): บัตรเอียงตาม แสงสะท้อนบนผิวบัตรเลื่อนตามมุมแสง
  */
 import { DeviceMotion } from 'expo-sensors';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -70,10 +70,6 @@ export function PatientCard({ p, avatar }: { p: Patient; avatar: number }) {
     transform: [{ translateX: interpolate(tx.value, [-1, 1], [-cw * 0.55, cw * 0.55]) }, { translateY: interpolate(ty.value, [-1, 1], [-ch * 0.35, ch * 0.35]) }, { rotate: '-20deg' }],
     opacity: 0.55 + Math.abs(tx.value) * 0.25,
   }));
-  // เงาใต้บัตรขยับสวนทางแสง
-  const shadowSt = useAnimatedStyle(() => ({
-    transform: [{ translateX: -tx.value * 10 }, { translateY: 14 - ty.value * 6 }],
-  }));
 
   const st = statusTone[p.status];
   const el = elementColor[p.element];
@@ -90,11 +86,9 @@ export function PatientCard({ p, avatar }: { p: Patient; avatar: number }) {
   );
 
   return (
-    <View style={{ height: ch + 34, alignItems: 'center' }}>
-      {/* เงาใต้บัตร */}
-      <Animated.View pointerEvents="none" style={[styles.shadow, { width: cw - 30, height: ch - 20, top: 14 }, shadowSt]} />
+    <View style={{ height: ch + 20, alignItems: 'center' }}>
       <PressableScale haptic="press" scaleTo={0.98} onPress={toggle} accessibilityLabel={flipped ? 'พลิกกลับด้านหน้าบัตร' : 'พลิกดูธาตุเจ้าเรือน'}>
-        <Animated.View style={[{ width: cw, height: ch }, tiltSt]}>
+        <Animated.View style={[{ width: cw, height: ch }, styles.cardShadow, tiltSt]}>
           {/* ── ด้านหน้า ── */}
           <Animated.View style={[styles.face, frontSt]}>
             <LinearGradient colors={['#FFFFFF', '#F2FAF6', '#E3F2EA']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
@@ -181,7 +175,8 @@ export function PatientCard({ p, avatar }: { p: Patient; avatar: number }) {
 }
 
 const styles = StyleSheet.create({
-  shadow: { position: 'absolute', borderRadius: 26, backgroundColor: 'rgba(11,61,38,0.22)', boxShadow: '0px 18px 34px rgba(11,61,38,0.32)' },
+  // เงาเดียว นุ่ม (ไม่ซ้อน)
+  cardShadow: { borderRadius: 24, boxShadow: '0px 10px 24px rgba(11,61,38,0.14)' },
   face: { ...StyleSheet.absoluteFillObject, borderRadius: 24, borderCurve: 'continuous', overflow: 'hidden', backfaceVisibility: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.8)' },
   glare: { position: 'absolute' },
   ring: { position: 'absolute', borderRadius: 999, borderWidth: 18, borderColor: 'rgba(20,144,92,0.06)' },
