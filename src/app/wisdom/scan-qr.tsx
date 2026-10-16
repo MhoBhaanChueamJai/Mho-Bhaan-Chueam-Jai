@@ -8,7 +8,7 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useRef, useState } from 'react';
-import { StyleSheet, TextInput, View, useWindowDimensions } from 'react-native';
+import { Keyboard, Pressable, StyleSheet, TextInput, View, useWindowDimensions } from 'react-native';
 import Animated, { Easing, FadeIn, FadeOut, useAnimatedKeyboard, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Sym } from '../../components/ios';
@@ -108,6 +108,8 @@ export default function ScanQr() {
       ) : (
         // โหมดกรอกรหัส: ม่านทึบ + ช่องรหัส 8 ตัว (ABCD-EFGH)
         <Animated.View entering={FadeIn.duration(220)} exiting={FadeOut.duration(150)} style={[StyleSheet.absoluteFill, styles.codePage, { paddingTop: insets.top + 110 }]}>
+          {/* แตะพื้นที่ว่างเพื่อปิดคีย์บอร์ด */}
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => Keyboard.dismiss()} accessibilityLabel="ปิดคีย์บอร์ด" />
           <Sym name="number" size={30} color="#7CF0A8" />
           <T v="title" color="#FFFFFF" center style={{ marginTop: 12 }}>กรอกรหัสรับตำรา</T>
           <T v="subhead" color="rgba(255,255,255,0.7)" center style={{ marginTop: 4 }}>รหัส 8 ตัวที่เพื่อนส่งให้ทาง LINE หรือข้อความ</T>
