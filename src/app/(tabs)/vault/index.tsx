@@ -105,7 +105,6 @@ export default function Vault() {
       }}
     />
     <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={{ paddingTop: 4, paddingBottom: 130 }} showsVerticalScrollIndicator={false}>
-      </View>
       {/* ── Hero: สันหนังสือบนหิ้ง (เบลอ) ── */}
       <View style={[styles.heroWrap, elevation.e3]}>
       <View style={styles.hero}>
