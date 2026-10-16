@@ -25,10 +25,10 @@ function PatientsInner() {
           headerRight: () => (
             <View style={{ flexDirection: 'row', gap: 4 }}>
               <HeaderButton label="ค้นหาผู้ป่วย" onPress={() => router.push('/patient/search')}>
-                <Sym name="magnifyingglass" size={20} color={palette.primary} weight="semibold" />
+                <Sym name="magnifyingglass" size={20} color={palette.ink} weight="semibold" />
               </HeaderButton>
               <HeaderButton label="เพิ่มผู้ป่วยใหม่" onPress={() => router.push('/patient/new')}>
-                <Sym name="plus" size={20} color={palette.primary} weight="semibold" />
+                <Sym name="plus" size={20} color={palette.ink} weight="semibold" />
               </HeaderButton>
             </View>
           ),

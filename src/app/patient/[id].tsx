@@ -164,10 +164,10 @@ function PatientDetailInner() {
           title: '',
           headerTransparent: true,
           headerShadowVisible: false,
-          headerTintColor: palette.primary,
+          headerTintColor: palette.ink,
           headerBackButtonDisplayMode: 'minimal',
           headerBackVisible: false,
-          headerLeft: () => <HeaderBack fallback="/patients" color={palette.primary} />,
+          headerLeft: () => <HeaderBack fallback="/patients" color={palette.ink} />,
         }}
       />
       <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingBottom: insets.bottom + 120 }} showsVerticalScrollIndicator={false}>

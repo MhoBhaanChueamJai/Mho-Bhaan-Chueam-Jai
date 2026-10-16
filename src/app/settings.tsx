@@ -97,7 +97,7 @@ export default function Settings() {
 
   return (
     <>
-      <Stack.Screen options={{ headerLeft: () => <HeaderBack fallback="/home" color={palette.primary} /> }} />
+      <Stack.Screen options={{ headerLeft: () => <HeaderBack fallback="/home" color={palette.ink} /> }} />
       <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingTop: 8, paddingBottom: 64 }} showsVerticalScrollIndicator={false}>
         {/* ── โปรไฟล์: แถวบัญชีแบบ iPhone (รูปซ้าย · ชื่อ/อีเมล/สถานะ · ลูกศร) กดเพื่อดูข้อมูลส่วนตัว ── */}
         <Animated.View entering={enter(0)}>

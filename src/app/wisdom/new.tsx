@@ -130,10 +130,10 @@ function NewWisdomInner() {
           headerRight: () => (
             <View style={{ flexDirection: 'row', gap: 4 }}>
               <HeaderButton label="เล่าให้ครูปัญญาบันทึก" onPress={() => router.push('/wisdom/voice')}>
-                <Sym name="mic.fill" size={20} color={palette.primary} weight="semibold" />
+                <Sym name="mic.fill" size={20} color={palette.ink} weight="semibold" />
               </HeaderButton>
               <HeaderButton label="สแกนตำราโบราณ" onPress={() => router.push({ pathname: '/scan', params: { fill: '1' } })}>
-                <Sym name="doc.viewfinder" size={20} color={palette.primary} weight="semibold" />
+                <Sym name="doc.viewfinder" size={20} color={palette.ink} weight="semibold" />
               </HeaderButton>
             </View>
           ),

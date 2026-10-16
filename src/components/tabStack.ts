@@ -11,7 +11,7 @@ export const tabStackOptions = {
   headerTransparent: Platform.OS === 'ios',
   headerShadowVisible: false,
   headerLargeTitleShadowVisible: false,
-  headerTintColor: palette.primary,
+  headerTintColor: palette.ink,
   // iOS ใช้หัวโปร่ง (เบลอเองเมื่อเลื่อน) — กำหนดสีพื้นเฉพาะเว็บ
   headerStyle: Platform.OS === 'ios' ? undefined : { backgroundColor: palette.bg },
   contentStyle: { backgroundColor: palette.bg },

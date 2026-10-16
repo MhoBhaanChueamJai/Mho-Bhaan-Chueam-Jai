@@ -26,10 +26,10 @@ export default function WisdomDetail() {
   return (
     <View style={{ flex: 1 }}>
       <Backdrop />
-      <Stack.Screen options={{ headerShown: true, title: w.kind, headerTransparent: true, headerShadowVisible: false, headerTintColor: palette.primary, headerBackVisible: false, headerLeft: () => <HeaderBack fallback="/vault" color={palette.primary} />,
+      <Stack.Screen options={{ headerShown: true, title: w.kind, headerTransparent: true, headerShadowVisible: false, headerTintColor: palette.ink, headerBackVisible: false, headerLeft: () => <HeaderBack fallback="/vault" color={palette.ink} />,
           headerRight: () => (
             <HeaderButton label="แชร์ตำราให้เพื่อน" onPress={share}>
-              <Sym name="qrcode" size={19} color={palette.primary} weight="semibold" />
+              <Sym name="qrcode" size={19} color={palette.ink} weight="semibold" />
             </HeaderButton>
           ),
         }}

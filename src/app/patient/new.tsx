@@ -252,10 +252,10 @@ function NewPatientInner() {
           headerRight: () => (
             <View style={{ flexDirection: 'row', gap: 4 }}>
               <HeaderButton label="ครูปัญญาซักประวัติด้วยเสียง" onPress={aiBusy ? undefined : () => router.push('/patient/voice')}>
-                {aiBusy === 'voice' ? <ActivityIndicator color={palette.primary} /> : <Sym name={recording ? 'stop.fill' : 'mic.fill'} size={20} color={recording ? palette.coral : palette.primary} weight="semibold" />}
+                {aiBusy === 'voice' ? <ActivityIndicator color={palette.ink} /> : <Sym name={recording ? 'stop.fill' : 'mic.fill'} size={20} color={recording ? palette.coral : palette.ink} weight="semibold" />}
               </HeaderButton>
               <HeaderButton label="สแกนบัตรประชาชน" onPress={aiBusy || recording ? undefined : scanIdCard}>
-                {aiBusy === 'card' ? <ActivityIndicator color={palette.primary} /> : <Sym name="person.text.rectangle" size={20} color={palette.primary} weight="semibold" />}
+                {aiBusy === 'card' ? <ActivityIndicator color={palette.ink} /> : <Sym name="person.text.rectangle" size={20} color={palette.ink} weight="semibold" />}
               </HeaderButton>
             </View>
           ),

@@ -63,7 +63,7 @@ export default function Herbs() {
         options={{
           headerRight: () => (
             <HeaderButton label="ค้นหาสมุนไพร" onPress={() => router.push('/herb/search')}>
-              <Sym name="magnifyingglass" size={20} color={palette.primary} weight="semibold" />
+              <Sym name="magnifyingglass" size={20} color={palette.ink} weight="semibold" />
             </HeaderButton>
           ),
         }}
