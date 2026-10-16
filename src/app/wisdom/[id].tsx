@@ -9,7 +9,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Pressable, StyleSheet, View } from 'react-native';
-import Animated, { FadeIn, FadeInDown, FadeInUp, FadeOut, useAnimatedRef, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
+import Animated, { FadeInDown, FadeInUp, useAnimatedRef, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSpeaker } from '../../components/audio';
 import { BookCover, COVERS } from '../../components/BookCover';
@@ -292,7 +292,7 @@ export default function WisdomDetail() {
       {menuOpen ? (
         <>
           <Pressable style={StyleSheet.absoluteFill} onPress={() => setMenuOpen(false)} accessibilityLabel="ปิดเมนู" />
-          <Animated.View entering={FadeIn.duration(160)} exiting={FadeOut.duration(120)} style={[styles.menuWrap, { top: insets.top + 50 }]}>
+          <View style={[styles.menuWrap, { top: insets.top + 50 }]}>
             <Glass interactive tint="rgba(255,255,255,0.72)" style={styles.menu}>
               {menu.map((m, i) => (
                 <View key={m.id}>
@@ -304,14 +304,14 @@ export default function WisdomDetail() {
                 </View>
               ))}
             </Glass>
-          </Animated.View>
+          </View>
         </>
       ) : null}
 
       {/* แถบกำลังอ่านออกเสียง (เปิดจากปุ่มหูฟังบนแถบเครื่องมือ) — กระจกฝ้าลอยเหนือเนื้อหา */}
       {readIdx !== null ? (
-        <Animated.View entering={FadeIn.duration(220)} exiting={FadeOut.duration(180)} style={[styles.readWrap, { bottom: insets.bottom ? 24 : 16 }, elevation.e3]}>
-          <Glass interactive tint="rgba(255,255,255,0.78)" style={styles.readBar}>
+        <View pointerEvents="box-none" style={[styles.readWrap, { bottom: insets.bottom ? 24 : 16 }]}>
+          <Glass interactive tint="rgba(255,255,255,0.5)" style={[styles.readBar, elevation.e3]}>
             <View style={styles.readIcon}>
               <Sym name="speaker.wave.2.fill" size={16} color="#FFFFFF" />
             </View>
@@ -326,7 +326,7 @@ export default function WisdomDetail() {
               <Sym name="stop.fill" size={15} color="#FFFFFF" />
             </PressableScale>
           </Glass>
-        </Animated.View>
+        </View>
       ) : null}
     </View>
   );
