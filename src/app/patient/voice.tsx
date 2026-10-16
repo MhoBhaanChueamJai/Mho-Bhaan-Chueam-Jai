@@ -76,15 +76,29 @@ export default function VoiceIntake() {
         if (!alive.current) return end();
         const p = createAudioPlayer({ uri });
         player.current = p;
-        // ดอกไม้ขยับตามระดับเสียงจริงของครูปัญญา (RMS จากคลื่นเสียง) แบบนุ่มนวล
+        // แสงตอบสนองระดับเสียงจริงของครูปัญญา (RMS จากคลื่นเสียง)
+        let lastSample = 0;
         try {
           p.setAudioSamplingEnabled(true);
           p.addListener('audioSampleUpdate', (sm) => {
-            speakLevel.value = withTiming(rmsLevel(sm.channels[0]?.frames), { duration: 90 });
+            lastSample = Date.now();
+            speakLevel.value = withTiming(Math.min(1, rmsLevel(sm.channels[0]?.frames) * 1.3), { duration: 80 });
           });
         } catch {}
+        // สำรอง: ถ้าไม่ได้ค่าคลื่นเสียง (เช่นไฟล์ MP3) → จำลองจังหวะพูดเป็นพยางค์ ตลอดช่วงที่กำลังพูด
+        const t0 = Date.now();
+        const sim = setInterval(() => {
+          if (finished) return clearInterval(sim);
+          if (Date.now() - lastSample < 300) return;
+          const tt = (Date.now() - t0) / 1000;
+          const syl = Math.abs(Math.sin(tt * 7.3)) * (0.55 + 0.45 * Math.sin(tt * 1.9 + 1));
+          speakLevel.value = withTiming(0.25 + syl * 0.6, { duration: 90 });
+        }, 90);
         p.addListener('playbackStatusUpdate', (s) => {
-          if (s.didJustFinish) end();
+          if (s.didJustFinish) {
+            clearInterval(sim);
+            end();
+          }
         });
         p.play();
         setTimeout(end, 30000); // กันค้าง

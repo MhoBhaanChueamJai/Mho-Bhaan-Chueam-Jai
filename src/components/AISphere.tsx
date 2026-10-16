@@ -30,6 +30,11 @@ half4 main(float2 fc) {
   col = mix(col, c3, smoothstep(0.45, 1.0, k));
   float3 inner = col * (glow * 0.85 + core * 1.5) * along * (0.75 + 0.7 * e);
   inner += col * haze * 0.32 * along;
+  // ริบบิ้นเส้นที่สอง โผล่ตามระดับเสียง (คลื่นสวนทาง)
+  float y1 = 0.18 * p.x + (0.12 + 0.2 * e) * sin(p.x * 3.1 - t * 1.3 + 1.7);
+  float d1 = p.y + y1 - 0.06;
+  float th1 = 0.05 + 0.08 * e;
+  inner += mix(c3, c1, k) * (exp(-d1 * d1 / (th1 * th1 * 0.15)) * 1.1 + exp(-d1 * d1 / (th1 * th1 * 2.0)) * 0.5) * along * e * 0.9;
   inner += mix(c2, c3, 0.5) * exp(-dot(p - float2(0.55, -0.15), p - float2(0.55, -0.15)) * 6.0) * 0.18;
   float fres = pow(1.0 - z, 1.9);
   float ang = atan(p.y, p.x);
@@ -61,10 +66,11 @@ export function AISphere({ size = 200, level, active = true }: { size?: number; 
   useEffect(() => {
     speed.value = withTiming(active ? 1 : 0.4, { duration: 600 });
   }, [active, speed]);
-  useFrameCallback((f) => {
-    t.value += ((f.timeSincePreviousFrame ?? 16) / 1000) * speed.value;
-  });
   const e = useDerivedValue(() => withTiming(Math.min(1, src.value), { duration: 120 }));
+  // แสงไหลเร็วขึ้นตามเสียง
+  useFrameCallback((f) => {
+    t.value += ((f.timeSincePreviousFrame ?? 16) / 1000) * (speed.value + 2.4 * e.value);
+  });
   const uniforms = useDerivedValue(() => {
     // สีไล่เปลี่ยนนุ่มๆ ทุก ~8 วิ
     const ph = (t.value / 8) % THEMES.length;
