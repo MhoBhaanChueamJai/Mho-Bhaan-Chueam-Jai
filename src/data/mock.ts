@@ -356,18 +356,35 @@ export const avatars: Record<string, number> = {
   q3: require('../../assets/avatars/q3.png'),
 };
 
-/** ตารางนัดรายวัน (คีย์ = วันที่ ค.ศ. YYYY-MM-DD, วันนี้ = 2026-10-15 / 15 ต.ค. 2569) */
+/** วันนี้ (เที่ยงคืน ตามเวลาเครื่อง) */
+export const TODAY = (() => {
+  const d = new Date();
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+})();
+export const dayKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const inDays = (n: number) => dayKey(new Date(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate() + n));
+
+/** ตารางนัดตัวอย่าง (คีย์ = YYYY-MM-DD) — วางรอบ "วันนี้" ให้บัญชีใหม่เห็นนัดเสมอ */
 export type Appt = { start: string; end: string; pid: string; what: string };
 export const agenda: Record<string, Appt[]> = {
-  '2026-10-12': [{ start: '10:00', end: '10:30', pid: 'p5', what: 'ติดตามอาการนอนไม่หลับ' }],
-  '2026-10-13': [{ start: '09:30', end: '10:30', pid: 'p3', what: 'อบสมุนไพรหลังคลอด' }],
-  '2026-10-15': [
+  [inDays(-3)]: [{ start: '10:00', end: '10:30', pid: 'p5', what: 'ติดตามอาการนอนไม่หลับ' }],
+  [inDays(-2)]: [{ start: '09:30', end: '10:30', pid: 'p3', what: 'อบสมุนไพรหลังคลอด' }],
+  [inDays(0)]: [
     { start: '09:00', end: '10:00', pid: 'p1', what: 'นวดประคบเข่า' },
     { start: '13:30', end: '14:00', pid: 'p2', what: 'ติดตามอาการท้องอืด' },
     { start: '16:00', end: '17:00', pid: 'p3', what: 'อบสมุนไพรหลังคลอด' },
   ],
-  '2026-10-16': [{ start: '14:00', end: '14:30', pid: 'p4', what: 'โทรติดตามหลังส่งต่อ รพ.สต.' }],
-  '2026-10-18': [{ start: '09:00', end: '10:00', pid: 'p1', what: 'นวดประคบเข่า ครั้งที่ 5' }],
-  '2026-10-20': [{ start: '13:00', end: '13:30', pid: 'p2', what: 'ประเมินผลยาขมิ้นชัน' }],
+  [inDays(1)]: [{ start: '14:00', end: '14:30', pid: 'p4', what: 'โทรติดตามหลังส่งต่อ รพ.สต.' }],
+  [inDays(3)]: [{ start: '09:00', end: '10:00', pid: 'p1', what: 'นวดประคบเข่า ครั้งที่ 5' }],
+  [inDays(5)]: [{ start: '13:00', end: '13:30', pid: 'p2', what: 'ประเมินผลยาขมิ้นชัน' }],
 };
-export const TODAY = new Date(2026, 9, 15);
+
+const TH_DAY = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์'];
+const TH_MONTH = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+/** เช่น "ศุกร์ 16 ตุลาคม" */
+export const thaiDate = (d: Date) => `${TH_DAY[d.getDay()]} ${d.getDate()} ${TH_MONTH[d.getMonth()]}`;
+/** เวลาปัจจุบัน HH:MM สำหรับเทียบกับเวลานัด */
+export const nowHM = () => {
+  const d = new Date();
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+};

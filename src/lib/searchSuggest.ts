@@ -5,13 +5,12 @@
  * ถ้า AI ไม่ตอบ ใช้กฎจากพฤติกรรมเดียวกันแทน
  */
 import { chatJSON } from '../api/ai';
-import { TODAY, lastVisit, type Patient } from '../data/mock';
+import { TODAY, dayKey, lastVisit, type Patient } from '../data/mock';
 import type { Agenda } from './cloud';
 import type { OpenLog, SearchLog } from '../store/app';
 
 export type Suggestion = { q: string; why: string; icon: 'clock' | 'person' | 'calendar' | 'sparkles' | 'stethoscope' };
 
-const dayKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const period = () => {
   const h = new Date().getHours();
   return h < 11 ? 'เช้า' : h < 16 ? 'บ่าย' : 'เย็น';

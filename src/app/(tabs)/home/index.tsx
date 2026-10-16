@@ -6,7 +6,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { AppIcon, Group, IOSCard, Row, SectionTitle, Sym, ios } from '../../../components/ios';
 import { AIFlower } from '../../../components/Orb';
 import { Avatar, PressableScale, T } from '../../../components/ui';
-import { avatars, doctor, legacy, schedule, todayQueue } from '../../../data/mock';
+import { TODAY, avatars, dayKey, doctor, legacy, nowHM, thaiDate } from '../../../data/mock';
 import { useApp } from '../../../store/app';
 import { palette } from '../../../theme';
 
@@ -21,9 +21,13 @@ const TOOLS = [
 ] as const;
 
 export default function Home() {
-  const { patients } = useApp();
-  const done = todayQueue.filter((q) => q.done).length;
-  const upcoming = schedule.filter((s) => s.patientId);
+  const { patients, agenda, settings } = useApp();
+  // นัดของวันนี้จากฐานข้อมูล — นัดที่เลยเวลาจบแล้วนับว่า "ดูแลแล้ว"
+  const today = [...(agenda[dayKey(TODAY)] ?? [])].sort((a, b) => a.start.localeCompare(b.start));
+  const now = nowHM();
+  const isDone = (end: string) => !!end && end <= now;
+  const done = today.filter((a) => isDone(a.end)).length;
+  const name = settings.username && settings.username !== 'somchai' ? settings.username : doctor.short;
 
   return (
     <>
@@ -39,7 +43,7 @@ export default function Home() {
       <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
         <Animated.View entering={enter(0)}>
           <T v="callout" color={ios.secondary} style={{ paddingHorizontal: 4 }}>
-            พฤหัสบดี 15 ตุลาคม · สวัสดีครับ {doctor.short}
+            {thaiDate(TODAY)} · สวัสดีครับ {name}
           </T>
         </Animated.View>
 
@@ -67,25 +71,26 @@ export default function Home() {
               <View style={{ flex: 1 }}>
                 <T v="h1" style={{ fontWeight: '700' }}>
                   {done}
-                  <T v="title" color={ios.secondary}> / {todayQueue.length} ราย</T>
+                  <T v="title" color={ios.secondary}> / {today.length} ราย</T>
                 </T>
-                <T v="caption" color={ios.secondary}>ดูแลแล้ววันนี้</T>
+                <T v="caption" color={ios.secondary}>{today.length ? 'ดูแลแล้ววันนี้' : 'วันนี้ไม่มีนัด'}</T>
               </View>
               <View style={styles.bars}>
-                {todayQueue.map((q) => (
-                  <View key={q.time} style={[styles.bar, { backgroundColor: q.done ? palette.primary : '#DADDD6' }]} />
+                {today.map((a) => (
+                  <View key={a.start + a.pid} style={[styles.bar, { backgroundColor: isDone(a.end) ? palette.primary : '#DADDD6' }]} />
                 ))}
               </View>
             </View>
-            {upcoming.map((s) => {
-              const p = patients.find((x) => x.id === s.patientId)!;
+            {today.map((a) => {
+              const p = patients.find((x) => x.id === a.pid);
+              if (!p) return null;
               return (
                 <Row
-                  key={s.time}
+                  key={a.start + a.pid}
                   leading={<Avatar name={p.name} src={avatars[p.id]} size={36} />}
                   title={p.name}
-                  subtitle={s.what}
-                  value={s.time}
+                  subtitle={isDone(a.end) ? `✓ ${a.what}` : a.what}
+                  value={a.start}
                   onPress={() => router.push(`/patient/${p.id}`)}
                 />
               );
