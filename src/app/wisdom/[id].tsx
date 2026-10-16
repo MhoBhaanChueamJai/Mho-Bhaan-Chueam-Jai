@@ -19,7 +19,7 @@ import { CircleIcon } from '../../components/ListRow';
 import { Sym, ios } from '../../components/ios';
 import { Glass, HeaderBack, HeaderButton, PressableScale, T, useHaptic } from '../../components/ui';
 import { fetchLatestShared } from '../../lib/wisdomShare';
-import { KIND_FORM, splitMethod } from '../../lib/wisdomKinds';
+import { KIND_FORM, bookPages, plainText, splitMethod } from '../../lib/wisdomKinds';
 import { herbs } from '../../data/herbs';
 import { doctor } from '../../data/mock';
 import { useApp } from '../../store/app';
@@ -99,7 +99,9 @@ export default function WisdomDetail() {
   const { steps, extra } = splitMethod(w.kind, w.method);
   const ORIGIN_RE = /\n*(ได้รับสืบทอดจาก|แหล่งที่มา):\s*(.+)$/;
   const om = (w.summary ?? '').match(ORIGIN_RE);
-  const body = (w.summary ?? '').replace(ORIGIN_RE, '').trim();
+  const body = plainText((w.summary ?? '').replace(ORIGIN_RE, '').trim());
+  const bookCount = bookPages((w.summary ?? '').replace(ORIGIN_RE, '').trim()).length;
+  const openBook = () => router.push({ pathname: '/wisdom/read', params: { id: w.id } });
   const L = {
     summary: kf.summary.big ? kf.summary.label : 'เนื้อหา',
     indication: kf.indication.label,
@@ -113,7 +115,9 @@ export default function WisdomDetail() {
     { key: 'ingredients', label: L.ingredients, text: w.ingredients?.length ? `${L.ingredients} ${w.ingredients.join(' ')}` : '' },
     { key: 'method', label: L.method, text: w.method ? `${L.method} ${w.method.replace(/\n/g, ' ')}` : '' },
     { key: 'caution', label: L.caution, text: w.caution ? `${L.caution} ${w.caution}` : '' },
-  ].filter((x) => x.text);
+  ]
+    .filter((x) => x.text)
+    .flatMap((x) => bookPages(x.text, 480).map((t) => ({ ...x, text: t })));
   const [readIdx, setReadIdx] = useState<number | null>(null);
   const reading = readIdx !== null ? sections[readIdx]?.key : null;
   const posY = useRef<Record<string, number>>({});
@@ -214,7 +218,9 @@ export default function WisdomDetail() {
             <LinearGradient colors={FADE.colors} locations={FADE.stops} style={StyleSheet.absoluteFill} />
           </Animated.View>
           <Animated.View entering={FadeInUp.duration(500)} style={styles.coverWrap}>
-            <BookCover w={{ ...w, verified: true }} width={150} />
+            <PressableScale haptic="select" scaleTo={0.97} onPress={openBook} accessibilityLabel="เปิดอ่านแบบหนังสือ">
+              <BookCover w={{ ...w, verified: true }} width={150} />
+            </PressableScale>
           </Animated.View>
         </View>
 
@@ -236,7 +242,13 @@ export default function WisdomDetail() {
         <View style={styles.body} onLayout={(e) => (bodyY.current = e.nativeEvent.layout.y)}>
           {body || om ? (
             <Section reading={reading === 'summary'} onY={(v) => (posY.current['summary'] = v)} i={0} icon={kf.summary.big ? (w.kind === 'คาถา/พิธี' ? 'sparkles' : 'text.book.closed.fill') : 'book.fill'} color={palette.primary} title={L.summary}>
-              <T v="body" style={[styles.para, w.kind === 'คาถา/พิธี' && styles.chant]}>{body}</T>
+              <T v="body" numberOfLines={readIdx === null ? 9 : undefined} style={[styles.para, w.kind === 'คาถา/พิธี' && styles.chant]}>{body}</T>
+              <PressableScale haptic="select" scaleTo={0.97} onPress={openBook} style={styles.bookBtn} accessibilityLabel="อ่านแบบหนังสือ">
+                <Sym name="book.pages.fill" size={16} color={palette.primaryDeep} />
+                <T v="callout" color={palette.primaryDeep} style={{ fontWeight: '700', flex: 1 }}>อ่านแบบหนังสือ</T>
+                <T v="caption" color={palette.primaryDeep}>{bookCount + 1} หน้า</T>
+                <Sym name="chevron.right" size={12} color={palette.primaryDeep} weight="semibold" />
+              </PressableScale>
               {om ? (
                 <View style={styles.originRow}>
                   <Sym name="person.crop.circle" size={14} color={ios.secondary} />
@@ -371,6 +383,7 @@ const styles = StyleSheet.create({
   herbImg: { width: 44, height: 44, borderRadius: 12 },
   num: { width: 44, height: 44, borderRadius: 12, backgroundColor: palette.primarySoft, alignItems: 'center', justifyContent: 'center' },
   sep: { height: StyleSheet.hairlineWidth, backgroundColor: ios.separator, marginLeft: 56 },
+  bookBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14, paddingHorizontal: 14, height: 44, borderRadius: 22, backgroundColor: palette.primarySoft },
   chant: { fontSize: 19, lineHeight: 32, textAlign: 'center', fontWeight: '500' },
   original: { fontStyle: 'italic', color: '#5B4A2A' },
   originRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12, paddingTop: 12, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: ios.separator },

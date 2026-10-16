@@ -13,7 +13,7 @@ import { KindIcon } from '../../components/KindIcon';
 import { Sym, ios } from '../../components/ios';
 import { Button, GlassDock, HeaderButton, PressableScale, T, useHaptic } from '../../components/ui';
 import { KINDS, onWisdomResult, takeWisdomResult, type WisdomResult } from '../../lib/wisdomTalk';
-import { KIND_FORM, joinMethod, splitMethod } from '../../lib/wisdomKinds';
+import { KIND_FORM, joinMethod, joinPages, splitMethod, splitPages } from '../../lib/wisdomKinds';
 import type { Wisdom } from '../../data/mock';
 import { useApp } from '../../store/app';
 import { elevation, palette } from '../../theme';
@@ -21,8 +21,8 @@ import { elevation, palette } from '../../theme';
 const SMOOTH = LinearTransition.duration(280);
 
 type Row = { name: string; amount: string };
-type Form = { title: string; kind: Wisdom['kind']; indication: string; rows: Row[]; steps: string[]; extra: string; summary: string; caution: string; origin: string };
-const blank = (kind: Wisdom['kind'] = 'ตำรับยา'): Form => ({ title: '', kind, indication: '', rows: [{ name: '', amount: '' }], steps: [''], extra: '', summary: '', caution: '', origin: '' });
+type Form = { title: string; kind: Wisdom['kind']; indication: string; rows: Row[]; steps: string[]; extra: string; pages: string[]; caution: string; origin: string };
+const blank = (kind: Wisdom['kind'] = 'ตำรับยา'): Form => ({ title: '', kind, indication: '', rows: [{ name: '', amount: '' }], steps: [''], extra: '', pages: [''], caution: '', origin: '' });
 const ORIGIN_RE = /\n*(?:ได้รับสืบทอดจาก|แหล่งที่มา):\s*(.+)$/;
 
 /** ตำราเดิม → ฟอร์ม (แยกวิธีทำเป็นขั้นตอน, ที่มาออกจากเนื้อหา) */
@@ -36,7 +36,10 @@ function fromWisdom(w: Wisdom): Form {
     rows: (w.ingredients?.length ? w.ingredients : ['']).map((x) => ({ name: x, amount: '' })),
     steps: steps.length ? steps : [''],
     extra,
-    summary: (w.summary ?? '').replace(ORIGIN_RE, '').trim(),
+    pages: (() => {
+      const p = splitPages((w.summary ?? '').replace(ORIGIN_RE, '').trim());
+      return p.length ? p : [''];
+    })(),
     caution: w.caution ?? '',
     origin: m ? m[1].trim() : '',
   };
@@ -105,7 +108,8 @@ function NewWisdomInner() {
   const [source, setSource] = useState<Wisdom['source']>(editing?.source ?? 'พิมพ์เอง');
   const [aiNote, setAiNote] = useState('');
   const cfg = KIND_FORM[f.kind];
-  const set = (k: 'title' | 'indication' | 'extra' | 'summary' | 'caution' | 'origin') => (v: string) => setF((x) => ({ ...x, [k]: v }));
+  const setPage = (i: number) => (v: string) => setF((x) => ({ ...x, pages: x.pages.map((p, j) => (j === i ? v : p)) }));
+  const set = (k: 'title' | 'indication' | 'extra' | 'caution' | 'origin') => (v: string) => setF((x) => ({ ...x, [k]: v }));
   const setRow = (i: number, k: keyof Row) => (v: string) => setF((x) => ({ ...x, rows: x.rows.map((r, j) => (j === i ? { ...r, [k]: v } : r)) }));
   const setStep = (i: number) => (v: string) => setF((x) => ({ ...x, steps: x.steps.map((s, j) => (j === i ? v : s)) }));
 
@@ -125,7 +129,7 @@ function NewWisdomInner() {
         extra: r.extra || x.extra,
         caution: r.caution || x.caution,
         origin: r.origin || x.origin,
-        summary: r.summary || x.summary,
+        pages: r.summary ? splitPages(r.summary) : x.pages,
       };
     });
     if (r.source) setSource(r.source);
@@ -149,7 +153,7 @@ function NewWisdomInner() {
     const ingredients = cfg.ingredients ? f.rows.map((r) => [r.name.trim(), r.amount.trim()].filter(Boolean).join(' ')).filter(Boolean) : [];
     const method = cfg.method.steps ? joinMethod(f.kind, f.steps, f.extra) : [f.steps.join('\n').trim(), cfg.extra && f.extra.trim() ? `${cfg.extra.prefix}: ${f.extra.trim()}` : ''].filter(Boolean).join('\n');
     const originLabel = f.kind === 'ตำราโบราณ' ? 'แหล่งที่มา' : 'ได้รับสืบทอดจาก';
-    const summary = [f.summary.trim(), f.origin.trim() ? `${originLabel}: ${f.origin.trim()}` : ''].filter(Boolean).join('\n\n');
+    const summary = [joinPages(f.pages), f.origin.trim() ? `${originLabel}: ${f.origin.trim()}` : ''].filter(Boolean).join('\n\n');
     const data = {
       title: f.title.trim(),
       kind: f.kind,
@@ -220,8 +224,20 @@ function NewWisdomInner() {
 
         {/* บทคาถา / ถอดความ (ประเภทที่เนื้อหาเป็นหัวใจหลัก) */}
         {cfg.summary.big ? (
-          <Section key={`sum-${f.kind}`} title={cfg.summary.label} icon={f.kind === 'คาถา/พิธี' ? 'sparkles' : 'text.book.closed.fill'}>
-            <Field value={f.summary} onChange={set('summary')} placeholder={cfg.summary.ph} big />
+          <Section key={`sum-${f.kind}`} title={cfg.summary.big ? cfg.summary.label : 'เนื้อหา'} icon={f.kind === 'คาถา/พิธี' ? 'sparkles' : 'text.book.closed.fill'} footer={f.pages.length > 1 ? `${f.pages.length} หน้า · อ่านแบบหนังสือได้ในหน้าตำรา` : 'เนื้อหายาวได้ เพิ่มเป็นหน้าๆ ตามต้นฉบับ'}>
+            {f.pages.map((pg, i) => (
+              <Animated.View key={i} layout={SMOOTH} entering={FadeIn.duration(200)} style={{ gap: 6 }}>
+                <View style={styles.pageHead}>
+                  <View style={styles.pageTag}>
+                    <Sym name="doc.plaintext" size={12} color={palette.primaryDeep} />
+                    <T v="caption" color={palette.primaryDeep} style={{ fontWeight: '700' }}>หน้า {i + 1}</T>
+                  </View>
+                  {f.pages.length > 1 ? <RemoveBtn label={`ลบหน้า ${i + 1}`} onPress={() => setF((x) => ({ ...x, pages: x.pages.filter((_, j) => j !== i) }))} /> : null}
+                </View>
+                <Field value={pg} onChange={setPage(i)} placeholder={i === 0 ? cfg.summary.ph : `เนื้อหาหน้า ${i + 1}`} big />
+              </Animated.View>
+            ))}
+            <AddRow label="เพิ่มหน้า" onPress={() => setF((x) => ({ ...x, pages: [...x.pages, ''] }))} />
           </Section>
         ) : null}
 
@@ -266,8 +282,20 @@ function NewWisdomInner() {
         </Section>
 
         {!cfg.summary.big ? (
-          <Section title={cfg.summary.label} icon="book.fill">
-            <Field value={f.summary} onChange={set('summary')} placeholder={cfg.summary.ph} multiline />
+          <Section key={`sum-${f.kind}`} title={cfg.summary.big ? cfg.summary.label : 'เนื้อหา'} icon={f.kind === 'คาถา/พิธี' ? 'sparkles' : 'text.book.closed.fill'} footer={f.pages.length > 1 ? `${f.pages.length} หน้า · อ่านแบบหนังสือได้ในหน้าตำรา` : 'เนื้อหายาวได้ เพิ่มเป็นหน้าๆ ตามต้นฉบับ'}>
+            {f.pages.map((pg, i) => (
+              <Animated.View key={i} layout={SMOOTH} entering={FadeIn.duration(200)} style={{ gap: 6 }}>
+                <View style={styles.pageHead}>
+                  <View style={styles.pageTag}>
+                    <Sym name="doc.plaintext" size={12} color={palette.primaryDeep} />
+                    <T v="caption" color={palette.primaryDeep} style={{ fontWeight: '700' }}>หน้า {i + 1}</T>
+                  </View>
+                  {f.pages.length > 1 ? <RemoveBtn label={`ลบหน้า ${i + 1}`} onPress={() => setF((x) => ({ ...x, pages: x.pages.filter((_, j) => j !== i) }))} /> : null}
+                </View>
+                <Field value={pg} onChange={setPage(i)} placeholder={i === 0 ? cfg.summary.ph : `เนื้อหาหน้า ${i + 1}`} big />
+              </Animated.View>
+            ))}
+            <AddRow label="เพิ่มหน้า" onPress={() => setF((x) => ({ ...x, pages: [...x.pages, ''] }))} />
           </Section>
         ) : null}
 
@@ -302,6 +330,8 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
   rowNum: { width: 28, height: 28, borderRadius: 14, backgroundColor: palette.primarySoft, alignItems: 'center', justifyContent: 'center', marginTop: 11 },
   remove: { width: 30, height: 50, alignItems: 'center', justifyContent: 'center' },
+  pageHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  pageTag: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, backgroundColor: palette.primarySoft },
   addRow: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 999, backgroundColor: palette.primarySoft },
 });
 

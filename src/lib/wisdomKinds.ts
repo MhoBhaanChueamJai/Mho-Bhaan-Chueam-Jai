@@ -92,3 +92,27 @@ export function joinMethod(kind: Kind, steps: string[], extra: string) {
   if (cfg.extra && extra.trim()) lines.push(`${cfg.extra.prefix}: ${extra.trim()}`);
   return lines.join('\n');
 }
+
+/** ── เนื้อหาหลายหน้า ──
+ * เก็บในช่องเดิม (summary) คั่นหน้าด้วย PAGE_BREAK · หน้าอ่านแบบหนังสือจะตัดหน้ายาวเป็นหน้าย่อยให้พอดีจอ */
+export const PAGE_BREAK = '\n\n———\n\n';
+export const splitPages = (text?: string) => (text ?? '').split(PAGE_BREAK).map((p) => p.trim());
+export const joinPages = (pages: string[]) => pages.map((p) => p.trim()).filter(Boolean).join(PAGE_BREAK);
+export const plainText = (text?: string) => (text ?? '').split(PAGE_BREAK).join('\n\n');
+
+/** ตัดเป็นหน้าสำหรับอ่าน (ไม่เกินราว max ตัวอักษร ตัดที่ขึ้นบรรทัด/เว้นวรรค) */
+export function bookPages(text: string, max = 520): string[] {
+  const out: string[] = [];
+  splitPages(text).forEach((page) => {
+    let rest = page.trim();
+    while (rest.length > max) {
+      const slice = rest.slice(0, max);
+      let cut = Math.max(slice.lastIndexOf('\n'), slice.lastIndexOf(' '));
+      if (cut < max * 0.5) cut = max;
+      out.push(rest.slice(0, cut).trim());
+      rest = rest.slice(cut).trim();
+    }
+    if (rest) out.push(rest);
+  });
+  return out;
+}

@@ -42,6 +42,7 @@ function Root() {
         <Stack.Screen name="id-scan" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
         <Stack.Screen name="wisdom/scan-qr" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
         <Stack.Screen name="wisdom/share" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="wisdom/read" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
         <Stack.Screen name="wisdom/voice" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
         <Stack.Screen name="patient/voice" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
         <Stack.Screen name="patient/visit" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
