@@ -36,6 +36,7 @@ export function ListRow({
   icon,
   overline,
   title,
+  titleLines = 1,
   subtitle,
   value,
   right,
@@ -48,6 +49,8 @@ export function ListRow({
   /** ป้ายเล็กเหนือหัวข้อ (ใช้กับแถวแสดงข้อมูล เช่น "อีเมล") */
   overline?: string;
   title: string;
+  /** จำนวนบรรทัดสูงสุดของหัวข้อ (ข้อมูลยาวให้ขึ้นบรรทัดได้) */
+  titleLines?: number;
   subtitle?: string;
   value?: string;
   right?: React.ReactNode;
@@ -61,7 +64,7 @@ export function ListRow({
       {icon}
       <View style={{ flex: 1, gap: 2 }}>
         {overline ? <T v="subhead" color={ios.secondary}>{overline}</T> : null}
-        <T v="body" color={danger ? palette.coral : ios.label} style={{ fontWeight: '500' }} numberOfLines={1}>{title}</T>
+        <T v="body" color={danger ? palette.coral : ios.label} style={{ fontWeight: '500' }} numberOfLines={titleLines}>{title}</T>
         {subtitle ? <T v="subhead" color={ios.secondary} numberOfLines={2}>{subtitle}</T> : null}
       </View>
       {value ? <T v="subhead" color={ios.secondary}>{value}</T> : null}

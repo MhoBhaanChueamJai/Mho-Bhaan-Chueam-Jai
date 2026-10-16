@@ -47,21 +47,13 @@ export default function Profile() {
 
       {isPractitioner ? (
         <ListSection i={2} title="การรับรองหมอพื้นบ้าน" footer="ข้อมูลการรับรองมาจากทะเบียนหมอพื้นบ้าน กรมการแพทย์แผนไทยและการแพทย์ทางเลือก">
-          {/* หลายประเภทได้ → ป้ายแยกทีละประเภท */}
-          <View style={styles.typeRow}>
-            <CircleIcon name="checkmark.seal.fill" color={palette.primary} />
-            <View style={{ flex: 1, gap: 8 }}>
-              <T v="subhead" color={ios.secondary}>ประเภทหมอพื้นบ้าน ({profile?.healer_types?.length ?? 0} ประเภท)</T>
-              <View style={styles.typeChips}>
-                {(profile?.healer_types ?? []).map((t) => (
-                  <View key={t} style={styles.typeChip}>
-                    <T v="subhead" color={palette.primaryDeep} style={{ fontWeight: '600' }}>{TYPE_LABEL[t] ?? t}</T>
-                  </View>
-                ))}
-              </View>
-            </View>
-            <View style={styles.typeSep} />
-          </View>
+          {/* หลายประเภทได้ → เขียนต่อกันคั่นด้วยจุลภาค */}
+          <ListRow
+            icon={<CircleIcon name="checkmark.seal.fill" color={palette.primary} />}
+            overline="ประเภทหมอพื้นบ้าน"
+            title={(profile?.healer_types ?? []).map((t) => TYPE_LABEL[t] ?? t).join(', ') || '-'}
+            titleLines={3}
+          />
           <Info icon="doc.text.fill" bg="#8A6A44" label="เลขที่หนังสือรับรอง" value={profile?.cert_number ?? '-'} />
           <Info icon="mappin.and.ellipse" bg="#C2564B" label="จังหวัดที่ขึ้นทะเบียน" value={profile?.cert_province ?? '-'} />
           <Info icon="calendar" bg="#D9921A" label="หนังสือรับรองหมดอายุ" value={thaiDate(profile?.cert_expiry)} />
@@ -83,10 +75,6 @@ export default function Profile() {
 }
 
 const styles = StyleSheet.create({
-  typeRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 14, paddingVertical: 16, paddingHorizontal: 18 },
-  typeSep: { position: 'absolute', left: 74, right: 0, bottom: 0, height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(20,80,50,0.12)' },
-  typeChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  typeChip: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999, backgroundColor: palette.primarySoft },
   avatarRing: { padding: 4, borderRadius: 999, backgroundColor: palette.primarySoft },
   verifyBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 48, borderRadius: 24, backgroundColor: palette.primary },
 });
