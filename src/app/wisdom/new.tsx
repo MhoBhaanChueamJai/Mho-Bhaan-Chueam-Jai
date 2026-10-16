@@ -122,6 +122,7 @@ function NewWisdomInner() {
         indication: r.indication || x.indication,
         rows: ing.length ? ing.map((name) => ({ name, amount: '' })) : x.rows,
         steps: steps.length ? steps : x.steps,
+        extra: r.extra || x.extra,
         caution: r.caution || x.caution,
         origin: r.origin || x.origin,
         summary: r.summary || x.summary,
@@ -172,7 +173,7 @@ function NewWisdomInner() {
           title: editing ? 'แก้ไขภูมิปัญญา' : 'เพิ่มภูมิปัญญา',
           headerRight: () => (
             <View style={{ flexDirection: 'row', gap: 4 }}>
-              <HeaderButton label="เล่าให้ครูปัญญาบันทึก" onPress={() => router.push('/wisdom/voice')}>
+              <HeaderButton label="เล่าให้ครูปัญญาบันทึก" onPress={() => router.push({ pathname: '/wisdom/voice', params: { kind: f.kind } })}>
                 <Sym name="mic.fill" size={20} color={palette.ink} weight="semibold" />
               </HeaderButton>
               <HeaderButton label="สแกนตำราโบราณ" onPress={() => router.push({ pathname: '/scan', params: { fill: '1' } })}>
