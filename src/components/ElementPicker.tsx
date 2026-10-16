@@ -45,7 +45,7 @@ function Shadow({ w = 26 }: { w?: number }) {
   );
 }
 
-function ElementIcon({ el, active, size = 58 }: { el: El; active: boolean; size?: number }) {
+export function ElementIcon({ el, active, size = 58 }: { el: El; active: boolean; size?: number }) {
   const t = useSharedValue(0);
   const e = useSharedValue(0);
   const cb = useFrameCallback((f) => {

@@ -68,7 +68,13 @@
       ],
       "expo-video",
       "expo-secure-store",
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      [
+        "expo-sensors",
+        {
+          "motionPermission": "ใช้การเอียงเครื่องเพื่อแสดงแสงเงาบนบัตรผู้ป่วยแบบสามมิติ"
+        }
+      ]
     ],
     "scheme": "suebsan",
     "experiments": {

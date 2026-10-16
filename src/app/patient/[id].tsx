@@ -7,11 +7,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CircleIcon, ListRow, ListSection, PAGE_PAD } from '../../components/ListRow';
 import { Sym, ios } from '../../components/ios';
 import { AISphere } from '../../components/AISphere';
-import { Avatar, Button, GlassDock, HeaderBack, PressableScale, T } from '../../components/ui';
+import { PatientCard } from '../../components/PatientCard';
+import { Button, GlassDock, HeaderBack, PressableScale, T } from '../../components/ui';
 import { avatarFor, fullAddress, type MB5Visit, type Patient } from '../../data/mock';
-import { statusLabel, statusTone } from '../../data/tones';
 import { useApp } from '../../store/app';
-import { elementColor, elevation, palette } from '../../theme';
+import { elevation, palette } from '../../theme';
 
 /** ข้อความสำหรับส่งออก (รูปแบบทะเบียนการรักษาของกรมการแพทย์แผนไทยฯ) */
 function exportText(p: Patient) {
@@ -61,16 +61,6 @@ function QuickAction({ sym, label, onPress, primary, ai }: { sym?: any; label: s
   );
 }
 
-/** ช่องตัวเลขสรุป (อายุ / ธาตุ / BMI) */
-function Stat({ label, value, tint }: { label: string; value: string; tint?: string }) {
-  return (
-    <View style={styles.stat}>
-      <T v="caption" color={ios.secondary}>{label}</T>
-      <T v="title" color={tint ?? ios.label} style={{ marginTop: 2 }}>{value}</T>
-    </View>
-  );
-}
-
 /** ประวัติการรักษาแบบไทม์ไลน์: จุด+เส้นด้านซ้าย การ์ดด้านขวา แตะเพื่อดูรายละเอียด */
 function VisitItem({ v, open, onToggle, last }: { v: MB5Visit; open: boolean; onToggle: () => void; last: boolean }) {
   return (
@@ -117,9 +107,6 @@ function PatientDetailInner() {
   }, [p?.id]);
   const insets = useSafeAreaInsets();
   const [openNo, setOpenNo] = useState<number | null>(p.visits[0]?.no ?? null);
-  const el = elementColor[p.element];
-  const st = statusTone[p.status];
-  const bmi = p.weight && p.height ? p.weight / (p.height / 100) ** 2 : 0;
   const share = () => Share.share({ message: exportText(p), title: p.name });
   const call = () => Linking.openURL(`tel:${p.phone.replace(/[^0-9]/g, '')}`);
   // บันทึกการรักษาด้วยเสียง (ครูปัญญาถามทีละเรื่อง)
@@ -141,27 +128,13 @@ function PatientDetailInner() {
         }}
       />
       <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingBottom: insets.bottom + 120 }} showsVerticalScrollIndicator={false}>
-        {/* ── ส่วนหัว: รูป ชื่อ สถานะ + ตัวเลขสรุป ── */}
-        <Animated.View entering={FadeIn.duration(350)} style={[styles.hero, elevation.e1]}>
-          <View style={styles.avatarRing}>
-            <Avatar name={p.name} src={avatarFor(p)} size={92} />
-          </View>
-          <T v="h2" center style={{ marginTop: 12 }}>{p.name}</T>
-          <View style={[styles.status, { backgroundColor: st.bg }]}>
-            <View style={[styles.statusDot, { backgroundColor: st.fg }]} />
-            <T v="caption" color={st.fg} style={{ fontWeight: '700' }}>{statusLabel(p.status)}</T>
-          </View>
-          <View style={styles.stats}>
-            <Stat label="เพศ · อายุ" value={`${p.sex} ${p.age} ปี`} />
-            <View style={styles.statSep} />
-            <Stat label="ธาตุเจ้าเรือน" value={el.label} tint={el.fg} />
-            <View style={styles.statSep} />
-            <Stat label="BMI" value={bmi ? bmi.toFixed(1) : '-'} />
-          </View>
+        {/* ── บัตรผู้ป่วย 3 มิติ (แตะเพื่อพลิกดูธาตุ · เอียงมือถือแสงเปลี่ยน) ── */}
+        <Animated.View entering={FadeIn.duration(350)} style={{ marginTop: 8 }}>
+          <PatientCard p={p} avatar={avatarFor(p)} />
         </Animated.View>
 
         {/* ── ปุ่มลัด ── */}
-        <View style={styles.qaRow}>
+        <View style={[styles.qaRow, { marginTop: 6 }]}>
           <QuickAction sym="phone.fill" label="โทร" onPress={call} />
           <QuickAction ai label="บันทึกการรักษา" onPress={record} primary />
           <QuickAction sym="square.and.arrow.up" label="ส่งออก" onPress={share} />
@@ -213,13 +186,6 @@ function PatientDetailInner() {
 }
 
 const styles = StyleSheet.create({
-  hero: { alignItems: 'center', marginTop: 8, paddingTop: 24, paddingBottom: 18, paddingHorizontal: 16, borderRadius: 22, borderCurve: 'continuous', backgroundColor: palette.surface },
-  avatarRing: { padding: 4, borderRadius: 999, backgroundColor: palette.primarySoft },
-  status: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999, marginTop: 8 },
-  statusDot: { width: 7, height: 7, borderRadius: 4 },
-  stats: { flexDirection: 'row', alignItems: 'center', alignSelf: 'stretch', marginTop: 18, paddingTop: 14, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: ios.separator },
-  stat: { flex: 1, alignItems: 'center' },
-  statSep: { width: StyleSheet.hairlineWidth, alignSelf: 'stretch', backgroundColor: ios.separator },
   qaRow: { flexDirection: 'row', justifyContent: 'space-around', marginTop: 22 },
   qa: { alignItems: 'center', gap: 8, width: 110 },
   qaCircle: { width: 60, height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center' },
