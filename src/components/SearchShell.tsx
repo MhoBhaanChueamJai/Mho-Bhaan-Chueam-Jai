@@ -9,7 +9,7 @@ import { Keyboard, ScrollView, StyleSheet, TextInput, View, useWindowDimensions 
 import Animated, { Easing, FadeInDown, interpolate, runOnJS, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Sym, ios } from './ios';
-import { PressableScale, T } from './ui';
+import { Glass, PressableScale, T } from './ui';
 import { control, elevation, palette } from '../theme';
 
 /** ไฮไลต์คำที่ค้นในข้อความ */
@@ -26,28 +26,28 @@ export function Hi({ text, q, v = 'body', color = ios.label, bold }: { text: str
   );
 }
 
-/** การ์ดชิปคำแนะนำ (หัวข้อ + ชิปกดค้นหาได้) */
-export function SuggestCard({ title, note, items, onPick }: { title: string; note?: string; items: { q: string; icon: string }[]; onPick: (q: string) => void }) {
+/** คำแนะนำ: หัวเล็ก + แถวชิป Liquid Glass เลื่อนแนวนอน (ไม่มีกรอบการ์ด) */
+export function SuggestCard({ title, note, items, onPick }: { title: string; note?: React.ReactNode; items: { q: string; icon: string }[]; onPick: (q: string) => void }) {
   if (!items.length) return null;
   return (
-    <View style={[styles.sugCard, elevation.card]}>
+    <View style={{ marginTop: 14 }}>
       <View style={styles.sugHead}>
-        <View style={styles.sugBadge}>
-          <Sym name="sparkles" size={13} color="#FFFFFF" />
-        </View>
-        <T v="callout" style={{ fontWeight: '700', flex: 1 }}>{title}</T>
-        {note ? <T v="micro" color={ios.tertiary}>{note}</T> : null}
+        <Sym name="sparkles" size={14} color={palette.primary} />
+        <T v="subhead" color={palette.primaryDeep} style={{ fontWeight: '600', flex: 1 }}>{title}</T>
+        {typeof note === 'string' ? <T v="micro" color={ios.tertiary}>{note}</T> : note}
       </View>
-      <View style={styles.chips}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" style={{ marginHorizontal: -16 }} contentContainerStyle={styles.chips}>
         {items.map((s, i) => (
           <Animated.View key={s.q + i} entering={FadeInDown.delay(i * 40).duration(220)}>
-            <PressableScale haptic="select" scaleTo={0.95} onPress={() => onPick(s.q)} style={styles.chip} accessibilityLabel={`ค้นหา ${s.q}`}>
-              <Sym name={s.icon as any} size={14} color={palette.primary} />
-              <T v="callout" color={palette.primaryDeep} style={{ fontWeight: '600' }} numberOfLines={1}>{s.q}</T>
+            <PressableScale haptic="select" scaleTo={0.95} onPress={() => onPick(s.q)} accessibilityLabel={`ค้นหา ${s.q}`}>
+              <Glass interactive tint="rgba(255,255,255,0.55)" style={styles.chip}>
+                <Sym name={s.icon as any} size={14} color={palette.primary} />
+                <T v="callout" color={palette.primaryDeep} style={{ fontWeight: '600' }} numberOfLines={1}>{s.q}</T>
+              </Glass>
             </PressableScale>
           </Animated.View>
         ))}
-      </View>
+      </ScrollView>
     </View>
   );
 }
@@ -160,10 +160,8 @@ const styles = StyleSheet.create({
   clear: { width: 30, height: 30, alignItems: 'center', justifyContent: 'center' },
   cancelWrap: { position: 'absolute', right: 8 },
   cancel: { height: control.icon, paddingHorizontal: 8, justifyContent: 'center' },
-  sugCard: { backgroundColor: '#FFFFFF', borderRadius: 20, borderCurve: 'continuous', paddingVertical: 6, marginTop: 14 },
-  sugHead: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingTop: 8, paddingBottom: 6 },
-  sugBadge: { width: 24, height: 24, borderRadius: 8, backgroundColor: palette.primary, alignItems: 'center', justifyContent: 'center' },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 14, paddingTop: 4, paddingBottom: 10 },
-  chip: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 36, paddingHorizontal: 14, borderRadius: 18, backgroundColor: palette.primarySoft, maxWidth: 260 },
+  sugHead: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 4, marginBottom: 8 },
+  chips: { gap: 8, paddingHorizontal: 16, paddingVertical: 4 },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 40, paddingHorizontal: 16, borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.9)' },
   btn: { width: control.icon, height: control.icon, borderRadius: control.icon / 2, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
 });

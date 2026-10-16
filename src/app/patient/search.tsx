@@ -13,6 +13,7 @@ import { Sym, ios } from '../../components/ios';
 import { Avatar, PressableScale, T } from '../../components/ui';
 import { avatars, lastVisit } from '../../data/mock';
 import { statusTone } from '../../data/tones';
+import { SuggestCard } from '../../components/SearchShell';
 import { aiSuggestions, ruleSuggestions, type Suggestion } from '../../lib/searchSuggest';
 import { useApp } from '../../store/app';
 import { control, elevation, palette } from '../../theme';
@@ -133,39 +134,16 @@ function PatientSearchInner() {
       <Animated.View style={[{ flex: 1 }, bodySt]}>
         <ScrollView keyboardDismissMode="on-drag" keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 40 }} showsVerticalScrollIndicator={false}>
 
-          {!searching && sugs.length ? (
-            <Animated.View entering={FadeIn.duration(250)} style={[styles.aiCard, elevation.e1]}>
-              <View style={styles.aiHead}>
-                <View style={styles.aiBadge}>
-                  <Sym name="sparkles" size={13} color="#FFFFFF" />
-                </View>
-                <T v="callout" style={{ fontWeight: '700', flex: 1 }}>ครูปัญญาแนะนำ</T>
-                {aiState === 'loading' ? (
-                  <ActivityIndicator size="small" color={palette.primary} />
-                ) : (
-                  <T v="micro" color={ios.tertiary}>{aiState === 'ai' ? 'วิเคราะห์จากการใช้งานของคุณ' : 'จากการใช้งานล่าสุด'}</T>
-                )}
-              </View>
-              <View style={styles.chips}>
-                {sugs.map((s, i) => (
-                  <Animated.View key={s.q + i} entering={FadeInDown.delay(i * 50).duration(220)}>
-                    <PressableScale
-                      haptic="select"
-                      scaleTo={0.95}
-                      onPress={() => {
-                        setQ(s.q);
-                        logSearch(s.q);
-                      }}
-                      style={styles.chip}
-                      accessibilityLabel={`ค้นหา ${s.q}${s.why ? ` (${s.why})` : ''}`}
-                    >
-                      <Sym name={SUG_ICON[s.icon]} size={14} color={palette.primary} />
-                      <T v="callout" color={palette.primaryDeep} style={{ fontWeight: '600' }} numberOfLines={1}>{s.q}</T>
-                    </PressableScale>
-                  </Animated.View>
-                ))}
-              </View>
-            </Animated.View>
+          {!searching ? (
+            <SuggestCard
+              title="ครูปัญญาแนะนำ"
+              note={aiState === 'loading' ? <ActivityIndicator size="small" color={palette.primary} /> : aiState === 'ai' ? 'วิเคราะห์จากการใช้งานของคุณ' : 'จากการใช้งานล่าสุด'}
+              items={sugs.map((x) => ({ q: x.q, icon: SUG_ICON[x.icon] }))}
+              onPick={(v) => {
+                setQ(v);
+                logSearch(v);
+              }}
+            />
           ) : null}
 
           <T v="caption" color={ios.secondary} style={styles.sec}>
@@ -240,11 +218,6 @@ const styles = StyleSheet.create({
   cancelWrap: { position: 'absolute', right: 8 },
   cancel: { height: control.icon, paddingHorizontal: 8, justifyContent: 'center' },
   sec: { paddingHorizontal: 4, marginBottom: 8, marginTop: 16 },
-  aiCard: { backgroundColor: palette.surface, borderRadius: 20, borderCurve: 'continuous', paddingVertical: 6, marginTop: 14 },
-  aiHead: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingTop: 8, paddingBottom: 6 },
-  aiBadge: { width: 24, height: 24, borderRadius: 8, backgroundColor: palette.primary, alignItems: 'center', justifyContent: 'center' },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 14, paddingTop: 4, paddingBottom: 10 },
-  chip: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 36, paddingHorizontal: 14, borderRadius: 18, backgroundColor: palette.primarySoft, maxWidth: 260 },
   status: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 9, paddingVertical: 3, borderRadius: 999 },
   statusDot: { width: 6, height: 6, borderRadius: 3 },
   card: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: palette.surface, borderRadius: 20, borderCurve: 'continuous', padding: 12, paddingRight: 14 },
