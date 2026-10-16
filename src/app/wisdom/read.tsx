@@ -274,12 +274,13 @@ export default function ReadBook() {
   const turnImg = useDerivedValue(() => (dir.value > 0 ? cv.value : pv.value) ?? cv.value);
   const layer = useAnimatedStyle(() => ({ opacity: active.value }));
 
-  const DUR = 620;
+  const DUR = 400; // พลิกเต็มหน้า (แตะ) · ปล่อยนิ้วกลางทาง = ตามระยะที่เหลือ
   const ease = Easing.bezier(0.3, 0.1, 0.25, 1);
   const finish = (target: number, d: number, done: boolean) => {
     'worklet';
-    tilt.value = withTiming(0, { duration: DUR, easing: ease });
-    tt.value = withTiming(target, { duration: DUR, easing: ease }, (ok) => {
+    const dur = Math.max(170, DUR * Math.abs(target - tt.value));
+    tilt.value = withTiming(0, { duration: dur, easing: ease });
+    tt.value = withTiming(target, { duration: dur, easing: ease }, (ok) => {
       // สลับภาพ + รีเซ็ตแผ่นในเฟรมเดียว: ภาพที่เห็นยังเป็นหน้าเดิมเป๊ะ
       if (done && ok) {
         if (d > 0) {
@@ -325,7 +326,7 @@ export default function ReadBook() {
     })
     .onUpdate((e) => {
       if (!dragging.value) return;
-      const p = Math.max(0, Math.min(1, Math.abs(e.translationX) / (Wp * 0.95)));
+      const p = Math.max(0, Math.min(1, Math.abs(e.translationX) / (Wp * 0.75)));
       tt.value = dir.value > 0 ? (e.translationX < 0 ? p : 0) : e.translationX > 0 ? 1 - p : 1;
       tilt.value = e.translationY * 0.6;
     })
