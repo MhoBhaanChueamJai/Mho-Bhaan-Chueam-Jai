@@ -5,7 +5,7 @@
  * พลิกหน้าแบบกระดาษม้วนจริง (Skia page curl): ลากจากตรงไหนก็ได้ ลากเฉียง = พับเฉียง · แตะขวา/ซ้ายเพื่อพลิก
  */
 import { NotoSerifThai_400Regular, NotoSerifThai_700Bold, useFonts } from '@expo-google-fonts/noto-serif-thai';
-import { Canvas, Group, Image as SkImg, ImageShader, LinearGradient as SkLinear, Rect, Vertices, makeImageFromView, type SkImage } from '@shopify/react-native-skia';
+import { Canvas, Group, rect, rrect as rrct, Image as SkImg, ImageShader, LinearGradient as SkLinear, Rect, Vertices, makeImageFromView, type SkImage } from '@shopify/react-native-skia';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -368,7 +368,8 @@ export default function ReadBook() {
           {/* ชั้นพลิกหน้า (Skia) แสดงเฉพาะตอนพลิก */}
           <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, layer]}>
             <Canvas style={StyleSheet.absoluteFill}>
-              <Group transform={[{ translateX: frame.left }, { translateY: frame.top }]}>
+              {/* ตัดขอบให้พลิกอยู่ในเล่มหนังสือเท่านั้น (ไม่ล้นออกนอกหน้ากระดาษ) */}
+              <Group transform={[{ translateX: frame.left }, { translateY: frame.top }]} clip={rrct(rect(0, 0, Wp, Hp), 6, 6)}>
                 <CurlLayer base={imgs.next} turning={imgs.cur} show={showF} Wp={Wp} Hp={Hp} verts={verts} tex={tex} idx={idx} g0={g0} g1={g1} s0={s0} s1={s1} baseDim={baseDim} paper="rgba(240,231,211,0.93)" />
                 <CurlLayer base={imgs.cur} turning={imgs.prev} show={showB} Wp={Wp} Hp={Hp} verts={verts} tex={tex} idx={idx} g0={g0} g1={g1} s0={s0} s1={s1} baseDim={baseDim} paper="rgba(240,231,211,0.93)" />
               </Group>
