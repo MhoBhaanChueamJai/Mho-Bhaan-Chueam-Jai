@@ -159,7 +159,7 @@ export default function Settings() {
 
         {/* ── ข้อมูล ── */}
         <ListSection i={3} title="ข้อมูล">
-          <ListRow icon={<CircleIcon name="square.and.arrow.up" color="#3B7DD8" />} title="ส่งออกข้อมูลผู้ป่วย" subtitle={`ผู้ป่วย ${patients.length} ราย · ภูมิปัญญา ${wisdoms.filter((w) => !w.builtin).length} เรื่อง`} onPress={exportAll} chevron />
+          <ListRow icon={<CircleIcon name="square.and.arrow.up" color="#3B7DD8" />} title="ส่งออกข้อมูลผู้ป่วย" subtitle={`ผู้ป่วย ${patients.length} ราย · ภูมิปัญญา ${wisdoms.length} เรื่อง`} onPress={exportAll} chevron />
           <ListRow icon={<CircleIcon name="hand.raised.fill" color="#7A5CC8" />} title="นโยบายความเป็นส่วนตัว" onPress={() => router.push('/privacy')} chevron last />
         </ListSection>
 
