@@ -51,7 +51,6 @@ const MAP: Record<string, keyof typeof Ionicons.glyphMap> = {
   'info.circle': 'information-circle-outline',
   'info.circle.fill': 'information-circle',
   'iphone.radiowaves.left.and.right': 'phone-portrait-outline',
-  keyboard: 'keypad-outline',
   leaf: 'leaf-outline',
   'leaf.fill': 'leaf',
   'lock.fill': 'lock-closed',
