@@ -67,6 +67,7 @@ const MAP: Record<string, keyof typeof Ionicons.glyphMap> = {
   'flashlight.off.fill': 'flashlight-outline',
   keyboard: 'keypad-outline',
   ear: 'ear-outline',
+  'note.text': 'document-text',
   'play.circle.fill': 'play-circle',
   'arrow.triangle.2.circlepath': 'sync',
   'scalemass.fill': 'barbell',

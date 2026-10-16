@@ -4,7 +4,7 @@ import { PractitionerGate } from '../../components/PractitionerGate';
 import { Linking, ScrollView, Share, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn, LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CircleIcon, ListRow, ListSection, PAGE_PAD } from '../../components/ListRow';
+import { CircleIcon, PAGE_PAD } from '../../components/ListRow';
 import { Sym, ios } from '../../components/ios';
 import { AISphere } from '../../components/AISphere';
 import { PatientCard } from '../../components/PatientCard';
@@ -34,13 +34,20 @@ function exportText(p: Patient) {
   return [...head, ...rows].join('\n');
 }
 
-const DETAIL: { k: keyof MB5Visit; l: string }[] = [
-  { k: 'symptoms', l: 'อาการ' },
-  { k: 'exam', l: 'ตรวจร่างกาย' },
-  { k: 'treatment', l: 'การรักษา' },
-  { k: 'followUp', l: 'การติดตามผล' },
-  { k: 'note', l: 'หมายเหตุ' },
+const DETAIL: { k: keyof MB5Visit; l: string; icon: string; color: string }[] = [
+  { k: 'symptoms', l: 'อาการ', icon: 'waveform.path.ecg', color: '#C2564B' },
+  { k: 'exam', l: 'ตรวจร่างกาย', icon: 'hand.raised.fill', color: '#3B7DD8' },
+  { k: 'treatment', l: 'การรักษา', icon: 'leaf.fill', color: '#14905C' },
+  { k: 'followUp', l: 'การติดตามผล', icon: 'calendar', color: '#D9921A' },
+  { k: 'note', l: 'หมายเหตุ', icon: 'note.text', color: '#7A5CC8' },
 ];
+
+const TH_M = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+/** "16/10/2569" → { d: '16', m: 'ต.ค.', y: '69' } */
+const dateParts = (s: string) => {
+  const [d, m, y] = s.split('/');
+  return { d: String(Number(d) || d), m: TH_M[Number(m) - 1] ?? '', y: (y ?? '').slice(-2) };
+};
 
 /** ปุ่มลัดวงกลม (แบบ Contacts): ไอคอนในวงกลม + ป้ายใต้ปุ่ม */
 function QuickAction({ sym, label, onPress, primary, ai }: { sym?: any; label: string; onPress?: () => void; primary?: boolean; ai?: boolean }) {
@@ -61,36 +68,72 @@ function QuickAction({ sym, label, onPress, primary, ai }: { sym?: any; label: s
   );
 }
 
-/** ประวัติการรักษาแบบไทม์ไลน์: จุด+เส้นด้านซ้าย การ์ดด้านขวา แตะเพื่อดูรายละเอียด */
-function VisitItem({ v, open, onToggle, last }: { v: MB5Visit; open: boolean; onToggle: () => void; last: boolean }) {
+/** ช่องข้อมูลแบบตาราง 2 คอลัมน์ (ไอคอนวงกลมเล็ก · ป้าย · ค่า) */
+function Tile({ icon, color, label, value, wide, onPress, alert }: { icon: string; color: string; label: string; value: string; wide?: boolean; onPress?: () => void; alert?: boolean }) {
+  const body = (
+    <View style={[styles.tile, elevation.e1, alert && styles.tileAlert]}>
+      <View style={styles.tileHead}>
+        <CircleIcon name={icon} color={color} size={32} />
+        <T v="caption" color={alert ? palette.coral : ios.secondary} style={{ flex: 1, fontWeight: '600' }} numberOfLines={1}>{label}</T>
+        {onPress ? <Sym name="chevron.right" size={11} color={ios.tertiary} weight="semibold" /> : null}
+      </View>
+      <T v="body" color={alert ? palette.coral : ios.label} style={{ fontWeight: '600', marginTop: 8 }} numberOfLines={wide ? 3 : 2}>{value}</T>
+    </View>
+  );
+  return (
+    <View style={wide ? { width: '100%' } : { width: '48.5%' }}>
+      {onPress ? (
+        <PressableScale onPress={onPress} scaleTo={0.98} haptic="select" accessibilityLabel={`${label} ${value}`}>
+          {body}
+        </PressableScale>
+      ) : (
+        body
+      )}
+    </View>
+  );
+}
+
+/** ประวัติการรักษา: วันที่แบบปฏิทินด้านซ้าย การ์ดด้านขวา แตะเพื่อดูรายละเอียด */
+function VisitItem({ v, open, onToggle, last, latest }: { v: MB5Visit; open: boolean; onToggle: () => void; last: boolean; latest: boolean }) {
+  const dp = dateParts(v.date);
   return (
     <Animated.View layout={LinearTransition.duration(260)} style={styles.tlRow}>
       <View style={styles.tlRail}>
-        <View style={[styles.tlDot, open && { backgroundColor: palette.primary }]}>
-          <T v="caption" color={open ? '#FFFFFF' : palette.primaryDeep} style={{ fontWeight: '700' }}>{v.no}</T>
+        <View style={[styles.cal, latest && styles.calOn]}>
+          <T v="title" color={latest ? '#FFFFFF' : palette.ink} style={{ lineHeight: 22 }}>{dp.d}</T>
+          <T v="micro" color={latest ? 'rgba(255,255,255,0.85)' : ios.secondary}>{dp.m}{dp.y}</T>
         </View>
         {!last ? <View style={styles.tlLine} /> : null}
       </View>
       <PressableScale onPress={onToggle} scaleTo={0.99} haptic="select" style={[styles.tlCard, elevation.e1]} accessibilityLabel={`การรักษาครั้งที่ ${v.no}`}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <T v="caption" color={ios.secondary} style={{ flex: 1 }}>{v.date}</T>
+          <T v="caption" color={ios.secondary} style={{ flex: 1, fontWeight: '600' }}>ครั้งที่ {v.no}{latest ? ' · ล่าสุด' : ''}</T>
           <View style={styles.result}>
             <T v="micro" color={palette.primaryDeep}>{v.result}</T>
           </View>
-          <Sym name={open ? 'chevron.up' : 'chevron.down'} size={12} color={ios.tertiary} weight="semibold" />
         </View>
-        <T v="title" numberOfLines={open ? undefined : 1} style={{ marginTop: 4 }}>{v.diagnosis}</T>
-        {!open ? <T v="subhead" color={ios.secondary} numberOfLines={1} style={{ marginTop: 2 }}>{v.symptoms}</T> : null}
-        {open ? (
+        <T v="title" numberOfLines={open ? undefined : 1} style={{ marginTop: 6 }}>{v.diagnosis}</T>
+        {!open ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
+            <T v="subhead" color={ios.secondary} numberOfLines={1} style={{ flex: 1 }}>{v.symptoms}</T>
+            <Sym name="chevron.down" size={12} color={ios.tertiary} weight="semibold" />
+          </View>
+        ) : (
           <Animated.View entering={FadeIn.duration(200)} style={styles.detail}>
             {DETAIL.filter((d) => v[d.k]).map((d) => (
-              <View key={d.k} style={{ gap: 2 }}>
-                <T v="caption" color={ios.secondary} style={{ fontWeight: '600' }}>{d.l}</T>
-                <T v="subhead">{String(v[d.k])}</T>
+              <View key={d.k} style={styles.detailRow}>
+                <CircleIcon name={d.icon} color={d.color} size={28} />
+                <View style={{ flex: 1, gap: 1 }}>
+                  <T v="caption" color={ios.secondary} style={{ fontWeight: '600' }}>{d.l}</T>
+                  <T v="subhead">{String(v[d.k])}</T>
+                </View>
               </View>
             ))}
+            <View style={{ alignItems: 'center' }}>
+              <Sym name="chevron.up" size={12} color={ios.tertiary} weight="semibold" />
+            </View>
           </Animated.View>
-        ) : null}
+        )}
       </PressableScale>
     </Animated.View>
   );
@@ -140,15 +183,16 @@ function PatientDetailInner() {
           <QuickAction sym="square.and.arrow.up" label="ส่งออก" onPress={share} />
         </View>
 
-        {/* ── ข้อมูลทั่วไป ── */}
-        <ListSection i={1} title="ข้อมูลทั่วไป">
-          <ListRow icon={<CircleIcon name="house.fill" color="#3B7DD8" />} overline="ที่อยู่" title={fullAddress(p.address) || 'ยังไม่ระบุ'} titleLines={3} />
-          <ListRow icon={<CircleIcon name="phone.fill" color={palette.primary} />} overline="เบอร์โทรศัพท์" title={p.phone} onPress={call} chevron />
-          <ListRow icon={<CircleIcon name="heart.fill" color="#C2564B" />} overline="โรคประจำตัว" title={p.chronic} titleLines={2} />
-          <ListRow icon={<CircleIcon name="exclamationmark.triangle.fill" color={allergic ? palette.coral : '#8E8E93'} />} overline="การแพ้ยา / อาหาร" title={p.allergies} titleLines={2} />
-          <ListRow icon={<CircleIcon name="scalemass.fill" color="#7A5CC8" />} overline="น้ำหนัก / ส่วนสูง" title={p.weight && p.height ? `${p.weight} กก. · ${p.height} ซม.` : 'ยังไม่ระบุ'} last={!p.meds.length} />
-          {p.meds.length ? <ListRow icon={<CircleIcon name="pills.fill" color="#D9921A" />} overline="ยาที่ใช้อยู่" title={p.meds.join(', ')} titleLines={2} last /> : null}
-        </ListSection>
+        {/* ── ข้อมูลทั่วไป: ช่องตาราง 2 คอลัมน์ ── */}
+        <T v="h3" style={styles.secTitle}>ข้อมูลทั่วไป</T>
+        <View style={styles.grid}>
+          <Tile icon="phone.fill" color={palette.primary} label="เบอร์โทร" value={p.phone} onPress={call} />
+          <Tile icon="scalemass.fill" color="#7A5CC8" label="น้ำหนัก · ส่วนสูง" value={p.weight && p.height ? `${p.weight} กก. · ${p.height} ซม.` : 'ยังไม่ระบุ'} />
+          <Tile icon="heart.fill" color="#C2564B" label="โรคประจำตัว" value={p.chronic} />
+          <Tile icon="exclamationmark.triangle.fill" color={allergic ? palette.coral : '#8E8E93'} label="แพ้ยา / อาหาร" value={p.allergies} alert={!!allergic} />
+          {p.meds.length ? <Tile wide icon="pills.fill" color="#D9921A" label="ยาที่ใช้อยู่" value={p.meds.join(', ')} /> : null}
+          <Tile wide icon="house.fill" color="#3B7DD8" label="ที่อยู่" value={fullAddress(p.address) || 'ยังไม่ระบุ'} />
+        </View>
 
         {p.meds.length ? (
           <View style={styles.aiNote}>
@@ -162,12 +206,14 @@ function PatientDetailInner() {
         {/* ── ประวัติการรักษา (ไทม์ไลน์) ── */}
         <View style={styles.histHead}>
           <T v="h3">ประวัติการรักษา</T>
-          <T v="subhead" color={ios.secondary}>{p.visits.length} ครั้ง</T>
+          <View style={styles.countPill}>
+            <T v="caption" color={palette.primaryDeep} style={{ fontWeight: '700' }}>{p.visits.length} ครั้ง</T>
+          </View>
         </View>
         {p.visits.length ? (
           <View>
             {p.visits.map((v, i) => (
-              <VisitItem key={v.no} v={v} last={i === p.visits.length - 1} open={openNo === v.no} onToggle={() => setOpenNo(openNo === v.no ? null : v.no)} />
+              <VisitItem key={v.no} v={v} latest={i === 0} last={i === p.visits.length - 1} open={openNo === v.no} onToggle={() => setOpenNo(openNo === v.no ? null : v.no)} />
             ))}
           </View>
         ) : (
@@ -186,15 +232,23 @@ function PatientDetailInner() {
 }
 
 const styles = StyleSheet.create({
+  secTitle: { marginTop: 30, marginBottom: 12, marginLeft: 4 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 10 },
+  tile: { backgroundColor: palette.surface, borderRadius: 20, borderCurve: 'continuous', padding: 14, minHeight: 96 },
+  tileAlert: { backgroundColor: '#FFF4F2', borderWidth: 1, borderColor: 'rgba(217,83,74,0.25)' },
+  tileHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  countPill: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999, backgroundColor: palette.primarySoft },
+  cal: { width: 46, paddingVertical: 6, borderRadius: 14, alignItems: 'center', backgroundColor: palette.surface, borderWidth: 1, borderColor: 'rgba(20,80,50,0.12)' },
+  calOn: { backgroundColor: palette.primary, borderColor: palette.primary },
+  detailRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   qaRow: { flexDirection: 'row', justifyContent: 'space-around', marginTop: 22 },
   qa: { alignItems: 'center', gap: 8, width: 110 },
   qaCircle: { width: 60, height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center' },
   aiNote: { flexDirection: 'row', gap: 8, alignItems: 'flex-start', marginTop: 12, padding: 14, borderRadius: 18, backgroundColor: palette.primarySoft },
-  histHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginTop: 32, marginBottom: 12, paddingHorizontal: 4 },
+  histHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 30, marginBottom: 12, paddingHorizontal: 4 },
   tlRow: { flexDirection: 'row', gap: 12 },
-  tlRail: { width: 30, alignItems: 'center' },
-  tlDot: { width: 30, height: 30, borderRadius: 15, backgroundColor: palette.primarySoft, alignItems: 'center', justifyContent: 'center', marginTop: 14 },
-  tlLine: { flex: 1, width: 2, backgroundColor: palette.primarySoft, marginTop: 4 },
+  tlRail: { width: 46, alignItems: 'center' },
+  tlLine: { flex: 1, width: 2, borderRadius: 1, backgroundColor: 'rgba(20,144,92,0.15)', marginVertical: 4 },
   tlCard: { flex: 1, backgroundColor: palette.surface, borderRadius: 20, borderCurve: 'continuous', padding: 16, marginBottom: 12 },
   result: { paddingHorizontal: 9, paddingVertical: 3, borderRadius: 999, backgroundColor: palette.primarySoft },
   detail: { marginTop: 12, paddingTop: 12, gap: 12, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: ios.separator },
