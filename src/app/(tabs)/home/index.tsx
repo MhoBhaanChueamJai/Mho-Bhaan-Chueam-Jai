@@ -23,18 +23,21 @@ const TOOLS = [
 ] as const;
 
 export default function Home() {
-  const { patients, settings, isPractitioner } = useApp();
+  const { patients, settings, isPractitioner, profile } = useApp();
   // ผู้ป่วยที่มารักษาล่าสุด 3 ราย (หมอพื้นบ้านไม่ใช้ระบบนัด)
   const recent = [...patients].sort((a, b) => visitSortKey(lastVisit(b)?.date) - visitSortKey(lastVisit(a)?.date)).slice(0, 3);
   const name = settings.username && settings.username !== 'somchai' ? settings.username : doctor.short;
+  const me = profile?.first_name || profile?.display_name?.split(' ')[0] || name;
 
   return (
     <>
       <Stack.Screen
         options={{
           headerRight: () => (
-            <PressableScale onPress={() => router.push('/settings')} accessibilityLabel="บัญชีและตั้งค่า" hitSlop={8} style={{ width: 36, height: 36 }}>
-              <Image source={avatars.doctor} style={{ width: 36, height: 36, borderRadius: 18 }} />
+            // โปรไฟล์บนหัวจอ: รูป + ชื่อ ในแคปซูลกระจกของระบบ
+            <PressableScale onPress={() => router.push('/settings')} accessibilityLabel={`บัญชีและตั้งค่า ${me}`} hitSlop={6} style={styles.me}>
+              <Image source={avatars.doctor} style={styles.meAvatar} />
+              <T v="title" color={palette.ink} numberOfLines={1} style={{ maxWidth: 140 }}>{me}</T>
             </PressableScale>
           ),
         }}
@@ -128,6 +131,8 @@ export default function Home() {
 }
 
 const styles = StyleSheet.create({
+  me: { flexDirection: 'row', alignItems: 'center', gap: 8, height: 36, paddingLeft: 2, paddingRight: 8 },
+  meAvatar: { width: 32, height: 32, borderRadius: 16 },
   page: { paddingHorizontal: 16, paddingBottom: 120 },
   ai: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14 },
   orb: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center' },
