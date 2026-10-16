@@ -5,6 +5,7 @@
  */
 import SegmentedControl from '@react-native-segmented-control/segmented-control';
 import { BlurView } from 'expo-blur';
+import { Image } from 'expo-image';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -115,7 +116,7 @@ export default function ScanQr() {
           <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.35)' }]} />
           {/* แตะพื้นที่ว่างเพื่อปิดคีย์บอร์ด */}
           <Pressable style={StyleSheet.absoluteFill} onPress={() => Keyboard.dismiss()} accessibilityLabel="ปิดคีย์บอร์ด" />
-          <Sym name="number" size={30} color="#7CF0A8" />
+          <Image source={require('../../../assets/icons/books.png')} style={{ width: 32, height: 32 }} tintColor="#7CF0A8" />
           <T v="title" color="#FFFFFF" center style={{ marginTop: 12 }}>กรอกรหัสรับตำรา</T>
           <T v="subhead" color="rgba(255,255,255,0.7)" center style={{ marginTop: 4 }}>รหัส 8 ตัวที่เพื่อนส่งให้ทาง LINE หรือข้อความ</T>
           <PressableScale onPress={() => input.current?.focus()} style={styles.boxes} accessibilityLabel="ช่องกรอกรหัส">
