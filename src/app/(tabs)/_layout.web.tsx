@@ -26,7 +26,7 @@ export default function TabsLayoutWeb() {
       <Tabs.Screen name="patients" options={{ title: 'ผู้ป่วย', tabBarIcon: icon('people', 'people-outline'), tabBarBadge: isPractitioner ? 2 : undefined }} />
       <Tabs.Screen name="herbs" options={{ title: 'สมุนไพร', tabBarIcon: icon('leaf', 'leaf-outline') }} />
       <Tabs.Screen name="vault" options={{ title: 'คลังภูมิ', tabBarIcon: icon('library', 'library-outline') }} />
-      <Tabs.Screen name="ask" options={{ title: 'ครูปัญญา', tabBarIcon: icon('mic', 'mic-outline') }} />
+      <Tabs.Screen name="ask" options={{ title: 'ครูปัญญา', tabBarIcon: icon('sparkles', 'sparkles-outline') }} />
     </Tabs>
   );
 }

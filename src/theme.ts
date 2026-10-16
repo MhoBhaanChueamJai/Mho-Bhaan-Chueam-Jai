@@ -94,7 +94,9 @@ export const elevation = {
   e1: shadow(8, 18, 0.28),
   e2: shadow(12, 26, 0.32),
   e3: shadow(18, 36, 0.36),
-  glow: shadow(10, 18, 0.45, '#2E7D57'),
+  glow: shadow(10, 18, 0.45, '#14905C'),
+  /** การ์ดขาวลอย: เงานุ่มกว้าง โทนเขียวเข้มจางๆ */
+  card: { boxShadow: '0px 6px 20px rgba(11, 61, 38, 0.08), 0px 1px 3px rgba(11, 61, 38, 0.06)' } as const,
 };
 
 /** การ์ด clay: พื้นสว่างกว่าฉากเล็กน้อย + ขอบไฮไลต์ขาว */

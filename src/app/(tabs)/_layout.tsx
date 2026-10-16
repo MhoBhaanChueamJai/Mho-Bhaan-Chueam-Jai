@@ -32,7 +32,7 @@ export default function TabsLayout() {
         <Label>คลังภูมิ</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="ask">
-        <Icon sf="mic.fill" />
+        <Icon sf={{ default: "sparkles", selected: "sparkles" }} />
         <Label>ครูปัญญา</Label>
       </NativeTabs.Trigger>
     </NativeTabs>

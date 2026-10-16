@@ -11,7 +11,7 @@ import React from 'react';
 import { Platform, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { WebSymbol } from './symbolWeb';
 import { PressableScale, T } from './ui';
-import { iconTier, palette } from '../theme';
+import { elevation, iconTier, palette } from '../theme';
 
 export const ios = {
   fill: '#EEF6F2', // secondarySystemBackground (โทนสมุนไพรอ่อนมาก)
@@ -114,7 +114,7 @@ export function Row({
 }
 
 const styles = StyleSheet.create({
-  card: { backgroundColor: ios.fill, borderRadius: ios.radius, borderCurve: 'continuous', padding: 16 },
+  card: { backgroundColor: '#FFFFFF', borderRadius: ios.radius, borderCurve: 'continuous', padding: 16, ...elevation.card },
   sectionTitle: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginTop: 28, marginBottom: 10, paddingHorizontal: 4 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 44, paddingHorizontal: 16, paddingVertical: 11 },
   sep: { height: StyleSheet.hairlineWidth, backgroundColor: ios.separator, marginLeft: 60 },
