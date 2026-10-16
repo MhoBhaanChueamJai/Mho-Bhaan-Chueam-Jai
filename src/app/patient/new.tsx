@@ -7,12 +7,12 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { PractitionerGate } from '../../components/PractitionerGate';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View, type KeyboardTypeOptions } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
-import { chatJSON, ocrImage, transcribe } from '../../api/ai';
+import { chatJSON, transcribe } from '../../api/ai';
 import { useVoiceRecorder } from '../../components/audio';
 import { Sym, ios } from '../../components/ios';
 import { Waveform } from '../../components/Orb';
 import { Button, GlassDock, HeaderButton, PressableScale, T, useHaptic } from '../../components/ui';
-import { takeIdScanResult } from '../../lib/idScan';
+import { takeIdScanResult, type IdCardData } from '../../lib/idScan';
 import { TH_MONTHS, ageFrom, elementFromMonth, thaiBirth, toISO } from '../../lib/birth';
 import type { Patient } from '../../data/mock';
 import { useApp } from '../../store/app';
@@ -176,46 +176,28 @@ function NewPatientInner() {
     }
   };
 
-  /** อ่านรูปบัตรประชาชน → OCR → AI แยกชื่อ เพศ วันเกิด ที่อยู่ (ไม่เก็บเลขบัตร) */
-  const processCard = async (uri: string, mime: string) => {
-    h.press();
-    setAiNote('');
-    setAiBusy('card');
-    try {
-      const text = await ocrImage(uri, mime);
-      const r = await chatJSON<Partial<Form>>([
-        {
-          role: 'user',
-          content: `ข้อความจากบัตรประจำตัวประชาชนไทย (OCR):\n${text}\n\nแยกข้อมูลตอบ JSON เท่านั้น ห้ามใส่เลขบัตรประชาชน ช่องที่อ่านไม่ได้ให้เป็น "":
-{"name":"คำนำหน้า ชื่อ สกุล (ภาษาไทย)","sex":"ชาย|หญิง (จากคำนำหน้า)","bDay":"วันเกิด 1-31","bMonth":"เดือนเกิด 1-12","bYear":"ปีเกิด พ.ศ. 4 หลัก","houseNo":"","moo":"","village":"","subdistrict":"ตำบล","district":"อำเภอ","province":"จังหวัด"}`,
-        },
-      ]);
-      setF((x) => {
-        const next = { ...x };
-        (['name', 'bDay', 'bMonth', 'bYear', 'houseNo', 'moo', 'village', 'subdistrict', 'district', 'province'] as (keyof Form)[]).forEach((k) => {
-          const v = String((r as any)[k] ?? '').trim();
-          if (v) (next as any)[k] = v;
-        });
-        if (r.sex) next.sex = String(r.sex).includes('ชาย') ? 'ชาย' : 'หญิง';
-        return next;
+  /** ใส่ข้อมูลที่อ่านจากบัตร (หน้ากล้องอ่านให้แล้ว) ลงฟอร์ม */
+  const applyCard = (r: IdCardData) => {
+    setF((x) => {
+      const next = { ...x };
+      (['name', 'bDay', 'bMonth', 'bYear', 'houseNo', 'moo', 'village', 'subdistrict', 'district', 'province'] as (keyof Form)[]).forEach((k) => {
+        const v = String((r as any)[k] ?? '').trim();
+        if (v) (next as any)[k] = v;
       });
-      setAiNote('อ่านข้อมูลจากบัตรแล้ว ตรวจสอบและแก้ไขได้ (ไม่เก็บเลขบัตร)');
-      h.success();
-    } catch {
-      setAiNote('อ่านบัตรไม่สำเร็จ ลองถ่ายใหม่ให้ชัด หรือกรอกเอง');
-      h.warn();
-    } finally {
-      setAiBusy('');
-    }
+      if (r.sex) next.sex = String(r.sex).includes('ชาย') ? 'ชาย' : 'หญิง';
+      return next;
+    });
+    setAiNote('อ่านข้อมูลจากบัตรแล้ว ตรวจสอบและแก้ไขได้ (ไม่เก็บเลขบัตร)');
+    h.success();
   };
 
   /** สแกนบัตรประชาชน → เปิดกล้องพร้อมกรอบบัตรทันที */
   const scanIdCard = () => router.push('/id-scan');
-  // กลับมาจากหน้ากล้อง → อ่านรูปที่ถ่าย
+  // กลับมาจากหน้ากล้อง → ใส่ข้อมูลที่อ่านได้
   useFocusEffect(
     useCallback(() => {
       const r = takeIdScanResult();
-      if (r) processCard(r.uri, r.mime);
+      if (r) applyCard(r);
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []),
   );

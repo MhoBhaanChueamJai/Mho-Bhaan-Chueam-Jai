@@ -4,21 +4,25 @@
  * - โฟกัสอัตโนมัติต่อเนื่อง (แตะเพื่อโฟกัสจุดนั้นได้), เปิดไฟฉายได้
  * - ถ่ายอัตโนมัติ: ถ่ายภาพเล็กเงียบๆ ทุก ~0.4 วิ ให้ Apple Vision หาบัตร (modules/card-detect)
  *   ถ้ากรอบบัตรตรงกับกรอบบนจอ 2 ครั้งติด → ถ่ายจริงเอง
+ * - ถ่ายแล้ว: บัตรที่ครอปลอยขึ้นมา + เส้นสแกน + "ครูปัญญากำลังอ่านข้อมูล" แล้วส่งข้อมูลกลับ
  * - ถ่ายแล้วครอปเฉพาะส่วนในกรอบ ส่งกลับไปให้ AI อ่าน
  */
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
+import { BlurView } from 'expo-blur';
+import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, FadeIn, ZoomIn, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Sym } from '../components/ios';
 import { Button, PressableScale, T, useHaptic } from '../components/ui';
 import { cardDetectAvailable, detectCard } from '../../modules/card-detect';
-import { setIdScanResult } from '../lib/idScan';
+import { readIdCard, setIdScanResult } from '../lib/idScan';
 import { palette } from '../theme';
 
 const CARD_RATIO = 85.6 / 54;
@@ -34,6 +38,11 @@ export default function IdScan() {
   // expo-camera: 'off' = โฟกัสอัตโนมัติต่อเนื่อง, 'on' = โฟกัสครั้งเดียวแล้วล็อก
   const [focus, setFocus] = useState<'on' | 'off'>('off');
   const [ready, setReady] = useState(false);
+  const [loopKey, setLoopKey] = useState(0);
+  // หลังถ่าย: แสดงบัตรลอยขึ้น + AI อ่านข้อมูล
+  const [shot, setShot] = useState<string | null>(null);
+  const [stage, setStage] = useState<'reading' | 'done' | 'error'>('reading');
+  const [step, setStep] = useState(0);
   const [hint, setHint] = useState<'search' | 'adjust' | 'hold'>('search');
   const busyRef = useRef(false);
 
@@ -56,10 +65,54 @@ export default function IdScan() {
     setTimeout(() => setFocus('off'), 1500);
   };
 
-  const done = (uri: string, mime = 'image/jpeg') => {
-    setIdScanResult({ uri, mime });
-    router.back();
+  // ── บัตรลอยขึ้น + อ่านข้อมูล ──
+  const lift = useSharedValue(0);
+  const scan = useSharedValue(0);
+  const backdrop = useSharedValue(0);
+  const targetTop = insets.top + 72;
+  const cardSt = useAnimatedStyle(() => ({
+    transform: [{ translateY: (targetTop - fy) * lift.value }, { scale: 1 + 0.04 * lift.value }, { perspective: 800 }, { rotateX: `${(1 - lift.value) * 8}deg` }],
+  }));
+  const scanSt = useAnimatedStyle(() => ({ transform: [{ translateY: scan.value * fh }] }));
+  const backSt = useAnimatedStyle(() => ({ opacity: backdrop.value }));
+
+  const done = async (uri: string, mime = 'image/jpeg') => {
+    busyRef.current = true;
+    setShot(uri);
+    setStage('reading');
+    setStep(0);
+    backdrop.value = withTiming(1, { duration: 300 });
+    lift.value = withDelay(80, withSpring(1, { damping: 16, stiffness: 120 }));
+    scan.value = withRepeat(withTiming(1, { duration: 1300, easing: Easing.inOut(Easing.quad) }), -1, true);
+    try {
+      const data = await readIdCard(uri, mime);
+      if (!data?.name) throw new Error('empty');
+      setIdScanResult(data);
+      setStage('done');
+      h.success();
+      setTimeout(() => router.back(), 900);
+    } catch {
+      setStage('error');
+      h.warn();
+    }
   };
+
+  const retry = () => {
+    setShot(null);
+    setBusy(false);
+    busyRef.current = false;
+    lift.value = 0;
+    backdrop.value = 0;
+    setHint('search');
+    setLoopKey((k) => k + 1);
+  };
+
+  // ข้อความขั้นตอนระหว่างอ่าน
+  useEffect(() => {
+    if (!shot || stage !== 'reading') return;
+    const t = setInterval(() => setStep((x) => (x + 1) % READ_STEPS.length), 1100);
+    return () => clearInterval(t);
+  }, [shot, stage]);
 
   const shoot = async () => {
     if (!cam.current || busyRef.current) return;
@@ -137,7 +190,7 @@ export default function IdScan() {
       alive = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready]);
+  }, [ready, loopKey]);
 
   const fromLibrary = async () => {
     const r = await ImagePicker.launchImageLibraryAsync({ quality: 0.85, mediaTypes: ['images'] });
@@ -219,10 +272,62 @@ export default function IdScan() {
         </PressableScale>
         <View style={{ width: 48 }} />
       </View>
+
+      {/* ── หลังถ่าย: บัตรลอยขึ้น + ครูปัญญาอ่านข้อมูล ── */}
+      {shot ? (
+        <View style={StyleSheet.absoluteFill}>
+          <Animated.View style={[StyleSheet.absoluteFill, backSt]}>
+            <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill} />
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,20,12,0.55)' }]} />
+          </Animated.View>
+
+          <Animated.View style={[styles.flyCard, { left: fx, top: fy, width: fw, height: fh }, cardSt]}>
+            <Image source={{ uri: shot }} style={StyleSheet.absoluteFill} contentFit="cover" />
+            {stage === 'reading' ? (
+              <Animated.View style={[styles.scanLine, scanSt]}>
+                <LinearGradient colors={['rgba(52,199,89,0)', 'rgba(52,199,89,0.55)', 'rgba(52,199,89,0)']} style={StyleSheet.absoluteFill} />
+                <View style={styles.scanCore} />
+              </Animated.View>
+            ) : null}
+          </Animated.View>
+
+          <View style={[styles.readBox, { top: targetTop + fh * 1.04 + 28 }]}>
+            {stage === 'reading' ? (
+              <Animated.View entering={FadeIn.delay(250)} style={{ alignItems: 'center', gap: 10 }}>
+                <View style={styles.aiRow}>
+                  <Sym name="sparkles" size={18} color="#7CF0A8" />
+                  <T v="h3" color="#FFFFFF">ครูปัญญากำลังอ่านข้อมูล</T>
+                </View>
+                <View style={styles.aiRow}>
+                  <ActivityIndicator color="#FFFFFF" />
+                  <T v="callout" color="rgba(255,255,255,0.8)">{READ_STEPS[step]}…</T>
+                </View>
+              </Animated.View>
+            ) : stage === 'done' ? (
+              <Animated.View entering={ZoomIn.springify()} style={{ alignItems: 'center', gap: 10 }}>
+                <View style={styles.okBadge}>
+                  <Sym name="checkmark" size={26} color="#FFFFFF" weight="bold" />
+                </View>
+                <T v="h3" color="#FFFFFF">อ่านข้อมูลเรียบร้อย</T>
+              </Animated.View>
+            ) : (
+              <Animated.View entering={FadeIn} style={{ alignItems: 'center', gap: 12, alignSelf: 'stretch' }}>
+                <T v="h3" color="#FFFFFF" center>อ่านบัตรไม่สำเร็จ</T>
+                <T v="callout" color="rgba(255,255,255,0.8)" center>ลองถ่ายใหม่ให้บัตรอยู่ในกรอบและไม่สะท้อนแสง</T>
+                <Button label="ถ่ายใหม่" onPress={retry} style={{ alignSelf: 'stretch', marginTop: 8 }} />
+                <PressableScale onPress={() => router.back()} style={{ padding: 10 }}>
+                  <T v="callout" color="#FFFFFF">กรอกเอง</T>
+                </PressableScale>
+              </Animated.View>
+            )}
+          </View>
+        </View>
+      ) : null}
     </View>
   );
 }
 
+const READ_STEPS = ['อ่านชื่อ-สกุล', 'อ่านวันเดือนปีเกิด', 'อ่านที่อยู่', 'ตรวจทานข้อมูล'];
 const C = 28;
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: '#000000' },
@@ -236,6 +341,12 @@ const styles = StyleSheet.create({
   br: { right: -2, bottom: -2, borderRightWidth: 4, borderBottomWidth: 4, borderBottomRightRadius: 14 },
   photoHint: { position: 'absolute', right: '6%', bottom: '10%', borderRadius: 8, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.35)', borderStyle: 'dashed' },
   guide: { position: 'absolute', left: 24, right: 24, alignItems: 'center' },
+  flyCard: { position: 'absolute', borderRadius: 14, overflow: 'hidden', backgroundColor: '#222', boxShadow: '0px 18px 40px rgba(0,0,0,0.45)' },
+  scanLine: { position: 'absolute', left: 0, right: 0, top: -24, height: 48 },
+  scanCore: { position: 'absolute', left: 0, right: 0, top: 23, height: 2, backgroundColor: '#7CF0A8' },
+  readBox: { position: 'absolute', left: 32, right: 32, alignItems: 'center' },
+  aiRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  okBadge: { width: 56, height: 56, borderRadius: 28, backgroundColor: '#34C759', alignItems: 'center', justifyContent: 'center' },
   pill: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 999, backgroundColor: 'rgba(0,0,0,0.45)' },
   ring: { position: 'absolute', width: 72, height: 72, borderRadius: 12, borderWidth: 2, borderColor: '#FFD60A' },
   top: { position: 'absolute', left: 16, right: 16, flexDirection: 'row', justifyContent: 'space-between' },
