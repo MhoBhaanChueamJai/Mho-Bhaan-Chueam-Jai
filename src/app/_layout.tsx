@@ -41,8 +41,8 @@ function Root() {
         <Stack.Screen name="scan" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
         <Stack.Screen name="id-scan" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
         <Stack.Screen name="wisdom/scan-qr" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
-        {/* การ์ดลอยแบบตอนจับคู่อุปกรณ์ Apple: ตัวอย่างตำราที่ได้จากรหัส */}
-        <Stack.Screen name="wisdom/got" options={{ presentation: 'transparentModal', animation: 'none', contentStyle: { backgroundColor: 'transparent' } }} />
+        {/* Sheet ของ iOS (แบบหน้ากิจกรรมใหม่ในปฏิทิน): ตัวอย่างตำราที่ได้จากรหัส */}
+        <Stack.Screen name="wisdom/got" options={{ presentation: 'formSheet', sheetAllowedDetents: [1.0], sheetGrabberVisible: false, contentStyle: { backgroundColor: '#F2F2F7' } }} />
         <Stack.Screen name="wisdom/share" options={{ presentation: 'modal' }} />
         <Stack.Screen name="wisdom/read" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
         <Stack.Screen name="wisdom/voice" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
