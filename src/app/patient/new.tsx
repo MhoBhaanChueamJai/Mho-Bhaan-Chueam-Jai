@@ -166,7 +166,7 @@ function NewPatientInner() {
         });
         return next;
       });
-      setAiNote('ครูปัญญากรอกให้แล้ว ตรวจสอบและแก้ไขได้');
+      setAiNote('');
       h.success();
     } catch {
       setAiNote('เชื่อมต่อ AI ไม่ได้ กรุณากรอกเอง');
@@ -187,7 +187,7 @@ function NewPatientInner() {
       if (r.sex) next.sex = String(r.sex).includes('ชาย') ? 'ชาย' : 'หญิง';
       return next;
     });
-    setAiNote('อ่านข้อมูลจากบัตรแล้ว ตรวจสอบและแก้ไขได้ (ไม่เก็บเลขบัตร)');
+    setAiNote('');
     h.success();
   };
 

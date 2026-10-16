@@ -1,3 +1,4 @@
+import CoreImage
 import ExpoModulesCore
 import UIKit
 import Vision
@@ -44,6 +45,92 @@ public class CardDetectModule: Module {
       req.quadratureTolerance = 20
       req.minimumConfidence = 0.6
       req.maximumObservations = 1
+      DispatchQueue.global(qos: .userInitiated).async {
+        do {
+          try VNImageRequestHandler(cgImage: cg, options: [:]).perform([req])
+        } catch {
+          promise.resolve(nil)
+        }
+      }
+    }
+
+    /// หาบัตรในรูปเต็ม แล้วดัดมุมมองให้ตรง (perspective correction) ตัดพอดีขอบบัตร
+    /// hint = กรอบบนจอ (normalized) ใช้เลือกสี่เหลี่ยมที่ใกล้กรอบที่สุด
+    AsyncFunction("extract") { (uri: String, hint: [String: Double]?, promise: Promise) in
+      guard let url = URL(string: uri), let data = try? Data(contentsOf: url), let image = UIImage(data: data) else {
+        promise.resolve(nil)
+        return
+      }
+      let fmt = UIGraphicsImageRendererFormat.default()
+      fmt.scale = 1
+      let upright = UIGraphicsImageRenderer(size: image.size, format: fmt).image { _ in image.draw(in: CGRect(origin: .zero, size: image.size)) }
+      guard let cg = upright.cgImage else {
+        promise.resolve(nil)
+        return
+      }
+      let W = CGFloat(cg.width), H = CGFloat(cg.height)
+      let req = VNDetectRectanglesRequest { req, _ in
+        let all = (req.results as? [VNRectangleObservation]) ?? []
+        // เลือกสี่เหลี่ยมที่จุดกลางใกล้กรอบที่สุด
+        var best = all.first
+        if let h = hint, let hx = h["x"], let hy = h["y"], let hw = h["width"], let hh = h["height"] {
+          let cx = hx + hw / 2, cy = 1 - (hy + hh / 2)
+          best = all.min(by: { a, b in
+            hypot(a.boundingBox.midX - cx, a.boundingBox.midY - cy) < hypot(b.boundingBox.midX - cx, b.boundingBox.midY - cy)
+          })
+        }
+        guard let r = best else {
+          promise.resolve(nil)
+          return
+        }
+        let pt = { (p: CGPoint) in CIVector(x: p.x * W, y: p.y * H) }
+        let ci = CIImage(cgImage: cg)
+        guard let f = CIFilter(name: "CIPerspectiveCorrection") else {
+          promise.resolve(nil)
+          return
+        }
+        f.setValue(ci, forKey: kCIInputImageKey)
+        f.setValue(pt(r.topLeft), forKey: "inputTopLeft")
+        f.setValue(pt(r.topRight), forKey: "inputTopRight")
+        f.setValue(pt(r.bottomLeft), forKey: "inputBottomLeft")
+        f.setValue(pt(r.bottomRight), forKey: "inputBottomRight")
+        guard var out = f.outputImage else {
+          promise.resolve(nil)
+          return
+        }
+        // บัตรต้องเป็นแนวนอน — ถ้าได้แนวตั้งให้หมุน 90°
+        if out.extent.height > out.extent.width {
+          out = out.oriented(.right)
+        }
+        let ctx = CIContext()
+        guard let outCG = ctx.createCGImage(out, from: out.extent),
+              let jpg = UIImage(cgImage: outCG).jpegData(compressionQuality: 0.92) else {
+          promise.resolve(nil)
+          return
+        }
+        let file = FileManager.default.temporaryDirectory.appendingPathComponent("idcard-\(UUID().uuidString).jpg")
+        do {
+          try jpg.write(to: file)
+          promise.resolve([
+            "uri": file.absoluteString,
+            "width": outCG.width,
+            "height": outCG.height,
+            // ตำแหน่งบัตรในรูปเต็ม (normalized, มุมซ้ายบน) ใช้เริ่มแอนิเมชัน
+            "x": r.boundingBox.minX,
+            "y": 1 - r.boundingBox.maxY,
+            "boxWidth": r.boundingBox.width,
+            "boxHeight": r.boundingBox.height,
+          ])
+        } catch {
+          promise.resolve(nil)
+        }
+      }
+      req.minimumAspectRatio = 0.5
+      req.maximumAspectRatio = 0.75
+      req.minimumSize = 0.25
+      req.quadratureTolerance = 25
+      req.minimumConfidence = 0.5
+      req.maximumObservations = 4
       DispatchQueue.global(qos: .userInitiated).async {
         do {
           try VNImageRequestHandler(cgImage: cg, options: [:]).perform([req])

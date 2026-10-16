@@ -18,16 +18,19 @@ import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
-import Animated, { Easing, FadeIn, FadeInDown, ZoomIn, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, FadeIn, FadeInDown, ZoomIn, useAnimatedStyle, useDerivedValue, useSharedValue, withDelay, withRepeat, withSequence, withSpring, withTiming } from 'react-native-reanimated';
+import { BlurMask, Canvas, RoundedRect, SweepGradient, vec } from '@shopify/react-native-skia';
 import { AIBorder, AIFlower, AIGlow, AI_COLORS } from '../components/Orb';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Sym } from '../components/ios';
 import { Button, PressableScale, T, useHaptic } from '../components/ui';
-import { cardDetectAvailable, detectCard } from '../../modules/card-detect';
+import { cardDetectAvailable, detectCard, extractCard } from '../../modules/card-detect';
 import { readIdCard, setIdScanResult } from '../lib/idScan';
 import { palette } from '../theme';
 
 const CARD_RATIO = 85.6 / 54;
+/** มุมโค้งบัตรจริง 3.18 มม. → สัดส่วนกับความกว้าง */
+const CARD_R = 14;
 
 export default function IdScan() {
   const insets = useSafeAreaInsets();
@@ -68,37 +71,68 @@ export default function IdScan() {
     setTimeout(() => setFocus('off'), 1500);
   };
 
-  // ── หลังถ่าย: พื้นหลังเบลอ + บัตรโฟกัส + เคลือบรุ้ง ──
-  const pop = useSharedValue(0); // บัตรเด้งขึ้นเล็กน้อย = "โฟกัสบัตร"
-  const sheen = useSharedValue(0); // แสงรุ้งวิ่งพาดบัตร
-  const back = useSharedValue(0); // พื้นหลังเบลอค่อยๆ ขึ้น
-  const out = useSharedValue(1); // ปิดฉากตอนอ่านเสร็จ
-  const cardSt = useAnimatedStyle(() => ({
-    opacity: out.value,
-    transform: [{ scale: (1 + 0.05 * pop.value) * (0.9 + 0.1 * out.value) }, { translateY: -14 * pop.value }],
-  }));
-  const sheenSt = useAnimatedStyle(() => ({ transform: [{ translateX: -fw * 1.2 + sheen.value * fw * 2.4 }, { rotate: '18deg' }] }));
-  const backSt = useAnimatedStyle(() => ({ opacity: back.value * out.value }));
+  // ── หลังถ่าย: บัตรที่ดัดตรงแล้ว ลอยจากตำแหน่งจริงในภาพ → กลางจอ, เคลือบรุ้ง, ออร่า AI ──
+  // ตำแหน่งปลายทางของบัตร (กลางจอค่อนบน)
+  const cw = W - 40;
+  const ch = cw / CARD_RATIO;
+  const cx = 20;
+  const cy = Math.round(H * 0.36 - ch / 2);
+  const [from, setFrom] = useState({ x: cx, y: cy, w: cw, h: ch });
 
-  const done = async (uri: string, mime = 'image/jpeg', full?: string) => {
+  const fly = useSharedValue(0); // 0 = ตำแหน่งบัตรในภาพ, 1 = กลางจอ
+  const idle = useSharedValue(0); // ลอยขึ้นลง + เอียง 3D เบาๆ
+  const sheen = useSharedValue(0); // แสงรุ้งวิ่งพาดบัตร
+  const back = useSharedValue(0); // พื้นหลังเบลอ
+  const aura = useSharedValue(0); // ออร่ารุ้งหลังบัตร
+  const spin = useSharedValue(0); // หมุนสีออร่า
+  const out = useSharedValue(1); // ปิดฉาก
+  const flySt = useAnimatedStyle(() => {
+    const f = fly.value;
+    const sx = from.w / cw, sy = from.h / ch;
+    const k = 1 - f;
+    const wob = Math.sin(idle.value * Math.PI * 2);
+    return {
+      opacity: out.value,
+      transform: [
+        { translateX: (from.x + from.w / 2 - (cx + cw / 2)) * k },
+        { translateY: (from.y + from.h / 2 - (cy + ch / 2)) * k + wob * 6 * f - (1 - out.value) * 120 },
+        { perspective: 900 },
+        { rotateX: `${wob * 3 * f + k * 10}deg` },
+        { rotateY: `${Math.cos(idle.value * Math.PI * 2) * 4 * f}deg` },
+        { scaleX: (sx + (1 - sx) * f) * (0.85 + 0.15 * out.value) },
+        { scaleY: (sy + (1 - sy) * f) * (0.85 + 0.15 * out.value) },
+      ],
+    };
+  });
+  const sheenSt = useAnimatedStyle(() => ({ transform: [{ translateX: -cw * 0.9 + sheen.value * cw * 2.2 }, { rotate: '22deg' }] }));
+  const backSt = useAnimatedStyle(() => ({ opacity: back.value }));
+  const auraSt = useAnimatedStyle(() => ({ opacity: aura.value * out.value }));
+  const auraRot = useDerivedValue(() => [{ rotate: spin.value * Math.PI * 2 }]);
+
+  const done = async ({ card, full, start, mime = 'image/jpeg' }: { card: string; full: string; start?: { x: number; y: number; w: number; h: number }; mime?: string }) => {
     busyRef.current = true;
-    setBg(full ?? uri);
-    setShot(uri);
+    setFrom(start ?? { x: cx + cw * 0.1, y: cy + ch * 0.1, w: cw * 0.8, h: ch * 0.8 });
+    setBg(full);
+    setShot(card);
     setStage('reading');
     setStep(0);
     out.value = 1;
-    back.value = withTiming(1, { duration: 450 });
-    pop.value = withDelay(120, withSpring(1, { damping: 12, stiffness: 140 }));
-    sheen.value = withRepeat(withSequence(withTiming(1, { duration: 1600, easing: Easing.inOut(Easing.cubic) }), withTiming(0, { duration: 0 }), withTiming(0, { duration: 350 })), -1);
+    fly.value = 0;
+    back.value = withTiming(1, { duration: 500 });
+    fly.value = withDelay(150, withSpring(1, { damping: 14, stiffness: 90, mass: 0.9 }));
+    aura.value = withDelay(500, withTiming(1, { duration: 700 }));
+    spin.value = withRepeat(withTiming(1, { duration: 4000, easing: Easing.linear }), -1);
+    idle.value = withDelay(900, withRepeat(withTiming(1, { duration: 3200, easing: Easing.linear }), -1));
+    sheen.value = withDelay(700, withRepeat(withSequence(withTiming(1, { duration: 1500, easing: Easing.inOut(Easing.cubic) }), withTiming(0, { duration: 0 }), withTiming(0, { duration: 500 })), -1));
     try {
-      const data = await readIdCard(uri, mime);
+      const data = await readIdCard(card, mime);
       if (!data?.name) throw new Error('empty');
       setIdScanResult(data);
       setStage('done');
       h.success();
-      // ปิดฉาก: บัตรหดหาย แล้วปิดหน้า → ฟอร์มเติมข้อมูลให้
-      out.value = withDelay(650, withTiming(0, { duration: 380 }));
-      setTimeout(() => router.back(), 1100);
+      // ปิดฉาก: บัตรลอยขึ้นหาย แล้วปิดหน้า → ฟอร์มเติมข้อมูลให้
+      out.value = withDelay(700, withTiming(0, { duration: 450, easing: Easing.in(Easing.cubic) }));
+      setTimeout(() => router.back(), 1200);
     } catch {
       setStage('error');
       h.warn();
@@ -110,8 +144,9 @@ export default function IdScan() {
     setBg(null);
     setBusy(false);
     busyRef.current = false;
-    pop.value = 0;
+    fly.value = 0;
     back.value = 0;
+    aura.value = 0;
     setHint('search');
     setLoopKey((k) => k + 1);
   };
@@ -129,26 +164,33 @@ export default function IdScan() {
     h.heavy();
     setBusy(true);
     try {
-      const p = await cam.current.takePictureAsync({ quality: 0.9 });
+      const p = await cam.current.takePictureAsync({ quality: 0.92 });
       if (!p) {
         busyRef.current = false;
         return setBusy(false);
       }
-      // ภาพตัวอย่างแสดงแบบ cover → แปลงพิกัดกรอบบนจอเป็นพิกัดบนรูปจริง แล้วครอป (เผื่อขอบ 4%)
+      // ภาพตัวอย่างแสดงแบบ cover → แปลงพิกัดระหว่างจอกับรูปจริง
       const scale = Math.max(W / p.width, H / p.height);
       const ox = (p.width * scale - W) / 2;
       const oy = (p.height * scale - H) / 2;
-      const pad = fw * 0.04;
+      const hint = { x: (fx + ox) / scale / p.width, y: (fy + oy) / scale / p.height, width: fw / scale / p.width, height: fh / scale / p.height };
+      // ตัดพอดีขอบบัตร + ดัดให้ตรง ด้วย Apple Vision
+      const ex = await extractCard(p.uri, hint);
+      if (ex) {
+        const start = { x: ex.x * p.width * scale - ox, y: ex.y * p.height * scale - oy, w: ex.boxWidth * p.width * scale, h: ex.boxHeight * p.height * scale };
+        return done({ card: ex.uri, full: p.uri, start });
+      }
+      // หาขอบไม่เจอ → ครอปตามกรอบแทน
       const crop = {
-        originX: Math.max(0, (fx - pad + ox) / scale),
-        originY: Math.max(0, (fy - pad + oy) / scale),
-        width: Math.min(p.width, (fw + pad * 2) / scale),
-        height: Math.min(p.height, (fh + pad * 2) / scale),
+        originX: Math.max(0, (fx + ox) / scale),
+        originY: Math.max(0, (fy + oy) / scale),
+        width: Math.min(p.width, fw / scale),
+        height: Math.min(p.height, fh / scale),
       };
       crop.width = Math.min(crop.width, p.width - crop.originX);
       crop.height = Math.min(crop.height, p.height - crop.originY);
       const cropped = await ImageManipulator.manipulateAsync(p.uri, [{ crop }], { compress: 0.9, format: ImageManipulator.SaveFormat.JPEG });
-      done(cropped.uri, 'image/jpeg', p.uri);
+      done({ card: cropped.uri, full: p.uri, start: { x: fx, y: fy, w: fw, h: fh } });
     } catch {
       busyRef.current = false;
       setBusy(false);
@@ -203,7 +245,10 @@ export default function IdScan() {
 
   const fromLibrary = async () => {
     const r = await ImagePicker.launchImageLibraryAsync({ quality: 0.85, mediaTypes: ['images'] });
-    if (!r.canceled) done(r.assets[0].uri, r.assets[0].mimeType ?? 'image/jpeg');
+    if (r.canceled) return;
+    const uri = r.assets[0].uri;
+    const ex = await extractCard(uri);
+    done({ card: ex?.uri ?? uri, full: uri, mime: ex ? 'image/jpeg' : (r.assets[0].mimeType ?? 'image/jpeg') });
   };
 
   if (!perm) return <View style={styles.page} />;
@@ -282,37 +327,45 @@ export default function IdScan() {
         <View style={{ width: 48 }} />
       </View>
 
-      {/* ── หลังถ่าย: ภาพเต็มเบลอเป็นพื้นหลัง · บัตรคมชัดตรงกรอบ · เอฟเฟกต์ AI แบบครูปัญญา ── */}
+      {/* ── หลังถ่าย: พื้นหลังเบลอ · บัตรดัดตรงลอยมากลางจอ · ออร่ารุ้ง + เคลือบโฮโลแกรม (สไตล์ครูปัญญา) ── */}
       {shot ? (
         <View style={StyleSheet.absoluteFill}>
           <Animated.View style={[StyleSheet.absoluteFill, backSt]}>
             {bg ? <Image source={{ uri: bg }} style={StyleSheet.absoluteFill} contentFit="cover" /> : null}
-            <BlurView intensity={55} tint="dark" style={StyleSheet.absoluteFill} />
-            <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.25)' }]} />
+            <BlurView intensity={70} tint="dark" style={StyleSheet.absoluteFill} />
+            <LinearGradient colors={['rgba(4,21,14,0.55)', 'rgba(4,21,14,0.25)', 'rgba(4,21,14,0.7)']} style={StyleSheet.absoluteFill} />
           </Animated.View>
-          {/* ขอบจอเรืองแสงแบบ Apple Intelligence */}
           <AIGlow active={stage === 'reading'} />
 
-          <Animated.View style={[{ position: 'absolute', left: fx, top: fy, width: fw, height: fh }, cardSt]}>
-            {stage !== 'error' ? <AIBorder width={fw} height={fh} radius={16} stroke={3} /> : null}
+          <Animated.View style={[{ position: 'absolute', left: cx, top: cy, width: cw, height: ch }, flySt]}>
+            {/* ออร่ารุ้งหมุนหลังบัตร */}
+            <Animated.View pointerEvents="none" style={[{ position: 'absolute', left: -60, top: -60, width: cw + 120, height: ch + 120 }, auraSt]}>
+              <Canvas style={{ flex: 1 }}>
+                <RoundedRect x={50} y={50} width={cw + 20} height={ch + 20} r={22}>
+                  <SweepGradient c={vec((cw + 120) / 2, (ch + 120) / 2)} colors={AI_COLORS} transform={auraRot} origin={vec((cw + 120) / 2, (ch + 120) / 2)} />
+                  <BlurMask blur={34} style="normal" />
+                </RoundedRect>
+              </Canvas>
+            </Animated.View>
+            {stage !== 'error' ? <AIBorder width={cw} height={ch} radius={CARD_R} stroke={2} /> : null}
             <View style={styles.cardClip}>
               <Image source={{ uri: shot }} style={StyleSheet.absoluteFill} contentFit="cover" />
-              {/* เคลือบรุ้งแบบโฮโลแกรม: สีรุ้งจางทั้งใบ + แถบแสงรุ้งวิ่งพาด */}
-              <LinearGradient colors={AI_COLORS.map((c) => c + '26') as any} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
-              {stage === 'reading' ? (
-                <Animated.View style={[styles.sheen, { width: fw * 0.55, height: fh * 2.2, top: -fh * 0.6 }, sheenSt]}>
-                  <LinearGradient
-                    colors={['rgba(255,255,255,0)', 'rgba(124,240,168,0.35)', 'rgba(255,255,255,0.75)', 'rgba(224,176,48,0.4)', 'rgba(122,92,200,0.35)', 'rgba(255,255,255,0)']}
-                    start={{ x: 0, y: 0.5 }}
-                    end={{ x: 1, y: 0.5 }}
-                    style={StyleSheet.absoluteFill}
-                  />
-                </Animated.View>
-              ) : null}
+              {/* เคลือบรุ้งโฮโลแกรม: ไล่สีจางทั้งใบ + แถบแสงรุ้งวาววิ่งพาด */}
+              <LinearGradient colors={AI_COLORS.map((c) => c + '22') as any} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
+              <Animated.View style={[styles.sheen, { width: cw * 0.6, height: ch * 2.4, top: -ch * 0.7 }, sheenSt]}>
+                <LinearGradient
+                  colors={['rgba(255,255,255,0)', 'rgba(124,240,168,0.28)', 'rgba(255,255,255,0.7)', 'rgba(224,176,48,0.32)', 'rgba(122,92,200,0.3)', 'rgba(255,255,255,0)']}
+                  start={{ x: 0, y: 0.5 }}
+                  end={{ x: 1, y: 0.5 }}
+                  style={StyleSheet.absoluteFill}
+                />
+              </Animated.View>
+              {/* เงาแสงขอบบนแบบกระจก */}
+              <LinearGradient colors={['rgba(255,255,255,0.28)', 'rgba(255,255,255,0)']} end={{ x: 0.5, y: 0.35 }} style={StyleSheet.absoluteFill} />
             </View>
           </Animated.View>
 
-          <View style={[styles.readBox, { top: fy + fh + 36 }]}>
+          <View style={[styles.readBox, { top: cy + ch + 48 }]}>
             {stage === 'reading' ? (
               <Animated.View entering={FadeInDown.delay(250).springify()} style={styles.aiPill}>
                 <AIFlower size={30} active />
@@ -359,7 +412,7 @@ const styles = StyleSheet.create({
   br: { right: -2, bottom: -2, borderRightWidth: 4, borderBottomWidth: 4, borderBottomRightRadius: 14 },
   photoHint: { position: 'absolute', right: '6%', bottom: '10%', borderRadius: 8, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.35)', borderStyle: 'dashed' },
   guide: { position: 'absolute', left: 24, right: 24, alignItems: 'center' },
-  cardClip: { ...StyleSheet.absoluteFillObject, borderRadius: 16, overflow: 'hidden', backgroundColor: '#111' },
+  cardClip: { ...StyleSheet.absoluteFillObject, borderRadius: CARD_R, overflow: 'hidden', backgroundColor: '#111', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.5)' },
   sheen: { position: 'absolute', left: 0 },
   aiPill: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, paddingHorizontal: 18, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.14)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.35)' },
   readBox: { position: 'absolute', left: 32, right: 32, alignItems: 'center' },
