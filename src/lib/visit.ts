@@ -3,7 +3,7 @@
  * ถามทีละเรื่อง: อาการ → ตรวจร่างกาย → วินิจฉัย → การรักษา/ยาที่ให้ → ของแสลง/ข้อห้าม → นัดดูอาการ
  */
 import { chatJSON } from '../api/ai';
-import { dialectHint } from './dialect';
+import { dialectHint, dialectSpeakStyle } from './dialect';
 import type { Patient } from '../data/mock';
 import type { Turn } from './intake';
 
@@ -57,6 +57,7 @@ ${dialectHint()}
 2) คิดคำพูดถัดไป: รับคำตอบอย่างเป็นธรรมชาติ แล้วถามเรื่องถัดไปที่ยังไม่รู้ ตามลำดับ อาการ → ตรวจร่างกาย → วินิจฉัย → การรักษา/ยาที่ให้ → ของแสลง/ข้อห้าม → ให้กลับมาอีกเมื่อไหร่
    ถ้ายาหรือสมุนไพรที่ให้ อาจไม่เหมาะกับโรคประจำตัว การแพ้ หรือธาตุของผู้ป่วย ให้เตือนสั้นๆ อย่างสุภาพ
    ประโยคสั้น ไม่เกิน 2 ประโยค ห้ามใช้ไม้ยมก (ๆ)
+   ภาษาที่ใช้ตอบ (reply): ${dialectSpeakStyle()}
 3) ถ้าครบทุกเรื่องแล้ว หรือหมอบอกว่าพอแล้ว ให้ done=true และ reply เป็นสรุปการรักษาครั้งนี้สั้นๆ
 ตอบ JSON เท่านั้น:
 {"fields":{"symptoms":"","exam":"","diagnosis":"","treatment":"","caution":"","followUp":"","result":""},"reply":"","done":false}`,

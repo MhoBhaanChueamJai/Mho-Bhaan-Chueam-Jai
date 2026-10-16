@@ -11,8 +11,7 @@ import { useSpeaker } from '../components/audio';
 import { CircleIcon, ListRow, ListSection, PAGE_PAD } from '../components/ListRow';
 import { Sym, ios } from '../components/ios';
 import { Avatar, HeaderBack, PressableScale, T, useHaptic } from '../components/ui';
-import { avatars, doctor, doctorTypes, fullAddress } from '../data/mock';
-import { TYPE_LABEL } from './verify';
+import { avatars, doctor, fullAddress } from '../data/mock';
 import { DIALECTS } from '../lib/dialect';
 import { AISphere } from '../components/AISphere';
 import { supabase } from '../lib/supabase';
@@ -31,7 +30,6 @@ export default function Settings() {
   }, []);
   const tts = useSpeaker();
   const h = useHaptic();
-  const type = doctorTypes.find((d) => d.key === settings.doctorType) ?? doctorTypes[0];
   const dialect = settings.dialect ?? 'central';
 
   const exportAll = () => {

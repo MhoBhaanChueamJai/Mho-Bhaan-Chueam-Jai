@@ -7,7 +7,7 @@ import React from 'react';
 import { VoiceSession, type VoiceData } from '../../components/VoiceSession';
 import { ageFrom, elementFromMonth, normalizeBirth, toISO } from '../../lib/birth';
 import { ELEMENT_PROFILE, ageSamutthan } from '../../lib/elements';
-import { OPENING, TOPICS, hasTopic, intakeTurn, setIntakeResult, type IntakeData } from '../../lib/intake';
+import { TOPICS, openingFor, hasTopic, intakeTurn, setIntakeResult, type IntakeData } from '../../lib/intake';
 
 /** ประโยควิเคราะห์ธาตุเจ้าเรือนจากวันเกิด (+ อายุสมุฏฐาน) — คำนวณเอง ไม่ให้ AI เดา */
 function elementNote(d: VoiceData) {
@@ -24,7 +24,7 @@ export default function VoiceIntake() {
   return (
     <VoiceSession
       title="ครูปัญญาซักประวัติ"
-      opening={OPENING}
+      opening={openingFor()}
       topics={TOPICS as { key: string; label: string }[]}
       has={(d, k) => hasTopic(d as IntakeData, k as any)}
       turn={(k, h, a) => intakeTurn(k as IntakeData, h, a) as any}

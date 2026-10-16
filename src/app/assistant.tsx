@@ -4,6 +4,7 @@ import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View
 import Animated, { FadeIn, FadeInUp, useAnimatedStyle, useSharedValue, withDelay, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SYSTEM_PROMPT, chat, transcribe, type ChatMsg } from '../api/ai';
+import { dialectHint, dialectSpeakStyle } from '../lib/dialect';
 import { useSpeaker, useVoiceRecorder } from '../components/audio';
 import { Group, Row, Sym, ios } from '../components/ios';
 import { SoftShadow, Waveform } from '../components/Orb';
@@ -47,7 +48,7 @@ export default function Assistant() {
     setText('');
     setBusy(true);
     try {
-      const reply = await chat([{ role: 'system', content: SYSTEM_PROMPT }, ...history.map(({ role, content }) => ({ role, content }))], settings.model);
+      const reply = await chat([{ role: 'system', content: `${SYSTEM_PROMPT}\n- ${dialectHint()}\n- ${dialectSpeakStyle()}` }, ...history.map(({ role, content }) => ({ role, content }))], settings.model);
       const id = `a${Date.now()}`;
       setMsgs((m) => [...m, { id, role: 'assistant', content: reply }]);
       h.success();

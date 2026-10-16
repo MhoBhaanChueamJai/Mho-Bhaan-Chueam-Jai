@@ -4,7 +4,7 @@
  * ถ้าเชื่อมต่อ AI ไม่ได้ ใช้ชุดคำถามสำรองตามลำดับ
  */
 import { chatJSON } from '../api/ai';
-import { dialectHint } from './dialect';
+import { dialectGreeting, dialectHint, dialectSpeakStyle } from './dialect';
 
 export type IntakeData = {
   prefix?: string;
@@ -39,6 +39,8 @@ export const hasTopic = (d: IntakeData, key: (typeof TOPICS)[number]['key']) =>
 
 /** คำถามแรก */
 export const OPENING = 'สวัสดีครับ ผมครูปัญญานะครับ เดี๋ยวผมช่วยซักประวัติให้นะครับ พูดภาษาถิ่นได้เลยครับ ' + TOPICS[0].ask;
+/** คำเปิดตามภาษาพูดที่ตั้งไว้ (คำถามแรกให้ AI ไม่ต้องคิด จึงใช้ภาษากลางที่ทุกภาคเข้าใจต่อท้าย) */
+export const openingFor = () => `${dialectGreeting()} ${TOPICS[0].ask}`;
 
 /** หนึ่งรอบการสนทนา: คืนข้อมูลที่อัปเดต + คำพูดถัดไป + จบหรือยัง */
 export async function intakeTurn(known: IntakeData, history: Turn[], answer: string): Promise<{ data: IntakeData; reply: string; done: boolean }> {
@@ -67,6 +69,7 @@ ${history.slice(-6).map((h) => `${h.role === 'ai' ? 'ครูปัญญา' :
    ถามทีละเรื่อง ประโยคสั้น ไม่เกิน 2 ประโยค ถ้าคำตอบไม่ชัดให้ถามซ้ำอย่างสุภาพ
    ใช้ภาษาพูดแบบคนคุยกันจริง เป็นกันเอง อบอุ่น (เช่น "อ๋อ เข้าใจแล้วครับ", "โอเคครับ แล้วก็…", "ดีเลยครับ") ไม่ใช้ภาษาเขียนหรือภาษาทางการ ไม่ขึ้นต้นซ้ำแบบเดิมทุกครั้ง
    ห้ามใช้ไม้ยมก (ๆ) ให้เขียนคำซ้ำเต็ม เช่น "ค่อยค่อย"
+   ภาษาที่ใช้ตอบ (reply): ${dialectSpeakStyle()}
 3) ถ้าครบทุกเรื่องแล้ว หรือหมอบอกว่าพอแล้ว ให้ done=true และ reply เป็นการสรุปสั้นๆ อบอุ่น ว่าได้ข้อมูลอะไรบ้าง
 ตอบ JSON เท่านั้น:
 {"fields":{"prefix":"","name":"ชื่อ สกุล (ไม่มีคำนำหน้า)","bDay":"วันที่ 1-31 (ตัวเลข)","bMonth":"เดือน 1-12 (ตัวเลข)","bYear":"ปี พ.ศ. 4 หลัก","age":"","phone":"","address":"","chronic":"","allergies":"","weight":"","height":""},"reply":"คำพูดถัดไป","done":false}`,
