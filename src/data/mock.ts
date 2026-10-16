@@ -45,6 +45,7 @@ export type Patient = {
   name: string;
   sex: 'ชาย' | 'หญิง';
   age: number;
+  birthDate?: string; // วันเกิด ค.ศ. YYYY-MM-DD
   address: Address;
   phone: string;
   chronic: string; // โรคประจำตัว

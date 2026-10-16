@@ -87,6 +87,7 @@ const MAP: Record<string, keyof typeof Ionicons.glyphMap> = {
   'person.badge.shield.checkmark.fill': 'shield-checkmark',
   'graduationcap.fill': 'school',
   'person.text.rectangle.fill': 'card',
+  'person.text.rectangle': 'card-outline',
   'doc.badge.ellipsis': 'document-text',
   'externaldrive.fill.badge.icloud': 'cloud-done',
   'arrow.up.left': 'arrow-up-outline',

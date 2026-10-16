@@ -3,8 +3,8 @@
  * บนสุด: การ์ดพูดแนะนำผู้ป่วย (AI กรอกให้) → ฟอร์มแบ่งการ์ด ป้ายอยู่เหนือช่องแคปซูล → ปุ่มบันทึกติดล่าง
  */
 import * as ImagePicker from 'expo-image-picker';
-import { router } from 'expo-router';
-import React, { useState } from 'react';
+import { Stack, router } from 'expo-router';
+import React, { useEffect, useState } from 'react';
 import { PractitionerGate } from '../../components/PractitionerGate';
 import { ActionSheetIOS, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View, type KeyboardTypeOptions } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
@@ -12,7 +12,8 @@ import { chatJSON, ocrImage, transcribe } from '../../api/ai';
 import { useVoiceRecorder } from '../../components/audio';
 import { Sym, ios } from '../../components/ios';
 import { Waveform } from '../../components/Orb';
-import { Button, GlassDock, PressableScale, T, useHaptic } from '../../components/ui';
+import { Button, GlassDock, HeaderButton, PressableScale, T, useHaptic } from '../../components/ui';
+import { TH_MONTHS, ageFrom, elementFromMonth, thaiBirth, toISO } from '../../lib/birth';
 import type { Patient } from '../../data/mock';
 import { useApp } from '../../store/app';
 import { elevation, palette } from '../../theme';
@@ -21,6 +22,9 @@ type Form = {
   name: string;
   sex: 'ชาย' | 'หญิง';
   age: string;
+  bDay: string;
+  bMonth: string;
+  bYear: string; // พ.ศ.
   houseNo: string;
   moo: string;
   village: string;
@@ -39,6 +43,9 @@ const EMPTY: Form = {
   name: '',
   sex: 'หญิง',
   age: '',
+  bDay: '',
+  bMonth: '',
+  bYear: '',
   houseNo: '',
   moo: '',
   village: '',
@@ -120,6 +127,12 @@ function NewPatientInner() {
   const [aiNote, setAiNote] = useState('');
   const set = (k: keyof Form) => (v: string) => setF((x) => ({ ...x, [k]: v }));
   const canSave = f.name.trim().length > 1;
+  // วันเกิดครบ → คำนวณอายุและธาตุเจ้าเรือนให้อัตโนมัติ (แก้เองได้)
+  const birthISO = toISO(f.bDay, f.bMonth, f.bYear);
+  useEffect(() => {
+    if (!birthISO) return;
+    setF((x) => ({ ...x, age: String(ageFrom(birthISO)), element: elementFromMonth(Number(x.bMonth)) }));
+  }, [birthISO]);
 
   /** พูด → ถอดเสียง → AI แยกข้อมูลลงช่อง */
   const fillByVoice = async () => {
@@ -142,7 +155,7 @@ function NewPatientInner() {
         {
           role: 'user',
           content: `แยกข้อมูลผู้ป่วยจากคำพูดนี้: "${text}"\nตอบ JSON เท่านั้น ช่องที่ไม่ได้กล่าวถึงให้เป็น "" (ห้ามเดา) ตัวเลขเป็นเลขอารบิก:
-{"name":"ชื่อ-สกุล พร้อมคำนำหน้า","sex":"ชาย|หญิง","age":"","houseNo":"","moo":"","village":"","subdistrict":"","district":"","province":"","phone":"รูปแบบ 0XX-XXX-XXXX","chronic":"โรคประจำตัว","allergies":"การแพ้ยา/อาหาร","weight":"","height":""}`,
+{"name":"ชื่อ-สกุล พร้อมคำนำหน้า","sex":"ชาย|หญิง","age":"","bDay":"วันเกิด 1-31","bMonth":"เดือนเกิด 1-12","bYear":"ปีเกิด พ.ศ. 4 หลัก","houseNo":"","moo":"","village":"","subdistrict":"","district":"","province":"","phone":"รูปแบบ 0XX-XXX-XXXX","chronic":"โรคประจำตัว","allergies":"การแพ้ยา/อาหาร","weight":"","height":""}`,
         },
       ]);
       setF((x) => {
@@ -179,23 +192,20 @@ function NewPatientInner() {
       setAiBusy('card');
       try {
         const text = await ocrImage(res.assets[0].uri, res.assets[0].mimeType ?? 'image/jpeg');
-        const r = await chatJSON<Partial<Form> & { birthYearBE?: string }>([
+        const r = await chatJSON<Partial<Form>>([
           {
             role: 'user',
             content: `ข้อความจากบัตรประจำตัวประชาชนไทย (OCR):\n${text}\n\nแยกข้อมูลตอบ JSON เท่านั้น ห้ามใส่เลขบัตรประชาชน ช่องที่อ่านไม่ได้ให้เป็น "":
-{"name":"คำนำหน้า ชื่อ สกุล (ภาษาไทย)","sex":"ชาย|หญิง (จากคำนำหน้า)","birthYearBE":"ปีเกิด พ.ศ. 4 หลัก","houseNo":"","moo":"","village":"","subdistrict":"ตำบล","district":"อำเภอ","province":"จังหวัด"}`,
+{"name":"คำนำหน้า ชื่อ สกุล (ภาษาไทย)","sex":"ชาย|หญิง (จากคำนำหน้า)","bDay":"วันเกิด 1-31","bMonth":"เดือนเกิด 1-12","bYear":"ปีเกิด พ.ศ. 4 หลัก","houseNo":"","moo":"","village":"","subdistrict":"ตำบล","district":"อำเภอ","province":"จังหวัด"}`,
           },
         ]);
-        const by = Number(String(r.birthYearBE ?? '').replace(/\D/g, ''));
-        const age = by > 2400 ? String(new Date().getFullYear() + 543 - by) : '';
         setF((x) => {
           const next = { ...x };
-          (['name', 'houseNo', 'moo', 'village', 'subdistrict', 'district', 'province'] as (keyof Form)[]).forEach((k) => {
+          (['name', 'bDay', 'bMonth', 'bYear', 'houseNo', 'moo', 'village', 'subdistrict', 'district', 'province'] as (keyof Form)[]).forEach((k) => {
             const v = String((r as any)[k] ?? '').trim();
             if (v) (next as any)[k] = v;
           });
           if (r.sex) next.sex = String(r.sex).includes('ชาย') ? 'ชาย' : 'หญิง';
-          if (age) next.age = age;
           return next;
         });
         setAiNote('อ่านข้อมูลจากบัตรแล้ว ตรวจสอบและแก้ไขได้ (ไม่เก็บเลขบัตร)');
@@ -228,6 +238,7 @@ function NewPatientInner() {
       name: f.name.trim(),
       sex: f.sex,
       age: num(f.age),
+      birthDate: birthISO ?? undefined,
       address: { houseNo: f.houseNo, moo: f.moo, village: f.village, subdistrict: f.subdistrict, district: f.district, province: f.province },
       phone: f.phone || '-',
       chronic: f.chronic || 'ไม่มี',
@@ -246,6 +257,21 @@ function NewPatientInner() {
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: palette.bg }}>
+      {/* เครื่องมือบนหัวจอ (แบบหน้าผู้ป่วย): พูดให้ AI กรอก · สแกนบัตรประชาชน */}
+      <Stack.Screen
+        options={{
+          headerRight: () => (
+            <View style={{ flexDirection: 'row', gap: 4 }}>
+              <HeaderButton label={recording ? 'หยุดฟัง' : 'พูดให้ AI กรอก'} onPress={aiBusy ? undefined : fillByVoice}>
+                {aiBusy === 'voice' ? <ActivityIndicator color={palette.primary} /> : <Sym name={recording ? 'stop.fill' : 'mic.fill'} size={20} color={recording ? palette.coral : palette.primary} weight="semibold" />}
+              </HeaderButton>
+              <HeaderButton label="สแกนบัตรประชาชน" onPress={aiBusy || recording ? undefined : scanIdCard}>
+                {aiBusy === 'card' ? <ActivityIndicator color={palette.primary} /> : <Sym name="person.text.rectangle" size={20} color={palette.primary} weight="semibold" />}
+              </HeaderButton>
+            </View>
+          ),
+        }}
+      />
       <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.page} keyboardDismissMode="interactive" keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         {/* สถานะ AI (แสดงเมื่อกำลังฟัง/ประมวลผล/มีผล) — ปุ่มพูดและสแกนบัตรอยู่ในแถบเครื่องมือด้านล่าง */}
         {recording || aiBusy ? (
@@ -253,7 +279,7 @@ function NewPatientInner() {
             {recording ? <Sym name="waveform" size={20} color={palette.white} /> : <ActivityIndicator color={palette.primary} />}
             <View style={{ flex: 1, gap: 2 }}>
               <T v="title" color={recording ? palette.white : palette.ink}>
-                {recording ? 'กำลังฟัง… แตะปุ่มหยุดเมื่อพูดจบ' : aiBusy === 'card' ? 'กำลังอ่านบัตรประชาชน…' : 'ครูปัญญากำลังกรอกให้…'}
+                {recording ? 'กำลังฟัง… แตะปุ่มหยุดมุมขวาบนเมื่อพูดจบ' : aiBusy === 'card' ? 'กำลังอ่านบัตรประชาชน…' : 'ครูปัญญากำลังกรอกให้…'}
               </T>
               {recording ? <Waveform level={rec.level} bars={22} /> : null}
             </View>
@@ -265,13 +291,28 @@ function NewPatientInner() {
           </Animated.View>
         ) : (
           <T v="callout" color={ios.secondary} style={{ paddingHorizontal: 4 }}>
-            กรอกเอง หรือใช้ปุ่มด้านล่าง: 🎙 พูดให้ AI กรอก · 🪪 สแกนบัตรประชาชน
+            กรอกเอง หรือใช้ปุ่มมุมขวาบน: พูดให้ AI กรอก หรือสแกนบัตรประชาชน
           </T>
         )}
 
         <Section title="ข้อมูลผู้ป่วย" icon="person.fill">
           <Field label="ชื่อ-สกุล" value={f.name} onChange={set('name')} placeholder="เช่น นางบุญมา ศรีคำ" />
           <Choice label="เพศ" options={['หญิง', 'ชาย'] as ('หญิง' | 'ชาย')[]} value={f.sex} onChange={(v) => setF((x) => ({ ...x, sex: v }))} />
+          <View>
+            <View style={styles.row2}>
+              <Field label="วันเกิด" value={f.bDay} onChange={set('bDay')} placeholder="วัน" keyboard="number-pad" flex={1} />
+              <Field label="เดือน" value={f.bMonth} onChange={set('bMonth')} placeholder="1–12" keyboard="number-pad" flex={1} />
+              <Field label="ปี พ.ศ." value={f.bYear} onChange={set('bYear')} placeholder="2500" keyboard="number-pad" flex={1.3} />
+            </View>
+            {birthISO ? (
+              <Animated.View entering={FadeIn} style={styles.birthNote}>
+                <Sym name="sparkles" size={13} color={palette.primary} />
+                <T v="caption" color={palette.primaryDeep} style={{ flex: 1 }}>เกิด {thaiBirth(birthISO)} · อายุ {ageFrom(birthISO)} ปี · ธาตุ{elementFromMonth(Number(f.bMonth))} (เกิดเดือน{TH_MONTHS[Number(f.bMonth) - 1]})</T>
+              </Animated.View>
+            ) : f.bDay || f.bMonth || f.bYear ? (
+              <T v="caption" color={ios.secondary} style={styles.birthNote}>กรอกวัน เดือน (1–12) และปี พ.ศ. ให้ครบ เพื่อคำนวณอายุและธาตุ</T>
+            ) : null}
+          </View>
           <View style={styles.row2}>
             <Field label="อายุ (ปี)" value={f.age} onChange={set('age')} placeholder="0" keyboard="number-pad" flex={1} />
             <Field label="โทรศัพท์" value={f.phone} onChange={set('phone')} placeholder="08X-XXX-XXXX" keyboard="phone-pad" flex={2} />
@@ -298,19 +339,13 @@ function NewPatientInner() {
             <Field label="น้ำหนัก (กก.)" value={f.weight} onChange={set('weight')} placeholder="0" keyboard="decimal-pad" flex={1} />
             <Field label="ส่วนสูง (ซม.)" value={f.height} onChange={set('height')} placeholder="0" keyboard="decimal-pad" flex={1} />
           </View>
-          <Choice label="ธาตุเจ้าเรือน" options={ELEMENTS} value={f.element} onChange={(v) => setF((x) => ({ ...x, element: v }))} />
+          <Choice label={birthISO ? 'ธาตุเจ้าเรือน (คำนวณจากเดือนเกิด แก้ได้)' : 'ธาตุเจ้าเรือน'} options={ELEMENTS} value={f.element} onChange={(v) => setF((x) => ({ ...x, element: v }))} />
         </Section>
       </ScrollView>
 
       {/* ปุ่มบันทึกแบบแถบลอย (GlassDock) */}
-      {/* แถบเครื่องมือลอย: พูดให้ AI กรอก · สแกนบัตรประชาชน · บันทึก */}
+      {/* ปุ่มบันทึกแบบแถบลอย */}
       <GlassDock>
-        <PressableScale haptic="press" scaleTo={0.92} onPress={fillByVoice} disabled={aiBusy !== ''} style={[styles.tool, recording && styles.toolOn]} accessibilityLabel={recording ? 'หยุดฟัง' : 'พูดให้ AI กรอก'}>
-          {aiBusy === 'voice' ? <ActivityIndicator color={palette.primary} /> : <Sym name={recording ? 'stop.fill' : 'mic.fill'} size={22} color={recording ? palette.white : palette.primary} />}
-        </PressableScale>
-        <PressableScale haptic="press" scaleTo={0.92} onPress={scanIdCard} disabled={aiBusy !== '' || recording} style={styles.tool} accessibilityLabel="สแกนบัตรประชาชน">
-          {aiBusy === 'card' ? <ActivityIndicator color={palette.primary} /> : <Sym name="person.text.rectangle.fill" size={22} color={palette.primary} />}
-        </PressableScale>
         <Button label="บันทึกผู้ป่วย" disabled={!canSave} onPress={save} style={{ flex: 1, height: 52 }} />
       </GlassDock>
     </KeyboardAvoidingView>
@@ -322,8 +357,7 @@ const styles = StyleSheet.create({
   note: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 8 },
   status: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: palette.surface, borderRadius: 22, borderCurve: 'continuous', padding: 16 },
   statusOn: { backgroundColor: palette.primary },
-  tool: { width: 52, height: 52, borderRadius: 26, backgroundColor: palette.primarySoft, alignItems: 'center', justifyContent: 'center' },
-  toolOn: { backgroundColor: palette.coral },
+  birthNote: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8, marginLeft: 4 },
   card: { backgroundColor: palette.surface, borderRadius: 22, borderCurve: 'continuous', padding: 16 },
   cardHead: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14 },
   cardIcon: { width: 30, height: 30, borderRadius: 9, backgroundColor: palette.primarySoft, alignItems: 'center', justifyContent: 'center' },
