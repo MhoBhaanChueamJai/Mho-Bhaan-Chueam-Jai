@@ -7,7 +7,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { MenuView } from '@react-native-menu/menu';
 import React, { useRef, useState } from 'react';
 import { Modal, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
-import Animated, { FadeOut, ZoomIn } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { Sym, ios } from './ios';
 import { PressableScale, T } from './ui';
 import { elevation, palette } from '../theme';
@@ -58,7 +58,7 @@ export function DateField({ label, value, onChange, flex, placeholder = 'เล�
     <View style={flex ? { flex } : undefined}>
       <Label text={label} />
       <View ref={ref} collapsable={false}>
-        <PressableScale haptic="select" scaleTo={0.98} onPress={show} style={[styles.box, at && styles.boxOn]} accessibilityRole="button" accessibilityLabel={`${label} ${value ? thaiDateLong(value) : placeholder}`}>
+        <PressableScale haptic="select" scaleTo={1} onPress={show} style={[styles.box, at && styles.boxOn]} accessibilityRole="button" accessibilityLabel={`${label} ${value ? thaiDateLong(value) : placeholder}`}>
           <T v="body" color={value ? palette.ink : ios.tertiary} style={{ flex: 1 }} numberOfLines={1}>{value ? thaiDateLong(value) : placeholder}</T>
           <Sym name="calendar" size={16} color={palette.primary} />
         </PressableScale>
@@ -66,7 +66,7 @@ export function DateField({ label, value, onChange, flex, placeholder = 'เล�
       <Modal visible={!!at} transparent animationType="none" onRequestClose={() => setAt(null)}>
         <Pressable style={StyleSheet.absoluteFill} onPress={() => setAt(null)} />
         {at ? (
-          <Animated.View entering={ZoomIn.springify().damping(18)} exiting={FadeOut.duration(140)} style={[styles.pop, elevation.e3, { left: at.x, top: at.y, width: PW }]}>
+          <Animated.View entering={FadeIn.duration(150)} exiting={FadeOut.duration(120)} style={[styles.pop, elevation.e3, { left: at.x, top: at.y, width: PW }]}>
             {/* locale th-TH → ปฏิทินพุทธศักราช */}
             <DateTimePicker
               value={value ?? fallback}
