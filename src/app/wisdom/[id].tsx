@@ -17,11 +17,11 @@ import { BookCover, COVERS } from '../../components/BookCover';
 import { KindIcon } from '../../components/KindIcon';
 import { CircleIcon } from '../../components/ListRow';
 import { Sym, ios } from '../../components/ios';
-import { Glass, HeaderBack, HeaderButton, PressableScale, T, useHaptic } from '../../components/ui';
+import { Button, Glass, GlassCircle, GlassDock, HeaderBack, HeaderButton, PressableScale, T, useHaptic } from '../../components/ui';
 import { fetchLatestShared } from '../../lib/wisdomShare';
 import { KIND_FORM, bookPages, plainText, splitMethod } from '../../lib/wisdomKinds';
 import { herbs } from '../../data/herbs';
-import { doctor } from '../../data/mock';
+import { doctor, type Wisdom } from '../../data/mock';
 import { useApp } from '../../store/app';
 import { elevation, palette } from '../../theme';
 
@@ -93,10 +93,19 @@ function usageRows(text: string): { rows: { label: string; body: string }[]; war
 
 export default function WisdomDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { wisdoms, updateWisdom, removeWisdom, profile } = useApp();
+  const { wisdoms } = useApp();
+  const w = wisdoms.find((x) => x.id === id) ?? wisdoms[0];
+  return <WisdomView w={w} />;
+}
+
+/** โหมดตัวอย่าง (แผ่นรับตำราจากรหัส): ไม่มีเมนู/แถบหัว · มีปุ่มปิดบนซ้าย + แถบลอยปุ่มเพิ่มลงคลัง */
+export type WisdomPreview = { onClose: () => void; onAdd: () => void; onOpen: () => void; added: boolean; dup: boolean };
+
+/** หน้าตำรา (ใช้ทั้งหน้ารายละเอียดในคลัง และแผ่นตัวอย่างตำราที่เพื่อนแชร์) */
+export function WisdomView({ w, preview }: { w: Wisdom; preview?: WisdomPreview }) {
+  const { updateWisdom, removeWisdom, profile } = useApp();
   const myName = profile?.display_name || [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || doctor.short;
   const h = useHaptic();
-  const w = wisdoms.find((x) => x.id === id) ?? wisdoms[0];
   const insets = useSafeAreaInsets();
   const tts = useSpeaker();
   const cover = COVERS[w.kind] ?? COVERS['ตำรับยา'];
@@ -121,7 +130,7 @@ export default function WisdomDetail() {
   // ── สำเนาที่ได้รับจากเพื่อน: ขอเนื้อหาล่าสุดเมื่อเปิด (เพื่อนแก้ต้นฉบับ → อัปเดตตาม) ──
   const isShared = w.source === 'เพื่อนแชร์' || !!w.shareCode;
   useEffect(() => {
-    if (!w.shareCode) return;
+    if (!w.shareCode || preview) return;
     fetchLatestShared(w.shareCode).then((r) => {
       if (!r) return;
       const patch: Record<string, unknown> = {};
@@ -224,6 +233,7 @@ export default function WisdomDetail() {
 
   return (
     <View style={{ flex: 1, backgroundColor: palette.bg }}>
+      {preview ? null : (
       <Stack.Screen
         options={{
           headerShown: true,
@@ -252,9 +262,10 @@ export default function WisdomDetail() {
           ),
         }}
       />
+      )}
       <Animated.ScrollView ref={scrollRef} onScroll={onScroll} scrollEventThrottle={16} contentInsetAdjustmentBehavior="never" contentContainerStyle={{ paddingBottom: insets.bottom + 130 }} showsVerticalScrollIndicator={false}>
         {/* ── Hero: ปกหนังสือบนพื้นเบลอจากภาพปก ── */}
-        <View onLayout={(e) => (heroH.value = e.nativeEvent.layout.height)} style={[styles.hero, { paddingTop: insets.top + 60 }]}>
+        <View onLayout={(e) => (heroH.value = e.nativeEvent.layout.height)} style={[styles.hero, { paddingTop: preview ? 76 : insets.top + 60 }]}>
           {/* พื้นหลังยาวลงไปใต้ชื่อเรื่อง แล้วค่อยๆ จางกลืนกับสีพื้นหน้า */}
           <Animated.View style={[StyleSheet.absoluteFill, { bottom: -FADE_EXTRA }, bgSt]}>
             <Image source={cover.src} style={StyleSheet.absoluteFill} contentFit="cover" />
@@ -263,7 +274,7 @@ export default function WisdomDetail() {
             <LinearGradient colors={FADE.colors} locations={FADE.stops} style={StyleSheet.absoluteFill} />
           </Animated.View>
           <Animated.View entering={FadeInUp.duration(500)} style={styles.coverWrap}>
-            <PressableScale haptic="select" scaleTo={0.97} onPress={openBook} accessibilityLabel="เปิดอ่านแบบหนังสือ">
+            <PressableScale haptic="select" scaleTo={0.97} onPress={preview ? undefined : openBook} accessibilityLabel="เปิดอ่านแบบหนังสือ">
               <BookCover w={{ ...w, verified: true }} width={150} />
             </PressableScale>
           </Animated.View>
@@ -423,6 +434,24 @@ export default function WisdomDetail() {
         </View>
       </Animated.ScrollView>
 
+      {/* โหมดตัวอย่าง: ปุ่มปิด (กระจก) บนซ้าย + แถบลอยด้านล่าง ปุ่มเพิ่มลงคลัง */}
+      {preview ? (
+        <>
+          <View style={styles.previewClose}>
+            <GlassCircle label="ปิด" onPress={preview.onClose} size={44}>
+              <Sym name="xmark" size={17} color={palette.ink} weight="semibold" />
+            </GlassCircle>
+          </View>
+          <GlassDock>
+            {preview.added ? (
+              <Button label="เปิดดูในคลัง" icon={<Sym name="book.fill" size={17} color="#FFFFFF" />} onPress={preview.onOpen} style={{ flex: 1, height: 52 }} />
+            ) : (
+              <Button label={preview.dup ? 'มีในคลังแล้ว · เพิ่มอีกครั้ง' : 'เพิ่มลงคลัง'} icon={<Sym name="plus" size={17} color="#FFFFFF" weight="semibold" />} onPress={preview.onAdd} style={{ flex: 1, height: 52 }} />
+            )}
+          </GlassDock>
+        </>
+      ) : null}
+
       {/* แถบกำลังอ่านออกเสียง (เปิดจากปุ่มหูฟังบนแถบเครื่องมือ) — กระจกฝ้าลอยเหนือเนื้อหา */}
       {readIdx !== null ? (
         <View pointerEvents="box-none" style={[styles.readWrap, { bottom: insets.bottom ? 24 : 16 }]}>
@@ -448,6 +477,7 @@ export default function WisdomDetail() {
 }
 
 const styles = StyleSheet.create({
+  previewClose: { position: 'absolute', top: 16, left: 16 },
   hero: { alignItems: 'center', paddingBottom: 26 },
   reading: { borderWidth: 2, borderColor: palette.primary, boxShadow: '0px 0px 0px 4px rgba(20,144,92,0.15), 0px 8px 20px rgba(20,60,40,0.12)' },
   readWrap: { position: 'absolute', left: 24, right: 24, borderRadius: 32 },
