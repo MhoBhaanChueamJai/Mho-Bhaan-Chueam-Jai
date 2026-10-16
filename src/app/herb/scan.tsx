@@ -13,7 +13,7 @@ import { ActivityIndicator, StyleSheet, View, useWindowDimensions } from 'react-
 import Animated, { Easing, FadeIn, FadeOut, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Sym, ios } from '../../components/ios';
-import { Button, Glass, PressableScale, T, useHaptic } from '../../components/ui';
+import { GlassCircle, Button, Glass, PressableScale, T, useHaptic } from '../../components/ui';
 import { identifyHerb, setLastScan, type ScanResult } from '../../lib/herbScan';
 import { palette } from '../../theme';
 
@@ -129,22 +129,22 @@ export default function HerbScan() {
 
       {/* หัว: ปิด · ไฟฉาย */}
       <View style={[styles.top, { top: insets.top + 8 }]}>
-        <PressableScale onPress={() => router.back()} style={styles.round} accessibilityLabel="ปิด">
+        <GlassCircle label="ปิด" onPress={() => router.back()} size={48} tint="rgba(255,255,255,0.08)">
           <Sym name="xmark" size={18} color="#FFFFFF" weight="semibold" />
-        </PressableScale>
+        </GlassCircle>
         {!photo ? (
-          <PressableScale onPress={() => setTorch((x) => !x)} style={[styles.round, torch && { backgroundColor: '#FFFFFF' }]} accessibilityLabel="ไฟฉาย">
+          <GlassCircle label="ไฟฉาย" onPress={() => setTorch((x) => !x)} size={48} tint={torch ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.08)'}>
             <Sym name={torch ? 'flashlight.on.fill' : 'flashlight.off.fill'} size={18} color={torch ? '#000000' : '#FFFFFF'} />
-          </PressableScale>
+          </GlassCircle>
         ) : null}
       </View>
 
       {/* ล่าง: คลังรูป · ชัตเตอร์ · (ว่าง) */}
       {state === 'idle' ? (
         <View style={[styles.controls, { bottom: insets.bottom + 30 }]}>
-          <PressableScale onPress={fromLibrary} style={styles.round} accessibilityLabel="เลือกรูปจากคลังภาพ">
+          <GlassCircle label="เลือกรูปจากคลังภาพ" onPress={fromLibrary} size={52} tint="rgba(255,255,255,0.08)">
             <Sym name="photo.on.rectangle" size={20} color="#FFFFFF" />
-          </PressableScale>
+          </GlassCircle>
           <PressableScale onPress={shoot} scaleTo={0.92} style={styles.shutter} accessibilityLabel="ถ่ายภาพ">
             <View style={styles.shutterIn} />
           </PressableScale>

@@ -15,7 +15,7 @@ import { ActivityIndicator, Keyboard, Pressable, StyleSheet, TextInput, View, us
 import Animated, { Easing, FadeIn, FadeOut, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Sym } from '../../components/ios';
-import { Button, PressableScale, T, useHaptic } from '../../components/ui';
+import { GlassCircle, Button, PressableScale, T, useHaptic } from '../../components/ui';
 import { cleanCode, codeFromScan, fetchShare } from '../../lib/wisdomShare';
 
 export default function ScanQr() {
@@ -178,13 +178,13 @@ export default function ScanQr() {
       )}
 
       <View style={[styles.top, { top: insets.top + 8 }]}>
-        <PressableScale onPress={() => router.back()} style={styles.round} accessibilityLabel="ปิด">
+        <GlassCircle label="ปิด" onPress={() => router.back()} size={48} tint="rgba(255,255,255,0.08)">
           <Sym name="xmark" size={18} color="#FFFFFF" weight="semibold" />
-        </PressableScale>
+        </GlassCircle>
         {mode === 'scan' ? (
-          <PressableScale onPress={() => setTorch((x) => !x)} style={[styles.round, torch && { backgroundColor: '#FFFFFF' }]} accessibilityLabel="ไฟฉาย">
+          <GlassCircle label="ไฟฉาย" onPress={() => setTorch((x) => !x)} size={48} tint={torch ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.08)'}>
             <Sym name={torch ? 'flashlight.on.fill' : 'flashlight.off.fill'} size={18} color={torch ? '#000000' : '#FFFFFF'} />
-          </PressableScale>
+          </GlassCircle>
         ) : null}
       </View>
 
