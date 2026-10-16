@@ -67,25 +67,50 @@ export default function VoiceIntake() {
       }
     });
 
-  /** ฟังคำตอบ: หยุดเองเมื่อพูดแล้วเงียบ ~1.3 วิ (หรือแตะปุ่มเพื่อส่ง) */
+  /**
+   * ฟังคำตอบ (VAD แบบปรับตามห้อง):
+   * 1) รอ 0.3 วิ ให้เสียงครูปัญญาหายจากห้อง แล้ววัดเสียงพื้นหลัง 0.5 วิ
+   * 2) นับว่า "เริ่มพูด" เมื่อเสียงดังกว่าพื้นหลังชัดเจนต่อเนื่อง ≥ 0.25 วิ
+   * 3) จบเมื่อเงียบลงใกล้ระดับพื้นหลังต่อเนื่อง 1.4 วิ (หรือแตะดอกไม้เพื่อส่ง)
+   */
   const listen = async (): Promise<string> => {
     manualStop.current = false;
+    await wait(300);
     try {
       await rec.start();
     } catch {
       return '';
     }
+    const TICK = 80;
+    // วัดเสียงพื้นหลัง
+    let floor = 0;
+    let n = 0;
+    for (let i = 0; i < 6 && alive.current; i++) {
+      await wait(TICK);
+      floor += rec.level.value;
+      n++;
+    }
+    floor = n ? floor / n : 0;
+    const speakTh = Math.min(0.9, floor + 0.14);
+    const quietTh = Math.min(0.85, floor + 0.07);
+    let loud = 0;
     let heard = false;
     let quiet = 0;
     const t0 = Date.now();
     while (alive.current && !manualStop.current) {
-      await wait(120);
+      await wait(TICK);
       const lv = rec.level.value;
-      if (lv > 0.28) {
-        heard = true;
+      if (lv > speakTh) {
+        loud += TICK;
+        if (loud >= 250) heard = true;
         quiet = 0;
-      } else if (heard) quiet += 120;
-      if ((heard && quiet > 1300) || Date.now() - t0 > (heard ? 20000 : 9000)) break;
+      } else {
+        loud = 0;
+        if (heard && lv < quietTh) quiet += TICK;
+        else if (heard) quiet = Math.max(0, quiet - TICK / 2);
+      }
+      if (heard && quiet >= 1400) break;
+      if (Date.now() - t0 > (heard ? 25000 : 10000)) break;
     }
     const uri = await rec.stop().catch(() => null);
     if (!alive.current || !uri || (!heard && !manualStop.current)) return '';
@@ -185,6 +210,7 @@ export default function VoiceIntake() {
         <View style={styles.statusPill}>
           {phase === 'listening' ? <View style={styles.liveDot} /> : null}
           <T v="subhead" color="rgba(255,255,255,0.85)">{status}</T>
+          {phase === 'listening' ? <T v="caption" color="rgba(255,255,255,0.55)">· แตะดอกไม้เมื่อพูดจบ</T> : null}
         </View>
         {phase === 'listening' ? (
           <View style={{ width: 180, marginTop: 10 }}>
