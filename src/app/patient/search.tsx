@@ -232,7 +232,7 @@ function PatientSearchInner() {
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: '#F5F6F3' },
+  page: { flex: 1, backgroundColor: palette.bg },
   bar: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', paddingHorizontal: 16, height: 52 },
   field: { height: control.icon, borderRadius: control.icon / 2, backgroundColor: '#FFFFFF', flexDirection: 'row', alignItems: 'center', paddingLeft: 13.5, paddingRight: 6, gap: 8, overflow: 'hidden' },
   input: { fontSize: 17, color: palette.ink, height: control.icon, outlineStyle: 'none' } as any,
@@ -250,7 +250,7 @@ const styles = StyleSheet.create({
   card: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: palette.surface, borderRadius: 20, borderCurve: 'continuous', padding: 12, paddingRight: 14 },
   ring: { padding: 2.5, borderRadius: 999, borderWidth: 2 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  diag: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4, backgroundColor: '#F4F6F3', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 5, alignSelf: 'flex-start', maxWidth: '100%' },
+  diag: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4, backgroundColor: palette.mint, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 5, alignSelf: 'flex-start', maxWidth: '100%' },
   empty: { alignItems: 'center', paddingVertical: 40, gap: 2 },
 });
 

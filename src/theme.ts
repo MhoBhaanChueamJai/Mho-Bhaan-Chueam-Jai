@@ -16,7 +16,7 @@
 
 export const palette = {
   // 60 — Canvas (พื้นขาว)
-  bg: '#FFFFFF',
+  bg: '#F2F8F5', // พื้นหลังแอป: มิ้นต์อ่อน (ไม่ใช้เทา — เข้ากับคาแรกเตอร์สมุนไพร)
   bgDeep: '#E1EDE8',
   surface: '#FFFFFF',
   clay: '#F0F8F5',
@@ -116,7 +116,7 @@ export const elevation = {
 
 /** การ์ด clay: พื้นสว่างกว่าฉากเล็กน้อย + ขอบไฮไลต์ขาว */
 export const clayCard = {
-  backgroundColor: '#F7F8F4',
+  backgroundColor: '#F0F8F5',
   borderWidth: 1.5,
   borderColor: 'rgba(255,255,255,0.95)',
 };

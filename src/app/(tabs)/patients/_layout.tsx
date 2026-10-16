@@ -14,6 +14,7 @@ export default function PatientsStack() {
         headerShadowVisible: false,
         headerLargeTitleShadowVisible: false,
         headerTintColor: palette.primary,
+        headerStyle: { backgroundColor: palette.bg },
         contentStyle: { backgroundColor: palette.bg },
       }}
     >

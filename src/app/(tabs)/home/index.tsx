@@ -79,7 +79,7 @@ export default function Home() {
               </View>
               <View style={styles.bars}>
                 {today.map((a) => (
-                  <View key={a.start + a.pid} style={[styles.bar, { backgroundColor: isDone(a.end) ? palette.primary : '#DADDD6' }]} />
+                  <View key={a.start + a.pid} style={[styles.bar, { backgroundColor: isDone(a.end) ? palette.primary : '#D3E5DB' }]} />
                 ))}
               </View>
             </View>
@@ -155,6 +155,6 @@ const styles = StyleSheet.create({
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   tileWrap: { width: '48.3%' },
   tile: { flex: 1, gap: 14, minHeight: 124, justifyContent: 'space-between' },
-  track: { height: 8, borderRadius: 4, backgroundColor: '#DADDD6', marginTop: 14, overflow: 'hidden' },
+  track: { height: 8, borderRadius: 4, backgroundColor: '#D3E5DB', marginTop: 14, overflow: 'hidden' },
   fillBar: { height: 8, borderRadius: 4, backgroundColor: palette.primary },
 });

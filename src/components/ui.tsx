@@ -403,7 +403,7 @@ export const styles = StyleSheet.create({
   segItem: { height: control.buttonSmall, paddingHorizontal: 16, borderRadius: radius.pill, alignItems: 'center', justifyContent: 'center' },
   badge: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: radius.pill, alignSelf: 'flex-start' },
   online: { position: 'absolute', top: 1, right: 1, backgroundColor: palette.online, borderWidth: 2.5, borderColor: palette.surface },
-  search: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#F1F3EF', borderRadius: radius.pill, paddingHorizontal: 14, height: control.field },
+  search: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: palette.mint, borderRadius: radius.pill, paddingHorizontal: 14, height: control.field },
   header: { flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingHorizontal: space.lg, paddingBottom: space.sm },
   circleBtn: { width: control.icon, height: control.icon, borderRadius: control.icon / 2, backgroundColor: palette.surface, alignItems: 'center', justifyContent: 'center' },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: space.xxl, marginBottom: space.sm },

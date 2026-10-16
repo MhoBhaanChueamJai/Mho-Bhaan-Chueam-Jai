@@ -153,7 +153,7 @@ export const searchStyles = StyleSheet.create({
 });
 
 const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: '#FFFFFF' },
+  page: { flex: 1, backgroundColor: palette.bg },
   bar: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', paddingHorizontal: 16, height: 52 },
   field: { height: control.icon, borderRadius: control.icon / 2, backgroundColor: '#FFFFFF', flexDirection: 'row', alignItems: 'center', paddingLeft: 13.5, paddingRight: 6, gap: 8 },
   input: { fontSize: 17, color: palette.ink, height: control.icon, outlineStyle: 'none' } as any,

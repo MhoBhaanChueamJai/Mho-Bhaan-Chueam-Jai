@@ -177,7 +177,7 @@ export default function Settings() {
   return (
     <>
       <Stack.Screen options={{ headerLeft: () => <HeaderBack fallback="/home" color={palette.primary} /> }} />
-      <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: '#F2F2F7' }} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 48 }} showsVerticalScrollIndicator={false}>
+      <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 48 }} showsVerticalScrollIndicator={false}>
         {/* โปรไฟล์ */}
         <View style={[styles.group, { marginTop: 12 }]}>
           <View style={styles.profile}>
@@ -335,7 +335,7 @@ const styles = StyleSheet.create({
   sep: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: ios.separator },
   dot: { width: 8, height: 8, borderRadius: 4 },
   logout: { minHeight: control.row, alignItems: 'center', justifyContent: 'center', paddingVertical: 12 },
-  seg: { flexDirection: 'row', backgroundColor: '#EEEEF0', borderRadius: 9, padding: 2 },
+  seg: { flexDirection: 'row', backgroundColor: palette.bgDeep, borderRadius: 9, padding: 2 },
   segItem: { paddingHorizontal: 12, height: 28, justifyContent: 'center', borderRadius: 7 },
   segOn: { backgroundColor: palette.surface, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 3, shadowOffset: { width: 0, height: 1 } },
 });
