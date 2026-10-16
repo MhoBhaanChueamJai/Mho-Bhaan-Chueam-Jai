@@ -33,11 +33,12 @@ export default function Settings() {
   const h = useHaptic();
   const dialect = settings.dialect ?? 'central';
   // ประเภทหมอพื้นบ้านจากทะเบียน (ยืนยันตัวตนแล้ว) หรือจากที่ตั้งไว้
-  const healer = isPractitioner
+  // หมอหนึ่งคนขึ้นทะเบียนได้หลายประเภท → แสดงเป็นป้ายแยกทีละประเภท
+  const healers: string[] = isPractitioner
     ? profile?.healer_types?.length
-      ? profile.healer_types.map((t) => TYPE_LABEL[t] ?? t).join(' · ')
-      : (doctorTypes.find((d) => d.key === settings.doctorType) ?? doctorTypes[0]).label
-    : null;
+      ? profile.healer_types.map((t) => TYPE_LABEL[t] ?? t)
+      : [(doctorTypes.find((d) => d.key === settings.doctorType) ?? doctorTypes[0]).label]
+    : [];
 
   const exportAll = () => {
     const text = patients
@@ -107,11 +108,13 @@ export default function Settings() {
             <View style={{ flex: 1, gap: 3 }}>
               <T v="title" numberOfLines={1} style={{ fontSize: 19, lineHeight: 26 }}>{displayName}</T>
               {profile?.email ? <T v="subhead" color={ios.secondary} numberOfLines={1}>{profile.email}</T> : null}
-              <View style={[styles.badge, { backgroundColor: isPractitioner ? palette.primarySoft : '#FBEFD9' }]}>
-                <Sym name={isPractitioner ? 'checkmark.seal.fill' : 'person.fill'} size={12} color={isPractitioner ? palette.primary : palette.orange} />
-                <T v="caption" color={isPractitioner ? palette.primaryDeep : '#8A5A10'} style={{ fontWeight: '700', flexShrink: 1 }} numberOfLines={2}>
-                  {healer ?? 'สมาชิกทั่วไป'}
-                </T>
+              <View style={styles.badges}>
+                {(healers.length ? healers : ['สมาชิกทั่วไป']).map((label) => (
+                  <View key={label} style={[styles.badge, { backgroundColor: isPractitioner ? palette.primarySoft : '#FBEFD9' }]}>
+                    <Sym name={isPractitioner ? 'checkmark.seal.fill' : 'person.fill'} size={11} color={isPractitioner ? palette.primary : palette.orange} />
+                    <T v="caption" color={isPractitioner ? palette.primaryDeep : '#8A5A10'} style={{ fontWeight: '700' }}>{label}</T>
+                  </View>
+                ))}
               </View>
             </View>
             <Sym name="chevron.right" size={14} color={ios.tertiary} weight="semibold" />
@@ -173,6 +176,7 @@ const styles = StyleSheet.create({
   card: { backgroundColor: palette.surface, borderRadius: 22, borderCurve: 'continuous' },
   profile: { flexDirection: 'row', alignItems: 'center', gap: 16, paddingVertical: 20, paddingHorizontal: 18 },
   avatarRing: { padding: 3, borderRadius: 999, backgroundColor: palette.primarySoft },
-  badge: { flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'flex-start', marginTop: 4, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
+  badges: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 },
+  badge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 9, paddingVertical: 4, borderRadius: 999 },
   aiIcon: { width: 42, height: 42, borderRadius: 21, backgroundColor: '#05090A', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
 });
