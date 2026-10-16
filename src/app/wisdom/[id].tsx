@@ -443,10 +443,11 @@ export function WisdomView({ w, preview }: { w: Wisdom; preview?: WisdomPreview 
             </GlassCircle>
           </View>
           <GlassDock>
-            {preview.added ? (
-              <Button label="เปิดดูในคลัง" icon={<Sym name="book.fill" size={17} color="#FFFFFF" />} onPress={preview.onOpen} style={{ flex: 1, height: 52 }} />
+            {preview.added || preview.dup ? (
+              // มีในคลังแล้ว (เพิ่งเพิ่ม หรือเคยรับไว้) → เปิดดูเล่มที่มีอยู่ ไม่ให้เพิ่มซ้ำ
+              <Button label={preview.added ? 'เปิดดูในคลัง' : 'อยู่ในคลังแล้ว · เปิดดู'} icon={<Sym name="checkmark.circle.fill" size={17} color="#FFFFFF" />} onPress={preview.onOpen} style={{ flex: 1, height: 52 }} />
             ) : (
-              <Button label={preview.dup ? 'มีในคลังแล้ว · เพิ่มอีกครั้ง' : 'เพิ่มลงคลัง'} icon={<Sym name="plus" size={17} color="#FFFFFF" weight="semibold" />} onPress={preview.onAdd} style={{ flex: 1, height: 52 }} />
+              <Button label="เพิ่มลงคลัง" icon={<Sym name="plus" size={17} color="#FFFFFF" weight="semibold" />} onPress={preview.onAdd} style={{ flex: 1, height: 52 }} />
             )}
           </GlassDock>
         </>

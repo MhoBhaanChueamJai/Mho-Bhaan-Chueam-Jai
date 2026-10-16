@@ -238,7 +238,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         );
       },
       addWisdom: (w) => {
-        setWisdoms((list) => [w, ...list]);
+        // ตำราที่รับจากเพื่อน: มีรหัสแชร์นี้ (หรือเรื่องเดียวกันจากคนเดียวกัน) ในคลังแล้ว → ไม่เพิ่มซ้ำเด็ดขาด
+        const exists = (l: Wisdom[]) => l.some((x) => (w.shareCode && x.shareCode === w.shareCode) || (w.sharedBy && x.sharedBy === w.sharedBy && x.title === w.title));
+        if ((w.shareCode || w.sharedBy) && exists(mine)) return;
+        setWisdoms((list) => (w.shareCode || w.sharedBy) && exists(list) ? list : [w, ...list]);
         push(() => cloud.saveWisdom(w));
       },
       patients,

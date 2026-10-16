@@ -50,9 +50,11 @@ export default function ReceiveWisdom() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const dup = !!got && wisdoms.some((w) => w.title === got.wisdom.title && w.sharedBy === got.fromName);
+  // มีในคลังแล้ว (รหัสเดียวกัน หรือเรื่องเดียวกันจากคนเดียวกัน) → ห้ามเพิ่มซ้ำ
+  const existing = got ? wisdoms.find((w) => w.shareCode === cleanCode(code) || (w.title === got.wisdom.title && w.sharedBy === got.fromName)) : undefined;
+  const dup = !!existing && !saved;
   const save = () => {
-    if (!got) return;
+    if (!got || existing) return;
     const t = new Date();
     addWisdom({
       ...got.wisdom,
@@ -130,7 +132,7 @@ export default function ReceiveWisdom() {
               {w.method ? <Row icon="flame.fill" label="วิธีปรุงและวิธีใช้" text={w.method} /> : null}
               {w.caution ? <Row icon="exclamationmark.triangle.fill" label="ข้อห้าม" text={w.caution} warn /> : null}
             </View>
-            <T v="caption" color={ios.secondary} style={{ paddingHorizontal: 6 }}>ตำราที่ได้รับจะอยู่ในสถานะ "รอตรวจทาน" ควรตรวจสอบก่อนนำไปใช้กับผู้ป่วย</T>
+            <T v="caption" color={ios.secondary} style={{ paddingHorizontal: 6 }}>ตำราที่ได้รับจะอยู่ในสถานะ “รอตรวจทาน” ควรตรวจสอบก่อนนำไปใช้กับผู้ป่วย</T>
           </Animated.View>
         ) : null}
       </ScrollView>
@@ -140,7 +142,7 @@ export default function ReceiveWisdom() {
           {saved ? (
             <Button kind="secondary" label="ดูในคลังภูมิ" icon={<Sym name="checkmark" size={17} color={palette.primary} />} onPress={() => router.replace('/vault')} style={{ flex: 1, height: 52 }} />
           ) : (
-            <Button label={dup ? 'มีในคลังแล้ว · เก็บอีกครั้ง' : 'เก็บเข้าคลังของฉัน'} icon={<Sym name="tray.and.arrow.down.fill" size={17} color={palette.white} />} onPress={save} style={{ flex: 1, height: 52 }} />
+            <Button label={dup ? 'อยู่ในคลังแล้ว · เปิดดู' : 'เก็บเข้าคลังของฉัน'} icon={<Sym name={dup ? 'checkmark.circle.fill' : 'tray.and.arrow.down.fill'} size={17} color={palette.white} />} onPress={dup && existing ? () => router.replace(`/wisdom/${existing.id}`) : save} style={{ flex: 1, height: 52 }} />
           )}
         </GlassDock>
       ) : null}

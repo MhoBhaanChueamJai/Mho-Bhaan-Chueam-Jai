@@ -34,8 +34,10 @@ export default function GotWisdom() {
       .catch(() => setErr('เชื่อมต่อไม่ได้ ลองใหม่อีกครั้ง'));
   }, [code, got]);
 
+  // เล่มที่มีอยู่แล้วในคลัง (รหัสเดียวกัน หรือเรื่องเดียวกันจากคนเดียวกัน)
+  const existing = got ? wisdoms.find((x) => x.shareCode === code || (x.sharedBy === got.fromName && x.title === got.wisdom.title)) : undefined;
   const add = () => {
-    if (!got) return;
+    if (!got || existing) return;
     const t = new Date();
     const id = `w${Date.now()}`;
     addWisdom({
@@ -52,8 +54,10 @@ export default function GotWisdom() {
     setSavedId(id);
   };
   const open = () => {
+    const target = savedId || existing?.id;
+    if (!target) return;
     router.dismissAll();
-    setTimeout(() => router.push(`/wisdom/${savedId}`), 60);
+    setTimeout(() => router.push(`/wisdom/${target}`), 60);
   };
 
   if (!got) {
@@ -77,7 +81,7 @@ export default function GotWisdom() {
   }
 
   const w: Wisdom = { ...got.wisdom, id: `preview-${code}`, source: 'เพื่อนแชร์', sharedBy: got.fromName, date: '', verified: true, summary: got.wisdom.summary ?? '' };
-  const dup = wisdoms.some((x) => x.title === w.title && x.sharedBy === got.fromName);
+  const dup = !savedId && !!existing;
   return (
     <View style={{ height: sheetH, backgroundColor: palette.bg }}>
       <WisdomView w={w} preview={{ onClose: () => router.back(), onAdd: add, onOpen: open, added: !!savedId, dup }} />
