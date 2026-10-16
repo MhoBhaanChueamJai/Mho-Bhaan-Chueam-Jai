@@ -120,29 +120,26 @@ export default function Vault() {
       </View>
       </View>
 
-      {/* ── รายการทั้งหมด ── */}
-      <View style={styles.secHead}>
-        <T v="h3">ทั้งหมด</T>
-        <T v="subhead" color={ios.secondary}>{list.length} เรื่อง</T>
-      </View>
+      {/* ── ตำราของหมอ (ยังไม่มี = ไม่แสดงหัวข้อนี้) ── */}
       {list.length ? (
-        // ชั้นหนังสือ 3 คอลัมน์
-        <View style={styles.shelf}>
-          {list.map((w, i) => (
-            <Book key={w.id} w={w} width={GRID_W} i={i} />
-          ))}
-        </View>
-      ) : (
-        <View style={[styles.empty, elevation.e1]}>
-          <Sym name="book.closed" size={28} color={ios.tertiary} />
-          <T v="callout" color={ios.secondary}>ยังไม่มีภูมิปัญญา กด “เพิ่มภูมิปัญญา” ได้เลย</T>
-        </View>
-      )}
+        <>
+          <View style={styles.secHead}>
+            <T v="h3">ทั้งหมด</T>
+            <T v="subhead" color={ios.secondary}>{list.length} เรื่อง</T>
+          </View>
+          {/* ชั้นหนังสือ 3 คอลัมน์ */}
+          <View style={styles.shelf}>
+            {list.map((w, i) => (
+              <Book key={w.id} w={w} width={GRID_W} i={i} />
+            ))}
+          </View>
+        </>
+      ) : null}
 
       {/* ── ตำราเริ่มต้นในระบบ (เนื้อหาจากแหล่งอ้างอิงทางการ) ── */}
       {library.length ? (
         <>
-          <View style={[styles.secHead, { marginTop: 30 }]}>
+          <View style={[styles.secHead, list.length ? { marginTop: 30 } : null]}>
             <T v="h3">ตำราอ้างอิงในระบบ</T>
             <T v="subhead" color={ios.secondary}>{library.length} เล่ม</T>
           </View>
