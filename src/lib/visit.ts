@@ -26,6 +26,21 @@ export const VISIT_TOPICS: { key: keyof VisitData; label: string; ask: string }[
   { key: 'followUp', label: 'นัดดูอาการ', ask: 'ให้ผู้ป่วยกลับมาอีกเมื่อไหร่ครับ เช่น อีก 3 วัน อีก 1 สัปดาห์ หรือมาเมื่ออาการไม่ดีขึ้น' },
 ];
 
+/** ตัวเลือกพื้นฐานของแต่ละหัวข้อ (ใช้เป็นชิปให้กดเลือก เมื่อ AI ไม่ได้เสนอเอง) */
+export const VISIT_OPTIONS: Record<keyof VisitData, string[]> = {
+  symptoms: ['ปวดเข่า', 'ปวดหลัง', 'ปวดเมื่อย', 'ท้องอืด', 'ไข้ตัวร้อน', 'นอนไม่หลับ', 'เวียนหัว', 'ไอ มีเสมหะ'],
+  exam: ['ชีพจรเต้นแรง', 'ชีพจรเบา', 'ตัวร้อน', 'ตัวเย็น', 'บวม', 'คลำแล้วเจ็บ', 'เส้นตึง', 'ลิ้นเป็นฝ้า', 'หน้าซีด'],
+  diagnosis: ['ลมจับโปง', 'ธาตุไฟหย่อน', 'เส้นตึง', 'ลมปลายปัตคาด', 'ไข้หวัด', 'ท้องอืดเฟ้อ'],
+  treatment: ['นวดจับเส้น', 'ประคบสมุนไพร', 'ยาต้ม', 'ยาลูกกลอน', 'ยาฝน', 'อบสมุนไพร', 'พอกยา'],
+  caution: ['ของหมักดอง', 'ข้าวเหนียว', 'เนื้อวัว', 'น้ำเย็น', 'ของมัน', 'เหล้า', 'ไม่มีข้อห้าม'],
+  followUp: ['อีก 3 วัน', 'อีก 1 สัปดาห์', 'อีก 2 สัปดาห์', 'มาเมื่ออาการไม่ดีขึ้น'],
+  result: [],
+};
+export const nextVisitOptions = (d: VisitData) => {
+  const t = VISIT_TOPICS.find((x) => !visitHas(d, x.key));
+  return t ? VISIT_OPTIONS[t.key] : [];
+};
+
 export const visitHas = (d: VisitData, key: string) => !!String((d as any)[key] ?? '').trim();
 
 export const visitOpening = (p: Patient) => {
@@ -34,11 +49,11 @@ export const visitOpening = (p: Patient) => {
 };
 
 /** หนึ่งรอบการสนทนา */
-export async function visitTurn(p: Patient, known: VisitData, history: Turn[], answer: string): Promise<{ data: VisitData; reply: string; done: boolean }> {
+export async function visitTurn(p: Patient, known: VisitData, history: Turn[], answer: string): Promise<{ data: VisitData; reply: string; done: boolean; options: string[] }> {
   const asked = history.filter((h) => h.role === 'ai').length;
   const last = p.visits[0];
   try {
-    const r = await chatJSON<{ fields?: VisitData; reply?: string; done?: boolean }>([
+    const r = await chatJSON<{ fields?: VisitData; reply?: string; done?: boolean; options?: string[] }>([
       {
         role: 'user',
         content: `คุณคือ "ครูปัญญา" ผู้ช่วยหมอพื้นบ้าน ผู้ชายวัย 45 อบอุ่น ฉลาด มีไหวพริบ พูดภาษาพูดเป็นธรรมชาติ ลงท้าย "ครับ"
@@ -62,7 +77,7 @@ ${dialectHint()}
    ภาษาที่ใช้ตอบ (reply): ${dialectSpeakStyle()}
 3) ถ้าครบทุกเรื่องแล้ว หรือหมอบอกว่าพอแล้ว ให้ done=true และ reply เป็นสรุปการรักษาครั้งนี้สั้นๆ
 ตอบ JSON เท่านั้น:
-{"fields":{"symptoms":"","exam":"","diagnosis":"","treatment":"","caution":"","followUp":"","result":""},"reply":"","done":false}`,
+{"fields":{"symptoms":"","exam":"","diagnosis":"","treatment":"","caution":"","followUp":"","result":""},"reply":"","options":["ตัวเลือกคำตอบสั้นๆ 5-8 ข้อ สำหรับคำถามที่เพิ่งถาม (เข้ากับอาการผู้ป่วยรายนี้) ให้หมอกดเลือกได้"],"done":false}`,
       },
     ]);
     const data = { ...known };
@@ -72,12 +87,13 @@ ${dialectHint()}
     });
     const missing = VISIT_TOPICS.filter((t) => !visitHas(data, t.key));
     const done = !!r.done || !missing.length || asked >= 12;
-    return { data, reply: String(r.reply ?? '').trim() || (missing[0]?.ask ?? 'บันทึกครบแล้วครับ'), done };
+    const opts = (Array.isArray(r.options) ? r.options : []).map((x) => String(x).trim()).filter((x) => x && x.length <= 30).slice(0, 8);
+    return { data, reply: String(r.reply ?? '').trim() || (missing[0]?.ask ?? 'บันทึกครบแล้วครับ'), done, options: done ? [] : opts.length ? opts : nextVisitOptions(data) };
   } catch {
     const data = { ...known };
     const prev = VISIT_TOPICS.find((t) => !visitHas(known, t.key));
     if (prev) (data as any)[prev.key] = answer;
     const next = VISIT_TOPICS.find((t) => !visitHas(data, t.key));
-    return { data, reply: next ? next.ask : 'บันทึกครบแล้วครับ', done: !next };
+    return { data, reply: next ? next.ask : 'บันทึกครบแล้วครับ', done: !next, options: next ? VISIT_OPTIONS[next.key] : [] };
   }
 }

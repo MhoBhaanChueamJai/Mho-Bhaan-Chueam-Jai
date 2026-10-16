@@ -29,7 +29,9 @@ export type VoiceSessionProps = {
   opening: string;
   topics: { key: string; label: string }[];
   has: (d: VoiceData, key: string) => boolean;
-  turn: (known: VoiceData, history: Turn[], answer: string) => Promise<{ data: VoiceData; reply: string; done: boolean }>;
+  turn: (known: VoiceData, history: Turn[], answer: string) => Promise<{ data: VoiceData; reply: string; done: boolean; options?: string[] }>;
+  /** ชิปตัวเลือกของคำถามแรก */
+  initialOptions?: string[];
   /** ข้อความเพิ่มท้ายสรุป ก่อนถามยืนยัน (เช่น วิเคราะห์ธาตุ) */
   closing?: (d: VoiceData) => string;
   confirmQ: string;
@@ -45,7 +47,7 @@ export type VoiceSessionProps = {
   onFinish: (d: VoiceData, save: boolean) => void;
 };
 
-export function VoiceSession({ title, opening, topics, has, turn, closing, confirmQ, yesBye, noBye, noContinues, dockLabel, canUse, dockSaves, doneLabel, onFinish }: VoiceSessionProps) {
+export function VoiceSession({ initialOptions, title, opening, topics, has, turn, closing, confirmQ, yesBye, noBye, noContinues, dockLabel, canUse, dockSaves, doneLabel, onFinish }: VoiceSessionProps) {
   const insets = useSafeAreaInsets();
   const h = useHaptic();
   const rec = useVoiceRecorder();
@@ -61,6 +63,9 @@ export function VoiceSession({ title, opening, topics, has, turn, closing, confi
   const typed = useRef<string | null>(null);
   const stopSpeaking = useRef<(() => void) | null>(null);
   const [draft, setDraft] = useState('');
+  // ชิปตัวเลือกคำตอบ (เลือกได้หลายข้อ)
+  const [options, setOptions] = useState<string[]>(initialOptions ?? []);
+  const [picked, setPicked] = useState<string[]>([]);
   const [kbOpen, setKbOpen] = useState(false);
   const kb = useAnimatedKeyboard();
   const dockLift = useAnimatedStyle(() => ({ transform: [{ translateY: -Math.max(0, kb.height.value - 16) }] }));
@@ -214,7 +219,10 @@ export function VoiceSession({ title, opening, topics, has, turn, closing, confi
         setUserText(ans);
         hist.current.push({ role: 'user', text: ans });
         setPhase('thinking');
+        setOptions([]);
+        setPicked([]);
         const r = await turn(dataRef.current, hist.current, ans);
+        setOptions(r.options ?? []);
         if (!alive.current) return;
         dataRef.current = r.data;
         setData(r.data);
@@ -293,13 +301,14 @@ export function VoiceSession({ title, opening, topics, has, turn, closing, confi
   };
 
   const got = topics.filter((t) => has(data, t.key));
-  /** ส่งคำตอบที่พิมพ์: ถ้าครูปัญญากำลังพูดอยู่ ให้หยุดพูดแล้วใช้คำตอบนี้ทันที */
-  const sendTyped = () => {
-    const t = draft.trim();
+  /** ส่งคำตอบที่พิมพ์/เลือก: ถ้าครูปัญญากำลังพูดอยู่ ให้หยุดพูดแล้วใช้คำตอบนี้ทันที */
+  const sendTyped = (text?: string) => {
+    const t = (text ?? draft).trim();
     if (!t) return;
     h.press();
     typed.current = t;
     setDraft('');
+    setPicked([]);
     try {
       player.current?.pause();
     } catch {}
@@ -334,7 +343,7 @@ export function VoiceSession({ title, opening, topics, has, turn, closing, confi
           }}
           accessibilityLabel={phase === 'listening' ? 'ส่งคำตอบ' : 'ครูปัญญา'}
         >
-          <AISphere size={230} active={phase !== 'done'} level={(phase === 'listening' ? micLevel : speakLevel) as any} />
+          <AISphere size={options.length && phase !== 'done' ? 170 : 230} active={phase !== 'done'} level={(phase === 'listening' ? micLevel : speakLevel) as any} />
         </PressableScale>
         <View style={styles.statusPill}>
           {phase === 'listening' ? <View style={styles.liveDot} /> : null}
@@ -349,6 +358,28 @@ export function VoiceSession({ title, opening, topics, has, turn, closing, confi
         <Animated.View key={aiText} entering={FadeInDown.duration(320)} style={{ paddingHorizontal: 36, marginTop: 18 }}>
           <T v="body" color="rgba(255,255,255,0.9)" center>{aiText}</T>
         </Animated.View>
+        {/* ชิปตัวเลือกคำตอบ: กดเลือกได้หลายข้อ แล้วส่ง */}
+        {options.length && phase !== 'done' ? (
+          <Animated.View entering={FadeIn.duration(300)} style={styles.optWrap}>
+            <View style={styles.opts}>
+              {options.map((o) => {
+                const on = picked.includes(o);
+                return (
+                  <PressableScale key={o} haptic="select" scaleTo={0.95} onPress={() => setPicked((x) => (on ? x.filter((y) => y !== o) : [...x, o]))} style={[styles.opt, on && styles.optOn]} accessibilityRole="checkbox" accessibilityState={{ checked: on }}>
+                    {on ? <Sym name="checkmark" size={12} color="#04150E" weight="bold" /> : null}
+                    <T v="subhead" color={on ? '#04150E' : 'rgba(255,255,255,0.9)'} style={{ fontWeight: on ? '700' : '500' }}>{o}</T>
+                  </PressableScale>
+                );
+              })}
+            </View>
+            {picked.length ? (
+              <PressableScale haptic="press" onPress={() => sendTyped(picked.join(', '))} style={styles.optSend} accessibilityLabel="ส่งตัวเลือก">
+                <T v="bodyStrong" color="#04150E">ส่งคำตอบ ({picked.length})</T>
+                <Sym name="arrow.up" size={15} color="#04150E" weight="bold" />
+              </PressableScale>
+            ) : null}
+          </Animated.View>
+        ) : null}
         {userText ? (
           <Animated.View entering={FadeIn.duration(250)} style={styles.userBubble}>
             <T v="callout" color="rgba(255,255,255,0.9)" center>“{userText}”</T>
@@ -382,13 +413,13 @@ export function VoiceSession({ title, opening, topics, has, turn, closing, confi
             placeholder="พิมพ์ตอบได้ที่นี่"
             placeholderTextColor="#9AA19D"
             returnKeyType="send"
-            onSubmitEditing={sendTyped}
+            onSubmitEditing={() => sendTyped()}
             onFocus={() => setKbOpen(true)}
             onBlur={() => setKbOpen(false)}
             style={styles.typeInput}
             accessibilityLabel="พิมพ์คำตอบ"
           />
-          <PressableScale haptic="press" onPress={sendTyped} disabled={!draft.trim()} style={[styles.send, { backgroundColor: draft.trim() ? palette.primary : 'transparent' }]} accessibilityLabel="ส่งคำตอบ">
+          <PressableScale haptic="press" onPress={() => sendTyped()} disabled={!draft.trim()} style={[styles.send, { backgroundColor: draft.trim() ? palette.primary : 'transparent' }]} accessibilityLabel="ส่งคำตอบ">
             <Sym name="arrow.up" size={17} color={draft.trim() ? '#FFFFFF' : '#B5BBB7'} weight="bold" />
           </PressableScale>
         </View>
@@ -406,12 +437,17 @@ export function VoiceSession({ title, opening, topics, has, turn, closing, confi
 
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: '#000000' },
+  optWrap: { alignItems: 'center', marginTop: 16, paddingHorizontal: 20, gap: 12 },
+  opts: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8 },
+  opt: { flexDirection: 'row', alignItems: 'center', gap: 5, minHeight: 40, paddingHorizontal: 14, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.1)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.25)' },
+  optOn: { backgroundColor: '#7CF0A8', borderColor: '#7CF0A8' },
+  optSend: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 44, paddingHorizontal: 20, borderRadius: 22, backgroundColor: '#7CF0A8' },
   darkDock: { position: 'absolute', left: 24, right: 24, gap: 8, padding: 8, borderRadius: 32, borderCurve: 'continuous', backgroundColor: 'rgba(28,30,29,0.96)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.22)', boxShadow: '0px 10px 30px rgba(0,0,0,0.6)' },
   typeRow: { flexDirection: 'row', alignItems: 'center', gap: 8, height: 50, paddingLeft: 16, paddingRight: 6, borderRadius: 25, backgroundColor: '#FFFFFF' },
   typeInput: { flex: 1, fontSize: 17, color: '#1F2A24', height: '100%' },
   send: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
   top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: 230 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: 190 },
   statusPill: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14, paddingHorizontal: 14, paddingVertical: 6, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.1)' },
   liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#FF5A5A' },
   userBubble: { marginTop: 14, marginHorizontal: 32, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.1)' },
