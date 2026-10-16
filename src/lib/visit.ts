@@ -153,3 +153,29 @@ ${dialectHint()}
     return { data, reply: next ? next.ask : 'บันทึกครบแล้วครับ', done: !next, options: next ? optionsFor(p, next.key) : [] };
   }
 }
+
+/** โหมดฟังบทสนทนา: บทสนทนาหมอ–ผู้ป่วย (ถอดเสียง) → แยกลงหัวข้อการรักษา */
+export async function visitScribe(p: Patient, transcript: string): Promise<VisitData> {
+  const r = await chatJSON<VisitData>([
+    {
+      role: 'user',
+      content: `บทสนทนาระหว่างหมอพื้นบ้านกับผู้ป่วย (ถอดจากเสียงอัตโนมัติ อาจสะกดเพี้ยน และไม่ได้ระบุว่าใครพูด):
+${transcript}
+
+ผู้ป่วย: ${p.name} ${p.sex} ${p.age} ปี ธาตุ${p.element} โรคประจำตัว ${p.chronic} แพ้ ${p.allergies}
+ประวัติการรักษา:
+${historyText(p)}
+${dialectHint()}
+
+สรุปการรักษาครั้งนี้จากบทสนทนา แยกลงหัวข้อเป็นภาษาไทยกลาง กระชับ ใช้ศัพท์แพทย์แผนไทยได้ ห้ามเดาข้อมูลที่ไม่ได้พูดถึง (ช่องที่ไม่มีให้เป็น "")
+ตอบ JSON เท่านั้น:
+{"symptoms":"อาการและระยะเวลาที่เป็น","exam":"สิ่งที่ตรวจพบ","diagnosis":"การวินิจฉัย","treatment":"วิธีรักษา ยา/สมุนไพรที่ให้ พร้อมวิธีใช้","caution":"ของแสลง/ข้อห้ามที่บอกผู้ป่วย","followUp":"นัดกลับมาเมื่อไหร่","result":"ผลหลังรักษา (ถ้ามี)"}`,
+    },
+  ]);
+  const out: VisitData = {};
+  Object.entries(r ?? {}).forEach(([k, v]) => {
+    const t = String(v ?? '').trim();
+    if (t) (out as any)[k] = t;
+  });
+  return out;
+}

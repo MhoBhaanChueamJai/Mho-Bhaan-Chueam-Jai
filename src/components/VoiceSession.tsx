@@ -9,7 +9,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useRef, useState } from 'react';
-import { Keyboard, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, Keyboard, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown, useAnimatedKeyboard, useAnimatedStyle, useDerivedValue, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { synthesize, transcribe } from '../api/ai';
@@ -32,8 +32,8 @@ export type VoiceSessionProps = {
   turn: (known: VoiceData, history: Turn[], answer: string) => Promise<{ data: VoiceData; reply: string; done: boolean; options?: string[] }>;
   /** ชิปตัวเลือกของคำถามแรก */
   initialOptions?: string[];
-  /** ปุ่มเครื่องมือมุมขวาบน (ได้ฟังก์ชันหยุดเสียง/ไมค์ก่อนเปลี่ยนโหมด) */
-  topRight?: (stop: () => void) => React.ReactNode;
+  /** โหมดฟังบทสนทนา (ในหน้าเดียวกัน): บทสนทนาที่ถอดได้ → ข้อมูลตามหัวข้อ */
+  scribe?: (transcript: string) => Promise<VoiceData>;
   /** ข้อความเพิ่มท้ายสรุป ก่อนถามยืนยัน (เช่น วิเคราะห์ธาตุ) */
   closing?: (d: VoiceData) => string;
   confirmQ: string;
@@ -49,7 +49,7 @@ export type VoiceSessionProps = {
   onFinish: (d: VoiceData, save: boolean) => void;
 };
 
-export function VoiceSession({ topRight, initialOptions, title, opening, topics, has, turn, closing, confirmQ, yesBye, noBye, noContinues, dockLabel, canUse, dockSaves, doneLabel, onFinish }: VoiceSessionProps) {
+export function VoiceSession({ scribe, initialOptions, title, opening, topics, has, turn, closing, confirmQ, yesBye, noBye, noContinues, dockLabel, canUse, dockSaves, doneLabel, onFinish }: VoiceSessionProps) {
   const insets = useSafeAreaInsets();
   const h = useHaptic();
   const rec = useVoiceRecorder();
@@ -69,6 +69,19 @@ export function VoiceSession({ topRight, initialOptions, title, opening, topics,
   const [options, setOptions] = useState<string[]>(initialOptions ?? []);
   const [picked, setPicked] = useState<string[]>([]);
   const [kbOpen, setKbOpen] = useState(false);
+  // โหมดฟังบทสนทนา: chat → scribe (อัดต่อเนื่อง) → analyzing → review (แก้ไขก่อนบันทึก)
+  const [mode, setMode] = useState<'chat' | 'scribe' | 'analyzing' | 'review'>('chat');
+  const [lines, setLines] = useState<string[]>([]);
+  const linesRef = useRef<string[]>([]);
+  linesRef.current = lines;
+  const [pending, setPending] = useState(0);
+  const [elapsed, setElapsed] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const [scribeErr, setScribeErr] = useState('');
+  const scribing = useRef(false);
+  const scribePause = useRef(false);
+  const jobs = useRef<Promise<void>[]>([]);
+  const transcriptScroll = useRef<ScrollView>(null);
   const kb = useAnimatedKeyboard();
   const dockLift = useAnimatedStyle(() => ({ transform: [{ translateY: -Math.max(0, kb.height.value - 16) }] }));
   const player = useRef<AudioPlayer | null>(null);
@@ -270,7 +283,10 @@ export function VoiceSession({ topRight, initialOptions, title, opening, topics,
       }
       setPhase('done');
     })();
-    return () => stopAll();
+    return () => {
+      scribing.current = false;
+      stopAll();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -328,6 +344,91 @@ export function VoiceSession({ topRight, initialOptions, title, opening, topics,
     stopSpeaking.current?.();
   };
 
+  /** เข้าโหมดฟังบทสนทนา: หยุดถาม-ตอบ แล้วอัดเสียงต่อเนื่องเป็นช่วงละ 40 วิ ถอดเสียงไปพร้อมกัน */
+  const startScribe = async () => {
+    h.press();
+    Keyboard.dismiss();
+    stopAll();
+    setMode('scribe');
+    setLines([]);
+    setElapsed(0);
+    setScribeErr('');
+    jobs.current = [];
+    await wait(600); // ให้วงจรถาม-ตอบปล่อยไมค์ก่อน
+    scribing.current = true;
+    let idx = 0;
+    let acc = 0;
+    let last = Date.now();
+    const tick = setInterval(() => {
+      const now = Date.now();
+      if (!scribePause.current) acc += now - last;
+      last = now;
+      setElapsed(Math.floor(acc / 1000));
+      if (!scribing.current) clearInterval(tick);
+    }, 500);
+    while (scribing.current) {
+      if (scribePause.current) {
+        await wait(200);
+        continue;
+      }
+      try {
+        await rec.start();
+      } catch {
+        setScribeErr('เปิดไมโครโฟนไม่ได้');
+        break;
+      }
+      const s0 = Date.now();
+      while (scribing.current && !scribePause.current && Date.now() - s0 < 40_000) await wait(150);
+      const uri = await rec.stop().catch(() => null);
+      if (uri && Date.now() - s0 > 1200) {
+        const i = idx++;
+        setPending((n) => n + 1);
+        jobs.current.push(
+          transcribe(uri)
+            .then((t) => {
+              const text = t.trim();
+              if (text) setLines((ls) => {
+                const next = [...ls];
+                next[i] = text;
+                return next;
+              });
+            })
+            .catch(() => {})
+            .finally(() => setPending((n) => n - 1)),
+        );
+      }
+    }
+  };
+
+  /** จบฟัง → รอถอดเสียงครบ → วิเคราะห์ลงหัวข้อ → ตรวจทานในหน้าเดิม */
+  const finishScribe = async () => {
+    if (!scribe) return;
+    h.heavy();
+    scribing.current = false;
+    setMode('analyzing');
+    await wait(400);
+    await Promise.allSettled(jobs.current);
+    const transcript = linesRef.current.filter(Boolean).join('\n');
+    if (transcript.trim()) {
+      try {
+        const d = await scribe(transcript);
+        const merged = { ...dataRef.current, ...d };
+        dataRef.current = merged;
+        setData(merged);
+        h.success();
+      } catch {
+        setScribeErr('วิเคราะห์ไม่สำเร็จ กรอกหรือแก้ไขเองได้');
+      }
+    } else setScribeErr('ไม่ได้ยินบทสนทนา กรอกเองได้');
+    setMode('review');
+  };
+
+  const setField = (k: string, v: string) => {
+    const next = { ...dataRef.current, [k]: v };
+    dataRef.current = next;
+    setData(next);
+  };
+
   const status = phase === 'speaking' ? 'ครูปัญญากำลังพูด' : phase === 'listening' ? 'กำลังฟัง… พูดได้เลย' : phase === 'thinking' ? 'กำลังคิด…' : doneLabel;
 
   return (
@@ -343,11 +444,73 @@ export function VoiceSession({ topRight, initialOptions, title, opening, topics,
         <GlassCircle label="ปิด" onPress={close} tint="rgba(255,255,255,0.12)">
           <Sym name="xmark" size={17} color="#FFFFFF" weight="semibold" />
         </GlassCircle>
-        <T v="title" color="#FFFFFF">{title}</T>
-        {topRight ? topRight(stopAll) : <View style={{ width: 44 }} />}
+        <T v="title" color="#FFFFFF">{mode === 'chat' ? title : mode === 'review' ? 'ตรวจทานก่อนบันทึก' : 'ฟังบทสนทนา'}</T>
+        {scribe && mode === 'chat' ? (
+          <GlassCircle label="ฟังบทสนทนา" onPress={startScribe} tint="rgba(255,255,255,0.12)">
+            <Sym name="ear" size={19} color="#FFFFFF" />
+          </GlassCircle>
+        ) : (
+          <View style={{ width: 44 }} />
+        )}
       </View>
 
-      {/* ดอกไม้ AI ตอบสนองเสียง */}
+      {mode === 'scribe' || mode === 'analyzing' ? (
+        /* ── โหมดฟังบทสนทนา ── */
+        <View style={styles.scribe}>
+          <AISphere size={170} active={!paused} level={mode === 'scribe' && !paused ? (micLevel as any) : undefined} />
+          <View style={styles.statusPill}>
+            {mode === 'scribe' ? <View style={[styles.liveDot, paused && { backgroundColor: '#FFC24A' }]} /> : <ActivityIndicator size="small" color="#7CF0A8" />}
+            <T v="subhead" color="rgba(255,255,255,0.85)">
+              {mode === 'analyzing' ? 'ครูปัญญากำลังวิเคราะห์บทสนทนา…' : `${paused ? 'หยุดชั่วคราว' : 'กำลังฟังบทสนทนา'} · ${Math.floor(elapsed / 60)}:${String(elapsed % 60).padStart(2, '0')}`}
+            </T>
+          </View>
+          {mode === 'scribe' && !paused ? (
+            <View style={{ width: 180, marginTop: 10 }}>
+              <Waveform level={micLevel as any} bars={20} />
+            </View>
+          ) : null}
+          <T v="caption" color="rgba(255,255,255,0.55)" center style={{ marginTop: 8, paddingHorizontal: 40 }}>คุยกับผู้ป่วยตามปกติ ครูปัญญาจะฟังแล้วจัดลงหัวข้อให้</T>
+          <ScrollView ref={transcriptScroll} onContentSizeChange={() => transcriptScroll.current?.scrollToEnd({ animated: true })} style={styles.transcript} contentContainerStyle={{ padding: 16, gap: 8 }}>
+            {lines.filter(Boolean).map((l, i) => (
+              <Animated.View key={i} entering={FadeInDown.duration(300)}>
+                <T v="callout" color="rgba(255,255,255,0.88)">{l}</T>
+              </Animated.View>
+            ))}
+            {pending > 0 ? <T v="caption" color="rgba(255,255,255,0.45)">กำลังถอดเสียง…</T> : null}
+            {!lines.filter(Boolean).length && !pending ? <T v="caption" color="rgba(255,255,255,0.4)" center>ข้อความจากบทสนทนาจะขึ้นที่นี่</T> : null}
+          </ScrollView>
+        </View>
+      ) : mode === 'review' ? (
+        /* ── ตรวจทาน: แก้ เพิ่ม ลบ แต่ละหัวข้อ ก่อนบันทึก ── */
+        <ScrollView style={{ flex: 1 }} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive" contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 120, gap: 12 }}>
+          <T v="subhead" color="rgba(255,255,255,0.6)">{scribeErr || 'ครูปัญญาจัดลงหัวข้อให้แล้ว แก้ เพิ่ม หรือลบได้ก่อนบันทึก'}</T>
+          {topics.map((t, i) => {
+            const v = String(data[t.key] ?? '');
+            return (
+              <Animated.View key={t.key} entering={FadeInDown.delay(i * 50).duration(350)} style={styles.field}>
+                <View style={styles.fieldHead}>
+                  <View style={[styles.fieldDot, { backgroundColor: v.trim() ? '#7CF0A8' : 'rgba(255,255,255,0.25)' }]} />
+                  <T v="subhead" color="rgba(255,255,255,0.75)" style={{ flex: 1, fontWeight: '600' }}>{t.label}</T>
+                  {v ? (
+                    <PressableScale haptic="select" onPress={() => setField(t.key, '')} hitSlop={10} accessibilityLabel={`ลบ${t.label}`}>
+                      <Sym name="xmark.circle.fill" size={18} color="rgba(255,255,255,0.4)" />
+                    </PressableScale>
+                  ) : null}
+                </View>
+                <TextInput value={v} onChangeText={(x) => setField(t.key, x)} placeholder={`เพิ่ม${t.label}`} placeholderTextColor="rgba(255,255,255,0.35)" multiline onFocus={() => setKbOpen(true)} onBlur={() => setKbOpen(false)} style={styles.fieldInput} accessibilityLabel={t.label} />
+              </Animated.View>
+            );
+          })}
+          {lines.filter(Boolean).length ? (
+            <View style={[styles.field, { opacity: 0.85 }]}>
+              <T v="subhead" color="rgba(255,255,255,0.6)" style={{ fontWeight: '600', marginBottom: 6 }}>บทสนทนาที่ถอดได้</T>
+              <T v="caption" color="rgba(255,255,255,0.6)">{lines.filter(Boolean).join('\n')}</T>
+            </View>
+          ) : null}
+        </ScrollView>
+      ) : (
+      <>
+      {/* ก้อนแสง AI ตอบสนองเสียง */}
       <View style={styles.center}>
         <PressableScale
           scaleTo={0.95}
@@ -409,11 +572,39 @@ export function VoiceSession({ topRight, initialOptions, title, opening, topics,
           );
         })}
       </View>}
+      </>
+      )}
 
       {/* แถบลอยยกขึ้นตามคีย์บอร์ด (ส่วนอื่นของหน้าอยู่ที่เดิม) */}
       <Animated.View pointerEvents="box-none" style={[StyleSheet.absoluteFill, dockLift]}>
       {/* แถบมืด (กระจกสว่างบนพื้นดำทำให้ช่องพิมพ์มองไม่เห็น) */}
       <View style={[styles.darkDock, { bottom: insets.bottom ? 24 : 16 }]}>
+        {mode === 'scribe' ? (
+          <View style={styles.scribeCtrls}>
+            <PressableScale
+              haptic="select"
+              onPress={() => {
+                scribePause.current = !scribePause.current;
+                setPaused(scribePause.current);
+              }}
+              style={styles.ctrlSmall}
+              accessibilityLabel={paused ? 'ฟังต่อ' : 'หยุดชั่วคราว'}
+            >
+              <Sym name={paused ? 'play.fill' : 'pause.fill'} size={19} color="#FFFFFF" />
+            </PressableScale>
+            <PressableScale haptic="press" onPress={finishScribe} style={styles.ctrlMain} accessibilityLabel="จบและวิเคราะห์">
+              <Sym name="stop.fill" size={17} color="#04150E" />
+              <T v="bodyStrong" color="#04150E">จบและวิเคราะห์</T>
+            </PressableScale>
+          </View>
+        ) : mode === 'analyzing' ? (
+          <View style={[styles.scribeCtrls, { justifyContent: 'center', height: 52 }]}>
+            <ActivityIndicator color="#7CF0A8" />
+          </View>
+        ) : mode === 'review' ? (
+          kbOpen ? null : <Button label={dockLabel(data, got.length, topics.length, true)} disabled={!got.length} onPress={() => finish(true)} style={{ height: 52 }} />
+        ) : (
+        <>
         {/* พิมพ์ตอบแทนการพูดได้ */}
         <View style={styles.typeRow}>
           <Sym name="keyboard" size={18} color="#8A928D" />
@@ -433,8 +624,10 @@ export function VoiceSession({ topRight, initialOptions, title, opening, topics,
             <Sym name="arrow.up" size={17} color={draft.trim() ? '#FFFFFF' : '#B5BBB7'} weight="bold" />
           </PressableScale>
         </View>
+        </>
+        )}
         {/* ปุ่มบันทึกแสดงเมื่อถามครบทุกหัวข้อแล้วเท่านั้น */}
-        {!kbOpen && got.length === topics.length ? (
+        {mode === 'chat' && !kbOpen && got.length === topics.length ? (
           <Animated.View entering={FadeIn.duration(300)}>
             <Button label={dockLabel(data, got.length, topics.length, phase === 'done')} disabled={!canUse(data)} onPress={useData} style={{ height: 52 }} />
           </Animated.View>
@@ -451,6 +644,15 @@ const styles = StyleSheet.create({
   opts: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8 },
   opt: { flexDirection: 'row', alignItems: 'center', gap: 5, minHeight: 40, paddingHorizontal: 14, borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.3)' },
   optOn: { borderColor: '#7CF0A8', borderWidth: 1 },
+  scribe: { flex: 1, alignItems: 'center', paddingTop: 10, paddingBottom: 110 },
+  transcript: { flex: 1, alignSelf: 'stretch', marginTop: 14, marginHorizontal: 20, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.12)' },
+  scribeCtrls: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  ctrlSmall: { width: 52, height: 52, borderRadius: 26, backgroundColor: 'rgba(255,255,255,0.14)', alignItems: 'center', justifyContent: 'center' },
+  ctrlMain: { flex: 1, height: 52, borderRadius: 26, backgroundColor: '#7CF0A8', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  field: { borderRadius: 20, borderCurve: 'continuous', padding: 14, backgroundColor: 'rgba(255,255,255,0.07)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.14)' },
+  fieldHead: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
+  fieldDot: { width: 8, height: 8, borderRadius: 4 },
+  fieldInput: { fontSize: 17, lineHeight: 24, color: '#FFFFFF', minHeight: 26, padding: 0 },
   darkDock: { position: 'absolute', left: 24, right: 24, gap: 8, padding: 8, borderRadius: 32, borderCurve: 'continuous', backgroundColor: 'rgba(28,30,29,0.96)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.22)', boxShadow: '0px 10px 30px rgba(0,0,0,0.6)' },
   typeRow: { flexDirection: 'row', alignItems: 'center', gap: 8, height: 50, paddingLeft: 16, paddingRight: 6, borderRadius: 25, backgroundColor: '#FFFFFF' },
   typeInput: { flex: 1, fontSize: 17, color: '#1F2A24', height: '100%' },
