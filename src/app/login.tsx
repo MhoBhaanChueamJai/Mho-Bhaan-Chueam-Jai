@@ -11,7 +11,7 @@ import { useApp } from '../store/app';
 import { control, palette } from '../theme';
 
 
-/** แถวกรอกข้อมูลในการ์ดกลุ่มแบบ iOS (ไม่มีป้ายด้านบน ใช้ placeholder) */
+/** ช่องกรอกแยกแต่ละช่อง (ไม่มีป้ายด้านบน ใช้ placeholder) */
 function Field({
   icon,
   label,
@@ -43,7 +43,7 @@ function Field({
 }) {
   const [focus, setFocus] = useState(false);
   return (
-    <View style={[styles.field, half && { flex: 1 }, !icon && { paddingLeft: 16 }]}>
+    <View style={[styles.field, focus && styles.fieldFocus, half && { flex: 1 }]}>
       {icon ? <Sym name={icon} size={17} color={focus ? palette.primary : ios.tertiary} /> : null}
       <TextInput
         ref={inputRef}
@@ -70,8 +70,6 @@ function Field({
     </View>
   );
 }
-
-const Sep = ({ inset = 46 }: { inset?: number }) => <View style={[styles.sep, { marginLeft: inset }]} />;
 
 export default function Login() {
   const insets = useSafeAreaInsets();
@@ -197,18 +195,15 @@ export default function Login() {
           {mode === 'login' ? 'เข้าสู่ระบบด้วยอีเมลหรือชื่อผู้ใช้' : 'สมัครฟรี ใช้คลังสมุนไพร ภูมิปัญญา และครูปัญญา AI'}
         </T>
 
-        {/* การ์ดกลุ่มช่องกรอก */}
+        {/* ช่องกรอก */}
         <Animated.View style={[styles.group, shakeStyle]}>
           {mode === 'signup' ? (
             <>
-              <View style={{ flexDirection: 'row' }}>
+              <View style={{ flexDirection: 'row', gap: 10 }}>
                 <Field half icon="person.fill" label="ชื่อ" value={first} onChange={(v) => { setFirst(v); setError(''); }} autoComplete="given-name" returnKey="next" />
-                <View style={styles.vsep} />
-                <Field half label="นามสกุล" value={last} onChange={(v) => { setLast(v); setError(''); }} autoComplete="family-name" returnKey="next" />
+                <Field half icon="person.fill" label="นามสกุล" value={last} onChange={(v) => { setLast(v); setError(''); }} autoComplete="family-name" returnKey="next" />
               </View>
-              <Sep />
               <Field icon="envelope.fill" label="อีเมล" keyboard="email-address" value={email} onChange={(v) => { setEmail(v); setError(''); }} autoComplete="email" returnKey="next" />
-              <Sep />
             </>
           ) : (
             <>
@@ -222,7 +217,6 @@ export default function Login() {
                 onSubmit={() => passRef.current?.focus()}
                 autoComplete="username"
               />
-              <Sep />
             </>
           )}
           <Field
@@ -240,7 +234,6 @@ export default function Login() {
           />
           {mode === 'signup' ? (
             <>
-              <Sep />
               <Field
                 icon="checkmark.shield.fill"
                 label="ยืนยันรหัสผ่าน"
@@ -308,11 +301,10 @@ export default function Login() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#071A11', overflow: 'hidden' },
   sheet: { position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: '#FFFFFF', borderTopLeftRadius: 32, borderTopRightRadius: 32, borderCurve: 'continuous', paddingHorizontal: 24, paddingTop: 28 },
-  group: { marginTop: 20, backgroundColor: '#F4F4F7', borderRadius: 16, borderCurve: 'continuous', overflow: 'hidden' },
-  field: { flexDirection: 'row', alignItems: 'center', gap: 12, height: 52, paddingLeft: 16, paddingRight: 6 },
+  group: { marginTop: 20, gap: 12 },
+  field: { flexDirection: 'row', alignItems: 'center', gap: 10, height: 54, borderRadius: 16, borderCurve: 'continuous', paddingLeft: 16, paddingRight: 6, backgroundColor: '#F4F4F7', borderWidth: 1.5, borderColor: 'transparent' },
+  fieldFocus: { backgroundColor: '#FFFFFF', borderColor: palette.primary },
   input: { flex: 1, fontSize: 17, color: palette.ink, height: '100%' },
-  sep: { height: StyleSheet.hairlineWidth, backgroundColor: ios.separator },
-  vsep: { width: StyleSheet.hairlineWidth, backgroundColor: ios.separator, marginVertical: 10 },
   eye: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   msg: { minHeight: 30, justifyContent: 'center', paddingHorizontal: 4 },
   error: { flexDirection: 'row', alignItems: 'center', gap: 6 },
