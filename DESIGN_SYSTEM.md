@@ -9,7 +9,7 @@
 | `palette.primary` | #14905C | ปุ่มหลัก ลิงก์ ไอคอนที่เลือก |
 | `palette.primaryDeep` | #0B6E45 | ข้อความบนพื้นเขียวอ่อน, หัวไล่สี |
 | `palette.primarySoft` | #E3F2EA | ชิป ป้าย พื้นไอคอน (IconTile) |
-| `palette.bg` | #F2F8F5 | **พื้นหลังทุกหน้า** (มิ้นต์อ่อน — ห้ามใช้เทา) |
+| `palette.bg` | #F7FBF9 | **พื้นหลังทุกหน้า** (มิ้นต์อ่อน — ห้ามใช้เทา) |
 | `palette.mint` | #F0F8F5 | ช่องกรอกที่อยู่บนพื้นขาว |
 | `palette.surface` | #FFFFFF | การ์ด, sheet |
 | `ios.separator` | เขียวจาง | เส้นคั่น |

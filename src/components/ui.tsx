@@ -373,7 +373,7 @@ export function TopScrim({ height }: { height: number }) {
   return (
     <LinearGradient
       pointerEvents="none"
-      colors={['rgba(242,248,245,1)', 'rgba(242,248,245,0.9)', 'rgba(242,248,245,0)']} // สีเดียวกับ palette.bg
+      colors={['rgba(247,251,249,1)', 'rgba(247,251,249,0.9)', 'rgba(247,251,249,0)']} // สีเดียวกับ palette.bg
       locations={[0, 0.6, 1]}
       style={{ position: 'absolute', top: 0, left: 0, right: 0, height: height + 18 }}
     />
