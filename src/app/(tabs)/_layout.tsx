@@ -9,6 +9,7 @@ import { palette } from '../../theme';
  * - แคปซูลกระจกเลื่อนตามแท็บที่เลือก หดตัวเมื่อเลื่อนลง
  * - แท็บ "ครูปัญญา" ใช้ role="search" → แยกเป็นปุ่มกระจกวงกลมทางขวา อยู่ให้เห็นแม้แท็บบาร์หด
  * - แท็บ "ครูปัญญา" (ไมค์) กดแล้วเปิดหน้าแชทเต็มจอ
+ * - ไอคอน: Flaticon UIcons (regular rounded = ไม่ได้เลือก · solid rounded = เลือกอยู่) → assets/tabs
  */
 export default function TabsLayout() {
   const { settings } = useApp();
@@ -16,23 +17,23 @@ export default function TabsLayout() {
   return (
     <NativeTabs tintColor={palette.primary} minimizeBehavior="onScrollDown">
       <NativeTabs.Trigger name="home">
-        <Icon sf={{ default: 'house', selected: 'house.fill' }} />
+        <Icon src={{ default: require('../../../assets/tabs/house-chimney-off.png'), selected: require('../../../assets/tabs/house-chimney-on.png') }} />
         <Label>หน้าหลัก</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="patients">
-        <Icon sf={{ default: 'person.2', selected: 'person.2.fill' }} />
+        <Icon src={{ default: require('../../../assets/tabs/users-off.png'), selected: require('../../../assets/tabs/users-on.png') }} />
         <Label>ผู้ป่วย</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="herbs">
-        <Icon sf={{ default: 'leaf', selected: 'leaf.fill' }} />
+        <Icon src={{ default: require('../../../assets/tabs/leaf-off.png'), selected: require('../../../assets/tabs/leaf-on.png') }} />
         <Label>สมุนไพร</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="vault">
-        <Icon sf={{ default: 'books.vertical', selected: 'books.vertical.fill' }} />
+        <Icon src={{ default: require('../../../assets/tabs/book-open-cover-off.png'), selected: require('../../../assets/tabs/book-open-cover-on.png') }} />
         <Label>คลังภูมิ</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="ask" role="search">
-        <Icon sf="sparkles" />
+        <Icon src={{ default: require('../../../assets/tabs/sparkles-off.png'), selected: require('../../../assets/tabs/sparkles-on.png') }} />
         <Label>ครูปัญญา</Label>
       </NativeTabs.Trigger>
     </NativeTabs>

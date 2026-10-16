@@ -1,4 +1,4 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
+import { Image } from 'react-native';
 import { Redirect, Tabs } from 'expo-router';
 import React from 'react';
 import { useApp } from '../../store/app';
@@ -8,9 +8,10 @@ import { palette } from '../../theme';
 export default function TabsLayoutWeb() {
   const { settings } = useApp();
   if (!settings.loggedIn) return <Redirect href="/login" />;
-  const icon = (on: keyof typeof Ionicons.glyphMap, off: keyof typeof Ionicons.glyphMap) =>
+  // ไอคอนชุดเดียวกับ iOS (Flaticon UIcons: regular = ไม่ได้เลือก · solid = เลือกอยู่)
+  const icon = (on: number, off: number) =>
     function TabIcon({ focused, color }: { focused: boolean; color: string }) {
-      return <Ionicons name={focused ? on : off} size={24} color={color} />;
+      return <Image source={focused ? on : off} style={{ width: 25, height: 25, tintColor: color }} />;
     };
   return (
     <Tabs
@@ -22,11 +23,11 @@ export default function TabsLayoutWeb() {
         tabBarLabelStyle: { fontSize: 12, fontWeight: '600' },
       }}
     >
-      <Tabs.Screen name="home" options={{ title: 'หน้าหลัก', tabBarIcon: icon('home', 'home-outline') }} />
-      <Tabs.Screen name="patients" options={{ title: 'ผู้ป่วย', tabBarIcon: icon('people', 'people-outline') }} />
-      <Tabs.Screen name="herbs" options={{ title: 'สมุนไพร', tabBarIcon: icon('leaf', 'leaf-outline') }} />
-      <Tabs.Screen name="vault" options={{ title: 'คลังภูมิ', tabBarIcon: icon('library', 'library-outline') }} />
-      <Tabs.Screen name="ask" options={{ title: 'ครูปัญญา', tabBarIcon: icon('sparkles', 'sparkles-outline') }} />
+      <Tabs.Screen name="home" options={{ title: 'หน้าหลัก', tabBarIcon: icon(require('../../../assets/tabs/house-chimney-on.png'), require('../../../assets/tabs/house-chimney-off.png')) }} />
+      <Tabs.Screen name="patients" options={{ title: 'ผู้ป่วย', tabBarIcon: icon(require('../../../assets/tabs/users-on.png'), require('../../../assets/tabs/users-off.png')) }} />
+      <Tabs.Screen name="herbs" options={{ title: 'สมุนไพร', tabBarIcon: icon(require('../../../assets/tabs/leaf-on.png'), require('../../../assets/tabs/leaf-off.png')) }} />
+      <Tabs.Screen name="vault" options={{ title: 'คลังภูมิ', tabBarIcon: icon(require('../../../assets/tabs/book-open-cover-on.png'), require('../../../assets/tabs/book-open-cover-off.png')) }} />
+      <Tabs.Screen name="ask" options={{ title: 'ครูปัญญา', tabBarIcon: icon(require('../../../assets/tabs/sparkles-on.png'), require('../../../assets/tabs/sparkles-off.png')) }} />
     </Tabs>
   );
 }
