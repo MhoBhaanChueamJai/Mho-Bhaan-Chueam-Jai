@@ -36,9 +36,65 @@ export const VISIT_OPTIONS: Record<keyof VisitData, string[]> = {
   followUp: ['อีก 3 วัน', 'อีก 1 สัปดาห์', 'อีก 2 สัปดาห์', 'มาเมื่ออาการไม่ดีขึ้น'],
   result: [],
 };
-export const nextVisitOptions = (d: VisitData) => {
+/** ช่องในประวัติการรักษาที่ตรงกับแต่ละหัวข้อ */
+const HISTORY_FIELD: Partial<Record<keyof VisitData, keyof Patient['visits'][number]>> = {
+  symptoms: 'symptoms',
+  exam: 'exam',
+  diagnosis: 'diagnosis',
+  treatment: 'treatment',
+  followUp: 'followUp',
+};
+
+/** แตกข้อความประวัติเป็นวลีสั้นๆ ใช้เป็นชิป */
+const phrases = (t?: string) =>
+  String(t ?? '')
+    .split(/[,，、;\n]|\s+และ\s+|\s{2,}/)
+    .map((x) => x.replace(/^[-–•\s]+|[\s.]+$/g, '').trim())
+    .filter((x) => x && x !== '-' && x.length <= 24);
+
+/**
+ * ชุดตัวเลือกของหัวข้อหนึ่ง: ผู้ป่วยมีประวัติ → ใส่ตัวเลือกจากการรักษาครั้งก่อนก่อน (อาการเดิม ยาเดิม ฯลฯ) แล้วตามด้วยชุดพื้นฐาน
+ */
+export function optionsFor(p: Patient | undefined, key: keyof VisitData): string[] {
+  const out: string[] = [];
+  const add = (x: string) => {
+    if (x && !out.some((y) => y.replace(/\s/g, '') === x.replace(/\s/g, ''))) out.push(x);
+  };
+  const visits = p?.visits ?? [];
+  if (visits.length) {
+    if (key === 'symptoms') ['อาการเดิมดีขึ้น', 'อาการเดิมทรงตัว', 'อาการเดิมแย่ลง'].forEach(add);
+    if (key === 'result') ['ดีขึ้น', 'ทรงตัว', 'แย่ลง'].forEach(add);
+    const f = HISTORY_FIELD[key];
+    if (f) visits.slice(0, 3).forEach((v) => phrases(String(v[f] ?? '')).forEach(add));
+    if (key === 'treatment') add('รักษาแบบเดิม');
+    if (key === 'caution' && p?.allergies && p.allergies !== 'ไม่มี') add(`ระวังแพ้${p.allergies}`);
+  }
+  if (key === 'symptoms' && p?.chronic && p.chronic !== 'ไม่มี') phrases(p.chronic).forEach((c) => add(`${c}กำเริบ`));
+  VISIT_OPTIONS[key].forEach(add);
+  return out.slice(0, 10);
+}
+
+export const nextVisitOptions = (d: VisitData, p?: Patient) => {
   const t = VISIT_TOPICS.find((x) => !visitHas(d, x.key));
-  return t ? VISIT_OPTIONS[t.key] : [];
+  return t ? optionsFor(p, t.key) : [];
+};
+
+/** ประวัติการรักษาแบบย่อ (3 ครั้งล่าสุด) สำหรับส่งให้ AI */
+export const historyText = (p: Patient) =>
+  p.visits.length
+    ? p.visits
+        .slice(0, 3)
+        .map((v) => `ครั้งที่ ${v.no} (${v.date}): อาการ ${v.symptoms} · ตรวจพบ ${v.exam} · วินิจฉัย ${v.diagnosis} · รักษา ${v.treatment} · ผล ${v.result} · นัด ${v.followUp}${v.note ? ` · ${v.note}` : ''}`)
+        .join('\n')
+    : 'ยังไม่เคยรักษา (ครั้งแรก)';
+
+/** รวมตัวเลือกจาก AI + จากประวัติ/พื้นฐาน (ตัดซ้ำ ไม่เกิน 10) */
+const mergeOpts = (a: string[], b: string[]) => {
+  const out: string[] = [];
+  [...a, ...b].forEach((x) => {
+    if (x && !out.some((y) => y.replace(/\s/g, '') === x.replace(/\s/g, ''))) out.push(x);
+  });
+  return out.slice(0, 10);
 };
 
 export const visitHas = (d: VisitData, key: string) => !!String((d as any)[key] ?? '').trim();
@@ -51,7 +107,6 @@ export const visitOpening = (p: Patient) => {
 /** หนึ่งรอบการสนทนา */
 export async function visitTurn(p: Patient, known: VisitData, history: Turn[], answer: string): Promise<{ data: VisitData; reply: string; done: boolean; options: string[] }> {
   const asked = history.filter((h) => h.role === 'ai').length;
-  const last = p.visits[0];
   try {
     const r = await chatJSON<{ fields?: VisitData; reply?: string; done?: boolean; options?: string[] }>([
       {
@@ -59,7 +114,8 @@ export async function visitTurn(p: Patient, known: VisitData, history: Turn[], a
         content: `คุณคือ "ครูปัญญา" ผู้ช่วยหมอพื้นบ้าน ผู้ชายวัย 45 อบอุ่น ฉลาด มีไหวพริบ พูดภาษาพูดเป็นธรรมชาติ ลงท้าย "ครับ"
 กำลังช่วยหมอบันทึกการรักษาครั้งนี้ด้วยเสียง
 ผู้ป่วย: ${p.name} ${p.sex} ${p.age} ปี ธาตุ${p.element} โรคประจำตัว: ${p.chronic} แพ้ยา/อาหาร: ${p.allergies}
-${last ? `ครั้งก่อน (${last.date}): ${last.diagnosis} รักษาโดย ${last.treatment}` : 'เป็นการรักษาครั้งแรก'}
+ประวัติการรักษา:
+${historyText(p)}
 ข้อมูลครั้งนี้ที่รู้แล้ว: ${JSON.stringify(known)}
 บทสนทนาล่าสุด:
 ${history.slice(-6).map((h) => `${h.role === 'ai' ? 'ครูปัญญา' : 'หมอ'}: ${h.text}`).join('\n')}
@@ -77,7 +133,7 @@ ${dialectHint()}
    ภาษาที่ใช้ตอบ (reply): ${dialectSpeakStyle()}
 3) ถ้าครบทุกเรื่องแล้ว หรือหมอบอกว่าพอแล้ว ให้ done=true และ reply เป็นสรุปการรักษาครั้งนี้สั้นๆ
 ตอบ JSON เท่านั้น:
-{"fields":{"symptoms":"","exam":"","diagnosis":"","treatment":"","caution":"","followUp":"","result":""},"reply":"","options":["ตัวเลือกคำตอบสั้นๆ 5-8 ข้อ สำหรับคำถามที่เพิ่งถาม (เข้ากับอาการผู้ป่วยรายนี้) ให้หมอกดเลือกได้"],"done":false}`,
+{"fields":{"symptoms":"","exam":"","diagnosis":"","treatment":"","caution":"","followUp":"","result":""},"reply":"","options":["ตัวเลือกคำตอบสั้นๆ 5-8 ข้อ สำหรับคำถามที่เพิ่งถาม ให้หมอกดเลือกได้ — ถ้าผู้ป่วยมีประวัติ ให้ตัวเลือกแรกๆ มาจากประวัติ (อาการเดิมดีขึ้น/แย่ลง, ยาหรือวิธีรักษาเดิม, ของแสลงเดิม) แล้วตามด้วยตัวเลือกที่เข้ากับอาการตอนนี้"],"done":false}`,
       },
     ]);
     const data = { ...known };
@@ -88,12 +144,12 @@ ${dialectHint()}
     const missing = VISIT_TOPICS.filter((t) => !visitHas(data, t.key));
     const done = !!r.done || !missing.length || asked >= 12;
     const opts = (Array.isArray(r.options) ? r.options : []).map((x) => String(x).trim()).filter((x) => x && x.length <= 30).slice(0, 8);
-    return { data, reply: String(r.reply ?? '').trim() || (missing[0]?.ask ?? 'บันทึกครบแล้วครับ'), done, options: done ? [] : opts.length ? opts : nextVisitOptions(data) };
+    return { data, reply: String(r.reply ?? '').trim() || (missing[0]?.ask ?? 'บันทึกครบแล้วครับ'), done, options: done ? [] : mergeOpts(opts, nextVisitOptions(data, p)) };
   } catch {
     const data = { ...known };
     const prev = VISIT_TOPICS.find((t) => !visitHas(known, t.key));
     if (prev) (data as any)[prev.key] = answer;
     const next = VISIT_TOPICS.find((t) => !visitHas(data, t.key));
-    return { data, reply: next ? next.ask : 'บันทึกครบแล้วครับ', done: !next, options: next ? VISIT_OPTIONS[next.key] : [] };
+    return { data, reply: next ? next.ask : 'บันทึกครบแล้วครับ', done: !next, options: next ? optionsFor(p, next.key) : [] };
   }
 }

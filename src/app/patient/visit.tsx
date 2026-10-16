@@ -6,7 +6,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import React from 'react';
 import { PractitionerGate } from '../../components/PractitionerGate';
 import { VoiceSession } from '../../components/VoiceSession';
-import { VISIT_OPTIONS, VISIT_TOPICS, visitHas, visitOpening, visitTurn, type VisitData } from '../../lib/visit';
+import { VISIT_TOPICS, optionsFor, visitHas, visitOpening, visitTurn, type VisitData } from '../../lib/visit';
 import { useApp } from '../../store/app';
 
 function VisitInner() {
@@ -19,7 +19,7 @@ function VisitInner() {
     <VoiceSession
       title={`บันทึกการรักษาครั้งที่ ${no}`}
       opening={visitOpening(p)}
-      initialOptions={VISIT_OPTIONS.symptoms}
+      initialOptions={optionsFor(p, 'symptoms')}
       topics={VISIT_TOPICS as { key: string; label: string }[]}
       has={(d, k) => visitHas(d as VisitData, k)}
       turn={(k, h, a) => visitTurn(p, k as VisitData, h, a) as any}
