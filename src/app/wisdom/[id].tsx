@@ -24,6 +24,19 @@ import { doctor } from '../../data/mock';
 import { useApp } from '../../store/app';
 import { elevation, palette } from '../../theme';
 
+/** ไล่จางลงสีพื้นหน้าแบบโค้งนุ่ม (smoothstep หลายจุด → ไม่เห็นรอยต่อ) */
+const FADE_EXTRA = 150;
+const FADE = (() => {
+  const stops: number[] = [], colors: string[] = [];
+  for (let i = 0; i <= 10; i++) {
+    const t = i / 10;
+    const a = t * t * (3 - 2 * t);
+    stops.push(0.42 + t * 0.58);
+    colors.push(`rgba(247,251,249,${a.toFixed(3)})`);
+  }
+  return { stops: stops as [number, number, ...number[]], colors: colors as [string, string, ...string[]] };
+})();
+
 const SOURCE_ICON: Record<string, string> = { เสียงเล่า: 'waveform', สแกนตำรา: 'doc.viewfinder', พิมพ์เอง: 'pencil', เพื่อนแชร์: 'person.2.fill' };
 
 /** หัวข้อการ์ด: ไอคอนวงกลม + ชื่อ */
@@ -181,10 +194,12 @@ export default function WisdomDetail() {
       <Animated.ScrollView ref={scrollRef} onScroll={onScroll} scrollEventThrottle={16} contentInsetAdjustmentBehavior="never" contentContainerStyle={{ paddingBottom: insets.bottom + 130 }} showsVerticalScrollIndicator={false}>
         {/* ── Hero: ปกหนังสือบนพื้นเบลอจากภาพปก ── */}
         <View onLayout={(e) => (heroH.value = e.nativeEvent.layout.height)} style={[styles.hero, { paddingTop: insets.top + 60 }]}>
-          <Animated.View style={[StyleSheet.absoluteFill, bgSt]}>
+          {/* พื้นหลังยาวลงไปใต้ชื่อเรื่อง แล้วค่อยๆ จางกลืนกับสีพื้นหน้า */}
+          <Animated.View style={[StyleSheet.absoluteFill, { bottom: -FADE_EXTRA }, bgSt]}>
             <Image source={cover.src} style={StyleSheet.absoluteFill} contentFit="cover" />
             <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFill} />
-            <LinearGradient colors={['rgba(0,0,0,0.15)', 'rgba(0,0,0,0.35)', palette.bg]} locations={[0, 0.72, 1]} style={StyleSheet.absoluteFill} />
+            <LinearGradient colors={['rgba(0,0,0,0.14)', 'rgba(0,0,0,0.28)', 'rgba(0,0,0,0)']} locations={[0, 0.45, 0.85]} style={StyleSheet.absoluteFill} />
+            <LinearGradient colors={FADE.colors} locations={FADE.stops} style={StyleSheet.absoluteFill} />
           </Animated.View>
           <Animated.View entering={FadeInUp.duration(500)} style={styles.coverWrap}>
             <BookCover w={{ ...w, verified: true }} width={150} />
