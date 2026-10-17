@@ -75,9 +75,20 @@ export function useSpeaker() {
   const [speaking, setSpeaking] = useState(false);
   const level = useSharedValue(0);
 
-  useEffect(() => () => player.current?.remove(), []);
+  // รุ่นของคำสั่งพูด: กดหยุด/ออกจากหน้า/สั่งพูดใหม่ระหว่างรอสังเคราะห์เสียง → ผลเก่าที่มาทีหลังต้องไม่เล่น
+  const gen = useRef(0);
+  const alive = useRef(true);
+  useEffect(
+    () => () => {
+      alive.current = false;
+      gen.current++;
+      player.current?.remove();
+    },
+    [],
+  );
 
   const stop = () => {
+    gen.current++;
     player.current?.pause();
     player.current?.remove();
     player.current = null;
@@ -87,10 +98,13 @@ export function useSpeaker() {
 
   const speak = async (text: string) => {
     stop();
+    const my = gen.current;
     setSpeaking(true);
     try {
       const uri = await synthesize(text);
+      if (my !== gen.current || !alive.current) return; // ถูกยกเลิกระหว่างรอ
       await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: false });
+      if (my !== gen.current || !alive.current) return;
       const p = createAudioPlayer({ uri });
       player.current = p;
       // ระดับเสียงจริงจากคลื่นเสียง (RMS) → ดอกไม้ AI ขยับตามจังหวะพูด
@@ -108,7 +122,7 @@ export function useSpeaker() {
       });
       p.play();
     } catch {
-      setSpeaking(false);
+      if (my === gen.current && alive.current) setSpeaking(false);
     }
   };
 

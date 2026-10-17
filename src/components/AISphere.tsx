@@ -4,8 +4,9 @@
  * level (0..1) = ระดับเสียง AI/ไมค์ → ลูกแก้วขยาย-หดตามจังหวะ ริบบิ้นหนาขึ้น คลื่นแรงขึ้น ขอบสว่างขึ้น
  */
 import { Canvas, Fill, Shader, Skia } from '@shopify/react-native-skia';
-import React, { useEffect } from 'react';
-import { View } from 'react-native';
+import { useIsFocused } from '@react-navigation/native';
+import React, { useEffect, useState } from 'react';
+import { AppState, View } from 'react-native';
 import Animated, { useAnimatedStyle, useDerivedValue, useFrameCallback, useSharedValue, withSpring, withTiming, type SharedValue } from 'react-native-reanimated';
 
 export const SPHERE_SKSL = `uniform float2 res; uniform float t; uniform float e;
@@ -54,6 +55,7 @@ const FX = Skia.RuntimeEffect.Make(SPHERE_SKSL);
 
 export function AISphere({ size = 200, level, active = true }: { size?: number; level?: SharedValue<number>; active?: boolean }) {
   const t = useSharedValue(0);
+  const hue = useSharedValue(300);
   const zero = useSharedValue(0);
   const src = level ?? zero;
   const speed = useSharedValue(active ? 1 : 0.4);
@@ -62,14 +64,31 @@ export function AISphere({ size = 200, level, active = true }: { size?: number; 
   }, [active, speed]);
   const e = useDerivedValue(() => withTiming(Math.min(1, src.value), { duration: 120 }));
   // แสงไหลเร็วขึ้นตามเสียง
-  useFrameCallback((f) => {
-    t.value += ((f.timeSincePreviousFrame ?? 16) / 1000) * (speed.value + 2.4 * e.value);
-  });
+  // ลูกเล็ก (ไอคอน/การ์ด) วาด 30 เฟรม/วิ พอ — ตาแยกไม่ออก แต่ใช้ CPU ครึ่งเดียว
+  const step = size < 100 ? 1000 / 30 : 0;
+  const acc = useSharedValue(0);
+  const flow = useFrameCallback((f) => {
+    acc.value += f.timeSincePreviousFrame ?? 16;
+    if (acc.value < step) return;
+    const dt = acc.value / 1000;
+    acc.value = 0;
+    t.value += dt * (speed.value + 2.4 * e.value);
+    hue.value = (hue.value + dt * (9 + 14 * e.value)) % 360;
+  }, false);
   // สีไล่เฉดแบบหมุนวงล้อสี (HSV): ผ่านสีสดเสมอ ไม่หม่น · 3 สีห่างกัน 45° ให้ริบบิ้นไล่เฉดในตัว
-  const hue = useSharedValue(300);
-  useFrameCallback((f) => {
-    hue.value = (hue.value + ((f.timeSincePreviousFrame ?? 16) / 1000) * (9 + 14 * e.value)) % 360;
-  });
+
+  // วาดเฉพาะตอนหน้าที่มีลูกแก้วแสดงอยู่ และแอปอยู่หน้าจอ — แท็บที่ถูกซ่อน/หน้าที่ถูกทับ หยุดวาด
+  // (เดิมวาด shader 60 เฟรม/วิ ตลอดเวลา แม้อยู่แท็บอื่น → CPU ~20% ตอนแอปนิ่ง เครื่องร้อน แบตหมดไว)
+  const focused = useIsFocused();
+  const [fg, setFg] = useState(AppState.currentState === 'active');
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (st) => setFg(st === 'active'));
+    return () => sub.remove();
+  }, []);
+  const run = focused && fg;
+  useEffect(() => {
+    flow.setActive(run);
+  }, [run, flow]);
   const uniforms = useDerivedValue(() => {
     const hsv = (h: number, sat: number, v: number) => {
       const c = v * sat;
@@ -83,7 +102,9 @@ export function AISphere({ size = 200, level, active = true }: { size?: number; 
     return { res: [size * 1.5, size * 1.5], t: t.value, e: e.value, c1: hsv(h, 0.78, 1), c2: hsv(h + 45, 0.85, 1), c3: hsv(h + 95, 0.8, 1) };
   });
   // ลูกแก้วขยาย-หดตามจังหวะเสียง (สปริงนุ่ม) + หายใจเบาๆ ตอนเงียบ
-  const pulse = useDerivedValue(() => withSpring(0.93 + 0.14 * e.value + Math.sin(t.value * 1.4) * 0.012, { damping: 14, stiffness: 180, mass: 0.6 }));
+  // ลูกเล็ก: ไม่ขยาย-หด (สปริงทำงานทุกเฟรม ทำให้วาดใหม่ทั้งลูกตลอด) · ลูกใหญ่/มีเสียง: ขยายตามจังหวะ
+  const breathe = size >= 100 || !!level;
+  const pulse = useDerivedValue(() => (breathe ? withSpring(0.93 + 0.14 * e.value + Math.sin(t.value * 1.4) * 0.012, { damping: 14, stiffness: 180, mass: 0.6 }) : 1));
   const scaleSt = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
   if (!FX) return <View style={{ width: size, height: size }} />;
   const big = size * 1.5;

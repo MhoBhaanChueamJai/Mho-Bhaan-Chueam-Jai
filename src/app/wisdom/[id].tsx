@@ -10,8 +10,10 @@ import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { MenuView } from '@react-native-menu/menu';
 import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Linking, StyleSheet, View } from 'react-native';
-import Animated, { FadeInDown, FadeInUp, useAnimatedRef, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
+import Animated, { FadeInDown, FadeInUp, runOnJS, useAnimatedReaction, useAnimatedRef, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
+import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { NotFound } from '../../components/NotFound';
 import { useSpeaker } from '../../components/audio';
 import { BookCover, COVERS } from '../../components/BookCover';
 import { KindIcon } from '../../components/KindIcon';
@@ -94,7 +96,9 @@ function usageRows(text: string): { rows: { label: string; body: string }[]; war
 export default function WisdomDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { wisdoms } = useApp();
-  const w = wisdoms.find((x) => x.id === id) ?? wisdoms[0];
+  const w = wisdoms.find((x) => x.id === id);
+  // ไม่พบ → แจ้ง ไม่แสดงเล่มอื่นแทน
+  if (!w) return <NotFound title="ไม่พบตำรานี้" />;
   return <WisdomView w={w} />;
 }
 
@@ -120,6 +124,15 @@ export function WisdomView({ w, preview }: { w: Wisdom; preview?: WisdomPreview 
   const onScroll = useAnimatedScrollHandler((e) => {
     y.value = e.contentOffset.y;
   });
+  // ปุ่มบนหัว/แถบสถานะ: ขาวเมื่ออยู่บนพื้นปกเบลอสีเข้ม · เข้มเมื่อเลื่อนพ้นปกแล้ว (เดิมเป็นสีเข้มบนพื้นเข้ม มองไม่เห็น)
+  const [onHero, setOnHero] = useState(true);
+  useAnimatedReaction(
+    () => y.value < heroH.value - 140,
+    (v, prev) => {
+      if (v !== prev) runOnJS(setOnHero)(v);
+    },
+  );
+  const ic = onHero ? '#FFFFFF' : palette.ink;
   const bgSt = useAnimatedStyle(() => {
     const pull = Math.max(0, -y.value);
     const s = 1 + pull / heroH.value;
@@ -233,6 +246,7 @@ export function WisdomView({ w, preview }: { w: Wisdom; preview?: WisdomPreview 
 
   return (
     <View style={{ flex: 1, backgroundColor: palette.bg }}>
+      {preview ? null : <StatusBar style={onHero ? 'light' : 'dark'} />}
       {preview ? null : (
       <Stack.Screen
         options={{
@@ -244,18 +258,18 @@ export function WisdomView({ w, preview }: { w: Wisdom; preview?: WisdomPreview 
           scrollEdgeEffects: { top: 'hidden' },
           headerTintColor: '#FFFFFF',
           headerBackVisible: false,
-          headerLeft: () => <HeaderBack fallback="/vault" color={palette.ink} />,
+          headerLeft: () => <HeaderBack fallback="/vault" color={ic} />,
           headerRight: () => (
             <View style={{ flexDirection: 'row', gap: 4 }}>
               <HeaderButton label="อ่านแบบหนังสือ" onPress={openBook}>
-                <Sym name="book.pages" size={19} color={palette.ink} weight="semibold" />
+                <Sym name="book.pages" size={19} color={ic} weight="semibold" />
               </HeaderButton>
               <HeaderButton label={readIdx !== null ? 'หยุดอ่านออกเสียง' : 'อ่านออกเสียงให้ฟัง'} onPress={toggleRead}>
-                <Sym name={readIdx !== null ? 'stop.fill' : 'headphones'} size={19} color={readIdx !== null ? palette.primary : palette.ink} weight="semibold" />
+                <Sym name={readIdx !== null ? 'stop.fill' : 'headphones'} size={19} color={readIdx !== null ? palette.primary : ic} weight="semibold" />
               </HeaderButton>
               <MenuView shouldOpenOnLongPress={false} themeVariant="light" actions={menu} onPressAction={({ nativeEvent }) => onMenu(nativeEvent.event)}>
                 <View style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }} accessibilityRole="button" accessibilityLabel="เพิ่มเติม">
-                  <Sym name="ellipsis" size={19} color={palette.ink} weight="semibold" />
+                  <Sym name="ellipsis" size={19} color={ic} weight="semibold" />
                 </View>
               </MenuView>
             </View>

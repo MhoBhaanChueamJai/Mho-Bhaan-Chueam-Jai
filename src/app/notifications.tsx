@@ -24,7 +24,7 @@ export default function Notifications() {
       {list.length ? (
         <View style={[styles.card, elevation.e1]}>
           {list.map((n, i) => (
-            <Animated.View key={n.id} entering={FadeIn.delay(i * 40).duration(200)}>
+            <Animated.View key={n.id} entering={i < 12 ? FadeIn.delay(i * 40).duration(200) : undefined}>
               {i ? <View style={styles.sep} /> : null}
               <PressableScale scaleTo={0.98} haptic="select" onPress={() => router.push(n.go as any)} style={styles.row} accessibilityLabel={n.title}>
                 <CircleIcon name={n.icon} color={n.color} size={46} />

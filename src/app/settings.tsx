@@ -23,7 +23,7 @@ import { elevation, palette } from '../theme';
 const enter = (i: number) => FadeInDown.delay(40 + i * 50).duration(420);
 
 export default function Settings() {
-  const { settings, update, patients, wisdoms, resetData, setUnlocked, profile, isPractitioner } = useApp();
+  const { settings, update, patients, wisdoms, clearLocal, setUnlocked, profile, isPractitioner } = useApp();
   const displayName = profile?.display_name || (profile?.first_name ? `${profile.first_name} ${profile.last_name ?? ''}` : doctor.name);
   const [bio, setBio] = useState({ available: false, label: 'Face ID', icon: 'faceid' as 'faceid' | 'touchid' });
   useEffect(() => {
@@ -75,16 +75,17 @@ export default function Settings() {
   };
 
   const logout = () =>
-    Alert.alert('ออกจากระบบ?', 'ข้อมูลที่บันทึกในเครื่องนี้จะถูกล้าง และต้องเข้าสู่ระบบใหม่ในครั้งถัดไป', [
+    Alert.alert('ออกจากระบบ?', 'ข้อมูลทั้งหมดยังเก็บไว้บนระบบคลาวด์ เข้าสู่ระบบอีกครั้งเพื่อใช้งานต่อได้ทันที', [
       { text: 'ยกเลิก', style: 'cancel' },
       {
         text: 'ออกจากระบบ',
         style: 'destructive',
         onPress: () => {
           tts.stop();
-          resetData();
+          // ล้างเฉพาะในเครื่อง — ห้ามลบข้อมูลบนคลาวด์ (เดิมเรียก resetData ซึ่งลบข้อมูลทั้งบัญชีบนคลาวด์)
+          clearLocal();
           clearPin();
-          supabase.auth.signOut().catch(() => {});
+          supabase.auth.signOut({ scope: 'local' }).catch(() => {});
           update({ loggedIn: false, phone: '', pinEnabled: false, faceIdEnabled: false });
           setUnlocked(false);
           h.success();

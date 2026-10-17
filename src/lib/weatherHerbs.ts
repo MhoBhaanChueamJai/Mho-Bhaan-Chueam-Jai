@@ -52,18 +52,50 @@ export type WeatherRecs = { weather: Weather | null; recs: HerbRec[]; advice: st
 
 const RAIN_CODES = new Set([51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82, 95, 96, 99]);
 
-/** ตำแหน่ง → สภาพอากาศ (null = ไม่อนุญาตตำแหน่ง/เชื่อมต่อไม่ได้) */
-export async function getWeather(ask = true): Promise<Weather | null> {
+/** ขอข้อมูลพร้อมหมดเวลา (เน็ตช้า/ค้าง ไม่ให้หน้าค้างรอ) */
+async function getJSON(url: string, ms = 8000) {
+  const ctl = new AbortController();
+  const t = setTimeout(() => ctl.abort(), ms);
+  try {
+    const r = await fetch(url, { signal: ctl.signal });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return await r.json();
+  } finally {
+    clearTimeout(t);
+  }
+}
+const withTimeout = <T,>(p: Promise<T>, ms: number) => Promise.race([p, new Promise<T>((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
+
+/** สาเหตุที่ดูอากาศไม่ได้ */
+export class WeatherError extends Error {
+  constructor(public reason: 'permission' | 'network' | 'location') {
+    super(reason);
+  }
+}
+
+/** ตำแหน่ง → สภาพอากาศ (โยน WeatherError: permission = ไม่อนุญาตตำแหน่ง · network = เชื่อมต่อไม่ได้) */
+export async function getWeather(ask = true): Promise<Weather> {
   const perm = ask ? await Location.requestForegroundPermissionsAsync() : await Location.getForegroundPermissionsAsync();
-  if (perm.status !== 'granted') return null;
-  const pos = (await Location.getLastKnownPositionAsync({ maxAge: 3 * 3600_000 })) ?? (await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }));
+  if (perm.status !== 'granted') throw new WeatherError('permission');
+  let pos: Location.LocationObject | null = null;
+  try {
+    pos = (await Location.getLastKnownPositionAsync({ maxAge: 3 * 3600_000 })) ?? (await withTimeout(Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }), 10_000));
+  } catch {}
+  if (!pos) throw new WeatherError('location');
   const lat = Math.round(pos.coords.latitude * 100) / 100;
   const lon = Math.round(pos.coords.longitude * 100) / 100;
-  const [fc, aq, geo] = await Promise.all([
-    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,uv_index_max,sunrise,sunset&timezone=Asia%2FBangkok&forecast_days=1`).then((r) => r.json()),
-    fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=pm2_5`).then((r) => r.json()).catch(() => null),
-    Location.reverseGeocodeAsync({ latitude: lat, longitude: lon }).catch(() => []),
-  ]);
+  let fc: any, aq: any, geo: Location.LocationGeocodedAddress[];
+  try {
+    [fc, aq, geo] = await Promise.all([
+      getJSON(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,uv_index_max,sunrise,sunset&timezone=Asia%2FBangkok&forecast_days=1`),
+      getJSON(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=pm2_5`).catch(() => null),
+      withTimeout(Location.reverseGeocodeAsync({ latitude: lat, longitude: lon }), 6000).catch(() => [] as Location.LocationGeocodedAddress[]),
+    ]);
+  } catch {
+    throw new WeatherError('network');
+  }
+  // ไม่มีข้อมูลปัจจุบัน (API ตอบผิดรูป) → ห้ามแสดงเป็น 0° แทน
+  if (!fc?.current || typeof fc.current.temperature_2m !== 'number') throw new WeatherError('network');
   const c = fc.current ?? {};
   const d = fc.daily ?? {};
   const g = geo[0];
@@ -147,6 +179,9 @@ function ruleRecs(w: Weather | null): HerbRec[] {
     })
     .filter((x): x is HerbRec => !!x);
 }
+
+/** ผลเบื้องต้นทันที (กฎตายตัว) ระหว่างรอครูปัญญา */
+export const quickRecs = (w: Weather | null): WeatherRecs => ({ weather: w, recs: ruleRecs(w), advice: '', source: 'rule' });
 
 /** สมุนไพร 3 ตัวสำหรับอากาศวันนี้ (จำไว้ตามวัน + ลักษณะอากาศ) */
 export async function recommendForWeather(w: Weather | null): Promise<WeatherRecs> {

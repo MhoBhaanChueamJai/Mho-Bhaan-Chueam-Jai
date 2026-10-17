@@ -15,10 +15,14 @@ import { doctor } from '../data/mock';
 import { supabase } from '../lib/supabase';
 import { useApp } from '../store/app';
 import { palette } from '../theme';
-import { MAX_ATTEMPTS, authenticateBiometric, biometricInfo, checkPin } from '../store/security';
+import { MAX_ATTEMPTS, authenticateBiometric, biometricInfo, checkPin, clearPin } from '../store/security';
 
 export function LockScreen() {
-  const { settings, update, setUnlocked } = useApp();
+  const { settings, update, setUnlocked, clearLocal, profile } = useApp();
+  // ล็อกแล้วต้องปิดหน้าซ้อน (modal/sheet) ที่เปิดค้างอยู่ด้วย — หน้าซ้อนของ iOS อยู่เหนือหน้าล็อก
+  useEffect(() => {
+    if (router.canDismiss()) router.dismissAll();
+  }, []);
   const h = useHaptic();
   const pad = useRef<PinPadHandle>(null);
   const [value, setValue] = useState('');
@@ -44,8 +48,11 @@ export function LockScreen() {
   }, []);
 
   const logout = () => {
-    supabase.auth.signOut().catch(() => {});
-    update({ loggedIn: false });
+    // ลืม PIN / ใส่ผิดเกินกำหนด: ล้าง PIN + ข้อมูลในเครื่อง (ข้อมูลบนคลาวด์ยังอยู่ เข้าสู่ระบบใหม่แล้วโหลดกลับ)
+    clearPin();
+    clearLocal();
+    supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+    update({ loggedIn: false, pinEnabled: false, faceIdEnabled: false });
     setUnlocked(false);
     router.replace('/login');
   };
@@ -59,14 +66,15 @@ export function LockScreen() {
     if (n >= MAX_ATTEMPTS) logout();
   };
 
-  const name = settings.username && settings.username !== 'somchai' ? settings.username : doctor.short;
+  // ชื่อเดียวกับหน้าแรก (โปรไฟล์ในระบบ) — เดิมใช้ชื่อที่จำไว้ตอนล็อกอิน ซึ่งอาจว่าง → ขึ้น "คุณหมอ"
+  const name = profile?.first_name || profile?.display_name?.split(' ')[0] || (settings.username && settings.username !== 'somchai' ? settings.username.split(' ')[0] : doctor.short);
 
   return (
     <Animated.View entering={FadeIn.duration(150)} exiting={FadeOut.duration(250)} style={[StyleSheet.absoluteFill, { zIndex: 1000 }]}>
       <PinShell
         hero={
           <HeroRing>
-            <Avatar name={doctor.name} size={64} />
+            <Avatar name={name} size={64} />
           </HeroRing>
         }
         title={`สวัสดี ${name}`}

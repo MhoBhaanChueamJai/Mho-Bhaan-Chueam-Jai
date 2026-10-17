@@ -2,36 +2,35 @@
  * แท็บคลังสมุนไพร — โครงเดียวกับคลังภูมิ (DESIGN_SYSTEM.md)
  * การ์ดฟีเจอร์ใหม่ "สแกนหาสมุนไพร" (เปิดกล้อง) → แนะนำวันนี้ตามสภาพอากาศ (การ์ดซ้อน 3 ใบ) → กรองตามรสยา → การ์ดภาพเต็มใบ 2 คอลัมน์
  */
-import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Stack, router } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
-import { Linking, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
-import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
+import { Stack, router, useFocusEffect } from 'expo-router';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { AppState, FlatList, Linking, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+import { useIsFocused } from '@react-navigation/native';
 import { Sym, ios } from '../../../components/ios';
 import { HeaderButton, PressableScale, T } from '../../../components/ui';
 import { herbs, tasteTone, tastes, type Herb } from '../../../data/herbs';
 import { HerbStack } from '../../../components/HerbStack';
 import { SKY_COLOR, WeatherIcon } from '../../../components/WeatherIcon';
-import { getWeather, recommendForWeather, type Weather, type WeatherRecs } from '../../../lib/weatherHerbs';
+import { WeatherError, getWeather, quickRecs, recommendForWeather, type Weather, type WeatherRecs } from '../../../lib/weatherHerbs';
 import { elementColor, elevation, palette } from '../../../theme';
 
 const TH_DAY = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์'];
 const TH_MON = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
 
 /** การ์ดสมุนไพรภาพเต็มใบ (แบบการ์ดของ Apple): ภาพเต็มการ์ด · ไล่เงาล่าง · ชื่อขาว · สรรพคุณ · แคปซูลกระจกรส/ธาตุ */
-function HerbCard({ h, i, w }: { h: Herb; i: number; w: number }) {
-  const el = elementColor[h.element];
+const HerbCard = React.memo(function HerbCard({ h, i, w }: { h: Herb; i: number; w: number }) {
+  const el = elementColor[h.element] ?? elementColor['น้ำ'];
   return (
-    <Animated.View entering={FadeInDown.delay(40 + (i % 8) * 40).duration(320)} layout={LinearTransition.duration(260)} style={{ width: w }}>
+    <Animated.View entering={i < 6 ? FadeInDown.delay(40 + i * 40).duration(320) : undefined} style={{ width: w }}>
       <PressableScale scaleTo={0.97} haptic="select" onPress={() => router.push(`/herb/${h.id}`)} style={[styles.card, { height: w * 1.32 }, elevation.e2]} accessibilityLabel={`${h.name} รส${h.taste}`}>
         <View style={styles.cardClip}>
           <Image source={h.image} style={StyleSheet.absoluteFill} contentFit="cover" transition={250} />
           <LinearGradient colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.05)', 'rgba(4,18,10,0.86)']} locations={[0, 0.42, 1]} style={StyleSheet.absoluteFill} />
           {h.nationalList ? (
             <View style={styles.sealWrap}>
-              <BlurView intensity={30} tint="light" style={StyleSheet.absoluteFill} />
               <Sym name="checkmark.seal.fill" size={15} color="#FFFFFF" />
             </View>
           ) : null}
@@ -41,7 +40,6 @@ function HerbCard({ h, i, w }: { h: Herb; i: number; w: number }) {
             <View style={styles.glassTags}>
               {[`รส${h.taste}`, el.label].map((t) => (
                 <View key={t} style={styles.glassTag}>
-                  <BlurView intensity={28} tint="light" style={StyleSheet.absoluteFill} />
                   <T v="micro" color="#FFFFFF" style={{ fontWeight: '700' }}>{t}</T>
                 </View>
               ))}
@@ -51,29 +49,45 @@ function HerbCard({ h, i, w }: { h: Herb; i: number; w: number }) {
       </PressableScale>
     </Animated.View>
   );
-}
+});
 
 export default function Herbs() {
   const { width: SW } = useWindowDimensions();
   const cardW = Math.floor((SW - 32 - 12) / 2);
   // ── แนะนำสมุนไพรตามสภาพอากาศวันนี้ (ตำแหน่ง → อากาศ → ครูปัญญาเลือก 3 ตัว) ──
   const [wx, setWx] = useState<WeatherRecs | null>(null);
-  const [noLoc, setNoLoc] = useState(false);
+  const focused = useIsFocused();
+  const [wxErr, setWxErr] = useState<'permission' | 'network' | 'location' | null>(null);
+  const loadedDay = useRef('');
   const loadWx = useCallback(async (ask: boolean) => {
+    loadedDay.current = new Date().toDateString();
     let w: Weather | null = null;
     try {
       w = await getWeather(ask);
-    } catch {}
-    setNoLoc(!w);
+      setWxErr(null);
+    } catch (e) {
+      setWxErr(e instanceof WeatherError ? e.reason : 'network');
+    }
+    // แสดงอากาศ + คำแนะนำเบื้องต้นทันที แล้วค่อยอัปเดตเป็นผลจากครูปัญญา
+    setWx((cur) => (cur && cur.source === 'ai' && cur.weather?.sky === w?.sky ? cur : quickRecs(w)));
     setWx(await recommendForWeather(w));
   }, []);
+  // โหลดเมื่อเปิดแท็บนี้ครั้งแรก (แท็บถูกสร้างตั้งแต่เปิดแอป — ไม่ขอตำแหน่งตอนผู้ใช้ยังไม่ได้เข้าหน้านี้)
+  // และโหลดใหม่เมื่อข้ามวัน / กลับจากหน้าตั้งค่า
+  useFocusEffect(
+    useCallback(() => {
+      if (loadedDay.current !== new Date().toDateString()) loadWx(true);
+    }, [loadWx]),
+  );
   useEffect(() => {
-    loadWx(true);
-  }, [loadWx]);
+    const sub = AppState.addEventListener('change', (st) => {
+      if (st === 'active' && (wxErr === 'permission' || loadedDay.current !== new Date().toDateString())) loadWx(false);
+    });
+    return () => sub.remove();
+  }, [loadWx, wxErr]);
   const now = new Date();
   const dateLabel = `${TH_DAY[now.getDay()]} ${now.getDate()} ${TH_MON[now.getMonth()]}`;
   const w = wx?.weather;
-  const national = herbs.filter((h) => h.nationalList).length;
   const [taste, setTaste] = useState<(typeof tastes)[number]>('ทั้งหมด');
   // แสดงเฉพาะรสที่มีสมุนไพรจริง
   const tasteOpts = tastes.filter((t) => t === 'ทั้งหมด' || herbs.some((h) => h.taste === t));
@@ -90,7 +104,23 @@ export default function Herbs() {
           ),
         }}
       />
-      <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
+      {/* รายการ 100 ชนิด: FlatList (โหลดเฉพาะที่เห็นบนจอ ไม่สร้างทั้งหมดพร้อมกัน) */}
+      <FlatList
+        data={list}
+        keyExtractor={(h) => h.id}
+        numColumns={2}
+        columnWrapperStyle={{ gap: 12 }}
+        contentInsetAdjustmentBehavior="automatic"
+        style={{ backgroundColor: palette.bg }}
+        contentContainerStyle={[styles.page, { gap: 12 }]}
+        showsVerticalScrollIndicator={false}
+        initialNumToRender={6}
+        maxToRenderPerBatch={6}
+        windowSize={7}
+        removeClippedSubviews
+        renderItem={({ item, index }) => <HerbCard h={item} i={index} w={cardW} />}
+        ListHeaderComponent={
+          <View>
         {/* ── ฟีเจอร์ใหม่: สแกนหาสมุนไพรด้วยกล้อง (การ์ดกะทัดรัด พื้นหลังภาพสมุนไพรบนพื้นเขียวเข้ม) ── */}
         <Animated.View entering={FadeInDown.duration(420)}>
           <PressableScale scaleTo={0.98} haptic="press" onPress={() => router.push('/herb/scan')} style={[styles.heroWrap, elevation.e2]} accessibilityLabel="สแกนหาสมุนไพรด้วยกล้อง">
@@ -121,17 +151,25 @@ export default function Herbs() {
         {/* สภาพอากาศ */}
         {w ? (
           <Animated.View entering={FadeInDown.duration(300)} style={styles.wxRow}>
-            <WeatherIcon sky={w.sky} size={22} />
+            {/* แอนิเมชันไอคอนเล่นเฉพาะตอนแท็บนี้แสดงอยู่ (แท็บไม่ถูกปิด เดิมวาดทุกเฟรมตลอดการใช้แอป) */}
+            {focused ? <WeatherIcon sky={w.sky} size={22} /> : <View style={{ width: 22, height: 22 }} />}
             <T v="subhead" color={SKY_COLOR[w.sky]} style={{ fontWeight: '700' }}>{w.temp}° {w.label}</T>
             <T v="subhead" color={ios.secondary} numberOfLines={1} style={{ flex: 1 }}>
               {w.place ? `· ${w.place}` : ''}{w.pm25 != null ? ` · PM2.5 ${w.pm25}` : ''}
             </T>
           </Animated.View>
-        ) : noLoc ? (
+        ) : wxErr === 'permission' ? (
           <PressableScale haptic="select" onPress={() => Linking.openSettings()} style={styles.wxRow} accessibilityLabel="เปิดตำแหน่งเพื่อดูอากาศ">
             <Sym name="location.slash" size={15} color={ios.secondary} />
             <T v="subhead" color={ios.secondary} style={{ flex: 1 }}>แนะนำตามฤดู · เปิดตำแหน่งเพื่อดูอากาศจริง</T>
             <Sym name="chevron.right" size={12} color={ios.tertiary} weight="semibold" />
+          </PressableScale>
+        ) : wxErr ? (
+          // หาตำแหน่ง/ดึงอากาศไม่สำเร็จ → บอกให้รู้ และแตะลองใหม่ได้ (เดิมแถวนี้หายไปเฉยๆ)
+          <PressableScale haptic="select" onPress={() => loadWx(false)} style={styles.wxRow} accessibilityLabel="โหลดสภาพอากาศใหม่">
+            <Sym name={wxErr === 'location' ? 'location.slash' : 'wifi.exclamationmark'} size={15} color={ios.secondary} />
+            <T v="subhead" color={ios.secondary} style={{ flex: 1 }}>{wxErr === 'location' ? 'หาตำแหน่งไม่ได้' : 'ดึงข้อมูลอากาศไม่ได้'} · แนะนำตามฤดู</T>
+            <T v="subhead" color={palette.primary} style={{ fontWeight: '600' }}>ลองใหม่</T>
           </PressableScale>
         ) : null}
         {wx?.advice ? <T v="callout" color={palette.inkSoft} numberOfLines={1} style={{ paddingHorizontal: 4, marginBottom: 12 }}>{wx.advice}</T> : null}
@@ -152,7 +190,7 @@ export default function Herbs() {
         {/* ── กรองตามรสยา ── */}
         <View style={styles.secRow}>
           <T v="h3">สมุนไพรทั้งหมด</T>
-          <T v="subhead" color={ios.secondary}>{list.length} ชนิด · บัญชียาหลัก {national}</T>
+          <T v="subhead" color={ios.secondary}>{list.length} ชนิด · บัญชียาหลัก {list.filter((h) => h.nationalList).length}</T>
         </View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips} style={{ marginHorizontal: -16 }}>
           {tasteOpts.map((t) => {
@@ -165,17 +203,18 @@ export default function Herbs() {
             );
           })}
         </ScrollView>
-        <View style={styles.grid}>
-          {list.map((h, i) => (
-            <HerbCard key={h.id} h={h} i={i} w={cardW} />
-          ))}
-        </View>
+          </View>
+        }
+        ListFooterComponent={
+          <View>
 
         <View style={styles.foot}>
           <Sym name="checkmark.seal.fill" size={13} color={palette.primary} />
           <T v="caption" color={ios.secondary}>= อยู่ในบัญชียาหลักแห่งชาติ (ยาจากสมุนไพร)</T>
         </View>
-      </ScrollView>
+          </View>
+        }
+      />
     </>
   );
 }
@@ -197,7 +236,7 @@ const styles = StyleSheet.create({
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   card: { borderRadius: 26, borderCurve: 'continuous', backgroundColor: palette.bgDeep },
   cardClip: { flex: 1, borderRadius: 26, borderCurve: 'continuous', overflow: 'hidden' },
-  sealWrap: { position: 'absolute', top: 10, right: 10, width: 30, height: 30, borderRadius: 15, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(20,144,92,0.55)' },
+  sealWrap: { position: 'absolute', top: 10, right: 10, width: 30, height: 30, borderRadius: 15, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(20,144,92,0.85)' },
   cardText: { position: 'absolute', left: 12, right: 12, bottom: 12 },
   glassTags: { flexDirection: 'row', flexWrap: 'wrap', gap: 5, marginTop: 8 },
   glassTag: { paddingHorizontal: 9, paddingVertical: 3, borderRadius: 999, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.14)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.35)' },

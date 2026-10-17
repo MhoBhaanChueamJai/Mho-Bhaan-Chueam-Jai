@@ -1,7 +1,9 @@
+import { MenuView } from '@react-native-menu/menu';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { PractitionerGate } from '../../components/PractitionerGate';
-import { Linking, ScrollView, Share, StyleSheet, View } from 'react-native';
+import { Alert, Linking, ScrollView, Share, StyleSheet, View } from 'react-native';
+import { NotFound } from '../../components/NotFound';
 import Animated, { FadeIn, LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CircleIcon, PAGE_PAD } from '../../components/ListRow';
@@ -141,8 +143,15 @@ function VisitItem({ v, open, onToggle, last, latest }: { v: MB5Visit; open: boo
 
 function PatientDetailInner() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { patients, logOpen } = useApp();
-  const p = patients.find((x) => x.id === id) ?? patients[0];
+  const { patients } = useApp();
+  const p = patients.find((x) => x.id === id);
+  // ไม่พบผู้ป่วย → แจ้ง ไม่แสดงคนอื่นแทน (เดิมใช้ patients[0] ทำให้บันทึกการรักษาผิดคนได้)
+  if (!p) return <NotFound title="ไม่พบผู้ป่วย" />;
+  return <PatientBody p={p} />;
+}
+
+function PatientBody({ p }: { p: Patient }) {
+  const { logOpen, removePatient } = useApp();
   // บันทึกว่าเปิดดูผู้ป่วยคนนี้ (ให้ครูปัญญาแนะนำคำค้นได้แม่นขึ้น)
   useEffect(() => {
     if (p?.id) logOpen(p.id);
@@ -151,10 +160,28 @@ function PatientDetailInner() {
   const insets = useSafeAreaInsets();
   const [openNo, setOpenNo] = useState<number | null>(p.visits[0]?.no ?? null);
   const share = () => Share.share({ message: exportText(p), title: p.name });
-  const call = () => Linking.openURL(`tel:${p.phone.replace(/[^0-9]/g, '')}`);
+  const tel = (p.phone ?? '').replace(/[^0-9]/g, '');
+  const call = () => {
+    if (!tel) return Alert.alert('ไม่มีเบอร์โทร', 'ยังไม่ได้บันทึกเบอร์โทรของผู้ป่วยรายนี้');
+    Linking.openURL(`tel:${tel}`).catch(() => {});
+  };
   // บันทึกการรักษาด้วยเสียง (ครูปัญญาถามทีละเรื่อง)
   const record = () => router.push({ pathname: '/patient/visit', params: { pid: p.id } });
   const allergic = p.allergies && p.allergies !== 'ไม่มี';
+  // ลบผู้ป่วย (เพิ่มผิด/ซ้ำ) — ยืนยันก่อน เพราะลบประวัติการรักษาทั้งหมดด้วย
+  const remove = () =>
+    Alert.alert(`ลบ ${p.name}?`, p.visits.length ? `ประวัติการรักษา ${p.visits.length} ครั้งจะถูกลบด้วย และกู้คืนไม่ได้` : 'ข้อมูลผู้ป่วยรายนี้จะถูกลบ และกู้คืนไม่ได้', [
+      { text: 'ยกเลิก', style: 'cancel' },
+      {
+        text: 'ลบผู้ป่วย',
+        style: 'destructive',
+        onPress: () => {
+          removePatient(p.id);
+          if (router.canGoBack()) router.back();
+          else router.replace('/patients');
+        },
+      },
+    ]);
 
   return (
     <>
@@ -168,6 +195,13 @@ function PatientDetailInner() {
           headerBackButtonDisplayMode: 'minimal',
           headerBackVisible: false,
           headerLeft: () => <HeaderBack fallback="/patients" color={palette.ink} />,
+          headerRight: () => (
+            <MenuView shouldOpenOnLongPress={false} themeVariant="light" actions={[{ id: 'delete', title: 'ลบผู้ป่วย', image: 'trash', imageColor: '#E5484D', attributes: { destructive: true } }]} onPressAction={({ nativeEvent }) => nativeEvent.event === 'delete' && remove()}>
+              <View style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }} accessibilityRole="button" accessibilityLabel="เพิ่มเติม">
+                <Sym name="ellipsis" size={19} color={palette.ink} weight="semibold" />
+              </View>
+            </MenuView>
+          ),
         }}
       />
       <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingBottom: insets.bottom + 120 }} showsVerticalScrollIndicator={false}>

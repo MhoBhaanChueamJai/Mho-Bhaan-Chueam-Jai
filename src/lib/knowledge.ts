@@ -33,18 +33,22 @@ function grams(s: string): Set<string> {
 }
 
 type Doc = { w: Wisdom; head: Set<string>; ing: Set<string>; body: Set<string> };
-let cache: { key: string; docs: Doc[] } | null = null;
+// ดัชนีต่อเล่ม ผูกกับออบเจกต์ตำรา (แก้ไขตำรา = ออบเจกต์ใหม่ → สร้างดัชนีใหม่เฉพาะเล่มนั้น ไม่ค้างของเก่า)
+const cache = new WeakMap<Wisdom, Doc>();
 function index(list: Wisdom[]): Doc[] {
-  const key = list.map((w) => `${w.id}:${w.title.length}:${(w.summary ?? '').length}`).join('|');
-  if (cache?.key === key) return cache.docs;
-  const docs = list.map((w) => ({
-    w,
-    head: grams(`${w.title} ${w.indication ?? ''}`),
-    ing: grams((w.ingredients ?? []).join(' ')),
-    body: grams(`${plainText(w.summary)} ${w.method ?? ''} ${w.caution ?? ''}`),
-  }));
-  cache = { key, docs };
-  return docs;
+  return list.map((w) => {
+    let d = cache.get(w);
+    if (!d) {
+      d = {
+        w,
+        head: grams(`${w.title} ${w.indication ?? ''}`),
+        ing: grams((w.ingredients ?? []).join(' ')),
+        body: grams(`${plainText(w.summary)} ${w.method ?? ''} ${w.caution ?? ''}`),
+      };
+      cache.set(w, d);
+    }
+    return d;
+  });
 }
 
 /** ตำราที่เกี่ยวข้องที่สุด k เล่ม (คะแนนต่ำเกินไป = ไม่เกี่ยว ไม่ส่ง) */

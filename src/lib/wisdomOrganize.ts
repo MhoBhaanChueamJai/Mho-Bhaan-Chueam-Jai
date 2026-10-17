@@ -21,6 +21,8 @@ export type Organized = {
 
 export async function organizeWisdom(kind: Kind, title: string, indication: string, draft: string[]): Promise<Organized> {
   const f = KIND_FORM[kind];
+  const full = draft.map((p) => p.trim()).join('');
+  if (full.length > 20000) throw new Error('TOO_LONG'); // ยาวเกินจัดในครั้งเดียว — ไม่ตัดทิ้งเงียบๆ
   const text = draft.map((p, i) => `【หน้า ${i + 1}】\n${p.trim()}`).filter((p) => p.trim().length > 8).join('\n\n');
   const keep = kind === 'คาถา/พิธี' ? 'บทคาถาให้คงถ้อยคำเดิมทุกคำ ห้ามแก้' : kind === 'ตำราโบราณ' ? 'ข้อความต้นฉบับโบราณให้คงอักขระเดิม ส่วนถอดความเรียบเรียงเป็นภาษาปัจจุบัน' : '';
   const r = await chatJSON<Partial<Record<keyof Organized, unknown>>>([
@@ -31,7 +33,7 @@ export async function organizeWisdom(kind: Kind, title: string, indication: stri
 ${f.indication.label}: ${indication || '(ยังไม่ระบุ)'}
 ต้นฉบับที่หมอเขียน (หลายหน้า เนื้อหาปนกัน):
 """
-${text.slice(0, 14000)}
+${text}
 """
 
 งาน:
@@ -41,7 +43,8 @@ ${text.slice(0, 14000)}
    - extra = ${f.extra ? f.extra.label : '""'}
    - caution = ${f.caution.label}
    - origin = ${f.origin.label} (ถ้ามีกล่าวถึง)
-   - pages = ${f.summary.big ? f.summary.label : 'เนื้อหาหลัก/คำอธิบาย'} ที่เรียบเรียงแล้ว
+   - pages = ${f.summary.big ? f.summary.label : 'เนื้อหาหลัก/คำอธิบาย'} ที่เรียบเรียงแล้ว — ห้ามซ้ำกับสิ่งที่แยกไปใส่ ingredients / steps / extra / caution / origin แล้ว (ข้อมูลแต่ละอย่างอยู่ที่เดียว) ถ้าต้นฉบับมีแค่ข้อมูลเหล่านั้น ให้ pages เป็นคำอธิบายสั้นๆ 1 ย่อหน้า
+   - แต่ละหน้าต่อเนื่องกัน ห้ามเขียนเนื้อหาเดิมซ้ำในหน้าถัดไป
 2) เรียบเรียงภาษาให้สละสลวย อ่านง่าย ถูกต้องตามหลักภาษา คงความหมายและรายละเอียดเดิมทั้งหมด ห้ามย่อหรือตัดทอน ห้ามเพิ่มข้อมูลที่ต้นฉบับไม่ได้กล่าว ${keep}
 3) จัดรูปแบบเนื้อหาใน pages ให้อ่านง่ายแบบหนังสือ:
    - แบ่งย่อหน้าตามใจความ ย่อหน้าละ 2-5 ประโยค คั่นย่อหน้าด้วยบรรทัดว่าง (\\n\\n)
@@ -56,7 +59,7 @@ ${text.slice(0, 14000)}
 ตอบ JSON เท่านั้น:
 {"title":"","indication":"","pages":["หน้า 1","หน้า 2"],"ingredients":[],"steps":[],"extra":"","caution":"","origin":""}`,
     },
-  ]);
+  ], undefined, { maxTokens: Math.min(8000, 1500 + Math.ceil(full.length * 0.9)), timeoutMs: 150_000 });
   const arr = (v: unknown) => (Array.isArray(v) ? v : typeof v === 'string' && v ? v.split(/\n+/) : []).map((x) => String(x).trim()).filter(Boolean);
   const str = (v: unknown) => (typeof v === 'string' ? v.trim() : Array.isArray(v) ? v.join(' ').trim() : '');
   const tidy = (t: string) =>
@@ -67,7 +70,29 @@ ${text.slice(0, 14000)}
       .replace(/ {2,}/g, ' ')
       .trim();
   const item = (t: string) => t.replace(/^\s*(?:[-•*]|\d+[.)])\s*/, '').trim();
-  const pages = (Array.isArray(r.pages) ? r.pages : typeof r.pages === 'string' ? [r.pages] : []).map((x) => tidy(String(x))).filter(Boolean);
+  // กันเนื้อหาซ้ำ: ย่อหน้าที่ซ้ำกับหน้าก่อนหน้า (AI บางครั้งเขียนซ้ำ) ถูกตัดออก
+  const seen = new Set<string>();
+  const norm = (t: string) => t.replace(/\s+/g, '');
+  const pages = (Array.isArray(r.pages) ? r.pages : typeof r.pages === 'string' ? [r.pages] : [])
+    .map((x) => tidy(String(x)))
+    .map((pg) =>
+      pg
+        .split(/\n{2,}/)
+        .filter((para) => {
+          const k = norm(para);
+          if (k.length < 12) return true; // หัวข้อสั้นๆ ซ้ำได้
+          if (seen.has(k)) return false;
+          seen.add(k);
+          return true;
+        })
+        // หัวข้อที่เนื้อหาใต้หัวข้อถูกตัดไปแล้ว (ตามด้วยหัวข้ออื่น/ท้ายหน้า) → ตัดหัวข้อด้วย
+        .filter((para, i, all) => norm(para).length >= 12 || (i + 1 < all.length && norm(all[i + 1]).length >= 12))
+        .join('\n\n')
+        .trim(),
+    )
+    .filter((pg) => norm(pg).length > 12);
+  // ที่มา: ตัดคำนำหน้าที่ AI ใส่ซ้ำ (เดิมแสดง "ได้รับสืบทอดจาก: ได้รับสืบทอดจากพ่อ")
+  const origin = str(r.origin).replace(/^(?:ได้รับ)?(?:สืบทอด|ถ่ายทอด)(?:มา)?จาก\s*|^แหล่งที่มา\s*:?\s*/, '').trim();
   return {
     title: str(r.title) || title,
     indication: str(r.indication) || indication,
@@ -76,7 +101,7 @@ ${text.slice(0, 14000)}
     steps: arr(r.steps).map(item).filter(Boolean),
     extra: str(r.extra),
     caution: str(r.caution),
-    origin: str(r.origin),
+    origin,
   };
 }
 

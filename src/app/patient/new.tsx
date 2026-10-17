@@ -218,8 +218,10 @@ function NewPatientInner() {
     }, []),
   );
 
+  const savedRef = useRef(false); // กันกดบันทึกซ้ำ / AI สั่งบันทึกพร้อมกดเอง → ผู้ป่วยซ้ำ
   const saveForm = (f: Form) => {
-    if (f.name.trim().length <= 1) return;
+    if (f.name.trim().length <= 1 || savedRef.current) return;
+    savedRef.current = true;
     const num = (s: string) => Number(s.replace(/[^0-9.]/g, '')) || 0;
     const iso = toISO(f.bDay, f.bMonth, f.bYear);
     const id = addPatient({

@@ -51,7 +51,7 @@ export default function ReceiveWisdom() {
   }, []);
 
   // มีในคลังแล้ว (รหัสเดียวกัน หรือเรื่องเดียวกันจากคนเดียวกัน) → ห้ามเพิ่มซ้ำ
-  const existing = got ? wisdoms.find((w) => w.shareCode === cleanCode(code) || (w.title === got.wisdom.title && w.sharedBy === got.fromName)) : undefined;
+  const existing = got ? wisdoms.find((w) => w.shareCode === cleanCode(code) || (w.title === got.wisdom.title && w.sharedBy === got.fromName) || (w.builtin && w.title === got.wisdom.title)) : undefined;
   const dup = !!existing && !saved;
   const save = () => {
     if (!got || existing) return;
@@ -140,7 +140,7 @@ export default function ReceiveWisdom() {
       {got ? (
         <GlassDock>
           {saved ? (
-            <Button kind="secondary" label="ดูในคลังภูมิ" icon={<Sym name="checkmark" size={17} color={palette.primary} />} onPress={() => router.replace('/vault')} style={{ flex: 1, height: 52 }} />
+            <Button kind="secondary" label="ดูในคลังภูมิ" icon={<Sym name="checkmark" size={17} color={palette.primary} />} onPress={() => (router.canDismiss() ? router.dismissTo('/vault') : router.navigate('/vault'))} style={{ flex: 1, height: 52 }} />
           ) : (
             <Button label={dup ? 'อยู่ในคลังแล้ว · เปิดดู' : 'เก็บเข้าคลังของฉัน'} icon={<Sym name={dup ? 'checkmark.circle.fill' : 'tray.and.arrow.down.fill'} size={17} color={palette.white} />} onPress={dup && existing ? () => router.replace(`/wisdom/${existing.id}`) : save} style={{ flex: 1, height: 52 }} />
           )}

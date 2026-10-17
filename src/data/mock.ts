@@ -113,9 +113,14 @@ export const wisdoms: Wisdom[] = [];
 /** id ของตำราตัวอย่างรุ่นเก่า (ลบออกจากเครื่อง/คลาวด์ของผู้ใช้เดิม) */
 export const LEGACY_SAMPLE_WISDOMS = ['w1', 'w2', 'w3'];
 /** ตำราทดสอบ/สำเนาตัวอย่างที่เกิดระหว่างพัฒนา (ชื่อขึ้นต้นด้วยข้อความนี้) → ลบออก */
-export const LEGACY_TEST_TITLES = ['ตำรายาแก้ไข้ป่า', 'ยาแคปซูลขมิ้นชัน', 'ยาต้มแก้ลมจับโปง'];
-export const isLegacyWisdom = (w: { id: string; title: string }) =>
-  LEGACY_SAMPLE_WISDOMS.includes(w.id) || LEGACY_TEST_TITLES.some((t) => w.title.startsWith(t));
+/** ตำราทดสอบที่ค้างจากช่วงพัฒนา — จับเฉพาะชื่อเต็มตรงตัว + แหล่งที่มาตรงกัน (ไม่จับคำขึ้นต้น กันลบตำราจริงของหมอ) */
+const LEGACY_TEST: { title: string; source: string }[] = [
+  { title: 'ตำรายาแก้ไข้ป่า (ถอดความ)', source: 'เพื่อนแชร์' },
+  { title: 'ยาแคปซูลขมิ้นชัน', source: 'สแกนตำรา' },
+  { title: 'ยาต้มแก้ลมจับโปง (สูตรพ่อหมอสมบัติ)', source: 'เพื่อนแชร์' },
+];
+export const isLegacyWisdom = (w: { id: string; title: string; source?: string }) =>
+  LEGACY_SAMPLE_WISDOMS.includes(w.id) || LEGACY_TEST.some((t) => w.title === t.title && w.source === t.source && /^w17\d{11}$/.test(w.id) && Number(w.id.slice(1)) < 1792200000000 /* ก่อน 17 ต.ค. 2569 */);
 
 /** ต้นไม้ภูมิปัญญา — ความคืบหน้าการบันทึกองค์ความรู้ */
 export const legacy = { recorded: 37, goal: 60, minutes: 214, apprentices: 3 };

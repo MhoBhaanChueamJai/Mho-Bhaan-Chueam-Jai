@@ -60,6 +60,8 @@ export function VoiceSession({ scribe, initialOptions, title, opening, topics, h
   const dataRef = useRef<VoiceData>({});
   const hist = useRef<Turn[]>([]);
   const alive = useRef(true);
+  const loopGen = useRef(0);
+  const resume = useRef<(() => void) | null>(null);
   const manualStop = useRef(false);
   // คำตอบที่พิมพ์ (ใช้แทนเสียงได้ทุกเมื่อ)
   const typed = useRef<string | null>(null);
@@ -229,6 +231,9 @@ export function VoiceSession({ scribe, initialOptions, title, opening, topics, h
 
   /** วงจรสนทนาถาม-ตอบ (เริ่มใหม่ได้เมื่อกลับจากโหมดฟังบทสนทนา/ตรวจทาน) */
   const runLoop = async (first: string) => {
+      // วงจรใหม่แทนที่วงจรเก่า (กันสองวงจรฟังไมค์พร้อมกัน)
+      const my = ++loopGen.current;
+      const live = () => alive.current && my === loopGen.current;
       alive.current = true;
       manualStop.current = false;
       hist.current.push({ role: 'ai', text: first });
@@ -237,14 +242,23 @@ export function VoiceSession({ scribe, initialOptions, title, opening, topics, h
       setPhase('speaking');
       await speak(first);
       let misses = 0;
-      while (alive.current) {
+      while (live()) {
         setPhase('listening');
         setUserText('');
         const ans = await listen();
-        if (!alive.current) return;
+        if (!live()) return;
         if (!ans) {
           misses += 1;
-          if (misses > 2) break;
+          if (misses > 2) {
+            // ไม่ได้ยิน 3 ครั้ง → พักไว้ แตะลูกบอลหรือพิมพ์ตอบเพื่อคุยต่อ (ไม่ค้าง)
+            setAiText('แตะที่ลูกบอลเพื่อพูดต่อ หรือพิมพ์ตอบด้านล่างได้เลยครับ');
+            setPhase('done');
+            await new Promise<void>((r) => (resume.current = r));
+            resume.current = null;
+            if (!live()) return;
+            misses = 0;
+            continue;
+          }
           const again = 'ขอโทษครับ ไม่ได้ยินชัด ช่วยพูดอีกครั้งนะครับ';
           setAiText(again);
           setPhase('speaking');
@@ -259,7 +273,7 @@ export function VoiceSession({ scribe, initialOptions, title, opening, topics, h
         setPicked([]);
         const r = await turn(dataRef.current, hist.current, ans);
         setOptions(r.options ?? []);
-        if (!alive.current) return;
+        if (!live()) return;
         announceChanges(dataRef.current, r.data);
         dataRef.current = r.data;
         setData(r.data);
@@ -276,7 +290,7 @@ export function VoiceSession({ scribe, initialOptions, title, opening, topics, h
         h.select();
         await speak(reply);
         if (r.done) {
-          if (!alive.current) return;
+          if (!live()) return;
           setPhase('done');
           setOptions([]);
           h.success();
@@ -284,7 +298,7 @@ export function VoiceSession({ scribe, initialOptions, title, opening, topics, h
           return;
         }
       }
-      setPhase('done');
+      if (my === loopGen.current) setPhase('done');
   };
 
   // เริ่มวงจรสนทนา
@@ -301,6 +315,7 @@ export function VoiceSession({ scribe, initialOptions, title, opening, topics, h
   /** หยุดทุกอย่างทันที (ปิดหน้า / ใช้ข้อมูล): เสียงที่กำลังพูด ไมค์ และวงจรสนทนา */
   const stopAll = () => {
     alive.current = false;
+    resume.current?.();
     manualStop.current = true;
     try {
       player.current?.pause();
@@ -346,6 +361,7 @@ export function VoiceSession({ scribe, initialOptions, title, opening, topics, h
       player.current?.pause();
     } catch {}
     stopSpeaking.current?.();
+    resume.current?.();
   };
 
   /** เข้าโหมดฟังบทสนทนา: หยุดถาม-ตอบ แล้วอัดเสียงต่อเนื่องเป็นช่วงละ 40 วิ ถอดเสียงไปพร้อมกัน */
@@ -537,6 +553,7 @@ export function VoiceSession({ scribe, initialOptions, title, opening, topics, h
           scaleTo={0.95}
           onPress={() => {
             if (phase === 'listening') manualStop.current = true;
+            else if (resume.current) resume.current();
           }}
           accessibilityLabel={phase === 'listening' ? 'ส่งคำตอบ' : 'ครูปัญญา'}
         >

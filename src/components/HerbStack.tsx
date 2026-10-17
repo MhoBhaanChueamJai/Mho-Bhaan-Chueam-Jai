@@ -4,7 +4,7 @@
  */
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
@@ -28,18 +28,22 @@ function Card({ r, depth, n, onSwipe }: { r: HerbRec; depth: number; n: number; 
   const h = useHaptic();
   const x = useSharedValue(0);
   const pass = PASS[r.herb.element] ?? PASS['น้ำ'];
+  useEffect(() => {
+    x.value = 0;
+  }, [depth, x]);
   const pan = Gesture.Pan()
     .enabled(depth === 0)
     .activeOffsetX([-10, 10])
+    .failOffsetY([-12, 12]) // เลื่อนหน้าขึ้นลงต้องไม่ถูกจับเป็นการปัดการ์ด
     .onUpdate((e) => {
       x.value = e.translationX;
     })
     .onEnd((e) => {
       if (Math.abs(e.translationX) > 90 || Math.abs(e.velocityX) > 700) {
         const dir = Math.sign(e.translationX || e.velocityX);
-        x.value = withTiming(dir * 420, { duration: 200 }, () => {
-          runOnJS(onSwipe)();
-          x.value = 0;
+        // ปัดสำเร็จเท่านั้นจึงสลับลำดับ (ถูกขัดกลางทาง = ไม่นับ) · ตำแหน่งรีเซ็ตหลังการ์ดย้ายไปท้ายกองแล้ว (กันการ์ดแวบกลับมาหน้า)
+        x.value = withTiming(dir * 420, { duration: 200 }, (finished) => {
+          if (finished) runOnJS(onSwipe)();
         });
       } else x.value = withSpring(0, { damping: 18 });
     });

@@ -168,6 +168,13 @@ export async function deleteWisdom(id: string) {
   check(await supabase.from('wisdoms').delete().eq('id', id));
 }
 
+/** ลบผู้ป่วย 1 ราย พร้อมประวัติการรักษาและนัดหมาย */
+export async function deletePatient(id: string) {
+  check(await supabase.from('appointments').delete().eq('patient_id', id));
+  check(await supabase.from('visits').delete().eq('patient_id', id));
+  check(await supabase.from('patients').delete().eq('id', id));
+}
+
 /** ลบข้อมูลตัวอย่างรุ่นเก่า (ผู้ป่วย/ประวัติ/นัดหมายตัวอย่าง) ออกจากคลาวด์ของบัญชีเดิม */
 export async function deleteLegacySamples(patientIds: string[]) {
   if (!patientIds.length) return;

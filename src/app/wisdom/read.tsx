@@ -17,38 +17,88 @@ import Animated, { Easing, runOnJS, useAnimatedStyle, useDerivedValue, useShared
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COVERS, COVER_RATIO } from '../../components/BookCover';
 import { KindIcon } from '../../components/KindIcon';
+import { NotFound } from '../../components/NotFound';
 import { Sym } from '../../components/ios';
 import { GlassCircle, T, useHaptic } from '../../components/ui';
 import { KIND_FORM, plainText, splitMethod } from '../../lib/wisdomKinds';
+import type { Wisdom } from '../../data/mock';
 import { useApp } from '../../store/app';
 
 const PAPER = '#F5ECD9';
 const INK = '#3A2C1C';
 const ORIGIN_RE = /\n*(ได้รับสืบทอดจาก|แหล่งที่มา):\s*(.+)$/;
 
-/** แบ่งข้อความต่อเนื่องเป็นหน้า (ไม่ยึดการแบ่งหน้าตอนบันทึก) — ตัดที่จบย่อหน้าก่อน ไม่ได้ค่อยตัดที่วรรค
+/** ความกว้างที่เห็นจริงของข้อความไทย: สระบน/ล่างและวรรณยุกต์ซ้อนบนตัวอักษร ไม่กินที่ในบรรทัด */
+const COMBINING = /[\u0E31\u0E34-\u0E3A\u0E47-\u0E4E]/g;
+const vlen = (s: string) => s.replace(COMBINING, '').length;
+const IS_COMBINING = /[\u0E31\u0E34-\u0E3A\u0E47-\u0E4E]/;
+
+/** แบ่งข้อความต่อเนื่องเป็นหน้าตามจำนวน "บรรทัด" ที่ลงได้จริง (ไม่ยึดการแบ่งหน้าตอนบันทึก)
+ * ย่อหน้าที่ล้นหน้า → ตัดที่วรรคแล้วต่อหน้าถัดไป (เดิมยกทั้งย่อหน้าไป ทำให้หน้าเหลือที่ว่างมาก)
+ * cpl = ตัวอักษรต่อบรรทัด · lines = บรรทัดต่อหน้า · firstLines = บรรทัดหน้าแรก (มีหัวข้อ)
  * cont = หน้านี้เริ่มกลางย่อหน้า (ไม่เยื้องบรรทัดแรก) */
-function paginate(text: string, max: number): { text: string; cont: boolean }[] {
+function paginate(text: string, cpl: number, lines: number, firstLines = lines): { text: string; cont: boolean }[] {
+  const GAP = 0.32; // ช่องไฟระหว่างย่อหน้า (10pt / บรรทัด 32pt)
   const out: { text: string; cont: boolean }[] = [];
-  let rest = text.trim();
-  let cont = false;
-  while (rest.length > max) {
-    const slice = rest.slice(0, max);
-    let cut = slice.lastIndexOf('\n\n');
-    const atPara = cut >= max * 0.6;
-    if (!atPara) {
-      cut = Math.max(slice.lastIndexOf('\n'), slice.lastIndexOf(' '));
-      if (cut < max * 0.5) cut = max;
+  const paras = text.trim().split(/\n{2,}|\n/).map((x) => x.trim()).filter(Boolean);
+  let cur: string[] = [];
+  let used = 0;
+  let pageCont = false;
+  let cap = firstLines;
+  const flush = (nextCont: boolean) => {
+    if (cur.length) out.push({ text: cur.join('\n\n'), cont: pageCont });
+    cur = [];
+    used = 0;
+    pageCont = nextCont;
+    cap = lines;
+  };
+  const linesOf = (t: string, indent: boolean) => Math.ceil((vlen(t) + (indent ? 3 : 0)) / cpl);
+  for (const p of paras) {
+    let rest = p;
+    let first = true;
+    while (rest) {
+      const gap = cur.length ? GAP : 0;
+      const indent = first || cur.length > 0;
+      const need = linesOf(rest, indent) + gap;
+      if (used + need <= cap) {
+        cur.push(rest);
+        used += need;
+        rest = '';
+        break;
+      }
+      const fit = Math.floor(cap - used - gap);
+      if (fit >= 2) {
+        // ตัดให้พอดีบรรทัดที่เหลือ (เผื่อการตัดคำ 6%) ที่วรรคใกล้ที่สุด
+        const budget = Math.floor(fit * cpl * 0.94) - (indent ? 3 : 0);
+        let n = 0;
+        let cut = 0;
+        for (let i = 0; i < rest.length && n < budget; i++) {
+          if (!IS_COMBINING.test(rest[i])) n++;
+          cut = i + 1;
+        }
+        const sp = rest.lastIndexOf(' ', cut);
+        if (sp > cut * 0.6) cut = sp;
+        // อย่าแยกสระ/วรรณยุกต์ออกจากพยัญชนะ
+        while (cut < rest.length && IS_COMBINING.test(rest[cut])) cut++;
+        cur.push(rest.slice(0, cut).trim());
+        rest = rest.slice(cut).trim();
+        first = false;
+        flush(true);
+      } else if (cur.length) {
+        flush(!first);
+      } else {
+        // หน้าว่างแต่ไม่พอ 2 บรรทัด (ไม่ควรเกิด) → ใส่ไปทั้งก้อน
+        cur.push(rest);
+        rest = '';
+        flush(false);
+      }
     }
-    out.push({ text: rest.slice(0, cut).trim(), cont });
-    cont = !atPara && rest[cut] !== '\n';
-    rest = rest.slice(cut).trim();
   }
-  if (rest) out.push({ text: rest, cont });
+  flush(false);
   return out;
 }
 
-type Page = { kind: 'cover' } | { kind: 'title' } | { kind: 'refs' } | { kind: 'text'; heading?: string; text: string; cont?: boolean } | { kind: 'list'; heading: string; items: string[]; numbered?: boolean };
+type Page = { kind: 'cover' } | { kind: 'title' } | { kind: 'refs'; from: number; to: number } | { kind: 'text'; heading?: string; text: string; cont?: boolean } | { kind: 'list'; heading?: string; items: string[]; numbered?: boolean; start?: number };
 
 /** ── พลิกหน้าแบบกระดาษม้วน (page curl) ──
  * ดัดแปลงหลักการจาก react-native-pagecurl (MIT, github.com/Onedayago/react-native-pagecurl):
@@ -89,7 +139,12 @@ function CurlLayer({ base, turning, Wp, Hp, verts, tex, idx, g0, g1, s0, s1, bas
 export default function ReadBook() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { wisdoms } = useApp();
-  const w = wisdoms.find((x) => x.id === id) ?? wisdoms[0];
+  const w = wisdoms.find((x) => x.id === id);
+  if (!w) return <NotFound title="ไม่พบตำรานี้" />;
+  return <ReadBookInner w={w} />;
+}
+
+function ReadBookInner({ w }: { w: Wisdom }) {
   const insets = useSafeAreaInsets();
   const { width: W, height: SH } = useWindowDimensions();
   const [fontsOk] = useFonts({ NotoSerifThai_400Regular, NotoSerifThai_700Bold });
@@ -111,21 +166,47 @@ export default function ReadBook() {
   // ตัวอักษรต่อหน้า ตามขนาดกระดาษจริงของเครื่อง (บรรทัด × ตัวอักษรต่อบรรทัด เผื่อหัวข้อ)
   // จำนวนบรรทัดที่ลงได้ (เผื่อหัวข้อ/ช่องไฟย่อหน้า) × ตัวอักษรต่อบรรทัด (ฟอนต์ 17 ราว 8.6pt ต่อตัว) เผื่อไว้ 12%
   const perPage = Math.round((Math.floor((SH - padTop - padBottom - 46) / 32) - 1) * ((W - 56) / 8.6) * 0.88);
+  // แบ่งหน้าข้อความตามบรรทัดจริง: ฟอนต์ 17 กว้างเฉลี่ย ~10.4pt ต่อตัวที่เห็น (รวมเผื่อการตัดคำ วัดจากหน้าจริง) · บรรทัดสูง 32 · หัวข้อกิน ~1.5 บรรทัด
+  const cpl = Math.floor((W - 56) / 10.4);
+  const lines = Math.floor((SH - padTop - padBottom) / 32) - 1;
   const pages = useMemo<Page[]>(() => {
     const out: Page[] = [{ kind: 'cover' }, { kind: 'title' }];
+    const pg = (t: string) => paginate(t, cpl, lines, lines - 1.5);
     const heading = kf.summary.big ? kf.summary.label : 'เนื้อหา';
-    paginate(plainText(body), perPage).forEach((t, i) => out.push({ kind: 'text', heading: i === 0 ? heading : undefined, text: t.text, cont: t.cont }));
-    if (w.ingredients?.length) out.push({ kind: 'list', heading: kf.ingredients?.label ?? 'ตัวยา', items: w.ingredients });
+    pg(plainText(body)).forEach((t, i) => out.push({ kind: 'text', heading: i === 0 ? heading : undefined, text: t.text, cont: t.cont }));
+    // รายการยาว (ตัวยา/ขั้นตอน) แบ่งหลายหน้า — 1 รายการ ≈ ความยาวข้อความ (ขั้นต่ำ 1 บรรทัด)
+    const listPages = (heading: string, items: string[], numbered?: boolean) => {
+      const budget = perPage * 0.9;
+      let cur: string[] = [];
+      let used = 0;
+      let start = 0;
+      const flush = () => {
+        if (!cur.length) return;
+        out.push({ kind: 'list', heading: start === 0 ? heading : undefined, items: cur, numbered, start });
+        start += cur.length;
+        cur = [];
+        used = 0;
+      };
+      items.forEach((it) => {
+        const cost = Math.max(45, it.length + 10);
+        if (cur.length && used + cost > budget) flush();
+        cur.push(it);
+        used += cost;
+      });
+      flush();
+    };
+    const textPages = (heading: string, text: string) => pg(text).forEach((t, i) => out.push({ kind: 'text', heading: i === 0 ? heading : undefined, text: t.text, cont: t.cont }));
+    if (w.ingredients?.length) listPages(kf.ingredients?.label ?? 'ตัวยา', w.ingredients);
     if (w.method && !kf.method.hidden) {
       const { steps, extra } = splitMethod(w.kind, w.method);
-      if (kf.method.steps && steps.length > 1) out.push({ kind: 'list', heading: kf.method.label, items: steps, numbered: true });
-      else paginate(steps.join('\n'), perPage).forEach((t, i) => out.push({ kind: 'text', heading: i === 0 ? kf.method.label : undefined, text: t.text, cont: t.cont }));
-      if (extra && kf.extra) out.push({ kind: 'text', heading: kf.extra.label, text: extra });
+      if (kf.method.steps && steps.length > 1) listPages(kf.method.label, steps, true);
+      else pg(steps.join('\n')).forEach((t, i) => out.push({ kind: 'text', heading: i === 0 ? kf.method.label : undefined, text: t.text, cont: t.cont }));
+      if (extra && kf.extra) textPages(kf.extra.label, extra);
     }
-    if (w.caution) out.push({ kind: 'text', heading: kf.caution.label, text: w.caution });
-    if (w.refs?.length) out.push({ kind: 'refs' });
+    if (w.caution) textPages(kf.caution.label, w.caution);
+    for (let i = 0; i < (w.refs?.length ?? 0); i += 3) out.push({ kind: 'refs', from: i, to: i + 3 });
     return out;
-  }, [w, body, kf, perPage]);
+  }, [w, body, kf, perPage, cpl, lines]);
 
   // ── พลิกหน้า (page curl) ──
   const h = useHaptic();
@@ -148,6 +229,16 @@ export default function ReadBook() {
   const refs = useRef<Record<number, React.RefObject<View | null>>>({});
   const refOf = (k: number) => (refs.current[k] ??= createRef<View>());
   const cache = useRef(new Map<number, SkImage>());
+  // ออกจากหน้าอ่าน: คืนหน่วยความจำภาพทุกหน้า
+  useEffect(() => {
+    const c = cache.current;
+    return () => {
+      setTimeout(() => {
+        c.forEach((im) => im.dispose?.());
+        c.clear();
+      }, 600);
+    };
+  }, []);
   const cacheKey = `${w.id}:${W}x${SH}:${fontsOk ? 1 : 0}:${n}`;
   const keyRef = useRef(cacheKey);
   // ภาพอยู่ใน shared value: ตอนพลิกเสร็จสลับภาพบน UI thread ในเฟรมเดียวกับที่รีเซ็ตแผ่น → ไม่กระพริบ
@@ -165,6 +256,7 @@ export default function ReadBook() {
   }, [active, busy]);
   useEffect(() => {
     if (keyRef.current !== cacheKey) {
+      cache.current.forEach((im) => im.dispose?.());
       cache.current.clear();
       keyRef.current = cacheKey;
     }
@@ -173,7 +265,12 @@ export default function ReadBook() {
       const r = refs.current[k];
       if (k < 0 || k >= n || !r?.current) return;
       const im = await makeImageFromView(r as React.RefObject<View>).catch(() => null);
-      if (im && alive) cache.current.set(k, im);
+      if (!im) return;
+      if (!alive) return im.dispose?.();
+      const old = cache.current.get(k);
+      cache.current.set(k, im);
+      // ภาพเก่าของหน้าเดียวกัน: ปล่อยหลังเฟรมถัดไป (ชั้น Skia อาจยังวาดภาพนี้อยู่)
+      if (old && old !== im) setTimeout(() => old.dispose?.(), 1500);
     };
     const publish = () => {
       if (!alive) return;
@@ -182,7 +279,12 @@ export default function ReadBook() {
         return;
       }
       const c = cache.current;
-      for (const k of [...c.keys()]) if (k < page - 2 || k > page + 2) c.delete(k);
+      for (const k of [...c.keys()])
+        if (k < page - 2 || k > page + 2) {
+          const im = c.get(k);
+          c.delete(k);
+          setTimeout(() => im?.dispose?.(), 1500); // คืนหน่วยความจำภาพหน้าที่ไกลออกไป
+        }
       const cur = c.get(page) ?? null;
       const next = c.get(page + 1) ?? null;
       const prev = c.get(page - 1) ?? null;
@@ -410,8 +512,8 @@ export default function ReadBook() {
           </View>
         ) : item.kind === 'refs' ? (
           <View style={[styles.textPage, { paddingTop: padTop, paddingBottom: padBottom }]}>
-            <Text style={[styles.heading, F.b]}>บรรณานุกรม</Text>
-            {(w.refs ?? []).map((r, i) => (
+            {item.from === 0 ? <Text style={[styles.heading, F.b]}>บรรณานุกรม</Text> : null}
+            {(w.refs ?? []).slice(item.from, item.to).map((r, j) => ({ r, i: item.from + j })).map(({ r, i }) => (
               <View key={i} style={styles.li}>
                 <Text style={[styles.bullet, F.r]}>{i + 1}.</Text>
                 <Text style={[styles.refText, { flex: 1 }, F.r]}>
@@ -440,10 +542,10 @@ export default function ReadBook() {
           </View>
         ) : (
           <View style={[styles.textPage, { paddingTop: padTop, paddingBottom: padBottom }]}>
-            <Text style={[styles.heading, F.b]}>{item.heading}</Text>
+            {item.heading ? <Text style={[styles.heading, F.b]}>{item.heading}</Text> : null}
             {item.items.map((x, i) => (
               <View key={i} style={styles.li}>
-                <Text style={[styles.bullet, F.r]}>{item.numbered ? `${i + 1}.` : '•'}</Text>
+                <Text style={[styles.bullet, F.r]}>{item.numbered ? `${(item.start ?? 0) + i + 1}.` : '•'}</Text>
                 <Text style={[styles.body, { flex: 1 }, F.r]}>{x}</Text>
               </View>
             ))}
@@ -485,7 +587,7 @@ export default function ReadBook() {
           <Sym name="xmark" size={17} color={page === 0 ? '#FFFFFF' : INK} weight="semibold" />
         </GlassCircle>
         <T v="subhead" color={page === 0 ? 'rgba(255,255,255,0.85)' : 'rgba(58,44,28,0.6)'} numberOfLines={1} style={{ flex: 1, textAlign: 'center', marginHorizontal: 12 }}>{page === 0 ? '' : w.title}</T>
-        <T v="caption" color={page === 0 ? 'rgba(255,255,255,0.75)' : 'rgba(58,44,28,0.55)'} style={{ minWidth: 44, textAlign: 'right' }}>{page + 1}/{pages.length}</T>
+        <T v="caption" color={page === 0 ? 'rgba(255,255,255,0.75)' : 'rgba(58,44,28,0.55)'} style={{ minWidth: 44, textAlign: 'right' }}>{page === 0 ? '' : `${page}/${pages.length - 1}`}</T>
       </View>
     </View>
   );

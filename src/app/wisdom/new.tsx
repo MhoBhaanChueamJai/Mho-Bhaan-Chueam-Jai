@@ -7,7 +7,7 @@
  * เครื่องมือบนหัวจอ: เล่าให้ครูปัญญาฟัง (โหมดเสียง) · สแกนตำราโบราณ → ใส่ลงต้นฉบับให้
  */
 import { Stack, router, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View, useWindowDimensions } from 'react-native';
 import Animated, { FadeIn, FadeInDown, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { AISphere } from '../../components/AISphere';
@@ -17,7 +17,7 @@ import { KindIcon } from '../../components/KindIcon';
 import { Sym, ios } from '../../components/ios';
 import { Button, GlassDock, HeaderButton, PressableScale, T, useHaptic } from '../../components/ui';
 import { KINDS, onWisdomResult, takeWisdomResult, type WisdomResult } from '../../lib/wisdomTalk';
-import { KIND_FORM, joinMethod } from '../../lib/wisdomKinds';
+import { KIND_FORM, joinMethod, splitMethod } from '../../lib/wisdomKinds';
 import { draftFromWisdom, organizeWisdom, organizedToWisdom, type Organized } from '../../lib/wisdomOrganize';
 import type { Wisdom } from '../../data/mock';
 import { useApp } from '../../store/app';
@@ -32,7 +32,7 @@ const WRITE_HINT: Record<Wisdom['kind'], string> = {
 };
 
 /** ช่องกรอก: ป้ายด้านบน + ช่องแคปซูลพื้นมิ้นต์ (โฟกัส = พื้นขาว ขอบเขียว) */
-function Field({ label, value, onChange, placeholder, big }: { label?: string; value: string; onChange: (v: string) => void; placeholder?: string; big?: boolean }) {
+function Field({ label, value, onChange, placeholder, big, inputRef, onNext }: { label?: string; value: string; onChange: (v: string) => void; placeholder?: string; big?: boolean; inputRef?: React.Ref<TextInput>; onNext?: () => void }) {
   const [focus, setFocus] = useState(false);
   return (
     <View>
@@ -44,7 +44,12 @@ function Field({ label, value, onChange, placeholder, big }: { label?: string; v
         placeholderTextColor={ios.tertiary}
         onFocus={() => setFocus(true)}
         onBlur={() => setFocus(false)}
+        ref={inputRef}
         multiline={big}
+        // ปุ่ม "ถัดไป" บนคีย์บอร์ด → ไปช่องต่อไป (ไม่ต้องปิดคีย์บอร์ดเพื่อหาช่องที่ถูกบัง)
+        returnKeyType={onNext ? 'next' : 'done'}
+        submitBehavior={onNext ? 'submit' : 'blurAndSubmit'}
+        onSubmitEditing={onNext}
         scrollEnabled={false}
         style={[styles.input, big && styles.inputBig, focus && styles.inputFocus]}
         accessibilityLabel={label ?? placeholder}
@@ -59,7 +64,7 @@ const PAPER = '#F7F0E0';
 const INK = '#3A2C1C';
 
 /** ช่องเขียน 1 หน้า (ช่องกรอกปกติ สูงราว 1 หน้าหนังสือ) + ตัวนับตัวอักษร */
-function PageField({ n, value, onChange, onRemove, height }: { n: number; value: string; onChange: (v: string) => void; onRemove?: () => void; height: number }) {
+function PageField({ n, value, onChange, onRemove, height, inputRef }: { n: number; value: string; onChange: (v: string) => void; onRemove?: () => void; height: number; inputRef?: React.Ref<TextInput> }) {
   const [focus, setFocus] = useState(false);
   const len = value.trim().length;
   const over = len > PAGE_CHARS;
@@ -76,6 +81,7 @@ function PageField({ n, value, onChange, onRemove, height }: { n: number; value:
       <TextInput
         value={value}
         onChangeText={onChange}
+        ref={inputRef}
         placeholder={n === 1 ? 'เริ่มเขียนได้เลย…' : `หน้า ${n}`}
         placeholderTextColor={ios.tertiary}
         onFocus={() => setFocus(true)}
@@ -115,6 +121,8 @@ function NewWisdomInner() {
   const editing = editId ? wisdoms.find((x) => x.id === editId) : undefined;
 
   const [kind, setKind] = useState<Wisdom['kind']>(editing?.kind ?? 'ตำรับยา');
+  const indRef = useRef<TextInput>(null);
+  const pageRef = useRef<TextInput>(null);
   const [title, setTitle] = useState(editing?.title ?? '');
   const [indication, setIndication] = useState(editing?.indication ?? '');
   const [draft, setDraft] = useState<string[]>(() => (editing ? draftFromWisdom(editing.kind, editing) : ['']));
@@ -131,18 +139,22 @@ function NewWisdomInner() {
   const apply = (r: WisdomResult) => {
     const k = (KINDS.includes(r.kind as any) ? r.kind : kind) as Wisdom['kind'];
     setKind(k);
-    if (r.title) setTitle(r.title);
-    if (r.indication) setIndication(r.indication);
+    // ไม่ทับของเดิม: ชื่อ/ใช้แก้ เติมเฉพาะช่องที่ยังว่าง
+    setTitle((t) => (t.trim() ? t : r.title || t));
+    setIndication((t) => (t.trim() ? t : r.indication || t));
     const originLabel = k === 'ตำราโบราณ' ? 'แหล่งที่มา' : 'ได้รับสืบทอดจาก';
-    setDraft(
-      draftFromWisdom(k, {
+    // ต่อท้ายต้นฉบับเดิม (เดิมแทนที่ทั้งหมด ทำให้เนื้อหาที่เขียน/แก้ไว้หาย)
+    const add = draftFromWisdom(k, {
         summary: [r.summary, r.origin ? `${originLabel}: ${r.origin}` : ''].filter(Boolean).join('\n\n'),
         ingredients: (r.ingredients ?? '').split(/[,，\n]/).map((s) => s.trim()).filter(Boolean),
         method: joinMethod(k, (r.method ?? '').split(/\n+/), r.extra ?? ''),
         caution: r.caution,
-      }),
-    );
-    if (r.source) setSource(r.source);
+      });
+    setDraft((d) => {
+      const out = [...d.filter((p) => p.trim()), ...add];
+      return out.length ? out : [''];
+    });
+    if (r.source && !editing) setSource(r.source);
     setMode('write');
     setAiNote(r.source === 'สแกนตำรา' ? 'ใส่ข้อความที่ถอดจากตำราลงต้นฉบับแล้ว แก้ได้ แล้วกดให้ครูปัญญาจัดหน้า' : 'ใส่สิ่งที่คุณหมอเล่าลงต้นฉบับแล้ว แก้ได้ แล้วกดให้ครูปัญญาจัดหน้า');
     h.success();
@@ -168,6 +180,12 @@ function NewWisdomInner() {
     router.back();
   };
 
+  /** บันทึกตามต้นฉบับ (ไม่ผ่าน AI) — แก้ไขเล่มเดิม: คงตัวยา/ขั้นตอน/ข้อห้ามเดิมไว้ ไม่ล้างทิ้ง */
+  const saveRaw = () => {
+    const keep = editing ? splitMethod(editing.kind, editing.method) : { steps: [] as string[], extra: '' };
+    saveData({ title: title.trim(), indication, pages: draft, ingredients: editing?.ingredients ?? [], steps: keep.steps, extra: keep.extra, caution: editing?.caution ?? '', origin: '' });
+  };
+
   /** ให้ครูปัญญาจัดหน้าและเรียบเรียง */
   const organize = async () => {
     if (!canOrganize) return;
@@ -178,12 +196,19 @@ function NewWisdomInner() {
       setOrg(o);
       setMode('review');
       h.success();
-    } catch {
+    } catch (e: any) {
       setMode('write');
       h.warn();
+      if (e?.message === 'TOO_LONG') {
+        Alert.alert('ต้นฉบับยาวเกินไป', 'ครูปัญญาจัดหน้าได้ครั้งละไม่เกินราว 20,000 ตัวอักษร แบ่งเป็นหลายเล่ม หรือบันทึกตามต้นฉบับไปก่อนได้', [
+          { text: 'บันทึกตามต้นฉบับ', onPress: () => saveRaw() },
+          { text: 'ยกเลิก', style: 'cancel' },
+        ]);
+        return;
+      }
       Alert.alert('จัดหน้าไม่สำเร็จ', 'เชื่อมต่อครูปัญญาไม่ได้ ลองใหม่อีกครั้ง หรือบันทึกตามต้นฉบับไปก่อนได้', [
         { text: 'ลองใหม่', onPress: organize },
-        { text: 'บันทึกตามต้นฉบับ', onPress: () => saveData({ title: title.trim(), indication, pages: draft, ingredients: [], steps: [], extra: '', caution: '', origin: '' }) },
+        { text: 'บันทึกตามต้นฉบับ', onPress: () => saveRaw() },
         { text: 'ยกเลิก', style: 'cancel' },
       ]);
     }
@@ -334,15 +359,15 @@ function NewWisdomInner() {
         </View>
 
         <Section title="ข้อมูลหลัก" icon="book.closed.fill">
-          <Field label={cfg.title.label} value={title} onChange={setTitle} placeholder={cfg.title.ph} />
-          <Field label={cfg.indication.label} value={indication} onChange={setIndication} placeholder={cfg.indication.ph} />
+          <Field label={cfg.title.label} value={title} onChange={setTitle} placeholder={cfg.title.ph} onNext={() => indRef.current?.focus()} />
+          <Field inputRef={indRef} label={cfg.indication.label} value={indication} onChange={setIndication} placeholder={cfg.indication.ph} onNext={() => pageRef.current?.focus()} />
         </Section>
 
         {/* เขียนตำรา: พื้นที่เดียว หลายหน้า */}
         <Section title="เขียนตำรา" icon="pencil.and.scribble" footer={WRITE_HINT[kind]} right={<T v="caption" color={ios.secondary}>{draft.length} หน้า</T>}>
           {draft.map((pg, i) => (
             <Animated.View key={i} layout={SMOOTH} entering={FadeIn.duration(200)}>
-              <PageField n={i + 1} value={pg} onChange={setPage(i)} height={sheetH} onRemove={draft.length > 1 ? () => setDraft((d) => d.filter((_, j) => j !== i)) : undefined} />
+              <PageField inputRef={i === 0 ? pageRef : undefined} n={i + 1} value={pg} onChange={setPage(i)} height={sheetH} onRemove={draft.length > 1 ? () => setDraft((d) => d.filter((_, j) => j !== i)) : undefined} />
             </Animated.View>
           ))}
           <PressableScale haptic="select" scaleTo={0.97} onPress={() => setDraft((d) => [...d, ''])} style={styles.addRow} accessibilityLabel="เพิ่มหน้า">

@@ -35,6 +35,8 @@ export default function Assistant() {
   const rec = useVoiceRecorder();
   const scroll = useRef<ScrollView>(null);
   const [msgs, setMsgs] = useState<Msg[]>([]);
+  const mounted = useRef(true);
+  useEffect(() => () => void (mounted.current = false), []);
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const [speakingId, setSpeakingId] = useState<string | null>(null);
@@ -63,7 +65,7 @@ export default function Assistant() {
       const sources = (named.length ? named : kn.used.slice(0, 1)).map((w) => ({ id: w.id, title: w.title }));
       setMsgs((m) => [...m, { id, role: 'assistant', content: reply, sources }]);
       h.success();
-      if (settings.autoSpeak) {
+      if (settings.autoSpeak && mounted.current) {
         setSpeakingId(id);
         tts.speak(reply);
       }

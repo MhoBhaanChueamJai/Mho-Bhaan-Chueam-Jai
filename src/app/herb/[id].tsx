@@ -80,7 +80,15 @@ export function HerbView({ herb, preview }: { herb: Herb; preview?: HerbScanPrev
   useEffect(() => () => tts.stop(), []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ตำราในคลังภูมิที่มีสมุนไพรนี้เป็นตัวยา
-  const inBooks = herb.name ? wisdoms.filter((w) => (w.ingredients ?? []).some((x) => x.includes(herb.name))) : [];
+  // ตำราที่มีสมุนไพรนี้: ตัดคำบอกส่วน (ใบ/ราก/เหง้า…) และปริมาณออก แล้วเทียบชื่อตรงตัว (กัน "ยอ" ไปจับ "พญายอ")
+  const ingName = (x: string) =>
+    x
+      .replace(/\(.*?\)/g, '')
+      .replace(/[\d๐-๙].*$/, '')
+      .replace(/^(ผิว|เปลือก|แก่น|เนื้อ|ดอก|ใบ|ราก|เหง้า|หัว|ผล|ฝัก|เมล็ด|เถา|ลำต้น|ต้น|ยอด|กิ่ง|ทั้งต้น)+/, '')
+      .trim()
+      .replace(/(สด|แห้ง|แก่|อ่อน)$/, '');
+  const inBooks = herb.name ? wisdoms.filter((w) => (w.ingredients ?? []).some((x) => ingName(x) === herb.name || ingName(x).startsWith(`${herb.name} `))) : [];
 
   // ดึงลงเกินขอบบน: พื้นหลังตรึงขอบบนและขยาย (แบบหน้าตำรา)
   const y = useSharedValue(0);

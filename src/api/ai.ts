@@ -120,13 +120,14 @@ function mergeJSON(a: any, b: any, path: string, conflicts: { path: string; a: u
 }
 
 /** ขอผลลัพธ์เป็น JSON — 2 โมเดลช่วยกัน แล้วรวม/ตัดสินค่าที่ขัดกัน */
-export async function chatJSON<T>(messages: ChatMsg[], _model?: ModelKey): Promise<T> {
+/** opts.maxTokens/timeoutMs: งานที่ต้องตอบยาว (จัดหน้าตำรา ถอดความตำรา) ต้องให้งบมากกว่าค่าปกติ ไม่งั้น JSON ถูกตัดกลางทาง */
+export async function chatJSON<T>(messages: ChatMsg[], _model?: ModelKey, opts?: { maxTokens?: number; timeoutMs?: number }): Promise<T> {
   const parse = (raw: string) => {
     const m = raw.match(/\{[\s\S]*\}/);
     if (!m) throw new Error('no json');
     return JSON.parse(m[0]);
   };
-  const r = await both(async (m) => parse(await chatOne(messages, m, 1200, 45_000)));
+  const r = await both(async (m) => parse(await chatOne(messages, m, opts?.maxTokens ?? 1200, opts?.timeoutMs ?? 45_000)));
   if (!r.gemma && !r.qwen) throw new Error('LLM unavailable');
   if (!r.gemma || !r.qwen) return (r.gemma ?? r.qwen) as T;
   const conflicts: { path: string; a: unknown; b: unknown }[] = [];

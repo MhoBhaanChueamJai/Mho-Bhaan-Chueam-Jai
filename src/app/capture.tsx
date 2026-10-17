@@ -17,7 +17,7 @@ import {
 } from '../components/icons';
 import React, { useEffect, useRef, useState } from 'react';
 import { VerifyPrompt } from '../components/PractitionerGate';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown, FadeInUp, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SYSTEM_PROMPT, chatJSON, transcribe } from '../api/ai';
@@ -66,38 +66,7 @@ const SAMPLE: Record<Mode, string> = {
     'ตำรับยาต้มแก้ลมจับโปงของพ่อหมอแก้ว ใช้เถาเอ็นอ่อนหนึ่งกำมือ โคคลานหนึ่งกำมือ แก่นฝางสิบห้ากรัม ไพลสามแว่น ขิงแก่สามแว่น ต้มกับน้ำสามส่วนเคี่ยวให้เหลือหนึ่งส่วน กินเช้าเย็นก่อนอาหารครั้งละครึ่งแก้ว เจ็ดวัน',
 };
 
-const FALLBACK_PATIENT: PatientResult = {
-  patient: { name: 'นางบุญมา', sex: 'หญิง', age: '72', address: '', phone: '', chronic: 'ความดันโลหิตสูง', allergies: 'แพ้ยาซัลฟา', weight: '', height: '' },
-  visit: {
-    symptoms: 'ปวดเข่าทั้งสองข้าง 3 เดือน เช้าฝืด เดินลำบาก กำเริบเมื่ออากาศเย็น',
-    exam: 'กดเจ็บเข่าด้านใน บวมเล็กน้อย',
-    diagnosis: 'ลมจับโปงแห้ง (ข้อเข่าเสื่อม)',
-    treatment: 'นวดพื้นบ้านรอบเข่า + ประคบสมุนไพรไพล ขมิ้น ตะไคร้',
-    result: 'รอประเมินครั้งถัดไป',
-    followUp: 'นัด 3–4 วัน ติดตามระดับปวดและความดันโลหิต',
-    note: 'เลี่ยงนั่งพับเพียบ',
-  },
-  summary: 'ผู้สูงอายุหญิง 72 ปี ปวดเข่าสองข้างเรื้อรัง ฝืดตอนเช้า กำเริบเมื่ออากาศเย็น',
-  element: 'ลม',
-  elementReason: 'ปวดตึง ฝืด กำเริบเมื่ออากาศเย็น สัมพันธ์กับวาโยธาตุในวัยปัจฉิมวัย',
-  herbs: [
-    { name: 'ลูกประคบไพล–ขมิ้น–ตะไคร้', how: 'ประคบอุ่นรอบเข่า 15–20 นาที วันละ 1–2 ครั้ง' },
-    { name: 'น้ำมันไพล', how: 'ทาถูนวดเบาๆ เช้า–เย็น' },
-  ],
-  cautions: ['ใช้ยาความดันอยู่ — ยารสร้อนอาจเพิ่มความดัน', 'แพ้ยาซัลฟา — ตรวจส่วนผสมยาให้ละเอียด'],
-  redFlags: ['เข่าบวมแดงร้อนมาก มีไข้', 'ลงน้ำหนักไม่ได้ → ส่งต่อ รพ.สต.'],
-  askMore: ['ที่อยู่และเบอร์โทรศัพท์', 'น้ำหนักและส่วนสูง', 'เคยหกล้มหรือกระแทกเข่าหรือไม่'],
-};
 
-const FALLBACK_WISDOM: WisdomResult = {
-  title: 'ยาต้มแก้ลมจับโปง (สูตรพ่อหมอแก้ว)',
-  summary: 'ตำรับยาต้มสืบทอดในครอบครัว ใช้แก้ปวดบวมข้อเข่าจากลมจับโปง',
-  ingredients: ['เถาเอ็นอ่อน 1 กำมือ', 'โคคลาน 1 กำมือ', 'แก่นฝาง 15 กรัม', 'ไพล 3 แว่น', 'ขิงแก่ 3 แว่น'],
-  method: 'ต้มน้ำ 3 ส่วน เคี่ยวเหลือ 1 ส่วน ดื่มครั้งละครึ่งแก้ว เช้า–เย็น ก่อนอาหาร 7 วัน',
-  indication: 'ลมจับโปง ปวดเข่า ข้อบวม',
-  caution: 'ระวังในผู้ป่วยโรคไต ความดันสูง และหญิงตั้งครรภ์',
-  followUp: 'พ่อหมอเลือกเถาเอ็นอ่อนอย่างไร ต้องเก็บช่วงฤดูไหนจึงจะได้ยาที่ดีที่สุดครับ?',
-};
 
 function CaptureInner() {
   const { isPractitioner } = useApp();
@@ -162,6 +131,14 @@ herbs ไม่เกิน 3 รายการ รายการอื่น�
           ],
           settings.model,
         );
+        // AI ตอบไม่ครบช่อง → เติมค่าว่าง กันหน้าผลลัพธ์พัง
+        r.patient = { ...(r.patient ?? {}) } as PatientResult['patient'];
+        r.visit = { ...(r.visit ?? {}) } as PatientResult['visit'];
+        r.herbs = Array.isArray(r.herbs) ? r.herbs : [];
+        r.cautions = Array.isArray(r.cautions) ? r.cautions : [];
+        r.redFlags = Array.isArray(r.redFlags) ? r.redFlags : [];
+        r.askMore = Array.isArray(r.askMore) ? r.askMore : [];
+        r.summary = r.summary ?? '';
         setStep(3);
         setPatient(r);
         if (settings.autoSpeak) tts.speak(`บันทึกการรักษาให้แล้วครับ ${r.summary} วินิจฉัยเบื้องต้นว่า ${r.visit.diagnosis} ${r.cautions[0] ?? ''}`);
@@ -177,15 +154,19 @@ herbs ไม่เกิน 3 รายการ รายการอื่น�
           ],
           settings.model,
         );
+        r.ingredients = Array.isArray(r.ingredients) ? r.ingredients : [];
         setStep(3);
         setWisdom(r);
         if (settings.autoSpeak) tts.speak(`บันทึกตำรับ ${r.title} แล้วครับ ขอถามเพิ่มนะครับ ${r.followUp}`);
       }
       setDemo(false);
     } catch {
-      setDemo(true);
-      if (mode === 'patient') setPatient(FALLBACK_PATIENT);
-      else setWisdom(FALLBACK_WISDOM);
+      // ห้ามใช้ข้อมูลตัวอย่างแทน (เดิมจะได้ผู้ป่วยปลอม "นางบุญมา" ถ้าบันทึก) → แจ้งแล้วกลับไปให้พิมพ์/พูดใหม่
+      h.warn();
+      Alert.alert('ครูปัญญาวิเคราะห์ไม่สำเร็จ', 'เชื่อมต่อไม่ได้ ข้อความที่เล่ายังอยู่ ลองส่งใหม่อีกครั้ง');
+      setTyped(text);
+      setStage('typing');
+      return;
     }
     h.success();
     setStage('result');
@@ -200,7 +181,13 @@ herbs ไม่เกิน 3 รายการ รายการอื่น�
     try {
       if (uri && rec.durationMs > 1200) text = await transcribe(uri);
     } catch {}
-    if (!text) text = SAMPLE[mode!];
+    if (!text) {
+      // ฟังไม่ได้/สั้นเกิน → ไม่ใช้ข้อความตัวอย่างแทน ให้พูดใหม่หรือพิมพ์
+      h.warn();
+      Alert.alert('ฟังไม่ชัด', 'ลองพูดใหม่อีกครั้ง หรือพิมพ์แทนก็ได้ครับ');
+      setStage('typing');
+      return;
+    }
     setTranscript((prev) => (prev ? `${prev}\n${text}` : text));
     analyze(transcript ? `${transcript}\n${text}` : text);
   };
@@ -223,7 +210,9 @@ herbs ไม่เกิน 3 รายการ รายการอื่น�
     };
     const g = patient.patient;
     const first = (g.name || '').replace(/^(นางสาว|นาง|นาย|แม่|ลุง|ป้า|ตา|ยาย|น้อง)/, '').trim().split(' ')[0];
-    const match = params.pid ? patients.find((x) => x.id === params.pid) : first ? patients.find((x) => x.name.includes(first)) : undefined;
+    // จับคู่ผู้ป่วยเดิมเฉพาะชื่อ-สกุลตรงกันทั้งหมด (เดิมจับแค่ชื่อต้นบางส่วน ทำให้บันทึกผิดคน)
+    const clean = (n: string) => n.replace(/^(นางสาว|นาง|นาย|แม่|ลุง|ป้า|ตา|ยาย|น้อง|ด\.ช\.|ด\.ญ\.)\s*/, '').replace(/\s+/g, ' ').trim();
+    const match = params.pid ? patients.find((x) => x.id === params.pid) : first ? patients.find((x) => clean(x.name) === clean(g.name || '')) : undefined;
     let pid: string;
     if (match) {
       addVisit(match.id, visit);
@@ -449,7 +438,7 @@ herbs ไม่เกิน 3 รายการ รายการอื่น�
           {mode === 'wisdom' ? (
             <View style={{ flex: 1, flexDirection: 'row', gap: 8 }}>
               <Button style={{ flex: 1 }} kind="secondary" label="ตอบต่อ" icon={<Mic size={20} color={palette.primary} />} onPress={continueInterview} />
-              <Button style={{ flex: 1.3 }} kind={saved ? 'secondary' : 'primary'} label={saved ? 'บันทึกแล้ว' : 'เก็บเข้าคลัง'} icon={saved ? <Check size={20} color={palette.primary} /> : <BookMarked size={20} color={palette.white} />} onPress={saved ? () => router.replace('/vault') : saveWisdom} />
+              <Button style={{ flex: 1.3 }} kind={saved ? 'secondary' : 'primary'} label={saved ? 'บันทึกแล้ว' : 'เก็บเข้าคลัง'} icon={saved ? <Check size={20} color={palette.primary} /> : <BookMarked size={20} color={palette.white} />} onPress={saved ? () => (router.canDismiss() ? router.dismissTo('/vault') : router.navigate('/vault')) : saveWisdom} />
             </View>
           ) : (
             <View style={{ flex: 1, flexDirection: 'row', gap: 8 }}>

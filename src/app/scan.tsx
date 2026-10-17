@@ -235,7 +235,7 @@ export default function Scan() {
   };
 
   const save = () => {
-    if (!reading) return;
+    if (!reading || demo) return;
     const kind = KINDS.includes(reading.kind) ? reading.kind : 'ตำราโบราณ';
     if (fill) {
       setWisdomResult({ title: reading.title, kind, summary: reading.modern, ingredients: reading.ingredients?.join(', '), source: 'สแกนตำรา' });
@@ -243,7 +243,7 @@ export default function Scan() {
       router.back();
       return;
     }
-    addWisdom({ id: `w${Date.now()}`, title: reading.title, kind: kind as any, source: 'สแกนตำรา', date: 'วันนี้', summary: reading.modern, ingredients: reading.ingredients, verified: false });
+    addWisdom({ id: `w${Date.now()}`, title: reading.title, kind: kind as any, source: 'สแกนตำรา', date: (() => { const t = new Date(); return `${t.getDate()}/${t.getMonth() + 1}/${t.getFullYear() + 543}`; })(), summary: reading.modern, ingredients: reading.ingredients, verified: false });
     h.success();
     setSaved(true);
   };
@@ -446,9 +446,10 @@ export default function Scan() {
               <Button
                 style={{ flex: 1.3, height: 52 }}
                 kind={saved ? 'secondary' : 'primary'}
-                label={saved ? 'ดูในคลัง' : fill ? 'ใช้ข้อมูลนี้' : 'เก็บเข้าคลัง'}
-                icon={<Sym name={saved ? 'checkmark' : 'book.closed.fill'} size={17} color={saved ? palette.primary : palette.white} />}
-                onPress={saved ? () => router.replace('/vault') : save}
+                label={demo ? 'อ่านไม่สำเร็จ · ถ่ายใหม่' : saved ? 'ดูในคลัง' : fill ? 'ใช้ข้อมูลนี้' : 'เก็บเข้าคลัง'}
+                icon={<Sym name={demo ? 'arrow.clockwise' : saved ? 'checkmark' : 'book.closed.fill'} size={17} color={saved ? palette.primary : palette.white} />}
+                // อ่านไม่สำเร็จ (ข้อมูลตัวอย่าง) → ห้ามเก็บ/ใช้ ให้ถ่ายใหม่แทน
+                onPress={demo ? again : saved ? () => (router.canDismiss() ? router.dismissTo('/vault') : router.navigate('/vault')) : save}
               />
             </GlassDock>
           </Animated.View>

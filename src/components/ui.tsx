@@ -18,7 +18,7 @@ import {
   type TextStyle,
   type ViewStyle,
 } from 'react-native';
-import Animated, { Easing, useAnimatedProps, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, useAnimatedKeyboard, useAnimatedProps, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { useApp } from '../store/app';
@@ -147,12 +147,16 @@ export function GlassCircle({ children, onPress, size = control.icon, label, tin
  */
 export function GlassDock({ children, style }: { children: React.ReactNode; style?: StyleProp<ViewStyle> }) {
   const insets = useSafeAreaInsets();
+  const bottom = insets.bottom ? 24 : 16;
+  // คีย์บอร์ดเปิด → ยกแถบขึ้นเหนือคีย์บอร์ด (เดิมถูกบัง กดปุ่มบันทึก/จัดหน้าไม่ได้ระหว่างพิมพ์)
+  const kb = useAnimatedKeyboard();
+  const lift = useAnimatedStyle(() => ({ transform: [{ translateY: -Math.max(0, kb.height.value - bottom + 10) }] }));
   return (
     // เว้นจากขอบจอ 24 ทั้งซ้าย ขวา ล่าง — แบบแถบลอยของ iOS 26
-    <View style={{ position: 'absolute', left: 24, right: 24, bottom: insets.bottom ? 24 : 16 }} pointerEvents="box-none">
+    <Animated.View style={[{ position: 'absolute', left: 24, right: 24, bottom }, lift]} pointerEvents="box-none">
       {/* ขอบนอกเป็น Liquid Glass ใส (ไม่ทาสีขาวทับ) ให้เห็นเนื้อหาด้านหลังแบบกระจกจริง */}
       <Glass interactive tint="rgba(255,255,255,0.12)" style={[styles.dock, elevation.e3, style]}>{children}</Glass>
-    </View>
+    </Animated.View>
   );
 }
 

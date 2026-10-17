@@ -78,7 +78,7 @@ export default function Login() {
   const { settings, update, setUnlocked, reloadCloud } = useApp();
   const h = useHaptic();
   const passRef = useRef<TextInput>(null);
-  const [user, setUser] = useState(settings.username);
+  const [user, setUser] = useState(settings.loginId ?? '');
   const [pass, setPass] = useState('');
   const [show, setShow] = useState(false);
   const [error, setError] = useState('');
@@ -101,9 +101,9 @@ export default function Login() {
       ? user.trim().length >= 3 && pass.length >= 6
       : !!first && !!last && emailOk && pass.length >= 6 && pass2.length >= 6 && agree);
 
-  const enter = (name: string) => {
+  const enter = (name: string, loginId?: string) => {
     h.success();
-    update({ loggedIn: true, username: name });
+    update({ loggedIn: true, username: name, ...(loginId ? { loginId } : {}) });
     setUnlocked(true);
     // ยังไม่ได้ตั้ง PIN → ชวนตั้ง PIN / Face ID ไว้ใช้ครั้งถัดไป
     if (!settings.pinEnabled && !settings.faceIdEnabled) router.replace({ pathname: '/pin-setup', params: { mode: 'onboard' } });
@@ -143,6 +143,7 @@ export default function Login() {
     setInfo('');
     try {
       let name = user.trim();
+      let loginId = email.trim().toLowerCase();
       if (mode === 'signup') {
         if (pass !== pass2) return fail('รหัสผ่านทั้งสองช่องไม่ตรงกัน');
         name = `${first} ${last}`;
@@ -161,6 +162,7 @@ export default function Login() {
         }
       } else {
         // ช่องเดียวรับได้ทั้งอีเมลและชื่อผู้ใช้
+        loginId = name;
         const login = name.includes('@') ? name.toLowerCase() : usernameToEmail(name);
         const { data, error: e } = await supabase.auth.signInWithPassword({ email: login, password: pass });
         if (e) {
@@ -172,7 +174,7 @@ export default function Login() {
         else if (md.username) name = md.username;
       }
       await reloadCloud();
-      enter(name);
+      enter(name, loginId);
     } catch {
       fail(`เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ ตรวจสอบอินเทอร์เน็ต`);
     }
@@ -303,6 +305,12 @@ export default function Login() {
             <T v="caption" color={palette.primary}>{info}</T>
           ) : signup && first && !last ? (
             <T v="caption" color={ios.secondary}>เว้นวรรคระหว่างชื่อกับนามสกุล เช่น สมชาย ใจดี</T>
+          ) : signup && email.trim().length > 3 && !emailOk ? (
+            <T v="caption" color={palette.coral}>รูปแบบอีเมลไม่ถูกต้อง เช่น somchai@gmail.com</T>
+          ) : signup && pass.length > 0 && pass.length < 6 ? (
+            <T v="caption" color={ios.secondary}>รหัสผ่านอย่างน้อย 6 ตัว</T>
+          ) : signup && pass2.length >= pass.length && pass2 && pass !== pass2 ? (
+            <T v="caption" color={palette.coral}>รหัสผ่านทั้งสองช่องไม่ตรงกัน</T>
           ) : null}
         </View>
 
@@ -315,7 +323,7 @@ export default function Login() {
 
         {mode === 'login' ? (
           <View style={styles.linkRow}>
-            <PressableScale haptic="select" onPress={() => setError('ติดต่อ สสจ. หรือ รพ.สต. เพื่อตั้งรหัสผ่านใหม่')} style={styles.link}>
+            <PressableScale haptic="select" onPress={() => { setError(''); setInfo('ติดต่อ สสจ. หรือ รพ.สต. เพื่อตั้งรหัสผ่านใหม่'); }} style={styles.link}>
               <T v="callout" color={palette.primary}>ลืมรหัสผ่าน?</T>
             </PressableScale>
             {/* ทดลองใช้: เข้าด้วยบัญชีสาธิต (พ่อหมอสมบัติ) */}
@@ -373,7 +381,10 @@ export default function Login() {
             {body}
           </ScrollView>
         ) : (
-          body
+          // แตะพื้นที่ว่างบนแผ่น → ปิดคีย์บอร์ด
+          <Pressable onPress={Keyboard.dismiss} accessible={false}>
+            {body}
+          </Pressable>
         )}
       </Animated.View>
     </View>

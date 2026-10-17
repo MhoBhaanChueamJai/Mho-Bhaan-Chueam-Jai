@@ -57,7 +57,16 @@ async function askModel(model: ModelKey, b64: string): Promise<any> {
 }
 
 const norm = (s: string) => s.replace(/\s+/g, '').replace(/^ต้น/, '');
-const findHerb = (name: string) => herbs.find((h) => norm(name).includes(norm(h.name)) || norm(h.name).includes(norm(name)) || h.local.split(/[,，]/).some((l) => l.trim() && norm(name) === norm(l)));
+/** จับคู่ชื่อกับคลัง: ตรงตัวก่อน (ชื่อ/ชื่อท้องถิ่น) แล้วค่อยแบบบางส่วนโดยเลือกชื่อที่ยาวที่สุด
+ * (เดิมจับบางส่วนตัวแรกที่เจอ ทำให้ "มะขาม" → มะขามแขก, "พลู" → ช้าพลู, "ยอ" → พญายอ) */
+const findHerb = (name: string) => {
+  const n = norm(name);
+  if (!n) return undefined;
+  const exact = herbs.find((h) => norm(h.name) === n || h.local.split(/[,，]/).some((l) => l.trim() && norm(l) === n));
+  if (exact) return exact;
+  const part = herbs.filter((h) => n.includes(norm(h.name)) && norm(h.name).length >= 3).sort((a, b) => b.name.length - a.name.length);
+  return part[0];
+};
 
 /** ภาพ (uri) → ผลสแกน 3 อันดับ */
 export async function identifyHerb(uri: string): Promise<ScanResult> {
@@ -85,8 +94,11 @@ export async function identifyHerb(uri: string): Promise<ScanResult> {
       score.set(key, cur);
     }),
   );
-  const top = outs.find((o) => o.top)?.top ?? {};
   const ranked = [...score.values()].sort((a, b) => b.sum - a.sum).slice(0, 3);
+  // ข้อมูลสรรพคุณ (top) ต้องมาจากโมเดลที่อันดับ 1 ของมันตรงกับอันดับ 1 ที่รวมแล้ว (กันเอาข้อมูลของอีกต้นมาใส่)
+  const keyOf = (name: string) => findHerb(name)?.id ?? norm(name);
+  const firstKey = ranked[0] ? keyOf(ranked[0].name) : '';
+  const top = outs.find((o) => o.top && Array.isArray(o.candidates) && o.candidates[0] && keyOf(String(o.candidates[0].name ?? '')) === firstKey)?.top ?? {};
   const guesses: HerbGuess[] = ranked.map((r, i) => {
     const herb = findHerb(r.name);
     return {

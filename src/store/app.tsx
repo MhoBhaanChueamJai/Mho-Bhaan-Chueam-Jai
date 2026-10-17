@@ -9,6 +9,8 @@ import type { Agenda } from '../lib/cloud';
 import { supabase } from '../lib/supabase';
 
 type Settings = {
+  /** เวลาที่ซิงก์คลาวด์สำเร็จล่าสุด (ms) — ใช้แยกข้อมูลที่บันทึกในเครื่องระหว่างออฟไลน์ */
+  lastSyncAt?: number;
   /** ภาษาที่ใช้คุยกับครูปัญญา */
   dialect: Dialect;
   model: ModelKey;
@@ -20,6 +22,8 @@ type Settings = {
   phone: string;
   /** ชื่อผู้ใช้ที่จำไว้ (ใช้กับ Face ID) */
   username: string;
+  /** อีเมล/ชื่อผู้ใช้ที่ใช้เข้าสู่ระบบครั้งล่าสุด (เติมให้ในช่องล็อกอิน) */
+  loginId?: string;
   /** ล็อกแอปด้วยรหัส PIN */
   pinEnabled: boolean;
   /** ปลดล็อกด้วย Face ID / Touch ID */
@@ -73,11 +77,15 @@ type Ctx = {
   /** ลบออกจากคลังของเรา */
   removeWisdom: (id: string) => void;
   patients: Patient[];
+  /** ลบผู้ป่วย (ทั้งในเครื่องและบนคลาวด์ พร้อมประวัติการรักษา) */
+  removePatient: (id: string) => void;
   /** เพิ่มการรักษาครั้งใหม่ (ครั้งที่ n+1) ลงทะเบียนการรักษา ม.บ.5 ของผู้ป่วย */
   addVisit: (pid: string, visit: Omit<MB5Visit, 'no'>) => number;
   /** สร้างผู้ป่วยใหม่ (ข้อมูลทั่วไป ม.บ.5) — คืนค่า id */
   addPatient: (p: Omit<Patient, 'id' | 'visits'>, firstVisit?: Omit<MB5Visit, 'no'>) => string;
   /** ล้างข้อมูลที่บันทึกในเครื่อง กลับเป็นข้อมูลตัวอย่าง */
+  /** ล้างข้อมูลในเครื่องเท่านั้น (ใช้ตอนออกจากระบบ) — ไม่แตะข้อมูลบนคลาวด์ */
+  clearLocal: () => void;
   resetData: () => void;
   /** ปลดล็อกแล้วในรอบการใช้งานนี้ (ไม่บันทึก — เปิดแอปใหม่ต้องปลดล็อกอีกครั้ง) */
   unlocked: boolean;
@@ -160,6 +168,34 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       // ข้อมูลผู้ป่วยตัวอย่างใส่ให้เฉพาะหมอพื้นบ้านที่ยืนยันแล้ว (สมาชิกทั่วไปไม่มีสิทธิ์ข้อมูลผู้ป่วย)
       if (practitioner) await cloud.seedIfEmpty();
       const d = await cloud.loadAll();
+      // ── รวมข้อมูล (ไม่ทับ): ของที่บันทึกในเครื่องหลังซิงก์ครั้งล่าสุดแต่ยังไม่ขึ้นคลาวด์ → เก็บไว้และอัปโหลด ──
+      const since = settings.lastSyncAt ?? 0;
+      const idTime = (id: string) => Number(id.replace(/^[a-z]+/, '')) || 0;
+      const cloudP = new Map(d.patients.map((x) => [x.id, x]));
+      const upP: Patient[] = [];
+      const upV: { pid: string; v: MB5Visit }[] = [];
+      for (const lp of patients) {
+        const cp = cloudP.get(lp.id);
+        if (!cp) {
+          if (idTime(lp.id) > since) {
+            d.patients.unshift(lp);
+            upP.push(lp);
+          }
+          continue;
+        }
+        // ประวัติการรักษาที่เพิ่มในเครื่อง (เลขครั้งมากกว่าบนคลาวด์)
+        const maxNo = Math.max(0, ...cp.visits.map((v) => v.no));
+        const extra = lp.visits.filter((v) => v.no > maxNo);
+        if (extra.length) {
+          cp.visits = [...extra, ...cp.visits].sort((a, b) => b.no - a.no);
+          extra.forEach((v) => upV.push({ pid: cp.id, v }));
+        }
+      }
+      const cloudW = new Set(d.wisdoms.map((x) => x.id));
+      const upW = mine.filter((w) => !cloudW.has(w.id) && !w.builtin && idTime(w.id) > since);
+      d.wisdoms = [...upW, ...d.wisdoms];
+      Promise.all([...upP.map((x) => cloud.savePatient(x)), ...upV.map((x) => cloud.saveVisit(x.pid, x.v)), ...upW.map((x) => cloud.saveWisdom(x))]).catch(() => {});
+      setSettings((st) => ({ ...st, lastSyncAt: Date.now() }));
       setPatients(d.patients);
       // ผู้ป่วย/ประวัติ/นัดหมายตัวอย่างรุ่นเก่าในคลาวด์ → ลบทิ้ง
       const legacyP = d.patients.filter((x) => LEGACY_SAMPLE_PATIENTS.includes(x.id)).map((x) => x.id);
@@ -241,10 +277,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         // ตำราที่รับจากเพื่อน: มีรหัสแชร์นี้ (หรือเรื่องเดียวกันจากคนเดียวกัน) ในคลังแล้ว → ไม่เพิ่มซ้ำเด็ดขาด
         const exists = (l: Wisdom[]) => l.some((x) => (w.shareCode && x.shareCode === w.shareCode) || (w.sharedBy && x.sharedBy === w.sharedBy && x.title === w.title));
         if ((w.shareCode || w.sharedBy) && exists(mine)) return;
+        // ตำราเริ่มต้นในระบบที่เพื่อนแชร์มา มีอยู่ในคลังทุกคนแล้ว → ไม่เพิ่มสำเนา
+        if (w.sharedBy && LIBRARY.some((x) => x.title === w.title)) return;
         setWisdoms((list) => (w.shareCode || w.sharedBy) && exists(list) ? list : [w, ...list]);
         push(() => cloud.saveWisdom(w));
       },
       patients,
+      removePatient: (id) => {
+        setPatients((list) => list.filter((x) => x.id !== id));
+        push(() => cloud.deletePatient(id));
+      },
       addVisit: (pid, visit) => {
         const p = patients.find((x) => x.id === pid);
         const no = (p?.visits[0]?.no ?? 0) + 1;
@@ -279,6 +321,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       reloadCloud,
       profile,
       isPractitioner: (profile?.role ?? settings.role) !== 'member',
+      clearLocal: () => {
+        setOnline(false);
+        setPatients([]);
+        setWisdoms([]);
+        setAgenda({});
+        setSearchLog([]);
+        setOpenLog([]);
+        setProfile(null);
+      },
+      /** ล้างทั้งในเครื่องและบนคลาวด์ (ต้องยืนยันจากผู้ใช้ก่อนเรียกเสมอ) */
       resetData: () => {
         setPatients(seedPatients);
         setWisdoms(seedWisdoms);

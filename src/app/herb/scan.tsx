@@ -9,8 +9,8 @@ import * as ImagePicker from 'expo-image-picker';
 import { router, useFocusEffect } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, StyleSheet, View, useWindowDimensions } from 'react-native';
-import Animated, { Easing, FadeIn, FadeOut, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
+import { ActivityIndicator, Linking, StyleSheet, View, useWindowDimensions } from 'react-native';
+import Animated, { Easing, cancelAnimation, FadeIn, FadeOut, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Sym, ios } from '../../components/ios';
 import { GlassCircle, Button, Glass, PressableScale, T, useHaptic } from '../../components/ui';
@@ -33,17 +33,36 @@ export default function HerbScan() {
   // กรอบเล็ง + เส้นสแกนตอนกำลังวิเคราะห์
   const size = Math.min(W - 72, 320);
   const line = useSharedValue(0);
+  // เส้นสแกนวิ่งเฉพาะตอนกำลังวิเคราะห์ (ไม่วิ่งค้างตลอด)
   useEffect(() => {
+    if (state !== 'busy') {
+      cancelAnimation(line);
+      return;
+    }
+    line.value = 0;
     line.value = withRepeat(withTiming(1, { duration: 1500, easing: Easing.inOut(Easing.quad) }), -1, true);
-  }, [line]);
+  }, [line, state]);
+  // กันสแกนซ้อน / ผลมาถึงหลังปิดหน้า (เดิมเด้งแผ่นผลลัพธ์ทับหน้าอื่นได้)
+  const busyRef = useRef(false);
+  const mounted = useRef(true);
+  const reqId = useRef(0);
+  useEffect(
+    () => () => {
+      mounted.current = false;
+      reqId.current++;
+    },
+    [],
+  );
   const lineSt = useAnimatedStyle(() => ({ transform: [{ translateY: line.value * (size - 6) }] }));
 
   const analyze = async (uri: string) => {
+    const my = ++reqId.current;
     setPhoto(uri);
     setState('busy');
     setRes(null);
     try {
       const r = await identifyHerb(uri);
+      if (my !== reqId.current || !mounted.current) return;
       setRes(r);
       if (r.isPlant) {
         // เจอสมุนไพร → เปิดแผ่นผลลัพธ์ (Sheet ของ iOS แบบหน้าสมุนไพร)
@@ -56,21 +75,35 @@ export default function HerbScan() {
         h.warn();
       }
     } catch {
+      if (my !== reqId.current || !mounted.current) return;
       setState('error');
       h.warn();
+    } finally {
+      busyRef.current = false;
     }
   };
   const shoot = async () => {
-    if (state === 'busy') return;
+    if (busyRef.current) return;
+    busyRef.current = true;
     h.press();
-    const p = await cam.current?.takePictureAsync({ quality: 0.8, skipProcessing: false });
-    if (p?.uri) analyze(p.uri);
+    try {
+      const p = await cam.current?.takePictureAsync({ quality: 0.8, skipProcessing: false });
+      if (p?.uri) return analyze(p.uri);
+    } catch {}
+    busyRef.current = false;
   };
   const fromLibrary = async () => {
-    const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.85 });
-    if (!r.canceled && r.assets[0]?.uri) analyze(r.assets[0].uri);
+    if (busyRef.current) return;
+    busyRef.current = true;
+    try {
+      const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.85 });
+      if (!r.canceled && r.assets[0]?.uri) return analyze(r.assets[0].uri);
+    } catch {}
+    busyRef.current = false;
   };
   const reset = () => {
+    reqId.current++;
+    busyRef.current = false;
     setPhoto(null);
     setRes(null);
     setState('idle');
@@ -92,7 +125,7 @@ export default function HerbScan() {
         <Sym name="camera.viewfinder" size={42} color="#FFFFFF" />
         <T v="h2" color="#FFFFFF" center style={{ marginTop: 14 }}>อนุญาตให้ใช้กล้อง</T>
         <T v="callout" color="rgba(255,255,255,0.75)" center style={{ marginTop: 6 }}>ใช้ถ่ายภาพต้นไม้ ใบ หรือเหง้า ให้ครูปัญญาบอกว่าเป็นสมุนไพรอะไร</T>
-        <Button label="อนุญาต" onPress={requestPerm} style={{ alignSelf: 'stretch', marginTop: 24 }} />
+        <Button label={perm.canAskAgain ? 'อนุญาต' : 'เปิดการตั้งค่า'} onPress={perm.canAskAgain ? requestPerm : () => Linking.openSettings()} style={{ alignSelf: 'stretch', marginTop: 24 }} />
         <PressableScale onPress={() => router.back()} style={{ padding: 16 }}>
           <T v="callout" color="#FFFFFF">ยกเลิก</T>
         </PressableScale>

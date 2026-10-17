@@ -10,6 +10,7 @@ import { Avatar, HeaderButton, PressableScale, T } from '../../../components/ui'
 import { noticesFrom } from '../../../lib/notices';
 import { TODAY, avatarFor, doctor, lastVisit, thaiDate } from '../../../data/mock';
 import { visitSortKey } from '../../../data/tones';
+import { herbs } from '../../../data/herbs';
 import { useApp } from '../../../store/app';
 import { palette } from '../../../theme';
 
@@ -20,7 +21,7 @@ const TOOLS = [
   { title: 'เล่าอาการ', sub: 'AI ช่วยบันทึก', sym: 'waveform', bg: palette.primary, go: () => router.push({ pathname: '/capture', params: { mode: 'patient' } }) },
   { title: 'สแกนตำรา', sub: 'สมุดข่อย ใบลาน', sym: 'doc.text.viewfinder', bg: '#D9921A', go: () => router.push('/scan') },
   { title: 'ถ่ายทอดตำรับ', sub: 'เก็บให้ลูกหลาน', sym: 'book.closed.fill', bg: '#C2564B', go: () => router.push('/wisdom/new') },
-  { title: 'สมุนไพร', sub: '12 ชนิด', sym: 'leaf.fill', bg: '#4E9A3E', go: () => router.push('/herbs') },
+  { title: 'สมุนไพร', sub: `${herbs.length} ชนิด`, sym: 'leaf.fill', bg: '#4E9A3E', go: () => router.push('/herbs') },
 ] as const;
 
 /** กระดิ่งแจ้งเตือน: มีที่ยังไม่อ่าน → สั่นทุกครั้งที่เข้าหน้า (แกว่งจากจุดแขวนด้านบน) */
@@ -80,7 +81,7 @@ export default function Home() {
       <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
         <Animated.View entering={enter(0)}>
           <T v="callout" color={ios.secondary} style={{ paddingHorizontal: 4 }}>
-            {thaiDate(TODAY)} · สวัสดีครับ {name}
+            {thaiDate(TODAY)} · สวัสดีครับ {me}
           </T>
         </Animated.View>
 
@@ -105,6 +106,14 @@ export default function Home() {
         <Animated.View entering={enter(2)}>
           <SectionTitle title="ผู้ป่วยล่าสุด" action="ดูทั้งหมด" onAction={() => router.push('/patients')} />
           <Group>
+            {!recent.length ? (
+              <Row
+                leading={<Sym name="person.badge.plus" size={22} color={palette.primary} />}
+                title="ยังไม่มีผู้ป่วย"
+                subtitle="แตะเพื่อเพิ่มผู้ป่วยรายแรก"
+                onPress={() => router.push('/patient/new')}
+              />
+            ) : null}
             {recent.map((p) => {
               const v = lastVisit(p);
               return (

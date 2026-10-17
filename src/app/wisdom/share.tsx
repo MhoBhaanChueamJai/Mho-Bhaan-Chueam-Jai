@@ -12,6 +12,7 @@ import { Button, PressableScale, T } from '../../components/ui';
 import { createShare, prettyCode, qrPayload, shareCodeText } from '../../lib/wisdomShare';
 import { doctor } from '../../data/mock';
 import { useApp } from '../../store/app';
+import { NotFound } from '../../components/NotFound';
 import { elevation, palette } from '../../theme';
 
 export default function ShareWisdom() {
@@ -29,6 +30,7 @@ export default function ShareWisdom() {
   };
   useEffect(make, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  if (!w) return <NotFound title="ไม่พบตำรานี้" />;
   return (
     <View style={styles.page}>
       <View style={styles.grab} />

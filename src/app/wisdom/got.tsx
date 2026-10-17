@@ -35,7 +35,7 @@ export default function GotWisdom() {
   }, [code, got]);
 
   // เล่มที่มีอยู่แล้วในคลัง (รหัสเดียวกัน หรือเรื่องเดียวกันจากคนเดียวกัน)
-  const existing = got ? wisdoms.find((x) => x.shareCode === code || (x.sharedBy === got.fromName && x.title === got.wisdom.title)) : undefined;
+  const existing = got ? wisdoms.find((x) => x.shareCode === code || (x.sharedBy === got.fromName && x.title === got.wisdom.title) || (x.builtin && x.title === got.wisdom.title)) : undefined;
   const add = () => {
     if (!got || existing) return;
     const t = new Date();

@@ -45,7 +45,7 @@ function PatientsInner() {
               const st = statusTone[p.status];
               const v = lastVisit(p);
               return (
-                <Animated.View key={p.id} entering={FadeIn.delay(i * 40).duration(200)}>
+                <Animated.View key={p.id} entering={i < 12 ? FadeIn.delay(i * 40).duration(200) : undefined}>
                   {i ? <View style={styles.sep} /> : null}
                   <PressableScale scaleTo={0.98} haptic="select" onPress={() => router.push(`/patient/${p.id}`)} style={styles.row} accessibilityLabel={`${p.name} ${statusLabel(p.status)}`}>
                     <View>

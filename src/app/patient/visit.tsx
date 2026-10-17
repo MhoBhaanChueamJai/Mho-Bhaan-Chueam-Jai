@@ -7,13 +7,14 @@ import React from 'react';
 import { PractitionerGate } from '../../components/PractitionerGate';
 import { VoiceSession } from '../../components/VoiceSession';
 import { VISIT_TOPICS, optionsFor, visitHas, visitScribe, visitOpening, visitTurn, type VisitData } from '../../lib/visit';
+import { NotFound } from '../../components/NotFound';
 import { useApp } from '../../store/app';
 
 function VisitInner() {
   const { pid } = useLocalSearchParams<{ pid: string }>();
   const { patients, addVisit, wisdoms } = useApp();
   const p = patients.find((x) => x.id === pid);
-  if (!p) return null;
+  if (!p) return <NotFound title="ไม่พบผู้ป่วย" />;
   const no = (p.visits[0]?.no ?? 0) + 1;
   return (
     <VoiceSession
