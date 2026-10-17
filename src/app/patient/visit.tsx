@@ -8,16 +8,24 @@ import { PractitionerGate } from '../../components/PractitionerGate';
 import { VoiceSession } from '../../components/VoiceSession';
 import { VISIT_TOPICS, optionsFor, visitHas, visitScribe, visitOpening, visitTurn, type VisitData } from '../../lib/visit';
 import { NotFound } from '../../components/NotFound';
+import type { Patient } from '../../data/mock';
 import { useApp } from '../../store/app';
 
 function VisitInner() {
   const { pid } = useLocalSearchParams<{ pid: string }>();
-  const { patients, addVisit, wisdoms } = useApp();
+  const { patients } = useApp();
   const p = patients.find((x) => x.id === pid);
   if (!p) return <NotFound title="ไม่พบผู้ป่วย" />;
+  return <VisitSession p={p} />;
+}
+
+/** บันทึกการรักษาด้วยเสียง — ใช้ได้ทั้งเป็นหน้าเอง และฝังในหน้าเล่าอาการ (ต่อเนื่องในหน้าเดียว) */
+export function VisitSession({ p, morphFrom }: { p: Patient; morphFrom?: { x: number; y: number; size: number } }) {
+  const { addVisit, wisdoms } = useApp();
   const no = (p.visits[0]?.no ?? 0) + 1;
   return (
     <VoiceSession
+      morphFrom={morphFrom}
       title={`บันทึกการรักษาครั้งที่ ${no}`}
       scribe={(t) => visitScribe(p, t, wisdoms) as any}
       opening={visitOpening(p)}

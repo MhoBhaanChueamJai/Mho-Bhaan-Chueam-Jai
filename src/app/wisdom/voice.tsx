@@ -6,7 +6,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -19,11 +19,15 @@ import type { Wisdom } from '../../data/mock';
 import { KIND_FORM } from '../../lib/wisdomKinds';
 import { KINDS, kindOf, optionsFor, setWisdomResult, topicsFor, wisdomHas, wisdomOpening, wisdomScribe, wisdomTurn, type WisdomData } from '../../lib/wisdomTalk';
 
+type Morph = { x: number; y: number; size: number };
 const MINT = '#7CF0A8';
 
 /** หน้าเลือกประเภท (ธีมมืดเดียวกับหน้าคุยกับครูปัญญา) */
-function KindPicker({ initial, onPick }: { initial?: Wisdom['kind']; onPick: (k: Wisdom['kind']) => void }) {
+function KindPicker({ initial, onPick }: { initial?: Wisdom['kind']; onPick: (k: Wisdom['kind'], from?: Morph) => void }) {
   const insets = useSafeAreaInsets();
+  const orbRef = useRef<View>(null);
+  // เลือกประเภท → ส่งตำแหน่งลูกแก้วไปให้หน้าสนทนาเลื่อนต่อจากจุดเดิม
+  const choose = (k: Wisdom['kind']) => orbRef.current?.measureInWindow((x, y, w, hh) => onPick(k, { x: x + w / 2, y: y + hh / 2, size: w })) ?? onPick(k);
   return (
     <View style={styles.page}>
       <StatusBar style="light" />
@@ -38,7 +42,9 @@ function KindPicker({ initial, onPick }: { initial?: Wisdom['kind']; onPick: (k:
 
       <View style={styles.body}>
         <Animated.View entering={FadeIn.duration(500)} style={{ alignItems: 'center' }}>
-          <AISphere size={150} active />
+          <View ref={orbRef} collapsable={false}>
+            <AISphere size={150} active />
+          </View>
         </Animated.View>
         <Animated.View entering={FadeInDown.delay(120).duration(420)}>
           <T v="h2" color="#FFFFFF" center style={{ marginTop: 14 }}>จะบันทึกประเภทไหนครับ</T>
@@ -50,7 +56,7 @@ function KindPicker({ initial, onPick }: { initial?: Wisdom['kind']; onPick: (k:
             const on = k === initial;
             return (
               <Animated.View key={k} entering={FadeInDown.delay(200 + i * 70).duration(420)} style={styles.cell}>
-                <PressableScale haptic="press" scaleTo={0.96} onPress={() => onPick(k)} style={[styles.card, on && styles.cardOn]} accessibilityLabel={`${k} ${KIND_FORM[k].desc}`}>
+                <PressableScale haptic="press" scaleTo={0.96} onPress={() => choose(k)} style={[styles.card, on && styles.cardOn]} accessibilityLabel={`${k} ${KIND_FORM[k].desc}`}>
                   <View style={[styles.icon, on && { backgroundColor: MINT }]}>
                     <KindIcon kind={k} size={22} color={on ? '#04150E' : MINT} />
                   </View>
@@ -69,9 +75,20 @@ function KindPicker({ initial, onPick }: { initial?: Wisdom['kind']; onPick: (k:
 export default function WisdomVoice() {
   const { kind: k } = useLocalSearchParams<{ kind?: string }>();
   const [kind, setKind] = useState<Wisdom['kind'] | null>(null);
-  if (!kind) return <KindPicker initial={k ? kindOf(k) : undefined} onPick={setKind} />;
+  const [from, setFrom] = useState<Morph | undefined>();
+  if (!kind)
+    return (
+      <KindPicker
+        initial={k ? kindOf(k) : undefined}
+        onPick={(x, f) => {
+          setFrom(f);
+          setKind(x);
+        }}
+      />
+    );
   return (
     <VoiceSession
+      morphFrom={from}
       key={kind}
       title={`บันทึก${kind}`}
       opening={wisdomOpening(kind)}

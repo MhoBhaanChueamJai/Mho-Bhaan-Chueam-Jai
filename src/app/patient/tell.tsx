@@ -4,15 +4,16 @@
  */
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import React, { useMemo, useRef, useState } from 'react';
+import { Keyboard, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AISphere } from '../../components/AISphere';
 import { Sym } from '../../components/ios';
 import { PractitionerGate } from '../../components/PractitionerGate';
-import { Avatar, GlassCircle, PressableScale, T } from '../../components/ui';
-import { avatarFor, lastVisit } from '../../data/mock';
+import { Avatar, GlassCircle, PressableScale, T, useHaptic } from '../../components/ui';
+import { avatarFor, lastVisit, type Patient } from '../../data/mock';
+import { VisitSession } from './visit';
 import { visitSortKey } from '../../data/tones';
 import { useApp } from '../../store/app';
 
@@ -20,13 +21,28 @@ const MINT = '#7CF0A8';
 
 function TellInner() {
   const insets = useSafeAreaInsets();
+  const h = useHaptic();
   const { patients } = useApp();
   const [q, setQ] = useState('');
+  // เลือกผู้ป่วยแล้ว → เปลี่ยนเป็นการสนทนาในหน้าเดียวกัน (ลูกแก้วเลื่อนลงไปต่อ ไม่เปิดหน้าใหม่)
+  const [picked, setPicked] = useState<Patient | null>(null);
+  const orbRef = useRef<View>(null);
+  const [from, setFrom] = useState<{ x: number; y: number; size: number } | undefined>();
+  const pick = (p: Patient) => {
+    h.press();
+    Keyboard.dismiss();
+    orbRef.current?.measureInWindow((x, y, w, hh) => {
+      setFrom({ x: x + w / 2, y: y + hh / 2, size: w });
+      setPicked(p);
+    });
+  };
   const list = useMemo(() => {
     const s = q.trim();
     const sorted = [...patients].sort((a, b) => visitSortKey(lastVisit(b)?.date) - visitSortKey(lastVisit(a)?.date));
     return s ? sorted.filter((p) => p.name.includes(s) || (p.phone ?? '').includes(s)) : sorted.slice(0, 30);
   }, [patients, q]);
+
+  if (picked) return <VisitSession p={picked} morphFrom={from} />;
 
   return (
     <View style={styles.page}>
@@ -40,7 +56,9 @@ function TellInner() {
       </View>
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 40, gap: 12 }} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" showsVerticalScrollIndicator={false}>
         <Animated.View entering={FadeIn.duration(450)} style={{ alignItems: 'center' }}>
-          <AISphere size={130} active />
+          <View ref={orbRef} collapsable={false}>
+            <AISphere size={130} active />
+          </View>
           <T v="h2" color="#FFFFFF" center style={{ marginTop: 6 }}>วันนี้รักษาใครครับ</T>
           <T v="callout" color="rgba(255,255,255,0.6)" center style={{ marginTop: 4 }}>เลือกผู้ป่วย แล้วเล่าอาการให้ครูปัญญาฟัง ครูปัญญาจะถามเพิ่มและบันทึกการรักษาให้</T>
         </Animated.View>
@@ -67,7 +85,7 @@ function TellInner() {
           const v = lastVisit(p);
           return (
             <Animated.View key={p.id} entering={i < 10 ? FadeInDown.delay(i * 40).duration(260) : undefined}>
-              <PressableScale haptic="select" scaleTo={0.98} onPress={() => router.replace({ pathname: '/patient/visit', params: { pid: p.id } })} style={styles.row} accessibilityLabel={`เล่าอาการ ${p.name}`}>
+              <PressableScale haptic="select" scaleTo={0.98} onPress={() => pick(p)} style={styles.row} accessibilityLabel={`เล่าอาการ ${p.name}`}>
                 <Avatar name={p.name} src={avatarFor(p)} size={42} />
                 <View style={{ flex: 1, gap: 2 }}>
                   <T v="bodyStrong" color="#FFFFFF" numberOfLines={1}>{p.name}</T>

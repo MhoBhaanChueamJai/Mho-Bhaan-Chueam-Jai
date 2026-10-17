@@ -10,7 +10,7 @@ import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Keyboard, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
-import Animated, { FadeIn, FadeInDown, FadeInUp, FadeOutUp, useAnimatedKeyboard, useAnimatedStyle, useDerivedValue, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, FadeIn, FadeInDown, FadeInUp, FadeOutUp, useAnimatedKeyboard, useAnimatedStyle, useDerivedValue, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { transcribe } from '../api/ai';
 import { useVoiceRecorder } from './audio';
@@ -48,9 +48,33 @@ export type VoiceSessionProps = {
   dockSaves?: boolean;
   doneLabel: string;
   onFinish: (d: VoiceData, save: boolean) => void;
+  /** เปลี่ยนจากหน้าก่อนในหน้าเดียวกัน: ลูกแก้วเลื่อน/ขยายจากตำแหน่งเดิม (จุดกึ่งกลางบนจอ + ขนาด) มาที่ตำแหน่งใหม่ */
+  morphFrom?: { x: number; y: number; size: number };
 };
 
-export function VoiceSession({ scribe, initialOptions, title, opening, topics, has, turn, closing, confirmQ, yesBye, noBye, noContinues, dockLabel, canUse, dockSaves, doneLabel, onFinish }: VoiceSessionProps) {
+export function VoiceSession({ scribe, initialOptions, title, opening, topics, has, turn, closing, confirmQ, yesBye, noBye, noContinues, dockLabel, canUse, dockSaves, doneLabel, onFinish, morphFrom }: VoiceSessionProps) {
+  // ── ลูกแก้วต่อเนื่องจากหน้าก่อน (ไม่เปิดหน้าใหม่ — ลูกแก้วเดิมเลื่อนลงมาเป็นลูกแก้วของการสนทนา) ──
+  const orbRef = useRef<View>(null);
+  const mTx = useSharedValue(0);
+  const mTy = useSharedValue(0);
+  const mSc = useSharedValue(1);
+  const mOp = useSharedValue(morphFrom ? 0 : 1);
+  const morphed = useRef(false);
+  const orbMorph = useAnimatedStyle(() => ({ opacity: mOp.value, transform: [{ translateX: mTx.value }, { translateY: mTy.value }, { scale: mSc.value }] }));
+  const startMorph = () => {
+    if (!morphFrom || morphed.current) return;
+    morphed.current = true;
+    orbRef.current?.measureInWindow((x, y, w, hh) => {
+      const ease = { duration: 620, easing: Easing.bezier(0.2, 0.8, 0.2, 1) };
+      mTx.value = morphFrom.x - (x + w / 2);
+      mTy.value = morphFrom.y - (y + hh / 2);
+      mSc.value = morphFrom.size / Math.max(1, w);
+      mOp.value = 1;
+      mTx.value = withTiming(0, ease);
+      mTy.value = withTiming(0, ease);
+      mSc.value = withTiming(1, ease);
+    });
+  };
   const insets = useSafeAreaInsets();
   const h = useHaptic();
   const rec = useVoiceRecorder();
@@ -505,6 +529,7 @@ export function VoiceSession({ scribe, initialOptions, title, opening, topics, h
       <>
       {/* ก้อนแสง AI ตอบสนองเสียง */}
       <View style={styles.center}>
+        <Animated.View ref={orbRef} onLayout={startMorph} style={orbMorph}>
         <PressableScale
           scaleTo={0.95}
           onPress={() => {
@@ -515,6 +540,7 @@ export function VoiceSession({ scribe, initialOptions, title, opening, topics, h
         >
           <AISphere size={options.length && phase !== 'done' ? 170 : 230} active={phase !== 'done'} level={(phase === 'listening' ? micLevel : speakLevel) as any} />
         </PressableScale>
+        </Animated.View>
         <View style={styles.statusPill}>
           {phase === 'listening' ? <View style={styles.liveDot} /> : null}
           <T v="subhead" color="rgba(255,255,255,0.85)">{status}</T>
