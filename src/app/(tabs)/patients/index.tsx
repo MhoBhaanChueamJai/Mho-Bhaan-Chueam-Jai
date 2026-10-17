@@ -1,3 +1,4 @@
+import { MenuView } from '@react-native-menu/menu';
 import { Stack, router } from 'expo-router';
 import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
@@ -118,9 +119,24 @@ function PatientsInner() {
               <HeaderButton label="ค้นหาผู้ป่วย" onPress={() => router.push('/patient/search')}>
                 <Sym name="magnifyingglass" size={20} color={palette.ink} weight="semibold" />
               </HeaderButton>
-              <HeaderButton label="เพิ่มผู้ป่วยใหม่" onPress={() => router.push('/patient/new')}>
-                <Sym name="plus" size={20} color={palette.ink} weight="semibold" />
-              </HeaderButton>
+              {/* เพิ่มผู้ป่วย: กรอกเอง / ถ่ายบัตรประชาชน / ให้ครูปัญญาซักประวัติ */}
+              <MenuView
+                shouldOpenOnLongPress={false}
+                themeVariant="light"
+                title="เพิ่มผู้ป่วย"
+                actions={[
+                  { id: 'ai', title: 'ให้ครูปัญญาซักประวัติ', image: 'sparkles', imageColor: palette.primary },
+                  { id: 'scan', title: 'ถ่ายบัตรประชาชน', image: 'person.text.rectangle', imageColor: palette.ink },
+                  { id: 'manual', title: 'กรอกเอง', image: 'square.and.pencil', imageColor: palette.ink },
+                ]}
+                onPressAction={({ nativeEvent: e }) =>
+                  router.push(e.event === 'ai' ? { pathname: '/patient/new', params: { start: 'voice' } } : e.event === 'scan' ? { pathname: '/patient/new', params: { start: 'scan' } } : '/patient/new')
+                }
+              >
+                <View style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }} accessibilityRole="button" accessibilityLabel="เพิ่มผู้ป่วยใหม่">
+                  <Sym name="plus" size={20} color={palette.ink} weight="semibold" />
+                </View>
+              </MenuView>
             </View>
           ),
         }}
