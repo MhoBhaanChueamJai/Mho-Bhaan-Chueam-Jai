@@ -238,16 +238,16 @@ function PatientBody({ p }: { p: Patient }) {
         {/* ── สุขภาพ · ติดต่อ: รายการเรียงลงมาแบบ iOS ── */}
         <ListSection i={1} title="สุขภาพ">
           <ListRow
-            icon={<CircleIcon name="exclamationmark.triangle.fill" color={allergic ? palette.coral : '#8E8E93'} size={30} />}
+            icon={<CircleIcon name="exclamationmark.triangle.fill" color={allergic ? palette.coral : '#8E8E93'} />}
             overline="แพ้ยา / อาหาร"
             title={allergic ? p.allergies : 'ไม่มี'}
             titleLines={2}
             danger={!!allergic}
           />
-          <ListRow icon={<CircleIcon name="heart.fill" color="#C2564B" size={30} />} overline="โรคประจำตัว" title={chronicList.length ? chronicList.join(', ') : 'ไม่มี'} titleLines={2} />
-          <ListRow icon={<CircleIcon name="pills.fill" color="#D9921A" size={30} />} overline="ยาที่ใช้อยู่" title={p.meds.length ? p.meds.join(', ') : 'ไม่มี'} titleLines={3} />
-          <ListRow icon={<CircleIcon name="scalemass.fill" color="#7A5CC8" size={30} />} overline="น้ำหนัก · ส่วนสูง" title={p.weight && p.height ? `${p.weight} กก. · ${p.height} ซม.` : 'ยังไม่ระบุ'} />
-          <ListRow icon={<CircleIcon name="figure.stand" color="#2A8C7A" size={30} />} overline="BMI" title={bmi === '-' ? 'ยังไม่ระบุ' : `${bmi}${bmiLabel ? ` · ${bmiLabel}` : ''}`} last />
+          <ListRow icon={<CircleIcon name="heart.fill" color="#C2564B" />} overline="โรคประจำตัว" title={chronicList.length ? chronicList.join(', ') : 'ไม่มี'} titleLines={2} />
+          <ListRow icon={<CircleIcon name="pills.fill" color="#D9921A" />} overline="ยาที่ใช้อยู่" title={p.meds.length ? p.meds.join(', ') : 'ไม่มี'} titleLines={3} />
+          <ListRow icon={<CircleIcon name="scalemass.fill" color="#7A5CC8" />} overline="น้ำหนัก · ส่วนสูง" title={p.weight && p.height ? `${p.weight} กก. · ${p.height} ซม.` : 'ยังไม่ระบุ'} />
+          <ListRow icon={<CircleIcon name="figure.stand" color="#2A8C7A" />} overline="BMI" title={bmi === '-' ? 'ยังไม่ระบุ' : `${bmi}${bmiLabel ? ` · ${bmiLabel}` : ''}`} last />
         </ListSection>
 
         {p.meds.length ? (
@@ -261,7 +261,7 @@ function PatientBody({ p }: { p: Patient }) {
 
         <ListSection i={2} title="ติดต่อ">
           <ListRow
-            icon={<CircleIcon name="house.fill" color="#3B7DD8" size={30} />}
+            icon={<CircleIcon name="house.fill" color="#3B7DD8" />}
             overline="ที่อยู่"
             title={address || 'ยังไม่ระบุ'}
             titleLines={3}

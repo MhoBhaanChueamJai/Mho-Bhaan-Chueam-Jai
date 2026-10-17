@@ -11,7 +11,7 @@ import { PressableScale, T } from './ui';
 import { elevation, palette } from '../theme';
 
 export const PAGE_PAD = 20;
-const ICON = 42;
+const ICON = 30;
 
 /** ไอคอนวงกลม: พื้นสีอ่อน + สัญลักษณ์สีเข้ม */
 export function CircleIcon({ name, color = palette.primary, size = ICON }: { name: string; color?: string; size?: number }) {

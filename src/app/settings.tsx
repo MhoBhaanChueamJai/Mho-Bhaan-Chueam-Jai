@@ -159,7 +159,7 @@ export default function Settings() {
         {/* ── ครูปัญญา AI ── */}
         <ListSection i={1} title="ครูปัญญา AI">
           <ListRow
-            icon={<View style={styles.aiIcon}><AISphere size={42} active={false} /></View>}
+            icon={<View style={styles.aiIcon}><AISphere size={30} active={false} /></View>}
             title="ตั้งค่า AI"
             subtitle={`ภาษาพูด: ${DIALECTS.find((d) => d.id === dialect)?.label ?? 'ภาษากลาง'}`}
             onPress={() => router.push('/ai-settings')}
@@ -213,5 +213,5 @@ const styles = StyleSheet.create({
   avatarRing: { padding: 3, borderRadius: 999, backgroundColor: palette.primarySoft },
   badges: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 },
   badge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 9, paddingVertical: 4, borderRadius: 999 },
-  aiIcon: { width: 42, height: 42, borderRadius: 21, backgroundColor: '#05090A', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  aiIcon: { width: 30, height: 30, borderRadius: 15, backgroundColor: '#05090A', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
 });
