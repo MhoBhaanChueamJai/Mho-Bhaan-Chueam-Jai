@@ -14,7 +14,7 @@ import { elevation, palette } from '../theme';
 import { Sym, ios } from './ios';
 import { Glass, T, useHaptic } from './ui';
 
-const CARD_H = 214;
+const CARD_H = 236;
 /** สีเน้นของบัตรตามธาตุ (บัตรพื้นขาว) */
 const PASS: Record<Herb['element'], { accent: string }> = {
   ดิน: { accent: '#A86A2E' },
@@ -50,12 +50,10 @@ function Card({ r, depth, n, onSwipe }: { r: HerbRec; depth: number; n: number; 
       runOnJS(router.push)(`/herb/${r.herb.id}`);
     });
   const st = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: x.value },
-      { rotate: `${x.value / 28}deg` },
-      { translateY: withSpring(-depth * STEP, { damping: 16 }) }, // ใบหลังโผล่ด้านบน
-      { scale: withSpring(1 - depth * 0.05, { damping: 16 }) },
-    ],
+    // ใบหลัง: หดความกว้าง (ไม่ใช้ scale — scale ทำให้เนื้อหาถูกตัดบนเครื่องจริง) และโผล่ด้านบน
+    left: withSpring(depth * 12, { damping: 18 }),
+    right: withSpring(depth * 12, { damping: 18 }),
+    transform: [{ translateX: x.value }, { rotate: `${x.value / 28}deg` }, { translateY: withSpring(-depth * STEP, { damping: 16 }) }],
   }));
   return (
     <GestureDetector gesture={Gesture.Exclusive(pan, tap)}>
@@ -70,7 +68,7 @@ function Card({ r, depth, n, onSwipe }: { r: HerbRec; depth: number; n: number; 
             <Sym name="leaf.fill" size={12} color={pass.accent} />
             <T v="caption" color={pass.accent} style={{ fontWeight: '700' }}>สมุนไพรแนะนำ</T>
           </View>
-          <View style={{ alignItems: 'flex-end', flexShrink: 1 }}>
+          <View style={{ alignItems: 'flex-end', flexShrink: 1, maxWidth: '58%' }}>
             <T v="micro" color={ios.secondary} style={{ fontWeight: '600' }}>ช่วยป้องกัน</T>
             <T v="subhead" color={palette.ink} numberOfLines={1} style={{ fontWeight: '700' }}>{r.risk}</T>
           </View>
@@ -133,13 +131,13 @@ export function HerbStack({ recs }: { recs: HerbRec[] }) {
 }
 
 const styles = StyleSheet.create({
-  card: { position: 'absolute', left: 0, right: 0, bottom: 0, height: CARD_H, transformOrigin: 'center top', borderRadius: 22, borderCurve: 'continuous', overflow: 'hidden', paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12, backgroundColor: '#FFFFFF', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(60,60,67,0.12)' },
+  card: { position: 'absolute', bottom: 0, height: CARD_H, borderRadius: 22, borderCurve: 'continuous', overflow: 'hidden', paddingHorizontal: 16, paddingTop: 14, paddingBottom: 14, backgroundColor: '#FFFFFF', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(60,60,67,0.12)' },
   watermark: { position: 'absolute', right: -24, bottom: -30, transform: [{ rotate: '-18deg' }] },
-  head: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, height: 34 },
+  head: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, height: 36 },
   brand: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingTop: 2 },
   mid: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 10 },
   glassRing: { width: 76, height: 76, borderRadius: 38, alignItems: 'center', justifyContent: 'center' },
   photo: { width: 62, height: 62, borderRadius: 31, backgroundColor: '#EEF2EF' },
   fields: { flexDirection: 'row', gap: 10, marginTop: 12, paddingTop: 10, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(60,60,67,0.15)' },
-  tipRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 'auto' },
+  tipRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 'auto', paddingTop: 8 },
 });
