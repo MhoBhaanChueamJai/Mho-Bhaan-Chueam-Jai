@@ -13,8 +13,8 @@ import { Sym } from './ios';
 
 /** สีหลักของแต่ละสภาพอากาศ (ใช้กับตัวอักษรด้วย) */
 export const SKY_COLOR: Record<SkyKind, string> = {
-  sun: '#E8890C',
-  hot: '#E5532D',
+  sun: '#EE7A12', // ส้ม
+  hot: '#D92D20', // แดง
   partly: '#D98A12',
   cloudy: '#6E7C91',
   fog: '#7D8B99',
@@ -30,8 +30,8 @@ export const SKY_COLOR: Record<SkyKind, string> = {
 };
 
 const SKY: Record<SkyKind, { sym: SFSymbol; colors: string[] }> = {
-  sun: { sym: 'sun.max.fill', colors: ['#F5A524'] },
-  hot: { sym: 'sun.max.fill', colors: ['#F0642E'] },
+  sun: { sym: 'sun.max.fill', colors: ['#F58A1F'] },
+  hot: { sym: 'sun.max.fill', colors: ['#E0301E'] },
   partly: { sym: 'cloud.sun.fill', colors: ['#A3AFBD', '#F5A524'] },
   cloudy: { sym: 'cloud.fill', colors: ['#8E9AAF'] },
   fog: { sym: 'cloud.fog.fill', colors: ['#9AA5B1', '#B8C2CC'] },
