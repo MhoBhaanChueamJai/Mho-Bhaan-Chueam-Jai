@@ -6,7 +6,7 @@ import { Alert, Linking, ScrollView, Share, StyleSheet, View } from 'react-nativ
 import { NotFound } from '../../components/NotFound';
 import Animated, { FadeIn, LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CircleIcon, PAGE_PAD } from '../../components/ListRow';
+import { CircleIcon, ListRow, ListSection, PAGE_PAD } from '../../components/ListRow';
 import { Sym, ios } from '../../components/ios';
 import { PatientCard } from '../../components/PatientCard';
 import { HeaderBack, PressableScale, T } from '../../components/ui';
@@ -237,115 +237,42 @@ function PatientBody({ p }: { p: Patient }) {
           <PatientCard p={p} avatar={avatarFor(p)} onCall={call} />
         </Animated.View>
 
-        {/* ── สุขภาพ: แพ้ยา (เด่น) · ตัวเลขร่างกาย · โรค/ยาเป็นชิป · คำเตือนครูปัญญา ── */}
-        <T v="h3" style={styles.secTitle}>สุขภาพ</T>
-        <View style={[styles.card, elevation.e1]}>
-          {allergic ? (
-            <View style={styles.allergy}>
-              <Sym name="exclamationmark.triangle.fill" size={16} color="#FFFFFF" />
-              <View style={{ flex: 1 }}>
-                <T v="micro" color="rgba(255,255,255,0.85)" style={{ fontWeight: '600' }}>แพ้ยา / อาหาร</T>
-                <T v="bodyStrong" color="#FFFFFF">{p.allergies}</T>
-              </View>
-            </View>
-          ) : (
-            <View style={styles.noAllergy}>
-              <Sym name="checkmark.shield.fill" size={15} color={palette.primary} />
-              <T v="subhead" color={palette.primaryDeep} style={{ fontWeight: '600' }}>ไม่มีประวัติแพ้ยา / อาหาร</T>
-            </View>
-          )}
+        {/* ── สุขภาพ · ติดต่อ: รายการเรียงลงมาแบบ iOS ── */}
+        <ListSection i={1} title="สุขภาพ">
+          <ListRow
+            icon={<CircleIcon name="exclamationmark.triangle.fill" color={allergic ? palette.coral : '#8E8E93'} />}
+            overline="แพ้ยา / อาหาร"
+            title={allergic ? p.allergies : 'ไม่มี'}
+            titleLines={2}
+            danger={!!allergic}
+          />
+          <ListRow icon={<CircleIcon name="heart.fill" color="#C2564B" />} overline="โรคประจำตัว" title={chronicList.length ? chronicList.join(', ') : 'ไม่มี'} titleLines={2} />
+          <ListRow icon={<CircleIcon name="pills.fill" color="#D9921A" />} overline="ยาที่ใช้อยู่" title={p.meds.length ? p.meds.join(', ') : 'ไม่มี'} titleLines={3} />
+          <ListRow icon={<CircleIcon name="scalemass.fill" color="#7A5CC8" />} overline="น้ำหนัก · ส่วนสูง" title={p.weight && p.height ? `${p.weight} กก. · ${p.height} ซม.` : 'ยังไม่ระบุ'} />
+          <ListRow icon={<CircleIcon name="figure.stand" color="#2A8C7A" />} overline="BMI" title={bmi === '-' ? 'ยังไม่ระบุ' : `${bmi}${bmiLabel ? ` · ${bmiLabel}` : ''}`} last />
+        </ListSection>
 
-          <View style={styles.metrics}>
-            {[
-              { v: p.weight ? String(p.weight) : '-', u: 'กก.', l: 'น้ำหนัก' },
-              { v: p.height ? String(p.height) : '-', u: 'ซม.', l: 'ส่วนสูง' },
-              { v: bmi, u: '', l: `BMI${bmiLabel ? ` · ${bmiLabel}` : ''}` },
-            ].map((m, k) => (
-              <View key={m.l} style={[styles.metric, k > 0 && styles.metricSep]}>
-                <T v="h2" style={{ fontVariant: ['tabular-nums'] }}>
-                  {m.v}
-                  {m.u && m.v !== '-' ? <T v="caption" color={ios.secondary}> {m.u}</T> : null}
-                </T>
-                <T v="caption" color={ios.secondary}>{m.l}</T>
-              </View>
-            ))}
+        {p.meds.length ? (
+          <View style={styles.aiNote}>
+            <Sym name="sparkles" size={15} color={palette.primary} />
+            <T v="subhead" color={palette.primaryDeep} style={{ flex: 1 }}>
+              ครูปัญญา: {medsAdvice(p.meds)}
+            </T>
           </View>
+        ) : null}
 
-          <View style={styles.chipBlock}>
-            <View style={styles.chipHead}>
-              <Sym name="heart.fill" size={13} color="#C2564B" />
-              <T v="caption" color={ios.secondary} style={{ fontWeight: '600' }}>โรคประจำตัว</T>
-            </View>
-            <View style={styles.chips}>
-              {chronicList.length ? (
-                chronicList.map((c) => (
-                  <View key={c} style={[styles.chip, { backgroundColor: '#FBE9E7' }]}>
-                    <T v="subhead" color="#A8433A" style={{ fontWeight: '600' }}>{c}</T>
-                  </View>
-                ))
-              ) : (
-                <T v="subhead" color={ios.secondary}>ไม่มี</T>
-              )}
-            </View>
-          </View>
-
-          <View style={styles.chipBlock}>
-            <View style={styles.chipHead}>
-              <Sym name="pills.fill" size={13} color="#D9921A" />
-              <T v="caption" color={ios.secondary} style={{ fontWeight: '600' }}>ยาที่ใช้อยู่</T>
-            </View>
-            <View style={styles.chips}>
-              {p.meds.length ? (
-                p.meds.map((m) => (
-                  <View key={m} style={[styles.chip, { backgroundColor: '#FBF1DC' }]}>
-                    <T v="subhead" color="#8A5A12" style={{ fontWeight: '600' }}>{m}</T>
-                  </View>
-                ))
-              ) : (
-                <T v="subhead" color={ios.secondary}>ไม่มี</T>
-              )}
-            </View>
-          </View>
-
-          {p.meds.length ? (
-            <View style={styles.aiNote}>
-              <Sym name="sparkles" size={15} color={palette.primary} />
-              <T v="subhead" color={palette.primaryDeep} style={{ flex: 1 }}>
-                ครูปัญญา: {medsAdvice(p.meds)}
-              </T>
-            </View>
-          ) : null}
-        </View>
-
-        {/* ── ติดต่อ: เบอร์ + ที่อยู่ · ปุ่มโทร / ข้อความ / แผนที่ ── */}
-        <T v="h3" style={styles.secTitle}>ติดต่อ</T>
-        <View style={[styles.card, elevation.e1]}>
-          <View style={styles.contactRow}>
-            <CircleIcon name="phone.fill" color={palette.primary} size={32} />
-            <View style={{ flex: 1 }}>
-              <T v="caption" color={ios.secondary}>เบอร์โทร</T>
-              <T v="bodyStrong" style={{ fontVariant: ['tabular-nums'] }}>{tel ? fmtPhone(tel) : 'ยังไม่ระบุ'}</T>
-            </View>
-          </View>
-          <View style={[styles.contactRow, { marginTop: 12 }]}>
-            <CircleIcon name="house.fill" color="#3B7DD8" size={32} />
-            <View style={{ flex: 1 }}>
-              <T v="caption" color={ios.secondary}>ที่อยู่</T>
-              <T v="subhead">{address || 'ยังไม่ระบุ'}</T>
-            </View>
-          </View>
-          <View style={styles.actions}>
-            {[
-              { l: 'ข้อความ', i: 'message.fill', on: !!tel, f: () => Linking.openURL(`sms:${tel}`).catch(() => {}) },
-              { l: 'แผนที่', i: 'map.fill', on: !!address, f: () => Linking.openURL(`http://maps.apple.com/?q=${encodeURIComponent(address)}`).catch(() => {}) },
-            ].map((a) => (
-              <PressableScale key={a.l} haptic="select" scaleTo={0.95} onPress={a.on ? a.f : undefined} style={[styles.action, !a.on && { opacity: 0.4 }]} accessibilityLabel={a.l} accessibilityState={{ disabled: !a.on }}>
-                <Sym name={a.i as any} size={17} color={palette.primary} />
-                <T v="subhead" color={palette.primaryDeep} style={{ fontWeight: '600' }}>{a.l}</T>
-              </PressableScale>
-            ))}
-          </View>
-        </View>
+        <ListSection i={2} title="ติดต่อ">
+          <ListRow icon={<CircleIcon name="phone.fill" color={palette.primary} />} overline="เบอร์โทร" title={tel ? fmtPhone(tel) : 'ยังไม่ระบุ'} onPress={tel ? call : undefined} chevron={!!tel} />
+          <ListRow
+            icon={<CircleIcon name="house.fill" color="#3B7DD8" />}
+            overline="ที่อยู่"
+            title={address || 'ยังไม่ระบุ'}
+            titleLines={3}
+            onPress={address ? () => Linking.openURL(`http://maps.apple.com/?q=${encodeURIComponent(address)}`).catch(() => {}) : undefined}
+            chevron={!!address}
+            last
+          />
+        </ListSection>
 
         {/* ── ประวัติการรักษา (ไทม์ไลน์) ── */}
         <View style={styles.histHead}>
@@ -377,19 +304,6 @@ const styles = StyleSheet.create({
   countPill: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999, backgroundColor: palette.primarySoft },
   detailRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   aiNote: { flexDirection: 'row', gap: 8, alignItems: 'flex-start', marginTop: 14, padding: 12, borderRadius: 14, backgroundColor: palette.primarySoft },
-  card: { backgroundColor: palette.surface, borderRadius: 22, borderCurve: 'continuous', padding: 14 },
-  allergy: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, borderRadius: 14, backgroundColor: '#D9534A' },
-  noAllergy: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 14, backgroundColor: palette.primarySoft },
-  metrics: { flexDirection: 'row', marginTop: 14, paddingVertical: 4 },
-  metric: { flex: 1, alignItems: 'center', gap: 2 },
-  metricSep: { borderLeftWidth: StyleSheet.hairlineWidth, borderLeftColor: ios.separator },
-  chipBlock: { marginTop: 14, paddingTop: 12, gap: 8, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: ios.separator },
-  chipHead: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  chip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999 },
-  contactRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  actions: { flexDirection: 'row', gap: 8, marginTop: 14 },
-  action: { flex: 1, height: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: 22, backgroundColor: palette.primarySoft },
   histHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 30, marginBottom: 12, paddingHorizontal: 4 },
   tlRow: { flexDirection: 'row', gap: 12 },
   tlHead: { flexDirection: 'row', alignItems: 'center', marginBottom: 6, marginLeft: 2 },
