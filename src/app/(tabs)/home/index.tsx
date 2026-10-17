@@ -8,6 +8,7 @@ import { AppIcon, Group, IOSCard, Row, SectionTitle, Sym, ios } from '../../../c
 import { AISphere } from '../../../components/AISphere';
 import { Avatar, HeaderButton, PressableScale, T } from '../../../components/ui';
 import { noticesFrom } from '../../../lib/notices';
+import { useMyAvatar } from '../../../lib/myAvatar';
 import { TODAY, avatarFor, doctor, lastVisit, thaiDate } from '../../../data/mock';
 import { visitSortKey } from '../../../data/tones';
 import { herbs } from '../../../data/herbs';
@@ -57,6 +58,7 @@ export default function Home() {
   // เข้าหน้านี้ทุกครั้ง → นับรอบ (ให้กระดิ่งสั่นเมื่อมีที่ยังไม่อ่าน)
   const [visit, setVisit] = useState(0);
   useFocusEffect(useCallback(() => setVisit((v) => v + 1), []));
+  const myAvatar = useMyAvatar();
   const me = profile?.first_name || profile?.display_name?.split(' ')[0] || name;
 
   return (
@@ -66,7 +68,7 @@ export default function Home() {
           // ซ้าย: โปรไฟล์ (รูป + ชื่อ) · ขวา: แจ้งเตือน
           headerLeft: () => (
             <PressableScale onPress={() => router.push('/settings')} accessibilityLabel={`บัญชีและตั้งค่า ${me}`} hitSlop={6} style={styles.me}>
-              <Avatar name={me} size={32} />
+              <Avatar name={me} src={myAvatar} size={32} />
               <T v="subhead" color={palette.ink} numberOfLines={1} style={{ maxWidth: 140, fontWeight: '600' }}>{me}</T>
             </PressableScale>
           ),

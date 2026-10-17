@@ -12,6 +12,7 @@ import { Avatar, PressableScale, T } from '../components/ui';
 import { doctor } from '../data/mock';
 import { TYPE_LABEL } from './verify';
 import { useApp } from '../store/app';
+import { changeAvatar, useMyAvatar } from '../lib/myAvatar';
 import { palette } from '../theme';
 
 const thaiDate = (iso?: string | null) => {
@@ -27,14 +28,21 @@ function Info({ icon, bg, label, value, last }: { icon: string; bg: string; labe
 }
 
 export default function Profile() {
-  const { profile, isPractitioner } = useApp();
+  const { profile, isPractitioner, settings, update } = useApp();
+  const myAvatar = useMyAvatar();
   const name = profile?.display_name || [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || doctor.name;
   return (
     <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingTop: 8, paddingBottom: 56 }}>
       <Animated.View entering={FadeInDown.duration(420)} style={{ alignItems: 'center', marginTop: 8 }}>
-        <View style={styles.avatarRing}>
-          <Avatar name={name} size={96} />
-        </View>
+        {/* แตะภาพเพื่อเปลี่ยน: ถ่ายรูป / เลือกจากคลังภาพ / ใช้ภาพเริ่มต้น */}
+        <PressableScale haptic="select" scaleTo={0.96} onPress={() => changeAvatar(settings.avatarUri, (u) => update({ avatarUri: u }))} accessibilityLabel="เปลี่ยนภาพโปรไฟล์">
+          <View style={styles.avatarRing}>
+            <Avatar name={name} src={myAvatar} size={96} />
+          </View>
+          <View style={styles.camBadge}>
+            <Sym name="camera.fill" size={13} color="#FFFFFF" />
+          </View>
+        </PressableScale>
         <T v="h2" center style={{ marginTop: 12 }}>{name}</T>
         <T v="subhead" color={isPractitioner ? palette.primaryDeep : ios.secondary}>{isPractitioner ? 'หมอพื้นบ้านที่ได้รับการรับรอง' : 'สมาชิกทั่วไป'}</T>
       </Animated.View>
@@ -75,6 +83,7 @@ export default function Profile() {
 }
 
 const styles = StyleSheet.create({
+  camBadge: { position: 'absolute', right: 2, bottom: 2, width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: palette.primary, borderWidth: 2.5, borderColor: palette.bg },
   avatarRing: { padding: 4, borderRadius: 999, backgroundColor: palette.primarySoft },
   verifyBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 48, borderRadius: 24, backgroundColor: palette.primary },
 });

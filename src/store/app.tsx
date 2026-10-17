@@ -25,6 +25,8 @@ type Settings = {
   phone: string;
   /** ชื่อผู้ใช้ที่จำไว้ (ใช้กับ Face ID) */
   username: string;
+  /** ภาพโปรไฟล์ที่หมอเลือกเอง (ไฟล์ในเครื่อง) — ไม่มี = ภาพหมอเริ่มต้น */
+  avatarUri?: string;
   /** อีเมล/ชื่อผู้ใช้ที่ใช้เข้าสู่ระบบครั้งล่าสุด (เติมให้ในช่องล็อกอิน) */
   loginId?: string;
   /** ล็อกแอปด้วยรหัส PIN */
@@ -392,6 +394,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       clearLocal: () => {
         // ประวัติแชทครูปัญญาเป็นข้อมูลส่วนตัวของผู้ใช้คนนี้ → ล้างเมื่อออกจากระบบ
         clearChats().catch(() => {});
+        setSettings((st) => ({ ...st, avatarUri: undefined }));
         setOnline(false);
         setDemo(false);
         setPatients([]);

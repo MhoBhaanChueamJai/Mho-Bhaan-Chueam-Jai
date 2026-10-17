@@ -284,7 +284,7 @@ export function IconTile({ children, size = 64 }: { children: React.ReactNode; s
 
 /* ───────────── Avatar (ตัวอักษร + จุดออนไลน์) ───────────── */
 const AV = [palette.cyan, palette.lavender, palette.peach, palette.lime, palette.pink, palette.primarySoft];
-export function Avatar({ name, src, size = 60, online, ring }: { name: string; src?: number; size?: number; online?: boolean; ring?: boolean }) {
+export function Avatar({ name, src, size = 60, online, ring }: { name: string; src?: number | { uri: string }; size?: number; online?: boolean; ring?: boolean }) {
   const clean = name.replace(/^(นางสาว|นาง|นาย|แม่|ลุง|น้อง|ตา|ป้า|พ่อหมอ|ยาย|พ่อ)/, '');
   const code = [...name].reduce((a, c) => a + c.charCodeAt(0), 0);
   return (

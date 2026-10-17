@@ -17,6 +17,7 @@ import { DIALECTS } from '../lib/dialect';
 import { AISphere } from '../components/AISphere';
 import { supabase } from '../lib/supabase';
 import { useApp } from '../store/app';
+import { useMyAvatar } from '../lib/myAvatar';
 import { authenticateBiometric, biometricInfo, clearPin } from '../store/security';
 import { elevation, palette } from '../theme';
 
@@ -25,6 +26,7 @@ const enter = (i: number) => FadeInDown.delay(40 + i * 50).duration(420);
 export default function Settings() {
   const { settings, update, patients, wisdoms, clearLocal, setUnlocked, profile, isPractitioner, sync, pendingCount, syncNow, demo } = useApp();
   const [syncing, setSyncing] = useState(false);
+  const myAvatar = useMyAvatar();
   // สถานะซิงก์: ให้หมอรู้ว่าข้อมูลขึ้นคลาวด์ครบแล้วหรือยัง
   const syncAt = settings.lastSyncAt ? new Date(settings.lastSyncAt) : null;
   const syncAtLabel = syncAt ? `${syncAt.getDate()}/${syncAt.getMonth() + 1} ${String(syncAt.getHours()).padStart(2, '0')}:${String(syncAt.getMinutes()).padStart(2, '0')}` : '';
@@ -125,7 +127,7 @@ export default function Settings() {
         <Animated.View entering={enter(0)}>
           <PressableScale haptic="select" scaleTo={0.98} onPress={() => router.push('/profile')} style={[styles.card, styles.profile, elevation.e1]} accessibilityLabel="ดูข้อมูลส่วนตัว">
             <View style={styles.avatarRing}>
-              <Avatar name={displayName} size={68} />
+              <Avatar name={displayName} src={myAvatar} size={68} />
             </View>
             <View style={{ flex: 1, gap: 3 }}>
               <T v="title" numberOfLines={1} style={{ fontSize: 19, lineHeight: 26 }}>{displayName}</T>

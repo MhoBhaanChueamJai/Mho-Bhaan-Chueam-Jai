@@ -11,6 +11,7 @@ import { Sym } from './ios';
 import { PinPad, type PinPadHandle } from './PinPad';
 import { HeroRing, PinShell } from './PinShell';
 import { Avatar, PressableScale, T, useHaptic } from './ui';
+import { useMyAvatar } from '../lib/myAvatar';
 import { doctor } from '../data/mock';
 import { supabase } from '../lib/supabase';
 import { useApp } from '../store/app';
@@ -19,6 +20,7 @@ import { MAX_ATTEMPTS, authenticateBiometric, biometricInfo, checkPin, clearPin 
 
 export function LockScreen() {
   const { settings, update, setUnlocked, clearLocal, profile } = useApp();
+  const myAvatar = useMyAvatar();
   // ล็อกแล้วต้องปิดหน้าซ้อน (modal/sheet) ที่เปิดค้างอยู่ด้วย — หน้าซ้อนของ iOS อยู่เหนือหน้าล็อก
   useEffect(() => {
     if (router.canDismiss()) router.dismissAll();
@@ -74,7 +76,7 @@ export function LockScreen() {
       <PinShell
         hero={
           <HeroRing>
-            <Avatar name={name} size={64} />
+            <Avatar name={name} src={myAvatar} size={64} />
           </HeroRing>
         }
         title={`สวัสดี ${name}`}
