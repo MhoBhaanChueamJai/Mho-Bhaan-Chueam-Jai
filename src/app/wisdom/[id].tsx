@@ -10,7 +10,7 @@ import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { MenuView } from '@react-native-menu/menu';
 import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Linking, StyleSheet, View } from 'react-native';
-import Animated, { FadeInDown, FadeInUp, runOnJS, useAnimatedReaction, useAnimatedRef, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
+import Animated, { FadeInDown, FadeInUp, FadeOut, runOnJS, useAnimatedReaction, useAnimatedRef, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AudioClips } from '../../components/AudioClips';
@@ -311,6 +311,30 @@ export function WisdomView({ w, preview }: { w: Wisdom; preview?: WisdomPreview 
         </Animated.View>
 
         <View style={styles.body} onLayout={(e) => (bodyY.current = e.nativeEvent.layout.y)}>
+          {/* รอคุณหมอตรวจทาน: เนื้อหาที่ครูปัญญาถอด/จัดหน้าให้ หรือได้รับจากเพื่อน — อ่านทวนแล้วกดยืนยัน */}
+          {!preview && !w.builtin && !w.verified ? (
+            <Animated.View exiting={FadeOut.duration(220)} style={[styles.review, elevation.e1]}>
+              <View style={{ flexDirection: 'row', gap: 12 }}>
+                <CircleIcon name="checkmark.seal.fill" color="#E0861A" size={36} />
+                <View style={{ flex: 1, gap: 2 }}>
+                  <T v="bodyStrong">รอคุณหมอตรวจทาน</T>
+                  <T v="subhead" color={ios.secondary}>{REVIEW_NOTE[w.source] ?? REVIEW_NOTE.default}</T>
+                </View>
+              </View>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                {isShared ? null : (
+                  <PressableScale haptic="select" scaleTo={0.96} onPress={() => router.push({ pathname: '/wisdom/new', params: { id: w.id } })} style={[styles.reviewBtn, styles.reviewEdit]} accessibilityLabel="แก้ไขให้ถูกต้อง">
+                    <Sym name="pencil" size={15} color={palette.ink} weight="semibold" />
+                    <T v="subhead" style={{ fontWeight: '600' }}>แก้ไข</T>
+                  </PressableScale>
+                )}
+                <PressableScale haptic="none" scaleTo={0.96} onPress={() => { h.success(); updateWisdom(w.id, { verified: true }); }} style={[styles.reviewBtn, { backgroundColor: palette.primary }]} accessibilityLabel="ตรวจทานแล้ว ถูกต้อง">
+                  <Sym name="checkmark" size={15} color="#FFFFFF" weight="bold" />
+                  <T v="subhead" color="#FFFFFF" style={{ fontWeight: '600' }}>ตรวจทานแล้ว ถูกต้อง</T>
+                </PressableScale>
+              </View>
+            </Animated.View>
+          ) : null}
           {/* เสียงเล่าต้นฉบับ (โหมดเล่า) */}
           {!preview && w.audio?.length ? <AudioClips clips={w.audio} by={w.sharedBy ?? myName} /> : null}
           {body || om ? (
@@ -494,7 +518,18 @@ export function WisdomView({ w, preview }: { w: Wisdom; preview?: WisdomPreview 
   );
 }
 
+/** เหตุที่ต้องตรวจทาน ตามที่มาของตำรา */
+const REVIEW_NOTE: Record<string, string> = {
+  สแกนตำรา: 'ครูปัญญาถอดความจากภาพตำรา อ่านทวนว่าตรงกับต้นฉบับ ชื่อยาและปริมาณถูกต้อง',
+  เสียงเล่า: 'ครูปัญญาถอดจากเสียงเล่าแล้วจัดหน้าให้ อ่านทวนว่าตรงกับที่คุณหมอเล่า',
+  เพื่อนแชร์: 'ตำรานี้ได้รับจากเพื่อน อ่านทวนก่อนนำไปใช้กับผู้ป่วย',
+  default: 'ครูปัญญาจัดหน้าให้ อ่านทวนว่าเนื้อหาถูกต้องก่อนนำไปใช้',
+};
+
 const styles = StyleSheet.create({
+  review: { gap: 14, padding: 16, borderRadius: 22, borderCurve: 'continuous', backgroundColor: palette.surface },
+  reviewBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, height: 44, borderRadius: 22 },
+  reviewEdit: { flex: 0, paddingHorizontal: 18, backgroundColor: 'rgba(120,120,128,0.12)' },
   previewClose: { position: 'absolute', top: 16, left: 16 },
   hero: { alignItems: 'center', paddingBottom: 26 },
   reading: { borderWidth: 2, borderColor: palette.primary, boxShadow: '0px 0px 0px 4px rgba(20,144,92,0.15), 0px 8px 20px rgba(20,60,40,0.12)' },

@@ -85,6 +85,6 @@ export function noticesFrom(patients: Patient[], wisdoms: Wisdom[], isPractition
   out.push(...care.sort((a, b) => b.at - a.at));
   const pending = wisdoms.filter((w) => !w.verified);
   if (pending.length)
-    out.push({ id: `wisdom-${pending.length}`, group: 'wisdom', icon: 'book.closed.fill', colors: ['#D2A36E', '#8A5E30'], cat: 'คลังภูมิปัญญา', title: `รอตรวจทาน ${pending.length} เรื่อง`, body: pending.slice(0, 2).map((w) => w.title).join(' · '), at: 0, go: '/vault' });
+    out.push({ id: `wisdom-${pending.length}`, group: 'wisdom', icon: 'book.closed.fill', colors: ['#D2A36E', '#8A5E30'], cat: 'คลังภูมิปัญญา', title: `รอคุณหมอตรวจทาน ${pending.length} เรื่อง`, body: pending.slice(0, 2).map((w) => w.title).join(' · '), at: 0, go: pending.length === 1 ? `/wisdom/${pending[0].id}` : '/vault' });
   return out;
 }

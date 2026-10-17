@@ -191,8 +191,9 @@ function NewWisdomInner() {
     const data = { ...organizedToWisdom(kind, { ...o, title: o.title || title.trim() || 'ภูมิปัญญาไม่มีชื่อ' }), ...(audio.length ? { audio } : {}) };
     const t = new Date();
     const id = editing?.id ?? `w${Date.now()}`;
-    if (editing) updateWisdom(editing.id, data);
-    else addWisdom({ ...data, id, source, date: `${t.getDate()}/${t.getMonth() + 1}/${t.getFullYear() + 543}`, verified: false });
+    // แก้ไขเอง = ตรวจทานแล้ว · พิมพ์เองนับว่าตรวจแล้ว · สแกน/เสียงเล่า ต้องให้หมออ่านทวนก่อน
+    if (editing) updateWisdom(editing.id, { ...data, verified: true });
+    else addWisdom({ ...data, id, source, date: `${t.getDate()}/${t.getMonth() + 1}/${t.getFullYear() + 543}`, verified: source === 'พิมพ์เอง' });
     // สำรองเสียงเล่าขึ้นคลาวด์เบื้องหลัง (ฟังได้แม้เปลี่ยนเครื่อง) — ไม่สำเร็จก็ยังมีไฟล์ในเครื่อง
     if (audio.some((a) => !a.path)) uploadClips(id, audio).then((up) => up.some((a, i) => a.path !== audio[i].path) && updateWisdom(id, { audio: up })).catch(() => {});
     h.success();
