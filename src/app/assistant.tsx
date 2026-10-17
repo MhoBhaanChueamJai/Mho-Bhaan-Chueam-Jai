@@ -11,7 +11,7 @@ import { useSpeaker, useVoiceRecorder } from '../components/audio';
 import { Sym } from '../components/ios';
 import { Waveform } from '../components/Orb';
 import { createSpeech, listenOnce, type SpeechCtl } from '../components/speech';
-import { GlassCircle, PressableScale, T, useHaptic } from '../components/ui';
+import { Glass, GlassCircle, PressableScale, T, useHaptic } from '../components/ui';
 import { askLaunch } from '../lib/askLaunch';
 import { citedSources, think, tidyReply } from '../lib/brain';
 import { deleteThread, getThread, loadChats, newThreadId, onChatsChange, saveThread, whenLabel, type ChatSource, type ChatThread, type StoredMsg } from '../lib/chatStore';
@@ -185,21 +185,25 @@ export default function Assistant() {
 
       {/* หัว: กลับ · ชื่อ+สถานะ · ประวัติแชท / แชทใหม่ */}
       <View style={[styles.top, { paddingTop: insets.top + 8 }]}>
-        <GlassCircle label="กลับ" onPress={() => (router.canGoBack() ? router.back() : router.replace('/home'))} tint="rgba(255,255,255,0.12)">
-          <Sym name="chevron.left" size={18} color="#FFFFFF" weight="semibold" />
-        </GlassCircle>
+        {/* กว้างเท่าแถบเครื่องมือฝั่งขวา → ชื่ออยู่กึ่งกลางจอพอดี */}
+        <View style={{ width: 92, alignItems: 'flex-start' }}>
+          <GlassCircle label="กลับ" onPress={() => (router.canGoBack() ? router.back() : router.replace('/home'))} tint="rgba(255,255,255,0.12)">
+            <Sym name="chevron.left" size={18} color="#FFFFFF" weight="semibold" />
+          </GlassCircle>
+        </View>
         <View style={{ alignItems: 'center', flex: 1 }}>
           <T v="title" color="#FFFFFF">ครูปัญญา</T>
           <T v="micro" color={busy || rec.isRecording ? MINT : 'rgba(255,255,255,0.55)'}>{status}</T>
         </View>
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          <GlassCircle label="ประวัติแชท" onPress={() => setHistoryOpen(true)} tint="rgba(255,255,255,0.12)">
-            <Sym name="clock.arrow.circlepath" size={17} color="#FFFFFF" weight="semibold" />
-          </GlassCircle>
-          <GlassCircle label="แชทใหม่" onPress={newChat} tint="rgba(255,255,255,0.12)">
-            <Sym name="square.and.pencil" size={17} color="#FFFFFF" weight="semibold" />
-          </GlassCircle>
-        </View>
+        {/* แถบเครื่องมือ (กระจกแคปซูลเดียว แบบ toolbar ของ iOS): ประวัติแชท · แชทใหม่ */}
+        <Glass interactive tint="rgba(255,255,255,0.12)" style={styles.toolbar}>
+          <PressableScale haptic="select" scaleTo={0.9} onPress={() => setHistoryOpen(true)} style={styles.toolBtn} accessibilityLabel="ประวัติแชท">
+            <Sym name="clock.arrow.circlepath" size={18} color="#FFFFFF" weight="semibold" />
+          </PressableScale>
+          <PressableScale haptic="select" scaleTo={0.9} onPress={newChat} style={styles.toolBtn} accessibilityLabel="แชทใหม่">
+            <Sym name="square.and.pencil" size={18} color="#FFFFFF" weight="semibold" />
+          </PressableScale>
+        </Glass>
       </View>
 
       <ScrollView
@@ -574,6 +578,8 @@ const styles = StyleSheet.create({
   typeInput: { flex: 1, maxHeight: 120, fontSize: 17, color: '#1F2A24', paddingTop: 8, paddingBottom: 8, paddingHorizontal: 4 },
   send: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
   voicePage: { backgroundColor: DARK, zIndex: 50 },
+  toolbar: { flexDirection: 'row', alignItems: 'center', width: 92, height: 44, borderRadius: 22, paddingHorizontal: 4 },
+  toolBtn: { width: 42, height: 44, alignItems: 'center', justifyContent: 'center' },
   statusPill: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14, paddingHorizontal: 14, height: 34, borderRadius: 17, backgroundColor: 'rgba(255,255,255,0.1)' },
   liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#FF5A4E' },
   endBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, height: 50, paddingHorizontal: 24, borderRadius: 25, backgroundColor: 'rgba(255,255,255,0.14)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.25)' },
