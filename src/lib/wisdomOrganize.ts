@@ -4,6 +4,7 @@
  * บทคาถาและข้อความต้นฉบับโบราณ: คงถ้อยคำเดิม ไม่เรียบเรียงใหม่
  */
 import { chatJSON } from '../api/ai';
+import { dialectHint } from './dialect';
 import type { Wisdom } from '../data/mock';
 import { KIND_FORM, PAGE_BREAK, joinMethod, joinPages, splitMethod } from './wisdomKinds';
 
@@ -19,7 +20,7 @@ export type Organized = {
   origin: string;
 };
 
-export async function organizeWisdom(kind: Kind, title: string, indication: string, draft: string[]): Promise<Organized> {
+export async function organizeWisdom(kind: Kind, title: string, indication: string, draft: string[], opts?: { spoken?: boolean }): Promise<Organized> {
   const f = KIND_FORM[kind];
   const full = draft.map((p) => p.trim()).join('');
   if (full.length > 20000) throw new Error('TOO_LONG'); // ยาวเกินจัดในครั้งเดียว — ไม่ตัดทิ้งเงียบๆ
@@ -31,7 +32,8 @@ export async function organizeWisdom(kind: Kind, title: string, indication: stri
       content: `คุณคือบรรณาธิการตำราแพทย์แผนไทย ช่วยจัดหน้าและเรียบเรียง "${kind}" ที่หมอพื้นบ้านเขียนไว้ให้เป็นตำราที่อ่านง่าย
 ชื่อเรื่อง: ${title || '(ยังไม่ระบุ)'}
 ${f.indication.label}: ${indication || '(ยังไม่ระบุ)'}
-ต้นฉบับที่หมอเขียน (หลายหน้า เนื้อหาปนกัน):
+${opts?.spoken ? `ต้นฉบับนี้ถอดจากเสียงที่หมอเล่า (ถอดอัตโนมัติ อาจสะกดเพี้ยน มีคำพูดซ้ำ คำอุทาน หรือพูดวกกลับ) — แก้คำที่ถอดเพี้ยนให้ถูก (โดยเฉพาะชื่อสมุนไพร) ตัดคำอุทาน/คำซ้ำ แต่คงเนื้อหาและสำนวนของหมอไว้ ${dialectHint()}
+` : ''}ต้นฉบับที่หมอ${opts?.spoken ? 'เล่า' : 'เขียน'} (หลายหน้า เนื้อหาปนกัน):
 """
 ${text}
 """

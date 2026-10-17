@@ -5,6 +5,7 @@
 import { chatJSON } from '../api/ai';
 import type { Patient, Wisdom } from '../data/mock';
 import { dialectHint, dialectSpeakStyle } from './dialect';
+import { safetyNotes } from './brain';
 import { knowledgeFor } from './knowledge';
 import type { Turn } from './intake';
 
@@ -124,6 +125,7 @@ export async function visitTurn(p: Patient, known: VisitData, history: Turn[], a
 ${historyText(p)}
 ข้อมูลครั้งนี้ที่รู้แล้ว: ${JSON.stringify(known)}
 ${kn.text}
+${safetyNotes([known.treatment, answer].filter(Boolean).join(' '))}
 บทสนทนาล่าสุด:
 ${history.slice(-6).map((h) => `${h.role === 'ai' ? 'ครูปัญญา' : 'หมอ'}: ${h.text}`).join('\n')}
 หมอเพิ่งตอบว่า: "${answer}"

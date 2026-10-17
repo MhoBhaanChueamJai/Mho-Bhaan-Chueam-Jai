@@ -97,6 +97,18 @@ export async function chat(messages: ChatMsg[], _model?: ModelKey, maxTokens = 7
   }
 }
 
+/**
+ * ตอบเร็ว (โหมดคุยด้วยเสียง): ใช้โมเดลเดียว (Gemma ภาษาไทยลื่น) — ล่ม/ช้า → สลับไป Qwen ทันที
+ * ไม่รอให้ 2 โมเดลตอบแล้วรวม เพื่อให้คุยโต้ตอบได้เป็นธรรมชาติ ไม่เงียบนาน
+ */
+export async function chatQuick(messages: ChatMsg[], maxTokens = 400): Promise<string> {
+  try {
+    return await chatOne(messages, 'gemma', maxTokens, 25_000);
+  } catch {
+    return chatOne(messages, 'qwen', maxTokens, 30_000);
+  }
+}
+
 const isEmpty = (v: unknown) => v == null || (typeof v === 'string' && !v.trim()) || (Array.isArray(v) && !v.length);
 const norm = (v: unknown) => (typeof v === 'string' ? v.replace(/\s+/g, '').toLowerCase() : JSON.stringify(v));
 

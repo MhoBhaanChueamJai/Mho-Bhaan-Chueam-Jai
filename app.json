@@ -20,7 +20,10 @@
         "NSCameraUsageDescription": "ใช้กล้องเพื่อสแกนตำรายาและสมุดข่อย",
         "NSPhotoLibraryUsageDescription": "เลือกภาพตำรายาเพื่อแปลงเป็นดิจิทัล"
       },
-      "appleTeamId": "FFFGJANVWN"
+      "appleTeamId": "FFFGJANVWN",
+      "entitlements": {
+        "com.apple.developer.default-data-protection": "NSFileProtectionComplete"
+      }
     },
     "android": {
       "adaptiveIcon": {

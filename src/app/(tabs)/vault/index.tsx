@@ -1,3 +1,4 @@
+import { MenuView } from '@react-native-menu/menu';
 /**
  * แท็บคลังภูมิปัญญา — สมุดข่อยดิจิทัลของคุณหมอ
  * Hero (การ์ด): พื้นหลังสันหนังสือ/ตำราเรียงบนหิ้ง (เบลอ) + ชื่อหน้า + KPI จำนวนตามประเภท · แถบเครื่องมือบนหัวจอ: สแกน QR รับตำรา · เพิ่ม
@@ -77,9 +78,24 @@ export default function Vault() {
             <HeaderButton label="สแกนคิวอาร์โค้ดรับตำรา" onPress={() => router.push('/wisdom/scan-qr')}>
               <Sym name="qrcode.viewfinder" size={20} color={palette.ink} weight="semibold" />
             </HeaderButton>
-            <HeaderButton label="เพิ่มภูมิปัญญา" onPress={() => router.push('/wisdom/new')}>
-              <Sym name="plus" size={20} color={palette.ink} weight="semibold" />
-            </HeaderButton>
+            {/* เพิ่มภูมิปัญญา: เล่า / เขียน / สแกน */}
+            <MenuView
+              shouldOpenOnLongPress={false}
+              themeVariant="light"
+              title="เพิ่มภูมิปัญญา"
+              actions={[
+                { id: 'tell', title: 'เล่าให้ครูปัญญาฟัง', subtitle: 'โหมดเล่า เก็บเสียงไว้ แล้วเรียบเรียงเป็นหนังสือ', image: 'waveform' },
+                { id: 'write', title: 'เขียนเอง', image: 'square.and.pencil' },
+                { id: 'scan', title: 'สแกนตำราโบราณ', image: 'doc.viewfinder' },
+              ]}
+              onPressAction={({ nativeEvent: e }) =>
+                e.event === 'tell' ? router.push('/wisdom/tell') : e.event === 'scan' ? router.push({ pathname: '/scan', params: { fill: '1' } }) : router.push('/wisdom/new')
+              }
+            >
+              <View style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }} accessibilityRole="button" accessibilityLabel="เพิ่มภูมิปัญญา">
+                <Sym name="plus" size={20} color={palette.ink} weight="semibold" />
+              </View>
+            </MenuView>
           </View>
         ),
       }}
@@ -120,6 +136,18 @@ export default function Vault() {
       </View>
       </View>
 
+      {/* ── โหมดเล่า: ทางลัดถ่ายทอดภูมิปัญญาด้วยเสียง ── */}
+      <PressableScale haptic="press" scaleTo={0.98} onPress={() => router.push('/wisdom/tell')} style={[styles.tell, elevation.e1]} accessibilityLabel="โหมดเล่า เล่าให้ครูปัญญาฟัง">
+        <View style={styles.tellIcon}>
+          <Sym name="waveform" size={22} color="#7CF0A8" />
+        </View>
+        <View style={{ flex: 1, gap: 2 }}>
+          <T v="title" color="#FFFFFF">เล่าให้ครูปัญญาฟัง</T>
+          <T v="caption" color="rgba(255,255,255,0.7)" numberOfLines={2}>เล่าต่อเนื่องเหมือนเล่าให้ลูกหลานฟัง ครูปัญญาเก็บเสียงไว้และเขียนเป็นหนังสือให้</T>
+        </View>
+        <Sym name="chevron.right" size={14} color="rgba(255,255,255,0.6)" weight="semibold" />
+      </PressableScale>
+
       {/* ── ตำราของหมอ (ยังไม่มี = ไม่แสดงหัวข้อนี้) ── */}
       {list.length ? (
         <>
@@ -157,6 +185,8 @@ export default function Vault() {
 }
 
 const styles = StyleSheet.create({
+  tell: { flexDirection: 'row', alignItems: 'center', gap: 12, marginHorizontal: 16, marginTop: 14, padding: 14, borderRadius: 22, borderCurve: 'continuous', backgroundColor: '#0E1A14' },
+  tellIcon: { width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(124,240,168,0.14)' },
   empty: { marginHorizontal: 16, marginTop: 10, alignItems: 'center', paddingVertical: 28, gap: 6, backgroundColor: palette.surface, borderRadius: 20, borderCurve: 'continuous' },
   bookShadow: {},
   shelf: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 16, rowGap: 22, paddingHorizontal: 20, marginTop: 14 },

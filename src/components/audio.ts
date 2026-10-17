@@ -1,17 +1,7 @@
-import {
-  AudioModule,
-  AudioQuality,
-  IOSOutputFormat,
-  createAudioPlayer,
-  setAudioModeAsync,
-  useAudioRecorder,
-  useAudioRecorderState,
-  type AudioPlayer,
-  type RecordingOptions,
-} from 'expo-audio';
-import { useEffect, useRef, useState } from 'react';
-import { useSharedValue, withTiming } from 'react-native-reanimated';
-import { synthesize } from '../api/ai';
+import { AudioModule, AudioQuality, IOSOutputFormat, setAudioModeAsync, useAudioRecorder, useAudioRecorderState, type RecordingOptions } from 'expo-audio';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useSharedValue } from 'react-native-reanimated';
+import { createSpeech, type SpeechCtl } from './speech';
 
 /** WAV 16kHz mono — รูปแบบที่ ASR (Qwen3-ASR) รองรับ */
 const ASR_PRESET: RecordingOptions = {
@@ -60,71 +50,23 @@ export function useVoiceRecorder() {
   return { start, stop, level, isRecording: state.isRecording, durationMs: state.durationMillis };
 }
 
-/** PCM frames → ระดับเสียง 0..1 (RMS ปรับให้เห็นการขยับชัด) */
-export function rmsLevel(frames?: number[]): number {
-  if (!frames?.length) return 0;
-  let sum = 0;
-  for (let i = 0; i < frames.length; i += 2) sum += frames[i] * frames[i];
-  const rms = Math.sqrt(sum / Math.ceil(frames.length / 2));
-  return Math.min(1, rms * 4.5);
-}
+export { rmsLevel } from './speech';
 
-/** พูดข้อความด้วย VoxCPM (ภาษาไทย) — เสียงครูปัญญาเดียวทั้งแอป */
+/** พูดข้อความด้วยเสียงครูปัญญา — แบ่งเป็นช่วงประโยค เตรียมช่วงถัดไปล่วงหน้า พูดได้ยาวจนจบ */
 export function useSpeaker() {
-  const player = useRef<AudioPlayer | null>(null);
-  const [speaking, setSpeaking] = useState(false);
   const level = useSharedValue(0);
-
-  // รุ่นของคำสั่งพูด: กดหยุด/ออกจากหน้า/สั่งพูดใหม่ระหว่างรอสังเคราะห์เสียง → ผลเก่าที่มาทีหลังต้องไม่เล่น
-  const gen = useRef(0);
+  const [speaking, setSpeaking] = useState(false);
   const alive = useRef(true);
+  const ctl = useRef<SpeechCtl | null>(null);
+  if (!ctl.current) ctl.current = createSpeech(level, (on) => alive.current && setSpeaking(on));
   useEffect(
     () => () => {
       alive.current = false;
-      gen.current++;
-      player.current?.remove();
+      ctl.current?.stop();
     },
     [],
   );
-
-  const stop = () => {
-    gen.current++;
-    player.current?.pause();
-    player.current?.remove();
-    player.current = null;
-    setSpeaking(false);
-    level.value = 0;
-  };
-
-  const speak = async (text: string) => {
-    stop();
-    const my = gen.current;
-    setSpeaking(true);
-    try {
-      const uri = await synthesize(text);
-      if (my !== gen.current || !alive.current) return; // ถูกยกเลิกระหว่างรอ
-      await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: false });
-      if (my !== gen.current || !alive.current) return;
-      const p = createAudioPlayer({ uri });
-      player.current = p;
-      // ระดับเสียงจริงจากคลื่นเสียง (RMS) → ดอกไม้ AI ขยับตามจังหวะพูด
-      try {
-        p.setAudioSamplingEnabled(true);
-        p.addListener('audioSampleUpdate', (sm) => {
-          level.value = withTiming(rmsLevel(sm.channels[0]?.frames), { duration: 90 });
-        });
-      } catch {}
-      p.addListener('playbackStatusUpdate', (s) => {
-        if (s.didJustFinish) {
-          setSpeaking(false);
-          level.value = 0;
-        }
-      });
-      p.play();
-    } catch {
-      if (my === gen.current && alive.current) setSpeaking(false);
-    }
-  };
-
+  const speak = useCallback((text: string) => ctl.current!.speak(text), []);
+  const stop = useCallback(() => ctl.current!.stop(), []);
   return { speak, stop, speaking, level };
 }

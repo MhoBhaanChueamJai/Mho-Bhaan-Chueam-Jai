@@ -64,6 +64,8 @@ const wisdomToRow = (w: Wisdom) => ({
   // ส่งเฉพาะเมื่อมีค่า (ใช้ได้แม้ฐานข้อมูลยังไม่มีคอลัมน์นี้)
   ...(w.sharedBy ? { shared_by: w.sharedBy } : {}),
   ...(w.shareCode ? { share_code: w.shareCode } : {}),
+  // เสียงเล่าต้นฉบับ: เก็บเฉพาะไฟล์ที่อัปขึ้นคลาวด์แล้ว (ที่อยู่ไฟล์ในเครื่องใช้ข้ามเครื่องไม่ได้)
+  ...(w.audio?.some((a) => a.path) ? { audio: w.audio.filter((a) => a.path).map((a) => ({ path: a.path, sec: a.sec })) } : {}),
 });
 const rowToWisdom = (r: any): Wisdom => ({
   id: r.id,
@@ -80,6 +82,7 @@ const rowToWisdom = (r: any): Wisdom => ({
   verified: !!r.verified,
   sharedBy: r.shared_by ?? undefined,
   shareCode: r.share_code ?? undefined,
+  audio: Array.isArray(r.audio) && r.audio.length ? r.audio : undefined,
 });
 
 const check = <T,>(r: { data: T | null; error: any }) => {
@@ -161,7 +164,15 @@ export async function saveVisit(pid: string, v: MB5Visit) {
   check(await supabase.from('visits').upsert(visitToRow(pid, v)));
 }
 export async function saveWisdom(w: Wisdom) {
-  check(await supabase.from('wisdoms').upsert(wisdomToRow(w)));
+  const row = wisdomToRow(w);
+  const r = await supabase.from('wisdoms').upsert(row);
+  // ฐานข้อมูลยังไม่มีคอลัมน์ audio → บันทึกส่วนอื่นไปก่อน (เสียงยังอยู่ในเครื่อง)
+  if (r.error && 'audio' in row && /audio/i.test(r.error.message ?? '')) {
+    const { audio: _a, ...rest } = row as any;
+    check(await supabase.from('wisdoms').upsert(rest));
+    return;
+  }
+  check(r);
 }
 /** ลบตำราของตัวเอง (สำเนาที่ได้รับจากเพื่อน = ลบเฉพาะในคลังเรา ต้นฉบับของเพื่อนไม่กระทบ) */
 export async function deleteWisdom(id: string) {

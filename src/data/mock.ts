@@ -105,7 +105,10 @@ export type Wisdom = {
   builtin?: boolean;
   /** แหล่งอ้างอิง */
   refs?: WisdomRef[];
+  /** เสียงเล่าต้นฉบับ (โหมดเล่า) — ไฟล์ในเครื่อง + ที่เก็บบนคลาวด์ */
+  audio?: WisdomAudio[];
 };
+export type WisdomAudio = { uri?: string; path?: string; sec: number };
 export type WisdomRef = { title: string; org?: string; year?: string; url?: string };
 
 /** ตำราตัวอย่างถูกเอาออกแล้ว — ตำราเริ่มต้นในระบบอยู่ที่ data/library.ts */

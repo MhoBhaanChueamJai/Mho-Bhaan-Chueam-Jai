@@ -4,7 +4,7 @@
  * ครบแล้ว: สรุป (+ ข้อความปิดท้าย) → ถามยืนยัน → ตอบใช้ = บันทึก
  * หน้าจอ: พื้นดำ ก้อนแสง AI ตอบสนองเสียง ชิปหัวข้อที่ได้แล้ว ปุ่มลอยด้านล่าง
  */
-import { createAudioPlayer, setAudioModeAsync, type AudioPlayer } from 'expo-audio';
+import { type AudioPlayer } from 'expo-audio';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -12,8 +12,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Keyboard, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown, FadeInUp, FadeOutUp, useAnimatedKeyboard, useAnimatedStyle, useDerivedValue, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { synthesize, transcribe } from '../api/ai';
-import { rmsLevel, useVoiceRecorder } from './audio';
+import { transcribe } from '../api/ai';
+import { useVoiceRecorder } from './audio';
+import { createSpeech, type SpeechCtl } from './speech';
 import { Sym } from './ios';
 import { AISphere } from './AISphere';
 import { AIGlow, Waveform } from './Orb';
@@ -109,61 +110,15 @@ export function VoiceSession({ scribe, initialOptions, title, opening, topics, h
   // เสียงไมค์ (อัปเดตทุก 80ms) → ทำให้นุ่มก่อนส่งให้ดอกไม้
   const micLevel = useDerivedValue(() => withTiming(rec.level.value, { duration: 120 }));
 
-  /** พูดแล้วรอจนจบ */
-  const speak = (text: string) =>
-    new Promise<void>(async (resolve) => {
-      let finished = false;
-      const end = () => {
-        if (finished) return;
-        stopSpeaking.current = null;
-        finished = true;
-        speakLevel.value = withTiming(0, { duration: 250 });
-        try {
-          player.current?.pause();
-          player.current?.remove();
-        } catch {}
-        player.current = null;
-        resolve();
-      };
-      try {
-        const uri = await synthesize(text);
-        if (!alive.current) return end();
-        await setAudioModeAsync({ playsInSilentMode: true, allowsRecording: false });
-        // ปิดหน้าไประหว่างรอ → ไม่สร้างตัวเล่นเสียง
-        if (!alive.current) return end();
-        const p = createAudioPlayer({ uri });
-        player.current = p;
-        stopSpeaking.current = end;
-        // แสงตอบสนองระดับเสียงจริงของครูปัญญา (RMS จากคลื่นเสียง)
-        let lastSample = 0;
-        try {
-          p.setAudioSamplingEnabled(true);
-          p.addListener('audioSampleUpdate', (sm) => {
-            lastSample = Date.now();
-            speakLevel.value = withTiming(Math.min(1, rmsLevel(sm.channels[0]?.frames) * 1.3), { duration: 80 });
-          });
-        } catch {}
-        // สำรอง: ถ้าไม่ได้ค่าคลื่นเสียง (เช่นไฟล์ MP3) → จำลองจังหวะพูดเป็นพยางค์ ตลอดช่วงที่กำลังพูด
-        const t0 = Date.now();
-        const sim = setInterval(() => {
-          if (finished) return clearInterval(sim);
-          if (Date.now() - lastSample < 300) return;
-          const tt = (Date.now() - t0) / 1000;
-          const syl = Math.abs(Math.sin(tt * 7.3)) * (0.55 + 0.45 * Math.sin(tt * 1.9 + 1));
-          speakLevel.value = withTiming(0.25 + syl * 0.6, { duration: 90 });
-        }, 90);
-        p.addListener('playbackStatusUpdate', (s) => {
-          if (s.didJustFinish) {
-            clearInterval(sim);
-            end();
-          }
-        });
-        p.play();
-        setTimeout(end, 30000); // กันค้าง
-      } catch {
-        end();
-      }
-    });
+  /** พูดแล้วรอจนจบ — แบ่งช่วงประโยค เตรียมช่วงถัดไปล่วงหน้า (ตอบยาวได้จนจบ ไม่ถูกตัด) */
+  const speechRef = useRef<SpeechCtl | null>(null);
+  if (!speechRef.current) speechRef.current = createSpeech(speakLevel);
+  const speak = async (text: string) => {
+    if (!alive.current) return;
+    stopSpeaking.current = () => speechRef.current?.stop();
+    await speechRef.current!.speak(text);
+    stopSpeaking.current = null;
+  };
 
   /**
    * ฟังคำตอบ (VAD แบบปรับตามห้อง):
@@ -315,6 +270,7 @@ export function VoiceSession({ scribe, initialOptions, title, opening, topics, h
   /** หยุดทุกอย่างทันที (ปิดหน้า / ใช้ข้อมูล): เสียงที่กำลังพูด ไมค์ และวงจรสนทนา */
   const stopAll = () => {
     alive.current = false;
+    speechRef.current?.stop();
     resume.current?.();
     manualStop.current = true;
     try {

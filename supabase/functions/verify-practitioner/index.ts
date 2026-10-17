@@ -96,6 +96,11 @@ Deno.serve(async (req) => {
       return json({ ok: false, reason });
     };
 
+    // ── กันการเดาสุ่ม: ตรวจไม่ผ่านเกิน 5 ครั้งใน 24 ชั่วโมง → พักไว้ก่อน ──
+    const since = new Date(Date.now() - 24 * 3600_000).toISOString();
+    const { count: fails } = await admin.from('verifications').select('id', { count: 'exact', head: true }).eq('owner', uid).eq('status', 'rejected').gte('created_at', since);
+    if ((fails ?? 0) >= 5) return json({ ok: false, reason: 'ตรวจสอบไม่ผ่านหลายครั้งเกินไป กรุณาลองใหม่พรุ่งนี้ หรือติดต่อ สสจ. / รพ.สต.' }, 429);
+
     // ── ตรวจข้อมูลพื้นฐาน ──
     if (!first || !last) return json({ ok: false, reason: 'กรอกชื่อและนามสกุลให้ครบ' });
     if (!validThaiId(nid)) return reject('เลขบัตรประชาชนไม่ถูกต้อง (ตรวจสอบเลข 13 หลักอีกครั้ง)');
@@ -134,6 +139,14 @@ Deno.serve(async (req) => {
       const labels = (ks: string[]) => ks.map((k) => TYPES[k].label).join(', ');
       return reject(`ประเภทหมอพื้นบ้านไม่ตรงกับทะเบียน — ไม่ได้รับรองเป็น ${labels(notInRegistry)}`, registry);
     }
+
+    // ── หนังสือรับรอง 1 ใบ ใช้ยืนยันได้กับ 1 บัญชี (กันคนอื่นนำชื่อ+เลขที่ในทะเบียนสาธารณะมาแอบอ้าง) ──
+    const certs = [registry.certificate_number, registry.renew_certificate_number].filter(Boolean) as string[];
+    const { data: taken } = await admin.from('profiles').select('id').in('cert_number', certs).neq('id', uid).eq('role', 'practitioner').limit(1);
+    if (taken?.length) return reject('หนังสือรับรองนี้ถูกใช้ยืนยันกับบัญชีอื่นแล้ว หากเป็นของคุณ กรุณาติดต่อ สสจ. / รพ.สต. เพื่อตรวจสอบ', registry);
+    // เลขบัตรประชาชนเดียวกันต้องไม่ถูกใช้ยืนยันกับบัญชีอื่น
+    const { data: sameId } = await admin.from('verifications').select('owner').eq('national_id_hash', base.national_id_hash).eq('status', 'verified').neq('owner', uid).limit(1);
+    if (sameId?.length) return reject('เลขบัตรประชาชนนี้ถูกใช้ยืนยันกับบัญชีอื่นแล้ว กรุณาติดต่อ สสจ. / รพ.สต.', registry);
 
     // ── ผ่าน: บันทึก + ยกระดับสิทธิ์ ──
     await admin.from('verifications').insert({ ...base, status: 'verified', registry });

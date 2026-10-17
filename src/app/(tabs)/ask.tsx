@@ -4,7 +4,6 @@ import { StyleSheet, View } from 'react-native';
 import { AISphere } from '../../components/AISphere';
 import { Button, T } from '../../components/ui';
 import { askLaunch } from '../../lib/askLaunch';
-import { palette } from '../../theme';
 
 /**
  * ปุ่มไมค์ "ครูปัญญา" บนแถบเมนู — กดแล้วเปิดหน้าแชทเต็มจอ (ไม่มีแถบเมนู)
@@ -27,13 +26,13 @@ export default function AskTab() {
   return (
     <View style={styles.page}>
       <AISphere size={110} active />
-      <T v="h2" center style={{ marginTop: 8 }}>ครูปัญญา</T>
-      <T v="callout" center color={palette.inkSoft} style={{ marginTop: 4 }}>ผู้ช่วย AI สำหรับหมอพื้นบ้าน</T>
+      <T v="h2" center color="#FFFFFF" style={{ marginTop: 8 }}>ครูปัญญา</T>
+      <T v="callout" center color="rgba(255,255,255,0.6)" style={{ marginTop: 4 }}>ผู้ช่วย AI สำหรับหมอพื้นบ้าน</T>
       <Button label="เริ่มคุยกับครูปัญญา" onPress={() => router.push('/assistant')} style={{ marginTop: 24, alignSelf: 'stretch' }} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: palette.bg, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 },
+  page: { flex: 1, backgroundColor: '#000000', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 },
 });

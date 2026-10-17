@@ -37,7 +37,7 @@ function Root() {
       <Stack screenOptions={{ headerShown: false, headerBackButtonDisplayMode: 'minimal', headerBackTitle: 'กลับ', contentStyle: { backgroundColor: palette.bg }, animation: 'default' }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="login" options={{ animation: 'fade', gestureEnabled: false }} />
-        <Stack.Screen name="capture" options={{ presentation: 'fullScreenModal', animation: 'fade_from_bottom' }} />
+        <Stack.Screen name="patient/tell" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
         <Stack.Screen name="scan" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
         <Stack.Screen name="id-scan" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
         <Stack.Screen name="herb/scan" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
@@ -49,6 +49,7 @@ function Root() {
         <Stack.Screen name="wisdom/share" options={{ presentation: 'modal' }} />
         <Stack.Screen name="wisdom/read" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
         <Stack.Screen name="wisdom/voice" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
+        <Stack.Screen name="wisdom/tell" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
         <Stack.Screen name="patient/voice" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
         <Stack.Screen name="patient/visit" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
         <Stack.Screen name="assistant" />

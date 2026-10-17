@@ -3,7 +3,7 @@
  * ครูปัญญาใช้ 2 โมเดลช่วยกันอัตโนมัติ และเสียงเดียวทั้งแอป จึงตั้งได้แค่ภาษาพูด (ภาษาถิ่น)
  */
 import React, { useEffect } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { AISphere } from '../components/AISphere';
 import { useSpeaker } from '../components/audio';
@@ -11,6 +11,7 @@ import { Sym } from '../components/ios';
 import { PressableScale, T } from '../components/ui';
 import { CircleIcon, ListRow, ListSection, PAGE_PAD } from '../components/ListRow';
 import { DIALECTS, type Dialect } from '../lib/dialect';
+import { clearChats } from '../lib/chatStore';
 import { useApp } from '../store/app';
 import { elevation, palette } from '../theme';
 
@@ -36,7 +37,7 @@ export default function AISettings() {
       <Animated.View entering={FadeInDown.duration(420)} style={[styles.hero, elevation.e2]}>
         <AISphere size={170} active={tts.speaking} level={tts.level} />
         <T v="h2" color="#FFFFFF" style={{ marginTop: 6 }}>ครูปัญญา</T>
-        <T v="subhead" color="rgba(255,255,255,0.65)" center>ผู้ช่วย AI ของหมอพื้นบ้าน · คิดวิเคราะห์ 2 ทางเพื่อความแม่นยำ</T>
+        <T v="subhead" color="rgba(255,255,255,0.65)" center>ผู้ช่วย AI ของหมอพื้นบ้าน · รู้จักสมุนไพร 100 ชนิด ตำรา และหลักการตั้งตำรับยา</T>
         <PressableScale haptic="press" onPress={preview} style={[styles.listen, tts.speaking && styles.listenOn]} accessibilityLabel={tts.speaking ? 'หยุดเสียง' : 'ทดลองฟังเสียง'}>
           <Sym name={tts.speaking ? 'stop.fill' : 'play.fill'} size={15} color={tts.speaking ? '#04150E' : '#FFFFFF'} />
           <T v="bodyStrong" color={tts.speaking ? '#04150E' : '#FFFFFF'}>{tts.speaking ? 'หยุด' : 'ทดลองฟังเสียง'}</T>
@@ -62,6 +63,27 @@ export default function AISettings() {
             />
           );
         })}
+      </ListSection>
+
+      {/* การสนทนา */}
+      <ListSection i={2} title="การสนทนา" footer="ประวัติแชทเก็บไว้ในเครื่องนี้เท่านั้น และถูกล้างเมื่อออกจากระบบ">
+        <ListRow
+          icon={<CircleIcon name="speaker.wave.2.fill" color="#14905C" />}
+          title="พูดคำตอบอัตโนมัติ"
+          subtitle="ในหน้าแชท ครูปัญญาจะพูดคำตอบให้ฟังทันที"
+          right={<Switch value={settings.autoSpeak} onValueChange={(v) => update({ autoSpeak: v })} trackColor={{ true: palette.primary }} />}
+        />
+        <ListRow
+          icon={<CircleIcon name="trash.fill" color="#D9534A" />}
+          title="ล้างประวัติแชททั้งหมด"
+          onPress={() =>
+            Alert.alert('ล้างประวัติแชท?', 'แชทกับครูปัญญาทั้งหมดในเครื่องนี้จะถูกลบ', [
+              { text: 'ยกเลิก', style: 'cancel' },
+              { text: 'ล้าง', style: 'destructive', onPress: () => clearChats() },
+            ])
+          }
+          last
+        />
       </ListSection>
     </ScrollView>
   );

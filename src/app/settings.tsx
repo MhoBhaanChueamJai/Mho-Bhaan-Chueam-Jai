@@ -5,7 +5,7 @@
  */
 import { Stack, router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Alert, ScrollView, Share, StyleSheet, Switch, View } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, Share, StyleSheet, Switch, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSpeaker } from '../components/audio';
 import { CircleIcon, ListRow, ListSection, PAGE_PAD } from '../components/ListRow';
@@ -23,7 +23,28 @@ import { elevation, palette } from '../theme';
 const enter = (i: number) => FadeInDown.delay(40 + i * 50).duration(420);
 
 export default function Settings() {
-  const { settings, update, patients, wisdoms, clearLocal, setUnlocked, profile, isPractitioner } = useApp();
+  const { settings, update, patients, wisdoms, clearLocal, setUnlocked, profile, isPractitioner, sync, pendingCount, syncNow, demo } = useApp();
+  const [syncing, setSyncing] = useState(false);
+  // สถานะซิงก์: ให้หมอรู้ว่าข้อมูลขึ้นคลาวด์ครบแล้วหรือยัง
+  const syncAt = settings.lastSyncAt ? new Date(settings.lastSyncAt) : null;
+  const syncAtLabel = syncAt ? `${syncAt.getDate()}/${syncAt.getMonth() + 1} ${String(syncAt.getHours()).padStart(2, '0')}:${String(syncAt.getMinutes()).padStart(2, '0')}` : '';
+  const syncLabel = demo
+    ? 'โหมดทดลอง · ข้อมูลเก็บในเครื่องนี้เท่านั้น ไม่ขึ้นคลาวด์'
+    : syncing || sync === 'syncing'
+      ? 'กำลังซิงก์…'
+      : pendingCount
+        ? `รอส่งขึ้นคลาวด์ ${pendingCount} รายการ · แตะเพื่อส่งใหม่`
+        : sync === 'error'
+          ? 'ซิงก์ไม่สำเร็จ · แตะเพื่อลองใหม่'
+          : sync === 'local'
+            ? 'ยังไม่ได้เชื่อมต่อคลาวด์'
+            : `ข้อมูลขึ้นคลาวด์ครบแล้ว${syncAtLabel ? ` · ล่าสุด ${syncAtLabel}` : ''}`;
+  const doSync = async () => {
+    if (syncing) return;
+    setSyncing(true);
+    await syncNow().catch(() => {});
+    setSyncing(false);
+  };
   const displayName = profile?.display_name || (profile?.first_name ? `${profile.first_name} ${profile.last_name ?? ''}` : doctor.name);
   const [bio, setBio] = useState({ available: false, label: 'Face ID', icon: 'faceid' as 'faceid' | 'touchid' });
   useEffect(() => {
@@ -160,6 +181,13 @@ export default function Settings() {
 
         {/* ── ข้อมูล ── */}
         <ListSection i={3} title="ข้อมูล">
+          <ListRow
+            icon={<CircleIcon name={pendingCount || sync === 'error' ? 'exclamationmark.icloud.fill' : 'checkmark.icloud.fill'} color={pendingCount || sync === 'error' ? '#D9921A' : '#14905C'} />}
+            title="ซิงก์ข้อมูล"
+            subtitle={syncLabel}
+            onPress={doSync}
+            right={syncing ? <ActivityIndicator /> : <Sym name="arrow.triangle.2.circlepath" size={18} color={palette.primary} />}
+          />
           <ListRow icon={<CircleIcon name="square.and.arrow.up" color="#3B7DD8" />} title="ส่งออกข้อมูลผู้ป่วย" subtitle={`ผู้ป่วย ${patients.length} ราย · ภูมิปัญญา ${wisdoms.length} เรื่อง`} onPress={exportAll} chevron />
           <ListRow icon={<CircleIcon name="hand.raised.fill" color="#7A5CC8" />} title="นโยบายความเป็นส่วนตัว" onPress={() => router.push('/privacy')} chevron last />
         </ListSection>

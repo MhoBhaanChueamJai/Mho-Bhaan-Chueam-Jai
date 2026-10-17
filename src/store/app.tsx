@@ -1,12 +1,15 @@
 import { setDialect, type Dialect } from '../lib/dialect';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { AppState } from 'react-native';
 import type { ModelKey } from '../api/ai';
 import { LIBRARY } from '../data/library';
+import { clearChats } from '../lib/chatStore';
+import { removeClips } from '../lib/wisdomAudio';
 import { LEGACY_SAMPLE_PATIENTS, isLegacyWisdom, agenda as seedAgenda, patients as seedPatients, wisdoms as seedWisdoms, type MB5Visit, type Patient, type Wisdom } from '../data/mock';
 import * as cloud from '../lib/cloud';
 import type { Agenda } from '../lib/cloud';
-import { supabase } from '../lib/supabase';
+import { supabase, usernameToEmail } from '../lib/supabase';
 
 type Settings = {
   /** เวลาที่ซิงก์คลาวด์สำเร็จล่าสุด (ms) — ใช้แยกข้อมูลที่บันทึกในเครื่องระหว่างออฟไลน์ */
@@ -99,6 +102,12 @@ type Ctx = {
   /** สถานะการเชื่อมต่อฐานข้อมูล */
   sync: 'local' | 'syncing' | 'cloud' | 'error';
   syncError: string;
+  /** โหมดทดลอง: ข้อมูลอยู่ในเครื่องนี้เท่านั้น */
+  demo: boolean;
+  /** จำนวนรายการที่ส่งขึ้นคลาวด์ไม่สำเร็จ รอส่งใหม่ */
+  pendingCount: number;
+  /** ซิงก์ตอนนี้: ส่งรายการที่ค้าง แล้วโหลดข้อมูลล่าสุด */
+  syncNow: () => Promise<void>;
   /** โหลดข้อมูลจาก Supabase ใหม่ (เรียกหลังเข้าสู่ระบบ) */
   reloadCloud: () => Promise<void>;
   /** โปรไฟล์สมาชิก (null = ยังไม่เข้าสู่ระบบ/ออฟไลน์) */
@@ -140,16 +149,48 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [sync, setSync] = useState<Ctx['sync']>('local');
   const [syncError, setSyncError] = useState('');
   const [online, setOnline] = useState(false);
+  const [demo, setDemo] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
 
-  /** เขียนขึ้นคลาวด์แบบไม่บล็อก UI — ล้มเหลวก็ยังมีข้อมูลในเครื่อง */
-  const push = (fn: () => Promise<unknown>) => {
+  /**
+   * เขียนขึ้นคลาวด์แบบไม่บล็อก UI — ล้มเหลว (เน็ตหลุด) → เก็บเข้าคิวรอส่งใหม่ ไม่ทิ้งเงียบๆ
+   * key = ข้อมูลชิ้นไหน (เช่น w:id) — บันทึกครั้งใหม่ของชิ้นเดิมแทนที่คิวเก่า (ไม่ส่งของเก่าทับของใหม่)
+   */
+  const pending = useRef(new Map<string, () => Promise<unknown>>());
+  const [pendingCount, setPendingCount] = useState(0);
+  const push = (fn: () => Promise<unknown>, key = `x${Date.now()}${Math.random()}`) => {
     if (!online) return;
+    pending.current.delete(key);
+    setPendingCount(pending.current.size);
     fn().catch((e) => {
+      pending.current.set(key, fn);
+      setPendingCount(pending.current.size);
       setSync('error');
       setSyncError(String(e?.message ?? e));
     });
   };
+  /** ส่งรายการที่ค้างในคิวใหม่ทั้งหมด */
+  const flushPending = async () => {
+    for (const [k, fn] of [...pending.current]) {
+      try {
+        await fn();
+        if (pending.current.get(k) === fn) pending.current.delete(k);
+      } catch {
+        break; // ยังส่งไม่ได้ (เน็ตยังไม่มา) → ลองใหม่รอบหน้า
+      }
+    }
+    setPendingCount(pending.current.size);
+    if (!pending.current.size) setSync((x) => (x === 'error' ? 'cloud' : x));
+  };
+
+  // กลับเข้าแอป → ส่งรายการที่ค้างอยู่ใหม่
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (st) => {
+      if (st === 'active' && pending.current.size) flushPending().catch(() => {});
+    });
+    return () => sub.remove();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [online]);
 
   const reloadCloud = async () => {
     const { data } = await supabase.auth.getSession();
@@ -164,6 +205,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const prof = (pr.data as Profile | null) ?? null;
       setProfile(prof);
       if (prof?.role) setSettings((s) => ({ ...s, role: prof.role }));
+      // โหมดทดลอง (บัญชีสาธิตที่หลายคนใช้ร่วมกัน): ข้อมูลอยู่ในเครื่องนี้เท่านั้น ไม่โหลด/ไม่ส่งขึ้นคลาวด์
+      // — กันไม่ให้ผู้ทดลองเห็นข้อมูลผู้ป่วยที่คนอื่นบันทึกไว้ในบัญชีเดียวกัน
+      const isDemo = (data.session.user.email ?? '').toLowerCase() === usernameToEmail('somchai').toLowerCase();
+      setDemo(isDemo);
+      if (isDemo) {
+        setOnline(false);
+        setSync('local');
+        setSyncError('');
+        return;
+      }
       const practitioner = prof?.role === 'practitioner' || prof?.role === 'admin';
       // ข้อมูลผู้ป่วยตัวอย่างใส่ให้เฉพาะหมอพื้นบ้านที่ยืนยันแล้ว (สมาชิกทั่วไปไม่มีสิทธิ์ข้อมูลผู้ป่วย)
       if (practitioner) await cloud.seedIfEmpty();
@@ -194,6 +245,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const cloudW = new Set(d.wisdoms.map((x) => x.id));
       const upW = mine.filter((w) => !cloudW.has(w.id) && !w.builtin && idTime(w.id) > since);
       d.wisdoms = [...upW, ...d.wisdoms];
+      // เสียงเล่าในเครื่อง (ไฟล์ที่ยังไม่ได้/อัปไม่ได้ขึ้นคลาวด์) → คงไว้กับตำราเล่มเดิม
+      const localAudio = new Map(mine.filter((w) => w.audio?.length).map((w) => [w.id, w.audio!]));
+      d.wisdoms = d.wisdoms.map((w) => {
+        const la = localAudio.get(w.id);
+        if (!la) return w;
+        const byPath = new Map((w.audio ?? []).map((c) => [c.path, c]));
+        return { ...w, audio: la.map((c) => ({ ...c, path: c.path ?? undefined, ...(c.path && byPath.get(c.path) ? { sec: byPath.get(c.path)!.sec } : {}) })) };
+      });
       Promise.all([...upP.map((x) => cloud.savePatient(x)), ...upV.map((x) => cloud.saveVisit(x.pid, x.v)), ...upW.map((x) => cloud.saveWisdom(x))]).catch(() => {});
       setSettings((st) => ({ ...st, lastSyncAt: Date.now() }));
       setPatients(d.patients);
@@ -208,6 +267,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setOpenLog(d.events.filter((x) => x.kind === 'open').map((x) => ({ pid: x.value, at: x.at })).slice(0, 50));
       setOnline(true);
       setSync('cloud');
+      flushPending().catch(() => {});
       setSyncError('');
     } catch (e: any) {
       // ยังไม่ได้สร้างตาราง / ไม่มีเน็ต → ใช้ข้อมูลในเครื่องต่อ
@@ -260,15 +320,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       wisdoms,
       removeWisdom: (id) => {
         if (LIBRARY.some((x) => x.id === id)) return;
+        // ลบไฟล์เสียงเล่าของเล่มนี้ด้วย (ในเครื่อง + คลาวด์)
+        removeClips(mine.find((x) => x.id === id)?.audio).catch(() => {});
         setWisdoms((list) => list.filter((x) => x.id !== id));
-        push(() => cloud.deleteWisdom(id));
+        push(() => cloud.deleteWisdom(id), `w:${id}`);
       },
       updateWisdom: (id, patch) => {
         setWisdoms((list) =>
           list.map((x) => {
             if (x.id !== id) return x;
             const next = { ...x, ...patch };
-            push(() => cloud.saveWisdom(next));
+            push(() => cloud.saveWisdom(next), `w:${next.id}`);
             return next;
           }),
         );
@@ -280,25 +342,25 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         // ตำราเริ่มต้นในระบบที่เพื่อนแชร์มา มีอยู่ในคลังทุกคนแล้ว → ไม่เพิ่มสำเนา
         if (w.sharedBy && LIBRARY.some((x) => x.title === w.title)) return;
         setWisdoms((list) => (w.shareCode || w.sharedBy) && exists(list) ? list : [w, ...list]);
-        push(() => cloud.saveWisdom(w));
+        push(() => cloud.saveWisdom(w), `w:${w.id}`);
       },
       patients,
       removePatient: (id) => {
         setPatients((list) => list.filter((x) => x.id !== id));
-        push(() => cloud.deletePatient(id));
+        push(() => cloud.deletePatient(id), `p:${id}`);
       },
       addVisit: (pid, visit) => {
         const p = patients.find((x) => x.id === pid);
         const no = (p?.visits[0]?.no ?? 0) + 1;
         setPatients((list) => list.map((x) => (x.id === pid ? { ...x, visits: [{ ...visit, no }, ...x.visits] } : x)));
-        push(() => cloud.saveVisit(pid, { ...visit, no }));
+        push(() => cloud.saveVisit(pid, { ...visit, no }), `v:${pid}:${no}`);
         return no;
       },
       addPatient: (p, firstVisit) => {
         const id = `p${Date.now()}`;
         const np: Patient = { ...p, id, visits: firstVisit ? [{ ...firstVisit, no: 1 }] : [] };
         setPatients((list) => [np, ...list]);
-        push(() => cloud.savePatient(np));
+        push(() => cloud.savePatient(np), `p:${np.id}`);
         return id;
       },
       unlocked,
@@ -318,11 +380,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       agenda,
       sync,
       syncError,
+      pendingCount,
+      demo,
+      syncNow: async () => {
+        await flushPending();
+        await reloadCloud();
+      },
       reloadCloud,
       profile,
       isPractitioner: (profile?.role ?? settings.role) !== 'member',
       clearLocal: () => {
+        // ประวัติแชทครูปัญญาเป็นข้อมูลส่วนตัวของผู้ใช้คนนี้ → ล้างเมื่อออกจากระบบ
+        clearChats().catch(() => {});
         setOnline(false);
+        setDemo(false);
         setPatients([]);
         setWisdoms([]);
         setAgenda({});
@@ -341,7 +412,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       },
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [settings, wisdoms, patients, ready, unlocked, searchLog, openLog, agenda, sync, syncError, online, profile],
+    [settings, wisdoms, patients, ready, unlocked, searchLog, openLog, agenda, sync, syncError, online, profile, pendingCount, demo],
   );
   return <AppCtx.Provider value={value}>{children}</AppCtx.Provider>;
 }

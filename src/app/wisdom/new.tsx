@@ -19,7 +19,9 @@ import { Button, GlassDock, HeaderButton, PressableScale, T, useHaptic } from '.
 import { KINDS, onWisdomResult, takeWisdomResult, type WisdomResult } from '../../lib/wisdomTalk';
 import { KIND_FORM, joinMethod, splitMethod } from '../../lib/wisdomKinds';
 import { draftFromWisdom, organizeWisdom, organizedToWisdom, type Organized } from '../../lib/wisdomOrganize';
-import type { Wisdom } from '../../data/mock';
+import type { Wisdom, WisdomAudio } from '../../data/mock';
+import { uploadClips } from '../../lib/wisdomAudio';
+import { MenuView } from '@react-native-menu/menu';
 import { useApp } from '../../store/app';
 import { elevation, palette } from '../../theme';
 
@@ -130,6 +132,8 @@ function NewWisdomInner() {
   const [mode, setMode] = useState<'write' | 'organizing' | 'review'>('write');
   const [org, setOrg] = useState<Organized | null>(null);
   const [aiNote, setAiNote] = useState('');
+  // เสียงเล่าต้นฉบับ (จากโหมดเล่า) — บันทึกไปกับตำรา
+  const [audio, setAudio] = useState<WisdomAudio[]>(editing?.audio ?? []);
   const { height: SH } = useWindowDimensions();
   const sheetH = Math.round(SH * 0.66); // สูงราวหน้ากระดาษในหน้าอ่านแบบหนังสือ
   const cfg = KIND_FORM[kind];
@@ -139,6 +143,18 @@ function NewWisdomInner() {
   const apply = (r: WisdomResult) => {
     const k = (KINDS.includes(r.kind as any) ? r.kind : kind) as Wisdom['kind'];
     setKind(k);
+    if (r.audio?.length) setAudio((a) => [...a, ...r.audio!]);
+    if (r.source && !editing) setSource(r.source);
+    // โหมดเล่า: ครูปัญญาเรียบเรียงเป็นหนังสือแล้ว → เปิดหน้าสรุปก่อนบันทึกเลย (ต้นฉบับ = หน้าที่เรียบเรียง แก้ต่อได้)
+    if (r.organized) {
+      setTitle((t) => (t.trim() ? t : r.organized!.title));
+      setIndication((t) => (t.trim() ? t : r.organized!.indication));
+      setDraft(draftFromWisdom(k, organizedToWisdom(k, r.organized)));
+      setOrg(r.organized);
+      setMode('review');
+      h.success();
+      return;
+    }
     // ไม่ทับของเดิม: ชื่อ/ใช้แก้ เติมเฉพาะช่องที่ยังว่าง
     setTitle((t) => (t.trim() ? t : r.title || t));
     setIndication((t) => (t.trim() ? t : r.indication || t));
@@ -172,10 +188,13 @@ function NewWisdomInner() {
   const canOrganize = draft.some((p) => p.trim().length > 10);
 
   const saveData = (o: Organized) => {
-    const data = organizedToWisdom(kind, { ...o, title: o.title || title.trim() || 'ภูมิปัญญาไม่มีชื่อ' });
+    const data = { ...organizedToWisdom(kind, { ...o, title: o.title || title.trim() || 'ภูมิปัญญาไม่มีชื่อ' }), ...(audio.length ? { audio } : {}) };
     const t = new Date();
+    const id = editing?.id ?? `w${Date.now()}`;
     if (editing) updateWisdom(editing.id, data);
-    else addWisdom({ ...data, id: `w${Date.now()}`, source, date: `${t.getDate()}/${t.getMonth() + 1}/${t.getFullYear() + 543}`, verified: false });
+    else addWisdom({ ...data, id, source, date: `${t.getDate()}/${t.getMonth() + 1}/${t.getFullYear() + 543}`, verified: false });
+    // สำรองเสียงเล่าขึ้นคลาวด์เบื้องหลัง (ฟังได้แม้เปลี่ยนเครื่อง) — ไม่สำเร็จก็ยังมีไฟล์ในเครื่อง
+    if (audio.some((a) => !a.path)) uploadClips(id, audio).then((up) => up.some((a, i) => a.path !== audio[i].path) && updateWisdom(id, { audio: up })).catch(() => {});
     h.success();
     router.back();
   };
@@ -221,9 +240,23 @@ function NewWisdomInner() {
         headerRight: () =>
           mode === 'review' ? null : (
             <View style={{ flexDirection: 'row', gap: 4 }}>
-              <HeaderButton label="เล่าให้ครูปัญญาบันทึก" onPress={() => router.push({ pathname: '/wisdom/voice', params: { kind } })}>
-                <Sym name="mic.fill" size={20} color={palette.ink} weight="semibold" />
-              </HeaderButton>
+              {/* บันทึกด้วยเสียง: โหมดเล่า (เล่าต่อเนื่อง เก็บเสียง) หรือให้ครูปัญญาถามทีละเรื่อง */}
+              <MenuView
+                shouldOpenOnLongPress={false}
+                themeVariant="light"
+                title="บันทึกด้วยเสียง"
+                actions={[
+                  { id: 'tell', title: 'โหมดเล่า', subtitle: 'เล่าต่อเนื่อง เก็บเสียงไว้ แล้วเรียบเรียงเป็นหนังสือ', image: 'waveform' },
+                  { id: 'ask', title: 'ให้ครูปัญญาถามทีละเรื่อง', subtitle: 'ตอบคำถามสั้นๆ ทีละหัวข้อ', image: 'bubble.left.and.bubble.right' },
+                ]}
+                onPressAction={({ nativeEvent }) =>
+                  nativeEvent.event === 'tell' ? router.push({ pathname: '/wisdom/tell', params: { from: 'new' } }) : router.push({ pathname: '/wisdom/voice', params: { kind } })
+                }
+              >
+                <View style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }} accessibilityRole="button" accessibilityLabel="บันทึกด้วยเสียง">
+                  <Sym name="mic.fill" size={20} color={palette.ink} weight="semibold" />
+                </View>
+              </MenuView>
               <HeaderButton label="สแกนตำราโบราณ" onPress={() => router.push({ pathname: '/scan', params: { fill: '1' } })}>
                 <Sym name="doc.viewfinder" size={20} color={palette.ink} weight="semibold" />
               </HeaderButton>

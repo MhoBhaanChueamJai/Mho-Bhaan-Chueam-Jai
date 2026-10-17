@@ -18,9 +18,9 @@ const enter = (i: number) => FadeInDown.delay(30 + i * 50).duration(420);
 
 /** เครื่องมือ — ไอคอนสี่เหลี่ยมมนสีทึบแบบแอป Apple */
 const TOOLS = [
-  { title: 'เล่าอาการ', sub: 'AI ช่วยบันทึก', sym: 'waveform', bg: palette.primary, go: () => router.push({ pathname: '/capture', params: { mode: 'patient' } }) },
+  { title: 'เล่าอาการ', sub: 'AI ช่วยบันทึก', sym: 'waveform', bg: palette.primary, go: () => router.push('/patient/tell') },
   { title: 'สแกนตำรา', sub: 'สมุดข่อย ใบลาน', sym: 'doc.text.viewfinder', bg: '#D9921A', go: () => router.push('/scan') },
-  { title: 'ถ่ายทอดตำรับ', sub: 'เก็บให้ลูกหลาน', sym: 'book.closed.fill', bg: '#C2564B', go: () => router.push('/wisdom/new') },
+  { title: 'ถ่ายทอดตำรับ', sub: 'เล่าให้ครูปัญญาฟัง', sym: 'book.closed.fill', bg: '#C2564B', go: () => router.push('/wisdom/tell') },
   { title: 'สมุนไพร', sub: `${herbs.length} ชนิด`, sym: 'leaf.fill', bg: '#4E9A3E', go: () => router.push('/herbs') },
 ] as const;
 
@@ -46,7 +46,7 @@ function Bell({ unread, shake }: { unread: number; shake: number }) {
 }
 
 export default function Home() {
-  const { patients, settings, isPractitioner, profile, wisdoms: allW } = useApp();
+  const { patients, settings, isPractitioner, profile, wisdoms: allW, demo } = useApp();
   const wisdoms = allW; // นับรวมตำราอ้างอิงในระบบ
   // ผู้ป่วยที่มารักษาล่าสุด 3 ราย (หมอพื้นบ้านไม่ใช้ระบบนัด)
   const recent = [...patients].sort((a, b) => visitSortKey(lastVisit(b)?.date) - visitSortKey(lastVisit(a)?.date)).slice(0, 3);
@@ -83,6 +83,12 @@ export default function Home() {
           <T v="callout" color={ios.secondary} style={{ paddingHorizontal: 4 }}>
             {thaiDate(TODAY)} · สวัสดีครับ {me}
           </T>
+          {demo ? (
+            <View style={styles.demo}>
+              <Sym name="lock.shield.fill" size={13} color="#A86A2E" />
+              <T v="caption" color="#8A5A26" style={{ flex: 1, fontWeight: '600' }}>โหมดทดลอง · ข้อมูลเก็บในเครื่องนี้เท่านั้น</T>
+            </View>
+          ) : null}
         </Animated.View>
 
         {/* ครูปัญญา — การ์ดแนะนำแบบ Siri Suggestions */}
@@ -95,7 +101,7 @@ export default function Home() {
               <T v="title">ถามครูปัญญา</T>
               <T v="subhead" color={ios.secondary}>สมุนไพร ตำรับยา หรือความปลอดภัยของยา</T>
             </View>
-            <PressableScale haptic="press" onPress={() => router.push('/capture')} style={styles.mic} accessibilityLabel="พูดกับครูปัญญา">
+            <PressableScale haptic="press" onPress={() => router.push({ pathname: '/assistant', params: { voice: '1' } })} style={styles.mic} accessibilityLabel="คุยกับครูปัญญาด้วยเสียง">
               <Sym name="mic.fill" size={20} color="#FFFFFF" />
             </PressableScale>
           </IOSCard>
@@ -187,6 +193,7 @@ const styles = StyleSheet.create({
   mic: { width: 44, height: 44, borderRadius: 22, backgroundColor: palette.primary, alignItems: 'center', justifyContent: 'center' },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   tileWrap: { width: '48.3%' },
+  demo: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, backgroundColor: '#FBF1E2' },
   tile: { flex: 1, gap: 14, minHeight: 124, justifyContent: 'space-between' },
   track: { height: 8, borderRadius: 4, backgroundColor: '#D3E5DB', marginTop: 14, overflow: 'hidden' },
   fillBar: { height: 8, borderRadius: 4, backgroundColor: palette.primary },

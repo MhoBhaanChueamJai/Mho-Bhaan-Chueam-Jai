@@ -9,7 +9,8 @@
 import { chatJSON } from '../api/ai';
 import { dialectHint, dialectSpeakStyle } from './dialect';
 import { KIND_FORM } from './wisdomKinds';
-import type { Wisdom } from '../data/mock';
+import type { Wisdom, WisdomAudio } from '../data/mock';
+import type { Organized } from './wisdomOrganize';
 import type { Turn } from './intake';
 
 type Kind = Wisdom['kind'];
@@ -194,7 +195,14 @@ ${dialectHint()}
 export const kindOf = asKind;
 
 /** ส่งผลจากหน้าเสียง / หน้าสแกนตำรา กลับไปเติมฟอร์มเพิ่มภูมิปัญญา */
-export type WisdomResult = WisdomData & { source?: Wisdom['source']; summary?: string };
+export type WisdomResult = WisdomData & {
+  source?: Wisdom['source'];
+  summary?: string;
+  /** โหมดเล่า: ครูปัญญาเรียบเรียงเป็นหนังสือแล้ว → เปิดหน้าสรุปก่อนบันทึกได้ทันที */
+  organized?: Organized;
+  /** โหมดเล่า: ไฟล์เสียงเล่าต้นฉบับ */
+  audio?: WisdomAudio[];
+};
 let listener: ((d: WisdomResult) => void) | null = null;
 let pending: WisdomResult | null = null;
 export const onWisdomResult = (fn: ((d: WisdomResult) => void) | null) => {

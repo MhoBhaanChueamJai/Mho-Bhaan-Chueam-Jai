@@ -13,6 +13,7 @@ import { Alert, Linking, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown, FadeInUp, runOnJS, useAnimatedReaction, useAnimatedRef, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { AudioClips } from '../../components/AudioClips';
 import { NotFound } from '../../components/NotFound';
 import { useSpeaker } from '../../components/audio';
 import { BookCover, COVERS } from '../../components/BookCover';
@@ -310,6 +311,8 @@ export function WisdomView({ w, preview }: { w: Wisdom; preview?: WisdomPreview 
         </Animated.View>
 
         <View style={styles.body} onLayout={(e) => (bodyY.current = e.nativeEvent.layout.y)}>
+          {/* เสียงเล่าต้นฉบับ (โหมดเล่า) */}
+          {!preview && w.audio?.length ? <AudioClips clips={w.audio} by={w.sharedBy ?? myName} /> : null}
           {body || om ? (
             <Section reading={reading === 'summary'} onY={(v) => (posY.current['summary'] = v)} i={0} icon={kf.summary.big ? (w.kind === 'คาถา/พิธี' ? 'sparkles' : 'text.book.closed.fill') : 'book.fill'} color={palette.primary} title={L.summary}>
               <T v="body" numberOfLines={preview ? 10 : undefined} style={[styles.para, w.kind === 'คาถา/พิธี' && styles.chant]}>{body}</T>
