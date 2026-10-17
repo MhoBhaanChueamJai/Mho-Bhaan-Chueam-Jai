@@ -4,7 +4,7 @@ import { Keyboard, Pressable, ScrollView, StyleSheet, TextInput, View, useWindow
 import Animated, { FadeIn, FadeInUp, LinearTransition, useAnimatedKeyboard, useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Sym, ios } from '../components/ios';
-import { KeynoteIntro } from '../components/Intro';
+import { LoginFilm } from '../components/LoginFilm';
 import { Button, PressableScale, T, useHaptic } from '../components/ui';
 import { supabase, usernameToEmail } from '../lib/supabase';
 import { PRIVACY_VERSION } from './privacy';
@@ -74,7 +74,7 @@ function Field({
 
 export default function Login() {
   const insets = useSafeAreaInsets();
-  const { height, width } = useWindowDimensions();
+  const { height } = useWindowDimensions();
   const { settings, update, setUnlocked, reloadCloud } = useApp();
   const h = useHaptic();
   const passRef = useRef<TextInput>(null);
@@ -354,10 +354,10 @@ export default function Login() {
 
   return (
     <View style={styles.root}>
-      {/* ── ส่วนบน: อินโทรเปิดตัวแอปแบบ keynote ── */}
+      {/* ── ส่วนบน: วิดีโอแนะนำแอป 2 นาที (เล่นวนแบบเงียบ) ── */}
       <Animated.View style={heroSt}>
         <Pressable onPress={Keyboard.dismiss} accessible={false} style={{ height: heroH }}>
-          <KeynoteIntro width={width} height={heroH - insets.top} inset={insets.top} />
+          <LoginFilm height={heroH} />
         </Pressable>
       </Animated.View>
 
@@ -394,7 +394,7 @@ export default function Login() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#0B6E45', overflow: 'hidden' },
+  root: { flex: 1, backgroundColor: '#F1F8F4', overflow: 'hidden' },
   sheet: { position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: '#FFFFFF', borderTopLeftRadius: 32, borderTopRightRadius: 32, borderCurve: 'continuous', paddingHorizontal: 24, paddingTop: 28 },
   group: { marginTop: 20, gap: 12 },
   field: { flexDirection: 'row', alignItems: 'center', gap: 10, height: 54, borderRadius: 27, paddingLeft: 18, paddingRight: 6, backgroundColor: palette.mint, borderWidth: 1.5, borderColor: 'transparent' },
