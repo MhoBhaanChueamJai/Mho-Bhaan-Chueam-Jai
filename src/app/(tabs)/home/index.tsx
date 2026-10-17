@@ -46,7 +46,7 @@ function Bell({ unread, shake }: { unread: number; shake: number }) {
 }
 
 export default function Home() {
-  const { patients, settings, isPractitioner, profile, wisdoms: allW, demo } = useApp();
+  const { patients, settings, isPractitioner, profile, wisdoms: allW } = useApp();
   const wisdoms = allW; // นับรวมตำราอ้างอิงในระบบ
   // ผู้ป่วยที่มารักษาล่าสุด 3 ราย (หมอพื้นบ้านไม่ใช้ระบบนัด)
   const recent = [...patients].sort((a, b) => visitSortKey(lastVisit(b)?.date) - visitSortKey(lastVisit(a)?.date)).slice(0, 3);
@@ -83,12 +83,6 @@ export default function Home() {
           <T v="callout" color={ios.secondary} style={{ paddingHorizontal: 4 }}>
             {thaiDate(TODAY)} · สวัสดีครับ {me}
           </T>
-          {demo ? (
-            <View style={styles.demo}>
-              <Sym name="lock.shield.fill" size={13} color="#A86A2E" />
-              <T v="caption" color="#8A5A26" style={{ flex: 1, fontWeight: '600' }}>โหมดทดลอง · ข้อมูลเก็บในเครื่องนี้เท่านั้น</T>
-            </View>
-          ) : null}
         </Animated.View>
 
         {/* ครูปัญญา — การ์ดแนะนำแบบ Siri Suggestions */}
@@ -193,7 +187,6 @@ const styles = StyleSheet.create({
   mic: { width: 44, height: 44, borderRadius: 22, backgroundColor: palette.primary, alignItems: 'center', justifyContent: 'center' },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   tileWrap: { width: '48.3%' },
-  demo: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, backgroundColor: '#FBF1E2' },
   tile: { flex: 1, gap: 14, minHeight: 124, justifyContent: 'space-between' },
   track: { height: 8, borderRadius: 4, backgroundColor: '#D3E5DB', marginTop: 14, overflow: 'hidden' },
   fillBar: { height: 8, borderRadius: 4, backgroundColor: palette.primary },

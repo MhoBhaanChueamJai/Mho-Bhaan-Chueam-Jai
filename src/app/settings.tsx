@@ -29,7 +29,7 @@ export default function Settings() {
   const syncAt = settings.lastSyncAt ? new Date(settings.lastSyncAt) : null;
   const syncAtLabel = syncAt ? `${syncAt.getDate()}/${syncAt.getMonth() + 1} ${String(syncAt.getHours()).padStart(2, '0')}:${String(syncAt.getMinutes()).padStart(2, '0')}` : '';
   const syncLabel = demo
-    ? 'โหมดทดลอง · ข้อมูลเก็บในเครื่องนี้เท่านั้น ไม่ขึ้นคลาวด์'
+    ? 'ข้อมูลเก็บในเครื่องนี้'
     : syncing || sync === 'syncing'
       ? 'กำลังซิงก์…'
       : pendingCount
