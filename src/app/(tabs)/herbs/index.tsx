@@ -189,7 +189,7 @@ const styles = StyleSheet.create({
   sec: { marginTop: 28, marginBottom: 12, marginLeft: 4 },
   secRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginTop: 28, marginBottom: 10, paddingHorizontal: 4 },
   wxRow: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 4, marginBottom: 8 },
-  wxSkel: { flexDirection: 'row', alignItems: 'center', gap: 12, height: 220, padding: 14, borderRadius: 26, borderCurve: 'continuous', backgroundColor: palette.surface },
+  wxSkel: { flexDirection: 'row', alignItems: 'center', gap: 12, height: 214, padding: 14, borderRadius: 26, borderCurve: 'continuous', backgroundColor: palette.surface },
   wxSkelImg: { width: 84, height: 84, borderRadius: 20, backgroundColor: 'rgba(20,144,92,0.08)' },
   skel: { height: 11, borderRadius: 6, backgroundColor: 'rgba(20,144,92,0.1)' },
   chips: { gap: 8, paddingHorizontal: 16, paddingBottom: 14 },
