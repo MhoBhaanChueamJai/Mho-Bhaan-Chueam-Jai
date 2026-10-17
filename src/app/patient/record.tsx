@@ -3,7 +3,8 @@
  * ช่องเรียงตามแบบ ม.บ.5: วันที่ · อาการ · ตรวจร่างกาย · วินิจฉัย · การรักษา · ผลการรักษา · การติดตามผล · หมายเหตุ
  * พิมพ์ชื่อสมุนไพรในช่องการรักษา → เตือนข้อควรระวังของสมุนไพรนั้นทันที (เทียบกับโรคประจำตัว/ยาที่ใช้)
  */
-import { Stack, router, useLocalSearchParams } from 'expo-router';
+import { usePreventRemove } from '@react-navigation/native';
+import { Stack, router, useLocalSearchParams, useNavigation } from 'expo-router';
 import React, { useMemo, useRef, useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import Animated, { FadeIn, LinearTransition } from 'react-native-reanimated';
@@ -88,11 +89,22 @@ function RecordInner() {
 
   // สมุนไพรที่พิมพ์ในช่องการรักษา → ข้อควรระวัง
   const herbsUsed = useMemo(() => herbsMentioned(treatment), [treatment]);
+  const navigation = useNavigation();
+
+  const canSave = !!(symptoms.trim() || diagnosis.trim() || treatment.trim());
+  const dirty = !!(canSave || exam.trim() || followUp.trim() || note.trim());
+  // กรอกไว้แล้วกดย้อนกลับ/ปัดกลับ → ถามก่อน (กันข้อมูลหายโดยไม่ตั้งใจ)
+  usePreventRemove(dirty, ({ data }) => {
+    // บันทึกแล้ว → ออกได้เลย
+    if (saved.current) return navigation.dispatch(data.action);
+    Alert.alert('ยังไม่ได้บันทึก', 'ข้อมูลที่กรอกไว้จะหายไป', [
+      { text: 'กรอกต่อ', style: 'cancel' },
+      { text: 'ทิ้ง', style: 'destructive', onPress: () => navigation.dispatch(data.action) },
+    ]);
+  });
 
   if (!p) return <NotFound title="ไม่พบผู้ป่วย" />;
   const no = (p.visits[0]?.no ?? 0) + 1;
-  const canSave = !!(symptoms.trim() || diagnosis.trim() || treatment.trim());
-  const dirty = !!(canSave || exam.trim() || followUp.trim() || note.trim());
 
   const save = () => {
     if (!canSave || saved.current) return;
@@ -114,26 +126,11 @@ function RecordInner() {
     router.back();
   };
 
-  const close = () => {
-    if (!dirty) return router.back();
-    Alert.alert('ยังไม่ได้บันทึก', 'ข้อมูลที่กรอกไว้จะหายไป', [
-      { text: 'กรอกต่อ', style: 'cancel' },
-      { text: 'ทิ้ง', style: 'destructive', onPress: () => router.back() },
-    ]);
-  };
 
   return (
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: palette.bg }}>
-      {/* กรอกไว้แล้ว → ปัดลงปิดไม่ได้ (กันข้อมูลหายโดยไม่ตั้งใจ) ต้องกดยกเลิกและยืนยัน */}
-      <Stack.Screen options={{ title: `บันทึกการรักษาครั้งที่ ${no}`, gestureEnabled: !dirty, headerBackVisible: false, headerLeft: () => (
-        <PressableScale haptic="select" onPress={close} hitSlop={10} accessibilityLabel="ยกเลิก">
-          <T v="body" color={palette.primary}>ยกเลิก</T>
-        </PressableScale>
-      ), headerRight: () => (
-        <PressableScale haptic="press" onPress={save} disabled={!canSave} hitSlop={10} accessibilityLabel="บันทึก">
-          <T v="body" color={canSave ? palette.primary : ios.tertiary} style={{ fontWeight: '700' }}>บันทึก</T>
-        </PressableScale>
-      ) }} />
+      {/* หน้าแบบเดียวกับเพิ่มผู้ป่วย: ปุ่มย้อนกลับมุมซ้าย · ปุ่มบันทึกลอยด้านล่าง */}
+      <Stack.Screen options={{ title: `บันทึกการรักษาครั้งที่ ${no}` }} />
       <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.page} keyboardDismissMode="interactive" keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         {/* ผู้ป่วย + สิ่งที่ต้องระวัง */}
         <View style={styles.who}>
