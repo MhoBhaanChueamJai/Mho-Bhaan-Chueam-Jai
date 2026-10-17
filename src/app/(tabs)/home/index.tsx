@@ -133,7 +133,8 @@ export default function Home() {
           <Animated.View entering={enter(4)}>
             <SectionTitle title="ผู้ป่วยล่าสุด" action="ดูทั้งหมด" onAction={() => router.push('/patients')} />
             {recent.length ? (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingRight: 4 }} style={{ marginHorizontal: -16 }} contentInset={{ left: 16, right: 16 }} contentOffset={{ x: -16, y: 0 }}>
+              // เผื่อขอบบน-ล่างให้เงาการ์ด (ScrollView ตัดทุกอย่างที่เกินกรอบ)
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingRight: 4, paddingVertical: 14 }} style={{ marginHorizontal: -16, marginVertical: -14, overflow: 'visible' }} contentInset={{ left: 16, right: 16 }} contentOffset={{ x: -16, y: 0 }}>
                 {recent.map((p) => {
                   const v = lastVisit(p);
                   const what = v ? [v.diagnosis, v.symptoms].find((x) => x && x.trim() !== '-') ?? 'ยังไม่ได้ระบุอาการ' : 'ยังไม่มีการรักษา';
