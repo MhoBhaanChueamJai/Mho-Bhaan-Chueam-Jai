@@ -15,7 +15,7 @@ export type Anatomy = { image: number; bg: string; parts: AnatomyPart[] };
 
 export const ANATOMY: Record<string, Anatomy> = {
   andrographis: {
-    image: require('../../assets/herbs/anatomy/andrographis.jpg'),
+    image: require('../../assets/herbs/anatomy/andrographis.webp'),
     bg: '#ECE7E5',
     parts: [
       {
@@ -66,7 +66,7 @@ export const ANATOMY: Record<string, Anatomy> = {
     ],
   },
   turmeric: {
-    image: require('../../assets/herbs/anatomy/turmeric.jpg'),
+    image: require('../../assets/herbs/anatomy/turmeric.webp'),
     bg: '#EFEAE7',
     parts: [
       {
@@ -126,7 +126,7 @@ export const ANATOMY: Record<string, Anatomy> = {
     ],
   },
   plai: {
-    image: require('../../assets/herbs/anatomy/plai.jpg'),
+    image: require('../../assets/herbs/anatomy/plai.webp'),
     bg: '#EFE9E6',
     parts: [
       {
@@ -186,7 +186,7 @@ export const ANATOMY: Record<string, Anatomy> = {
     ],
   },
   ginger: {
-    image: require('../../assets/herbs/anatomy/ginger.jpg'),
+    image: require('../../assets/herbs/anatomy/ginger.webp'),
     bg: '#EEE9E6',
     parts: [
       {
@@ -246,7 +246,7 @@ export const ANATOMY: Record<string, Anatomy> = {
     ],
   },
   krachai: {
-    image: require('../../assets/herbs/anatomy/krachai.jpg'),
+    image: require('../../assets/herbs/anatomy/krachai.webp'),
     bg: '#EEE9E5',
     parts: [
       {
@@ -297,7 +297,7 @@ export const ANATOMY: Record<string, Anatomy> = {
     ],
   },
   boraphet: {
-    image: require('../../assets/herbs/anatomy/boraphet.jpg'),
+    image: require('../../assets/herbs/anatomy/boraphet.webp'),
     bg: '#EBE7E3',
     parts: [
       {
@@ -348,7 +348,7 @@ export const ANATOMY: Record<string, Anatomy> = {
     ],
   },
   senna: {
-    image: require('../../assets/herbs/anatomy/senna.jpg'),
+    image: require('../../assets/herbs/anatomy/senna.webp'),
     bg: '#E9E4E1',
     parts: [
       {
@@ -399,7 +399,7 @@ export const ANATOMY: Record<string, Anatomy> = {
     ],
   },
   lemongrass: {
-    image: require('../../assets/herbs/anatomy/lemongrass.jpg'),
+    image: require('../../assets/herbs/anatomy/lemongrass.webp'),
     bg: '#E9E5E1',
     parts: [
       {
@@ -441,7 +441,7 @@ export const ANATOMY: Record<string, Anatomy> = {
     ],
   },
   aloe: {
-    image: require('../../assets/herbs/anatomy/aloe.jpg'),
+    image: require('../../assets/herbs/anatomy/aloe.webp'),
     bg: '#EDE9E5',
     parts: [
       {
@@ -492,7 +492,7 @@ export const ANATOMY: Record<string, Anatomy> = {
     ],
   },
   centella: {
-    image: require('../../assets/herbs/anatomy/centella.jpg'),
+    image: require('../../assets/herbs/anatomy/centella.webp'),
     bg: '#ECE7E3',
     parts: [
       {
@@ -543,7 +543,7 @@ export const ANATOMY: Record<string, Anatomy> = {
     ],
   },
   galangal: {
-    image: require('../../assets/herbs/anatomy/galangal.jpg'),
+    image: require('../../assets/herbs/anatomy/galangal.webp'),
     bg: '#F0EBE9',
     parts: [
       {
@@ -594,7 +594,7 @@ export const ANATOMY: Record<string, Anatomy> = {
     ],
   },
   kaffir: {
-    image: require('../../assets/herbs/anatomy/kaffir.jpg'),
+    image: require('../../assets/herbs/anatomy/kaffir.webp'),
     bg: '#EBE8E4',
     parts: [
       {

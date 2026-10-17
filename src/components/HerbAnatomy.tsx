@@ -55,8 +55,8 @@ export function HerbAnatomy({ data }: { data: Anatomy }) {
   const p = data.parts[sel];
   return (
     <View>
-        <View style={[styles.plate, { width: W, height: H, backgroundColor: data.bg }]}>
-          <Image source={data.image} style={StyleSheet.absoluteFill} contentFit="cover" transition={250} />
+        <View style={[styles.plate, { width: W, height: H }]}>
+          <Image source={data.image} style={StyleSheet.absoluteFill} contentFit="contain" transition={250} />
           <View style={StyleSheet.absoluteFill}>
             {/* เส้นนำจากจุดไปป้าย */}
             <Svg width={W} height={H} style={StyleSheet.absoluteFill} pointerEvents="none">
@@ -128,7 +128,7 @@ export function HerbAnatomy({ data }: { data: Anatomy }) {
 }
 
 const styles = StyleSheet.create({
-  plate: { alignSelf: 'center', borderRadius: 20, borderCurve: 'continuous', overflow: 'hidden', boxShadow: '0px 8px 20px rgba(40,30,20,0.16)' },
+  plate: { alignSelf: 'center' }, // ภาพต้นไม้พื้นโปร่ง ไม่มีกรอบ/พื้นหลัง
   dotWrap: { position: 'absolute', width: 24, height: 24, alignItems: 'center', justifyContent: 'center' },
   ring: { position: 'absolute', width: 14, height: 14, borderRadius: 7, borderWidth: 2 },
   dot: { width: 11, height: 11, borderRadius: 6, borderWidth: 2, borderColor: '#FFFFFF' },
