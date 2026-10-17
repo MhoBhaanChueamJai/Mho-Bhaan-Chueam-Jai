@@ -68,47 +68,69 @@ function medsAdvice(meds: string[]) {
 const fmtPhone = (t: string) => (t.length === 10 ? `${t.slice(0, 3)}-${t.slice(3, 6)}-${t.slice(6)}` : t);
 
 /** ประวัติการรักษา: วันที่แบบปฏิทินด้านซ้าย การ์ดด้านขวา แตะเพื่อดูรายละเอียด */
+/** สีป้ายผลการรักษา */
+const RESULT_TONE: Record<string, { fg: string; bg: string }> = {
+  หาย: { fg: '#1B7F4B', bg: '#DDF3E6' },
+  ดีขึ้น: { fg: '#1B7F4B', bg: '#DDF3E6' },
+  ทุเลา: { fg: '#1F7F9E', bg: '#DDF0F6' },
+  ทรงตัว: { fg: '#5E6B63', bg: '#ECEFED' },
+  แย่ลง: { fg: '#B0761E', bg: '#FBEEDB' },
+  ส่งต่อ: { fg: '#C2453A', bg: '#FBE4E1' },
+};
+const resultTone = (r: string) => RESULT_TONE[r] ?? { fg: '#9A6A12', bg: '#FBF1DC' };
+const filled = (x?: string) => !!x && x.trim() !== '-' && x.trim() !== '';
+
+/** หนึ่งครั้งในไทม์ไลน์: จุดบนเส้นเวลา · การ์ดพับ = สรุป · แตะกางดูทุกช่อง ม.บ.5 */
 function VisitItem({ v, open, onToggle, last, latest }: { v: MB5Visit; open: boolean; onToggle: () => void; last: boolean; latest: boolean }) {
   const dp = dateParts(v.date);
+  const tone = resultTone(v.result);
+  const title = filled(v.diagnosis) ? v.diagnosis : filled(v.symptoms) ? v.symptoms : 'ไม่ได้ระบุอาการ';
+  const summary = filled(v.treatment) ? v.treatment : filled(v.symptoms) && title !== v.symptoms ? v.symptoms : '';
   return (
     <Animated.View layout={LinearTransition.duration(260)} style={styles.tlRow}>
+      {/* เส้นเวลา: จุดทึบ = ล่าสุด · จุดกลวง = ครั้งก่อน */}
       <View style={styles.tlRail}>
-        <View style={[styles.cal, latest && styles.calOn]}>
-          <T v="title" color={latest ? '#FFFFFF' : palette.ink} style={{ lineHeight: 22 }}>{dp.d}</T>
-          <T v="micro" color={latest ? 'rgba(255,255,255,0.85)' : ios.secondary}>{dp.m}{dp.y}</T>
-        </View>
+        <View style={[styles.tlDot, latest ? styles.tlDotOn : null]} />
         {!last ? <View style={styles.tlLine} /> : null}
       </View>
-      <PressableScale onPress={onToggle} scaleTo={0.99} haptic="select" style={[styles.tlCard, elevation.e1]} accessibilityLabel={`การรักษาครั้งที่ ${v.no}`}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <T v="caption" color={ios.secondary} style={{ flex: 1, fontWeight: '600' }}>ครั้งที่ {v.no}{latest ? ' · ล่าสุด' : ''}</T>
-          <View style={styles.result}>
-            <T v="micro" color={palette.primaryDeep}>{v.result}</T>
-          </View>
+      <View style={{ flex: 1, paddingBottom: last ? 0 : 14 }}>
+        <View style={styles.tlHead}>
+          <T v="subhead" color={latest ? palette.primaryDeep : ios.secondary} style={{ fontWeight: '700' }}>
+            {dp.d} {dp.m}{dp.y}
+          </T>
+          <T v="caption" color={ios.tertiary} style={{ flex: 1 }}> · ครั้งที่ {v.no}{latest ? ' · ล่าสุด' : ''}</T>
         </View>
-        <T v="title" numberOfLines={open ? undefined : 1} style={{ marginTop: 6 }}>{v.diagnosis}</T>
-        {!open ? (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
-            <T v="subhead" color={ios.secondary} numberOfLines={1} style={{ flex: 1 }}>{v.symptoms}</T>
-            <Sym name="chevron.down" size={12} color={ios.tertiary} weight="semibold" />
-          </View>
-        ) : (
-          <Animated.View entering={FadeIn.duration(200)} style={styles.detail}>
-            {DETAIL.filter((d) => v[d.k]).map((d) => (
-              <View key={d.k} style={styles.detailRow}>
-                <CircleIcon name={d.icon} color={d.color} size={28} />
-                <View style={{ flex: 1, gap: 1 }}>
-                  <T v="caption" color={ios.secondary} style={{ fontWeight: '600' }}>{d.l}</T>
-                  <T v="subhead">{String(v[d.k])}</T>
-                </View>
-              </View>
-            ))}
-            <View style={{ alignItems: 'center' }}>
-              <Sym name="chevron.up" size={12} color={ios.tertiary} weight="semibold" />
+        <PressableScale onPress={onToggle} scaleTo={0.99} haptic="select" style={[styles.tlCard, elevation.e1]} accessibilityLabel={`การรักษาครั้งที่ ${v.no} ${title}`}>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
+            <T v="title" numberOfLines={open ? undefined : 2} style={{ flex: 1 }}>{title}</T>
+            <View style={[styles.result, { backgroundColor: tone.bg }]}>
+              <T v="micro" color={tone.fg} style={{ fontWeight: '700' }}>{v.result}</T>
             </View>
-          </Animated.View>
-        )}
-      </PressableScale>
+          </View>
+          {!open ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 }}>
+              {summary ? <Sym name="leaf.fill" size={11} color={palette.primary} /> : null}
+              <T v="subhead" color={ios.secondary} numberOfLines={1} style={{ flex: 1 }}>{summary || 'แตะเพื่อดูรายละเอียด'}</T>
+              <Sym name="chevron.down" size={12} color={ios.tertiary} weight="semibold" />
+            </View>
+          ) : (
+            <Animated.View entering={FadeIn.duration(200)} style={styles.detail}>
+              {DETAIL.filter((d) => filled(v[d.k] as string)).map((d, k, arr) => (
+                <View key={d.k} style={[styles.detailRow, k < arr.length - 1 && styles.detailSep]}>
+                  <View style={styles.detailLabel}>
+                    <View style={[styles.detailDot, { backgroundColor: d.color }]} />
+                    <T v="caption" color={ios.secondary} style={{ fontWeight: '600' }}>{d.l}</T>
+                  </View>
+                  <T v="subhead" style={{ flex: 1 }}>{String(v[d.k])}</T>
+                </View>
+              ))}
+              <View style={{ alignItems: 'center', marginTop: 2 }}>
+                <Sym name="chevron.up" size={12} color={ios.tertiary} weight="semibold" />
+              </View>
+            </Animated.View>
+          )}
+        </PressableScale>
+      </View>
     </Animated.View>
   );
 }
@@ -274,25 +296,22 @@ function PatientBody({ p }: { p: Patient }) {
 
 const styles = StyleSheet.create({
   secTitle: { marginTop: 30, marginBottom: 12, marginLeft: 4 },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 10 },
-  tile: { backgroundColor: palette.surface, borderRadius: 20, borderCurve: 'continuous', padding: 14, minHeight: 96 },
-  tileAlert: { backgroundColor: '#FFF4F2', borderWidth: 1, borderColor: 'rgba(217,83,74,0.25)' },
-  tileHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   countPill: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999, backgroundColor: palette.primarySoft },
-  cal: { width: 46, paddingVertical: 6, borderRadius: 14, alignItems: 'center', backgroundColor: palette.surface, borderWidth: 1, borderColor: 'rgba(20,80,50,0.12)' },
-  calOn: { backgroundColor: palette.primary, borderColor: palette.primary },
   detailRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
-  qaRow: { flexDirection: 'row', justifyContent: 'space-around', marginTop: 22 },
-  qa: { alignItems: 'center', gap: 8, width: 110 },
-  qaCircle: { width: 60, height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center' },
   aiNote: { flexDirection: 'row', gap: 8, alignItems: 'flex-start', marginTop: 12, padding: 14, borderRadius: 18, backgroundColor: palette.primarySoft },
   histHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 30, marginBottom: 12, paddingHorizontal: 4 },
   tlRow: { flexDirection: 'row', gap: 12 },
-  tlRail: { width: 46, alignItems: 'center' },
-  tlLine: { flex: 1, width: 2, borderRadius: 1, backgroundColor: 'rgba(20,144,92,0.15)', marginVertical: 4 },
-  tlCard: { flex: 1, backgroundColor: palette.surface, borderRadius: 20, borderCurve: 'continuous', padding: 16, marginBottom: 12 },
-  result: { paddingHorizontal: 9, paddingVertical: 3, borderRadius: 999, backgroundColor: palette.primarySoft },
-  detail: { marginTop: 12, paddingTop: 12, gap: 12, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: ios.separator },
+  tlHead: { flexDirection: 'row', alignItems: 'center', marginBottom: 6, marginLeft: 2 },
+  tlDot: { width: 14, height: 14, borderRadius: 7, marginTop: 4, borderWidth: 2.5, borderColor: 'rgba(20,144,92,0.45)', backgroundColor: palette.bg },
+  tlDotOn: { borderColor: palette.primary, backgroundColor: palette.primary, boxShadow: '0px 0px 0px 4px rgba(20,144,92,0.16)' },
+  detailSep: { paddingBottom: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: ios.separator },
+  detailLabel: { width: 92, flexDirection: 'row', alignItems: 'center', gap: 6, paddingTop: 2 },
+  detailDot: { width: 6, height: 6, borderRadius: 3 },
+  tlRail: { width: 18, alignItems: 'center' },
+  tlLine: { flex: 1, width: 2, borderRadius: 1, backgroundColor: 'rgba(20,144,92,0.18)', marginTop: 4 },
+  tlCard: { backgroundColor: palette.surface, borderRadius: 20, borderCurve: 'continuous', padding: 16 },
+  result: { paddingHorizontal: 9, paddingVertical: 3, borderRadius: 999, marginTop: 2 },
+  detail: { marginTop: 12, paddingTop: 12, gap: 10, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: ios.separator },
   empty: { alignItems: 'center', gap: 8, paddingVertical: 28, borderRadius: 20, backgroundColor: palette.surface },
 });
 
