@@ -88,8 +88,10 @@ export function PatientCard({ p, avatar, onCall }: { p: Patient; avatar: number;
   const prof = ELEMENT_PROFILE[p.element];
   const ag = ageSamutthan(p.age);
   const ss = seasonNow();
-  const hn = (p.id.replace(/\D/g, '').slice(-8) || '0').padStart(8, '0');
   const allergic = p.allergies && p.allergies !== 'ไม่มี';
+  // เบอร์โทรบนบัตร (แบบ 081-234-5678)
+  const tel = (p.phone ?? '').replace(/\D/g, '');
+  const phone = tel.length === 10 ? `${tel.slice(0, 3)}-${tel.slice(3, 6)}-${tel.slice(6)}` : tel.length >= 9 ? tel : '';
   const chronic = p.chronic && p.chronic !== 'ไม่มี';
 
   const Glare = () => (
@@ -198,7 +200,12 @@ export function PatientCard({ p, avatar, onCall }: { p: Patient; avatar: number;
                     <View style={[styles.statusDot, { backgroundColor: st.fg }]} />
                     <T v="caption" color={st.fg} style={{ fontWeight: '700' }}>{statusLabel(p.status)}</T>
                   </View>
-                  <T v="micro" color="rgba(247,226,168,0.7)" style={styles.hn}>HN  {hn.slice(0, 4)} {hn.slice(4)}</T>
+                  {phone ? (
+                    <View style={styles.phoneRow}>
+                      <Sym name="phone.fill" size={10} color="rgba(247,226,168,0.75)" />
+                      <T v="caption" color="rgba(247,226,168,0.85)" style={styles.phone}>{phone}</T>
+                    </View>
+                  ) : null}
                 </View>
               </View>
 
@@ -306,8 +313,9 @@ const styles = StyleSheet.create({
   avatarInner: { padding: 2, borderRadius: 999 },
   emboss: { textShadowColor: 'rgba(0,0,0,0.55)', textShadowOffset: { width: 0, height: 1.5 }, textShadowRadius: 3 },
   status: { flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, borderWidth: 1 },
+  phoneRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  phone: { letterSpacing: 1, fontVariant: ['tabular-nums'], fontWeight: '600' },
   statusDot: { width: 6, height: 6, borderRadius: 3 },
-  hn: { letterSpacing: 1.6, fontVariant: ['tabular-nums'], fontWeight: '600' },
   stats: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginBottom: 16, paddingVertical: 10, borderRadius: 16, backgroundColor: 'rgba(0,0,0,0.28)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(233,199,126,0.4)' },
   stat: { flex: 1, alignItems: 'center', gap: 1 },
   statSep: { width: StyleSheet.hairlineWidth, alignSelf: 'stretch', backgroundColor: 'rgba(233,199,126,0.35)' },
