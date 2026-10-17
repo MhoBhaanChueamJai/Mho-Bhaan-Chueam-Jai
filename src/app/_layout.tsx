@@ -40,6 +40,7 @@ function Root() {
         <Stack.Screen name="capture" options={{ presentation: 'fullScreenModal', animation: 'fade_from_bottom' }} />
         <Stack.Screen name="scan" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
         <Stack.Screen name="id-scan" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
+        <Stack.Screen name="weather-preview" options={{ presentation: 'modal' }} />
         <Stack.Screen name="herb/scan" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
         {/* ผลสแกนสมุนไพร: Sheet ของ iOS (แบบแผ่นรับตำรา) */}
         <Stack.Screen name="herb/found" options={{ presentation: 'formSheet', sheetAllowedDetents: [1.0], sheetGrabberVisible: false, contentStyle: { backgroundColor: palette.bg } }} />
