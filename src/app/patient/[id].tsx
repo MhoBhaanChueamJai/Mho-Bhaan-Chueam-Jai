@@ -117,11 +117,12 @@ function VisitItem({ v, open, onToggle, last, latest }: { v: MB5Visit; open: boo
             <Animated.View entering={FadeIn.duration(200)} style={styles.detail}>
               {DETAIL.filter((d) => filled(v[d.k] as string)).map((d, k, arr) => (
                 <View key={d.k} style={[styles.detailRow, k < arr.length - 1 && styles.detailSep]}>
-                  <View style={styles.detailLabel}>
-                    <View style={[styles.detailDot, { backgroundColor: d.color }]} />
+                  <CircleIcon name={d.icon} color={d.color} size={28} />
+                  {/* หัวข้ออยู่เหนือเนื้อหา */}
+                  <View style={{ flex: 1, gap: 2 }}>
                     <T v="caption" color={ios.secondary} style={{ fontWeight: '600' }}>{d.l}</T>
+                    <T v="subhead">{String(v[d.k])}</T>
                   </View>
-                  <T v="subhead" style={{ flex: 1 }}>{String(v[d.k])}</T>
                 </View>
               ))}
               <View style={{ alignItems: 'center', marginTop: 2 }}>
@@ -305,8 +306,6 @@ const styles = StyleSheet.create({
   tlDot: { width: 14, height: 14, borderRadius: 7, marginTop: 4, borderWidth: 2.5, borderColor: 'rgba(20,144,92,0.45)', backgroundColor: palette.bg },
   tlDotOn: { borderColor: palette.primary, backgroundColor: palette.primary, boxShadow: '0px 0px 0px 4px rgba(20,144,92,0.16)' },
   detailSep: { paddingBottom: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: ios.separator },
-  detailLabel: { width: 92, flexDirection: 'row', alignItems: 'center', gap: 6, paddingTop: 2 },
-  detailDot: { width: 6, height: 6, borderRadius: 3 },
   tlRail: { width: 18, alignItems: 'center' },
   tlLine: { flex: 1, width: 2, borderRadius: 1, backgroundColor: 'rgba(20,144,92,0.18)', marginTop: 4 },
   tlCard: { backgroundColor: palette.surface, borderRadius: 20, borderCurve: 'continuous', padding: 16 },
