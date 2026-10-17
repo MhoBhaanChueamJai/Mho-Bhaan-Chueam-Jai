@@ -115,58 +115,44 @@ export default function Herbs() {
         {/* ── สมุนไพรประจำวัน: เลือกตามฤดู + เคล็ดลับจากครูปัญญา ── */}
         <View style={styles.secRow}>
           <T v="h3">สมุนไพรประจำวัน</T>
-          <T v="subhead" color={ios.secondary}>{dateLabel}</T>
+          <T v="subhead" color={ios.secondary}>{dateLabel} · {pick.season.name}</T>
         </View>
         <Animated.View entering={FadeInDown.delay(80).duration(380)}>
           <PressableScale scaleTo={0.985} haptic="select" onPress={() => router.push(`/herb/${today.id}`)} style={[styles.today, elevation.e1]} accessibilityLabel={`สมุนไพรประจำวัน ${today.name}`}>
-            {/* ภาพเต็มกว้าง + ชื่อบนภาพ */}
-            <View style={styles.todayPhoto}>
-              <Image source={today.image} style={StyleSheet.absoluteFill} contentFit="cover" transition={250} />
-              <LinearGradient colors={['rgba(0,0,0,0)', 'rgba(4,18,10,0.82)']} locations={[0.35, 1]} style={StyleSheet.absoluteFill} />
-              <View style={styles.seasonBadge}>
-                <BlurView intensity={30} tint="light" style={StyleSheet.absoluteFill} />
-                <Sym name={pick.season.key === 'hot' ? 'sun.max.fill' : pick.season.key === 'rain' ? 'cloud.rain.fill' : 'snowflake'} size={12} color="#FFFFFF" />
-                <T v="micro" color="#FFFFFF" style={{ fontWeight: '700' }}>{pick.season.name} · {pick.season.advice}</T>
+            {/* แบบกะทัดรัด: รูปเล็กซ้าย · ชื่อ/ป้าย ขวา · เคล็ดลับ 3 บรรทัด */}
+            <View style={styles.todayRow}>
+              <Image source={today.image} style={styles.todayImg} contentFit="cover" transition={250} />
+              <View style={{ flex: 1, gap: 2 }}>
+                <T v="h3" numberOfLines={1}>{today.name}</T>
+                <T v="caption" color={ios.secondary} numberOfLines={1} style={{ fontStyle: 'italic' }}>{today.sci}</T>
+                <View style={styles.todayPills}>
+                  <View style={[styles.tPill, { backgroundColor: tTone.bg }]}>
+                    <T v="micro" color={tTone.fg} style={{ fontWeight: '700' }}>รส{today.taste}</T>
+                  </View>
+                  <View style={[styles.tPill, { backgroundColor: tEl.bg }]}>
+                    <T v="micro" color={tEl.fg} style={{ fontWeight: '700' }}>{tEl.label}</T>
+                  </View>
+                  {pick.fitsSeason ? (
+                    <View style={[styles.tPill, { backgroundColor: palette.primarySoft }]}>
+                      <T v="micro" color={palette.primaryDeep} style={{ fontWeight: '700' }}>เหมาะกับ{pick.season.name}</T>
+                    </View>
+                  ) : null}
+                </View>
               </View>
-              <View style={styles.todayText}>
-                <T v="h2" color="#FFFFFF" numberOfLines={1}>{today.name}</T>
-                <T v="subhead" color="rgba(255,255,255,0.8)" numberOfLines={1} style={{ fontStyle: 'italic' }}>{today.sci}</T>
-              </View>
+              <Sym name="chevron.right" size={13} color={ios.tertiary} weight="semibold" />
             </View>
-            <View style={styles.todayBody}>
-              <View style={styles.todayPills}>
-                <View style={[styles.tPill, { backgroundColor: tTone.bg }]}>
-                  <T v="caption" color={tTone.fg} style={{ fontWeight: '700' }}>รส{today.taste}</T>
-                </View>
-                <View style={[styles.tPill, { backgroundColor: tEl.bg }]}>
-                  <T v="caption" color={tEl.fg} style={{ fontWeight: '700' }}>{tEl.label}</T>
-                </View>
-                {pick.fitsSeason ? (
-                  <View style={[styles.tPill, { backgroundColor: palette.primarySoft }]}>
-                    <T v="caption" color={palette.primaryDeep} style={{ fontWeight: '700' }}>เหมาะกับ{pick.season.name}</T>
-                  </View>
-                ) : null}
+            <View style={styles.tip}>
+              <View style={{ paddingTop: 3 }}>
+                <Sym name="sparkles" size={13} color={palette.primary} />
               </View>
-              {/* เคล็ดลับประจำวันจากครูปัญญา */}
-              <View style={styles.tip}>
-                <View style={styles.tipHead}>
-                  <Sym name="sparkles" size={13} color={palette.primary} />
-                  <T v="caption" color={palette.primaryDeep} style={{ fontWeight: '700' }}>เคล็ดลับวันนี้จากครูปัญญา</T>
+              {tip === null ? (
+                <View style={{ flex: 1, gap: 6, paddingVertical: 3 }}>
+                  <View style={[styles.skel, { width: '92%' }]} />
+                  <View style={[styles.skel, { width: '60%' }]} />
                 </View>
-                {tip === null ? (
-                  <View style={{ gap: 6, marginTop: 4 }}>
-                    <View style={[styles.skel, { width: '92%' }]} />
-                    <View style={[styles.skel, { width: '64%' }]} />
-                  </View>
-                ) : (
-                  <T v="body" color={palette.ink} style={{ lineHeight: 24 }}>{tip}</T>
-                )}
-              </View>
-              <View style={styles.todayFoot}>
-                <T v="caption" color={ios.secondary} style={{ flex: 1 }}>{pick.season.pali} · หลักกินตามฤดูแพทย์แผนไทย</T>
-                <T v="subhead" color={palette.primary} style={{ fontWeight: '600' }}>ดูรายละเอียด</T>
-                <Sym name="chevron.right" size={12} color={palette.primary} weight="semibold" />
-              </View>
+              ) : (
+                <T v="subhead" color={palette.ink} numberOfLines={3} style={{ flex: 1, lineHeight: 21 }}>{tip}</T>
+              )}
             </View>
           </PressableScale>
         </Animated.View>
@@ -210,17 +196,13 @@ const styles = StyleSheet.create({
   scanBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', height: 36, paddingHorizontal: 14, marginTop: 12, borderRadius: 18, backgroundColor: '#7CF0A8' },
   sec: { marginTop: 28, marginBottom: 12, marginLeft: 4 },
   secRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginTop: 28, marginBottom: 10, paddingHorizontal: 4 },
-  today: { borderRadius: 26, borderCurve: 'continuous', backgroundColor: palette.surface, overflow: 'hidden' },
-  todayPhoto: { height: 190, backgroundColor: palette.bgDeep, justifyContent: 'flex-end' },
-  seasonBadge: { position: 'absolute', top: 12, left: 12, flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.14)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.35)' },
-  todayText: { padding: 16 },
-  todayBody: { padding: 16, gap: 12 },
-  todayPills: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  tPill: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999 },
-  tip: { padding: 14, borderRadius: 18, borderCurve: 'continuous', backgroundColor: palette.mint, gap: 4 },
-  tipHead: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  skel: { height: 12, borderRadius: 6, backgroundColor: 'rgba(20,144,92,0.12)' },
-  todayFoot: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  today: { borderRadius: 24, borderCurve: 'continuous', backgroundColor: palette.surface, padding: 12, gap: 10 },
+  todayRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  todayImg: { width: 72, height: 72, borderRadius: 18, borderCurve: 'continuous', backgroundColor: palette.bgDeep },
+  todayPills: { flexDirection: 'row', flexWrap: 'wrap', gap: 5, marginTop: 4 },
+  tPill: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999 },
+  tip: { flexDirection: 'row', gap: 8, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 16, borderCurve: 'continuous', backgroundColor: palette.mint },
+  skel: { height: 11, borderRadius: 6, backgroundColor: 'rgba(20,144,92,0.12)' },
   chips: { gap: 8, paddingHorizontal: 16, paddingBottom: 14 },
   chip: { paddingHorizontal: 14, height: 36, justifyContent: 'center', borderRadius: 18, backgroundColor: palette.surface, borderWidth: 1, borderColor: ios.separator },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
