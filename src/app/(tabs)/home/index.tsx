@@ -1,4 +1,3 @@
-import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, router, useFocusEffect } from 'expo-router';
@@ -103,43 +102,30 @@ export default function Home() {
           </Tile>
           <View style={{ flex: 1, gap: 10 }}>
             {isPractitioner ? (
-              <Tile onPress={() => router.push('/patients')} style={[{ flex: 1 }, styles.light]} label={`ผู้ป่วย ${patients.length} ราย`}>
-                <View style={styles.statHead}>
-                  <Sym name="person.2.fill" size={14} color={palette.primary} />
-                  <T v="caption" color={ios.secondary} style={{ fontWeight: '600' }}>ผู้ป่วย</T>
-                </View>
-                <T v="h1" style={{ fontVariant: ['tabular-nums'] }}>{patients.length}<T v="subhead" color={ios.secondary}> ราย</T></T>
-                <T v="caption" color={follow ? '#B0761E' : ios.secondary} numberOfLines={1}>{follow ? `ติดตามอาการ ${follow} ราย` : 'ไม่มีรายที่ต้องติดตาม'}</T>
-              </Tile>
+              <Widget onPress={() => router.push('/patients')} icon="person.2.fill" colors={G.green} title={`ผู้ป่วย ${patients.length} ราย`} sub={follow ? `ติดตามอาการ ${follow} ราย` : 'ไม่มีรายที่ต้องติดตาม'} subColor={follow ? '#B0761E' : undefined} style={{ flex: 1 }} />
             ) : (
-              <Tile onPress={() => router.push('/verify')} style={[{ flex: 1 }, styles.light]} label="ยืนยันตัวตนหมอพื้นบ้าน">
-                <View style={styles.statHead}>
-                  <Sym name="checkmark.seal.fill" size={14} color={palette.orange} />
-                  <T v="caption" color={ios.secondary} style={{ fontWeight: '600' }}>ยืนยันตัวตน</T>
-                </View>
-                <T v="subhead" style={{ fontWeight: '700' }} numberOfLines={2}>เพื่อใช้งานการรักษาผู้ป่วย</T>
-              </Tile>
+              <Widget onPress={() => router.push('/verify')} icon="checkmark.seal.fill" colors={G.amber} title="ยืนยันตัวตน" sub="เพื่อรักษาผู้ป่วย" style={{ flex: 1 }} />
             )}
-            <PhotoTile src={IMG.healer} title="เล่าอาการ" sub="AI ช่วยบันทึก" icon="waveform" onPress={() => router.push('/patient/tell')} style={{ flex: 1 }} />
+            <Widget onPress={() => router.push('/patient/tell')} icon="waveform" colors={G.purple} title="เล่าอาการ" sub="AI ช่วยบันทึก" style={{ flex: 1 }} />
           </View>
         </Animated.View>
 
         {/* ── Bento แถว 2: สมุนไพรวันนี้ · สแกนตำรา ── */}
-        <Animated.View entering={enter(2)} style={[styles.row, { height: 156 }]}>
-          <PhotoTile src={pick.herb.image} title={pick.herb.name} sub={`สมุนไพรวันนี้ · รส${pick.herb.taste}`} icon="leaf.fill" onPress={() => router.push(`/herb/${pick.herb.id}`)} style={{ flex: 1 }} />
-          <PhotoTile src={IMG.manuscript} title="สแกนตำรา" sub="สมุดข่อย ใบลาน" icon="doc.viewfinder" onPress={() => router.push('/scan')} style={{ flex: 1 }} />
+        <Animated.View entering={enter(2)} style={[styles.row, { height: 140 }]}>
+          <Widget onPress={() => router.push(`/herb/${pick.herb.id}`)} icon="leaf.fill" colors={G.leaf} title={pick.herb.name} sub={`สมุนไพรวันนี้ · รส${pick.herb.taste}`} photo={pick.herb.image} style={{ flex: 1 }} />
+          <Widget onPress={() => router.push('/scan')} icon="doc.viewfinder" colors={G.amber} title="สแกนตำรา" sub="สมุดข่อย ใบลาน" style={{ flex: 1 }} />
         </Animated.View>
 
         {/* ── Bento แถว 3: ถ่ายทอดตำรับ · ภูมิปัญญาของฉัน ── */}
-        <Animated.View entering={enter(3)} style={[styles.row, { height: 156 }]}>
-          <PhotoTile src={IMG.hands} title="ถ่ายทอดตำรับ" sub="เล่าให้ครูปัญญาฟัง" icon="sparkles" onPress={() => router.push('/wisdom/tell')} style={{ flex: 1 }} />
-          <PhotoTile src={IMG.shelf} title={`ภูมิปัญญา ${wisdoms.length} เรื่อง`} sub={pendingW ? `รอตรวจทาน ${pendingW} เรื่อง` : 'ตรวจทานครบแล้ว'} icon="books.vertical.fill" onPress={() => router.push('/vault')} style={{ flex: 1.25 }}>
+        <Animated.View entering={enter(3)} style={[styles.row, { height: 140 }]}>
+          <Widget onPress={() => router.push('/wisdom/tell')} icon="book.closed.fill" colors={G.red} title="ถ่ายทอดตำรับ" sub="เล่าให้ครูปัญญาฟัง" style={{ flex: 1 }} />
+          <Widget onPress={() => router.push('/vault')} icon="books.vertical.fill" colors={G.brown} title={`ภูมิปัญญา ${wisdoms.length} เรื่อง`} sub={pendingW ? `รอตรวจทาน ${pendingW} เรื่อง` : 'ตรวจทานครบแล้ว'} style={{ flex: 1 }}>
             {wisdoms.length ? (
               <View style={styles.track}>
                 <View style={[styles.fillBar, { width: `${((wisdoms.length - pendingW) / wisdoms.length) * 100}%` }]} />
               </View>
             ) : null}
-          </PhotoTile>
+          </Widget>
         </Animated.View>
 
         {/* ── ผู้ป่วยล่าสุด: การ์ดแนวนอนเลื่อนได้ ── */}
@@ -177,12 +163,15 @@ export default function Home() {
   );
 }
 
-const IMG = {
-  healer: require('../../../../assets/vault/healer.jpg'),
-  manuscript: require('../../../../assets/vault/manuscript.jpg'),
-  hands: require('../../../../assets/vault/hands.jpg'),
-  shelf: require('../../../../assets/vault/shelf.jpg'),
-};
+/** สีไล่เฉดของไอคอน (สว่าง → เข้ม) */
+const G = {
+  green: ['#3FD089', '#14905C'],
+  purple: ['#B48BF5', '#7A4FD0'],
+  leaf: ['#8AD45E', '#3E8E2E'],
+  amber: ['#FFC25A', '#E0861A'],
+  red: ['#FF8A7A', '#D2453A'],
+  brown: ['#D2A36E', '#8A5E30'],
+} as const;
 
 /** การ์ด bento พื้นฐาน (มุมโค้ง เงา กดยุบ) */
 function Tile({ children, onPress, style, label }: { children: React.ReactNode; onPress: () => void; style?: any; label: string }) {
@@ -193,18 +182,19 @@ function Tile({ children, onPress, style, label }: { children: React.ReactNode; 
   );
 }
 
-/** การ์ดภาพ: ภาพเต็มการ์ด + ไล่มืดด้านล่าง + ไอคอนกระจก + ชื่อ */
-function PhotoTile({ src, title, sub, icon, onPress, style, children }: { src: any; title: string; sub: string; icon: string; onPress: () => void; style?: any; children?: React.ReactNode }) {
+/** การ์ดแบบ widget iOS: พื้นขาว · ไอคอนสี่เหลี่ยมมนไล่สี (บนซ้าย) · ชื่อ + รายละเอียด (ล่าง) */
+function Widget({ icon, colors, title, sub, subColor, onPress, style, photo, children }: { icon: string; colors: readonly [string, string]; title: string; sub: string; subColor?: string; onPress: () => void; style?: any; photo?: any; children?: React.ReactNode }) {
   return (
-    <Tile onPress={onPress} style={style} label={`${title} ${sub}`}>
-      <Image source={src} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
-      <LinearGradient colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.25)', 'rgba(0,0,0,0.78)']} locations={[0.25, 0.55, 1]} style={StyleSheet.absoluteFill} />
-      <BlurView intensity={30} tint="light" style={styles.iconGlass}>
-        <Sym name={icon as any} size={14} color="#FFFFFF" />
-      </BlurView>
-      <View style={styles.tileBottom}>
-        <T v="title" color="#FFFFFF" numberOfLines={1}>{title}</T>
-        <T v="caption" color="rgba(255,255,255,0.8)" numberOfLines={1}>{sub}</T>
+    <Tile onPress={onPress} style={[styles.widget, style]} label={`${title} ${sub}`}>
+      <View style={styles.widgetTop}>
+        <LinearGradient colors={colors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.wIcon, { boxShadow: `0px 4px 10px ${colors[1]}55` }]}>
+          <Sym name={icon as any} size={19} color="#FFFFFF" />
+        </LinearGradient>
+        {photo ? <Image source={photo} style={styles.wPhoto} contentFit="cover" /> : <Sym name="chevron.right" size={13} color={ios.tertiary} weight="semibold" />}
+      </View>
+      <View style={{ gap: 1 }}>
+        <T v="title" numberOfLines={1}>{title}</T>
+        <T v="caption" color={subColor ?? ios.secondary} numberOfLines={1}>{sub}</T>
         {children}
       </View>
     </Tile>
@@ -217,14 +207,15 @@ const styles = StyleSheet.create({
   page: { paddingHorizontal: 16, paddingBottom: 120, gap: 10 },
   row: { flexDirection: 'row', gap: 10 },
   tile: { borderRadius: 24, borderCurve: 'continuous', overflow: 'hidden', backgroundColor: '#0A1712' },
-  light: { backgroundColor: palette.surface, padding: 14, justifyContent: 'space-between' },
-  statHead: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  widget: { backgroundColor: palette.surface, padding: 14, justifyContent: 'space-between' },
+  widgetTop: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
+  wIcon: { width: 40, height: 40, borderRadius: 12, borderCurve: 'continuous', alignItems: 'center', justifyContent: 'center' },
+  wPhoto: { width: 40, height: 40, borderRadius: 20, borderWidth: 2, borderColor: '#FFFFFF' },
   kruOrb: { position: 'absolute', top: 14, right: 10 },
   kicker: { fontWeight: '700', letterSpacing: 0.5 },
   tileBottom: { position: 'absolute', left: 14, right: 14, bottom: 14, gap: 2 },
   voiceBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, alignSelf: 'flex-start', height: 36, paddingHorizontal: 14, marginTop: 10, borderRadius: 18, backgroundColor: '#7CF0A8' },
-  iconGlass: { position: 'absolute', top: 12, left: 12, width: 30, height: 30, borderRadius: 15, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.18)' },
-  track: { height: 5, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.25)', marginTop: 8, overflow: 'hidden' },
-  fillBar: { height: 5, borderRadius: 3, backgroundColor: '#7CF0A8' },
+  track: { height: 5, borderRadius: 3, backgroundColor: '#E3EDE7', marginTop: 8, overflow: 'hidden' },
+  fillBar: { height: 5, borderRadius: 3, backgroundColor: palette.primary },
   pCard: { width: 138, height: 150, padding: 12, borderRadius: 20, borderCurve: 'continuous', backgroundColor: palette.surface },
 });
