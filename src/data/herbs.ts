@@ -1,6 +1,7 @@
 import type { ImageSourcePropType } from 'react-native';
+import { extraHerbs } from './herbsExtra';
 
-export type Taste = 'ขม' | 'ฝาด' | 'เผ็ดร้อน' | 'หอมเย็น' | 'เปรี้ยว' | 'มัน' | 'เค็ม' | 'หวาน' | 'เมาเบื่อ';
+export type Taste = 'ขม' | 'ฝาด' | 'เผ็ดร้อน' | 'หอมเย็น' | 'เปรี้ยว' | 'มัน' | 'เค็ม' | 'หวาน' | 'เมาเบื่อ' | 'จืด';
 
 export type Herb = {
   id: string;
@@ -16,9 +17,11 @@ export type Herb = {
   caution: string;
   nationalList?: boolean; // บัญชียาหลักแห่งชาติ (ยาจากสมุนไพร)
   credit: string;
+  /** แหล่งอ้างอิงข้อมูล */
+  refs?: string[];
 };
 
-export const herbs: Herb[] = [
+const baseHerbs: Herb[] = [
   {
     id: 'andrographis',
     name: 'ฟ้าทะลายโจร',
@@ -195,7 +198,10 @@ export const herbs: Herb[] = [
   },
 ];
 
-export const tastes: (Taste | 'ทั้งหมด')[] = ['ทั้งหมด', 'ขม', 'เผ็ดร้อน', 'หอมเย็น', 'ฝาด', 'เปรี้ยว', 'เมาเบื่อ'];
+/** คลังสมุนไพรพื้นบ้านไทย 100 ชนิด (12 ชนิดหลัก + สมุนไพรพื้นบ้านเพิ่มเติม) */
+export const herbs: Herb[] = [...baseHerbs, ...extraHerbs];
+
+export const tastes: (Taste | 'ทั้งหมด')[] = ['ทั้งหมด', 'ขม', 'เผ็ดร้อน', 'หอมเย็น', 'ฝาด', 'เปรี้ยว', 'เมาเบื่อ', 'มัน', 'หวาน', 'เค็ม', 'จืด'];
 
 /** สีพาสเทลประจำรสยา */
 export const tasteTone: Record<Taste, { bg: string; fg: string }> = {
@@ -208,6 +214,7 @@ export const tasteTone: Record<Taste, { bg: string; fg: string }> = {
   เค็ม: { bg: '#E3ECFE', fg: '#2860D8' },
   หวาน: { bg: '#FBE1EE', fg: '#C23D80' },
   เมาเบื่อ: { bg: '#E9E4FB', fg: '#7448C9' },
+  จืด: { bg: '#E8EEF0', fg: '#5B7280' },
 };
 
 export const manuscriptImage = require('../../assets/herbs/manuscript.jpg');
