@@ -11,7 +11,7 @@ import { herbs, type Herb } from '../data/herbs';
 import { seasonOf, thaiToday } from './herbDaily';
 
 /** ลักษณะท้องฟ้า (ใช้เลือกไอคอน สี และแอนิเมชัน) */
-export type SkyKind = 'sun' | 'hot' | 'partly' | 'cloudy' | 'fog' | 'drizzle' | 'rain' | 'heavy' | 'thunder' | 'cold' | 'dust';
+export type SkyKind = 'sun' | 'hot' | 'partly' | 'cloudy' | 'fog' | 'drizzle' | 'rain' | 'heavy' | 'thunder' | 'cold' | 'dust' | 'sunrise' | 'sunset' | 'night';
 export const SKY_LABEL: Record<SkyKind, string> = {
   sun: 'แดดออก',
   hot: 'ร้อนจัด',
@@ -24,10 +24,15 @@ export const SKY_LABEL: Record<SkyKind, string> = {
   thunder: 'ฝนฟ้าคะนอง',
   cold: 'อากาศหนาว',
   dust: 'ฝุ่นสูง',
+  sunrise: 'พระอาทิตย์ขึ้น',
+  sunset: 'พระอาทิตย์ตก',
+  night: 'กลางคืน',
 };
 
 export type Weather = {
   sky: SkyKind;
+  sunrise: string; // HH:MM เวลาไทย
+  sunset: string;
   temp: number;
   feels: number;
   humidity: number;
@@ -55,7 +60,7 @@ export async function getWeather(ask = true): Promise<Weather | null> {
   const lat = Math.round(pos.coords.latitude * 100) / 100;
   const lon = Math.round(pos.coords.longitude * 100) / 100;
   const [fc, aq, geo] = await Promise.all([
-    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,uv_index_max&timezone=Asia%2FBangkok&forecast_days=1`).then((r) => r.json()),
+    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,uv_index_max,sunrise,sunset&timezone=Asia%2FBangkok&forecast_days=1`).then((r) => r.json()),
     fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=pm2_5`).then((r) => r.json()).catch(() => null),
     Location.reverseGeocodeAsync({ latitude: lat, longitude: lon }).catch(() => []),
   ]);
@@ -74,6 +79,8 @@ export async function getWeather(ask = true): Promise<Weather | null> {
     pm25: aq?.current?.pm2_5 != null ? Math.round(aq.current.pm2_5) : null,
     place: g ? g.district || g.subregion || g.city || g.region || '' : '',
     sky: 'sun',
+    sunrise: String(d.sunrise?.[0] ?? '').slice(11, 16),
+    sunset: String(d.sunset?.[0] ?? '').slice(11, 16),
     icon: '',
     label: '',
     flags: [],
@@ -102,7 +109,18 @@ export async function getWeather(ask = true): Promise<Weather | null> {
     : code === 3 ? 'cloudy'
     : code === 2 ? 'partly'
     : 'sun';
-  w.label = SKY_LABEL[w.sky];
+  // ช่วงพระอาทิตย์ขึ้น/ตก และกลางคืน (เฉพาะท้องฟ้าโปร่ง/มีเมฆ — ถ้าฝน/หมอก/ฝุ่น ให้แสดงสภาพนั้นก่อน)
+  if (['sun', 'hot', 'partly', 'cloudy', 'cold'].includes(w.sky) && w.sunrise && w.sunset) {
+    const mins = (hm: string) => Number(hm.slice(0, 2)) * 60 + Number(hm.slice(3, 5));
+    const nowHM = String(c.time ?? '').slice(11, 16); // เวลาไทยจาก API (timezone=Asia/Bangkok)
+    const now = mins(nowHM || '12:00');
+    const rise = mins(w.sunrise);
+    const set = mins(w.sunset);
+    if (now >= rise - 30 && now <= rise + 60) w.sky = 'sunrise';
+    else if (now >= set - 60 && now <= set + 30) w.sky = 'sunset';
+    else if ((now > set + 30 || now < rise - 30) && w.sky !== 'cold') w.sky = 'night';
+  }
+  w.label = SKY_LABEL[w.sky] + (w.sky === 'sunrise' ? ` ${w.sunrise}` : w.sky === 'sunset' ? ` ${w.sunset}` : '');
   w.icon = '';
   return w;
 }

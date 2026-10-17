@@ -2,6 +2,7 @@
  * ไอคอนสภาพอากาศแบบมีแอนิเมชัน + สีตามสภาพอากาศ (SF Symbols หลายสี)
  * แดด = หมุนช้า · เมฆ = ลอยไปมา · หมอก = จางเข้าออก · ฝน = เม็ดฝนไล่ (variable color) + โยกเบาๆ
  * ฟ้าร้อง = แวบ · หนาว = เกล็ดหิมะหมุนช้า · ฝุ่น = กระพริบเบาๆ
+ * พระอาทิตย์ขึ้น = ลอยขึ้น · พระอาทิตย์ตก = ลอยลง · กลางคืน = ดาวกระพริบ
  */
 import { SymbolView, type SFSymbol } from 'expo-symbols';
 import React, { useEffect } from 'react';
@@ -23,6 +24,9 @@ export const SKY_COLOR: Record<SkyKind, string> = {
   thunder: '#6D4CE0',
   cold: '#2A9CC8',
   dust: '#9A6B3C',
+  sunrise: '#E8780C',
+  sunset: '#D9534A',
+  night: '#4B4FA8',
 };
 
 const SKY: Record<SkyKind, { sym: SFSymbol; colors: string[] }> = {
@@ -37,6 +41,9 @@ const SKY: Record<SkyKind, { sym: SFSymbol; colors: string[] }> = {
   thunder: { sym: 'cloud.bolt.rain.fill', colors: ['#6B7A90', '#F5B800', '#3D84E0'] },
   cold: { sym: 'snowflake', colors: ['#3FB0DD'] },
   dust: { sym: 'aqi.medium', colors: ['#A07850'] },
+  sunrise: { sym: 'sunrise.fill', colors: ['#F07E2E', '#F5A524'] },
+  sunset: { sym: 'sunset.fill', colors: ['#D9534A', '#F08A3C'] },
+  night: { sym: 'moon.stars.fill', colors: ['#5B5FC7', '#F5C842'] },
 };
 
 export function WeatherIcon({ sky, size = 22 }: { sky: SkyKind; size?: number }) {
@@ -62,6 +69,12 @@ export function WeatherIcon({ sky, size = 22 }: { sky: SkyKind; size?: number })
         return { opacity: 0.55 + t.value * 0.45 };
       case 'thunder':
         return { opacity: 1 - t.value * 0.55, transform: [{ scale: 1 + t.value * 0.08 }] };
+      case 'sunrise':
+        return { transform: [{ translateY: (0.5 - t.value) * size * 0.18 }] };
+      case 'sunset':
+        return { transform: [{ translateY: (t.value - 0.5) * size * 0.18 }] };
+      case 'night':
+        return { opacity: 0.75 + t.value * 0.25 };
       default:
         return { transform: [{ translateY: (t.value - 0.5) * size * 0.08 }] };
     }
