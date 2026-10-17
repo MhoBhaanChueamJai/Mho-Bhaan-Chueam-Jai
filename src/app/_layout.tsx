@@ -1,11 +1,14 @@
-import { Stack } from 'expo-router';
+import * as Notifications from 'expo-notifications';
+import { Stack, router } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { LockScreen } from '../components/LockScreen';
+import { refreshAnnouncements } from '../lib/announcements';
+import { goOf, registerPush } from '../lib/push';
 import { AppProvider, useApp } from '../store/app';
 import { palette } from '../theme';
 
@@ -29,6 +32,30 @@ function Root() {
   useEffect(() => {
     if (loaded) SplashScreen.hideAsync().catch(() => {});
   }, [loaded]);
+
+  // แจ้งเตือนแบบ Push: เข้าสู่ระบบ + ปลดล็อกแล้ว → ขออนุญาต/ลงทะเบียนเครื่อง
+  const inside = loaded && settings.loggedIn && (!lockEnabled || unlocked);
+  useEffect(() => {
+    if (inside) registerPush().catch(() => {});
+  }, [inside]);
+  // ได้รับขณะเปิดแอป → ดึงประกาศใหม่ (กระดิ่งขึ้นจุดแดง)
+  useEffect(() => {
+    const sub = Notifications.addNotificationReceivedListener(() => refreshAnnouncements().catch(() => {}));
+    return () => sub.remove();
+  }, []);
+  // กดแจ้งเตือน → เปิดหน้าที่ระบุ (เปิดแอปจากแจ้งเตือน/กดขณะใช้งาน · รอให้ปลดล็อกก่อน)
+  const [pendingGo, setPendingGo] = useState<string | null>(() => goOf(Notifications.getLastNotificationResponse()));
+  useEffect(() => {
+    const sub = Notifications.addNotificationResponseReceivedListener((r) => setPendingGo(goOf(r)));
+    return () => sub.remove();
+  }, []);
+  useEffect(() => {
+    if (!pendingGo || !inside) return;
+    Notifications.clearLastNotificationResponse();
+    refreshAnnouncements().catch(() => {});
+    setTimeout(() => router.push(pendingGo as any), 350);
+    setPendingGo(null);
+  }, [pendingGo, inside]);
   if (!loaded) return null;
 
   return (

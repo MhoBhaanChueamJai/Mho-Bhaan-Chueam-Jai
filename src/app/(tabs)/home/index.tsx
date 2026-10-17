@@ -7,6 +7,7 @@ import Animated, { FadeInDown, useAnimatedStyle, useSharedValue, withDelay, with
 import { IOSCard, SectionTitle, Sym, ios } from '../../../components/ios';
 import { AISphere } from '../../../components/AISphere';
 import { Avatar, HeaderButton, PressableScale, T } from '../../../components/ui';
+import { useAnnouncements } from '../../../lib/announcements';
 import { noticesFrom } from '../../../lib/notices';
 import { useMyAvatar } from '../../../lib/myAvatar';
 import { TODAY, avatarFor, doctor, lastVisit, thaiDate } from '../../../data/mock';
@@ -48,7 +49,8 @@ export default function Home() {
   // สมุนไพรประจำวัน (เปลี่ยนทุกวัน ตามฤดู)
   const pick = todayPick();
   const name = settings.username && settings.username !== 'somchai' ? settings.username : doctor.short;
-  const notices = noticesFrom(patients, wisdoms, isPractitioner);
+  const ann = useAnnouncements();
+  const notices = noticesFrom(patients, wisdoms, isPractitioner, ann);
   const pendingW = wisdoms.filter((w) => !w.verified).length;
   const unread = notices.filter((n) => !settings.readNotices?.includes(n.id)).length;
   // เข้าหน้านี้ทุกครั้ง → นับรอบ (ให้กระดิ่งสั่นเมื่อมีที่ยังไม่อ่าน)

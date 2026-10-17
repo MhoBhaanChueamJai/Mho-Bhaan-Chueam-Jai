@@ -8,6 +8,7 @@ import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanim
 import { PAGE_PAD } from '../components/ListRow';
 import { Sym, ios } from '../components/ios';
 import { PressableScale, T, useHaptic } from '../components/ui';
+import { useAnnouncements } from '../lib/announcements';
 import { noticesFrom, type Notice } from '../lib/notices';
 import { useApp } from '../store/app';
 import { elevation, palette } from '../theme';
@@ -15,16 +16,19 @@ import { elevation, palette } from '../theme';
 export default function Notifications() {
   const { patients, wisdoms, isPractitioner, settings, update } = useApp();
   const h = useHaptic();
+  const ann = useAnnouncements();
   const dismissed = settings.dismissedNotices ?? [];
-  const list = noticesFrom(patients, wisdoms, isPractitioner).filter((n) => !dismissed.includes(n.id));
+  const list = noticesFrom(patients, wisdoms, isPractitioner, ann).filter((n) => !dismissed.includes(n.id));
   // จำว่าอันไหน "ใหม่" ตอนเปิดหน้า (ก่อนถูกทำเป็นอ่านแล้ว)
-  const [fresh] = useState(() => new Set(list.filter((n) => !settings.readNotices?.includes(n.id)).map((n) => n.id)));
-  // เปิดหน้านี้ = อ่านแล้วทั้งหมด (กระดิ่งหยุดสั่น จุดแดงหาย)
+  const [fresh, setFresh] = useState(() => new Set(list.filter((n) => !settings.readNotices?.includes(n.id)).map((n) => n.id)));
+  // เปิดหน้านี้ = อ่านแล้วทั้งหมด (กระดิ่งหยุดสั่น จุดแดงหาย) · ประกาศที่โหลดมาทีหลังก็นับเป็น "ใหม่"
   useEffect(() => {
-    const ids = list.map((n) => n.id);
-    if (ids.some((id) => !settings.readNotices?.includes(id))) update({ readNotices: Array.from(new Set([...(settings.readNotices ?? []), ...ids])) });
+    const unread = list.map((n) => n.id).filter((id) => !settings.readNotices?.includes(id));
+    if (!unread.length) return;
+    setFresh((f) => new Set([...f, ...unread]));
+    update({ readNotices: Array.from(new Set([...(settings.readNotices ?? []), ...unread])) });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [ann]);
 
   const clear = (ids: string[]) => {
     h.select();
@@ -46,7 +50,7 @@ export default function Notifications() {
             <Sym name="bell.slash.fill" size={30} color={ios.tertiary} />
           </View>
           <T v="title" color={ios.secondary}>ไม่มีการแจ้งเตือน</T>
-          <T v="subhead" color={ios.tertiary} center>ผู้ป่วยที่ต้องติดตามอาการ ส่งต่อ รพ.สต.{'\n'}และภูมิปัญญารอตรวจทาน จะแสดงที่นี่</T>
+          <T v="subhead" color={ios.tertiary} center>ผู้ป่วยที่ต้องติดตามอาการ ภูมิปัญญารอตรวจทาน{'\n'}และอัปเดตใหม่จากระบบ จะแสดงที่นี่</T>
         </Animated.View>
       )}
     </ScrollView>

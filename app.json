@@ -88,6 +88,12 @@
         {
           "locationWhenInUsePermission": "ใช้ตำแหน่งเพื่อดูสภาพอากาศบริเวณที่คุณหมออยู่ แล้วแนะนำสมุนไพรที่เหมาะกับอากาศวันนี้"
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "mode": "development"
+        }
       ]
     ],
     "scheme": "suebsan",
