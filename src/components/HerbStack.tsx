@@ -1,6 +1,6 @@
 /**
  * การ์ดสมุนไพรแนะนำแบบซ้อนชั้น (stack) 3 ใบ — ใบบนสุดปัดซ้าย/ขวาเพื่อส่งไปไว้ท้ายกอง แตะเพื่อดูรายละเอียด
- * ใบที่อยู่ด้านหลังย่อลงและเลื่อนลงทีละชั้น ให้เห็นเป็นกองการ์ด
+ * ใบที่อยู่ด้านหลังย่อลงและโผล่ขึ้นด้านบนทีละชั้น ให้เห็นเป็นกองการ์ด
  */
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
@@ -15,7 +15,7 @@ import { Sym, ios } from './ios';
 import { T, useHaptic } from './ui';
 
 const CARD_H = 196;
-const STEP = 12; // ระยะเลื่อนลงของการ์ดชั้นถัดไป
+const STEP = 14; // ระยะที่การ์ดชั้นถัดไปโผล่ด้านบน
 
 function Card({ r, depth, n, onSwipe }: { r: HerbRec; depth: number; n: number; onSwipe: () => void }) {
   const h = useHaptic();
@@ -46,7 +46,7 @@ function Card({ r, depth, n, onSwipe }: { r: HerbRec; depth: number; n: number; 
     transform: [
       { translateX: x.value },
       { rotate: `${x.value / 28}deg` },
-      { translateY: withSpring(depth * STEP, { damping: 16 }) },
+      { translateY: withSpring(-depth * STEP, { damping: 16 }) }, // ใบหลังโผล่ด้านบน
       { scale: withSpring(1 - depth * 0.05, { damping: 16 }) },
     ],
     opacity: withTiming(depth > 2 ? 0 : 1 - depth * 0.12, { duration: 200 }),
@@ -110,7 +110,7 @@ export function HerbStack({ recs }: { recs: HerbRec[] }) {
 }
 
 const styles = StyleSheet.create({
-  card: { position: 'absolute', left: 0, right: 0, top: 0, height: CARD_H, padding: 14, gap: 12, borderRadius: 26, borderCurve: 'continuous', backgroundColor: palette.surface },
+  card: { position: 'absolute', left: 0, right: 0, bottom: 0, height: CARD_H, transformOrigin: 'center top', padding: 14, gap: 12, borderRadius: 26, borderCurve: 'continuous', backgroundColor: palette.surface },
   top: { flexDirection: 'row', gap: 12, alignItems: 'center' },
   img: { width: 84, height: 84, borderRadius: 20, borderCurve: 'continuous', backgroundColor: palette.bgDeep },
   riskPill: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', maxWidth: '100%', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, backgroundColor: '#FCE8DF' },
