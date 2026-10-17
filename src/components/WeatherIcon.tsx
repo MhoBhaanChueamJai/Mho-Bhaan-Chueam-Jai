@@ -5,7 +5,7 @@
  *  พระอาทิตย์ขึ้น/ตก: ดวงอาทิตย์เลื่อนจากขอบฟ้า · กลางคืน: พระจันทร์เสี้ยว + ดาวกระพริบ
  * วาดบนพื้นที่สมมติ 100×100 แล้วย่อ/ขยายตาม size · ทุกชิ้นส่วนเคลื่อนบน UI thread (Reanimated shared values)
  */
-import { BlurMask, Canvas, Circle, Group, LinearGradient, Line, Path, PathOp, RadialGradient, Skia, vec, type SkPath } from '@shopify/react-native-skia';
+import { BlurMask, Canvas, Circle, Group, LinearGradient, Line, Path, PathOp, RadialGradient, Shadow, Skia, vec, type SkPath } from '@shopify/react-native-skia';
 import React, { useEffect, useMemo } from 'react';
 import { Easing, useDerivedValue, useSharedValue, withRepeat, withTiming, type SharedValue } from 'react-native-reanimated';
 import type { SkyKind } from '../lib/weatherHerbs';
@@ -47,12 +47,13 @@ const wave = (t: number, phase = 0) => {
 
 function cloudPath(x: number, y: number, w: number): SkPath {
   const p = Skia.Path.Make();
-  p.addCircle(x + w * 0.3, y + w * 0.36, w * 0.19);
-  p.addCircle(x + w * 0.56, y + w * 0.26, w * 0.25);
-  p.addCircle(x + w * 0.79, y + w * 0.4, w * 0.17);
-  p.addRRect(Skia.RRectXY(Skia.XYWHRect(x + w * 0.1, y + w * 0.34, w * 0.86, w * 0.23), w * 0.115, w * 0.115));
-  return p;
+  p.addCircle(x + w * 0.28, y + w * 0.42, w * 0.2);
+  p.addCircle(x + w * 0.53, y + w * 0.3, w * 0.27);
+  p.addCircle(x + w * 0.77, y + w * 0.45, w * 0.18);
+  p.addRRect(Skia.RRectXY(Skia.XYWHRect(x + w * 0.08, y + w * 0.42, w * 0.88, w * 0.21), w * 0.105, w * 0.105));
+  return Skia.Path.MakeFromOp(p, Skia.Path.Make(), PathOp.Union) ?? p;
 }
+
 
 /** เมฆหนึ่งก้อน ลอยซ้ายขวา */
 function Cloud({ x, y, w, top, bottom, t, amp = 3, phase = 0 }: { x: number; y: number; w: number; top: string; bottom: string; t: Clock; amp?: number; phase?: number }) {
@@ -61,7 +62,9 @@ function Cloud({ x, y, w, top, bottom, t, amp = 3, phase = 0 }: { x: number; y: 
   return (
     <Group transform={tr}>
       <Path path={path}>
-        <LinearGradient start={vec(0, y)} end={vec(0, y + w * 0.6)} colors={[top, bottom]} />
+        <LinearGradient start={vec(0, y + w * 0.05)} end={vec(0, y + w * 0.64)} colors={[top, bottom]} />
+        {/* เงานุ่มใต้เมฆ ให้เห็นชัดบนพื้นขาว */}
+        <Shadow dx={0} dy={w * 0.04} blur={w * 0.05} color="rgba(30,50,80,0.28)" />
       </Path>
     </Group>
   );
@@ -74,30 +77,46 @@ function Sun({ cx, cy, r, t, spin, inner, outer, glow, rays = true }: { cx: numb
   const rayList = useMemo(() => Array.from({ length: 8 }, (_, i) => (i / 8) * Math.PI * 2), []);
   return (
     <Group>
-      <Circle cx={cx} cy={cy} r={glowR} color={glow} opacity={0.45}>
-        <BlurMask blur={r * 0.5} style="normal" />
+      <Circle cx={cx} cy={cy} r={glowR} color={glow} opacity={0.5}>
+        <BlurMask blur={r * 0.45} style="normal" />
       </Circle>
       {rays ? (
         <Group transform={rot} origin={vec(cx, cy)}>
           {rayList.map((a) => (
-            <Line key={a} p1={vec(cx + Math.cos(a) * r * 1.35, cy + Math.sin(a) * r * 1.35)} p2={vec(cx + Math.cos(a) * r * 1.75, cy + Math.sin(a) * r * 1.75)} color={outer} strokeWidth={r * 0.2} strokeCap="round" />
+            <Line key={a} p1={vec(cx + Math.cos(a) * r * 1.32, cy + Math.sin(a) * r * 1.32)} p2={vec(cx + Math.cos(a) * r * 1.68, cy + Math.sin(a) * r * 1.68)} color={outer} strokeWidth={r * 0.26} strokeCap="round" />
           ))}
         </Group>
       ) : null}
       <Circle cx={cx} cy={cy} r={r}>
-        <RadialGradient c={vec(cx - r * 0.3, cy - r * 0.3)} r={r * 1.4} colors={[inner, outer]} />
+        <RadialGradient c={vec(cx - r * 0.35, cy - r * 0.35)} r={r * 1.5} colors={['#FFFBE0', inner, outer]} positions={[0, 0.35, 1]} />
+        <Shadow dx={0} dy={r * 0.08} blur={r * 0.12} color="rgba(200,90,0,0.25)" />
       </Circle>
     </Group>
   );
 }
 
-/** เม็ดฝน: ตกเฉียงจากใต้เมฆ แล้วจางหาย วนซ้ำ */
+/** เม็ดฝนทรงหยดน้ำ (ไล่สีฟ้า): หล่นเฉียงจากใต้เมฆ แล้วจางหาย วนซ้ำ */
 function Drop({ x, y0, len, fall, t, phase, color, width }: { x: number; y0: number; len: number; fall: number; t: Clock; phase: number; color: string; width: number }) {
+  const shape = useMemo(() => {
+    const r = width * 0.75;
+    const p = Skia.Path.Make();
+    p.moveTo(0, -len);
+    p.cubicTo(r * 0.4, -len * 0.55, r * 1.1, -r * 0.4, r, 0);
+    p.arcToOval(Skia.XYWHRect(-r, -r, r * 2, r * 2), 0, 180, false);
+    p.cubicTo(-r * 1.1, -r * 0.4, -r * 0.4, -len * 0.55, 0, -len);
+    p.close();
+    return p;
+  }, [len, width]);
   const p = useDerivedValue(() => (t.value + phase) % 1);
-  const p1 = useDerivedValue(() => vec(x - p.value * fall * 0.25, y0 + p.value * fall));
-  const p2 = useDerivedValue(() => vec(x - p.value * fall * 0.25 - len * 0.25, y0 + p.value * fall + len));
+  const tr = useDerivedValue(() => [{ translateX: x - p.value * fall * 0.22 }, { translateY: y0 + len + p.value * fall }, { rotate: 0.22 }]);
   const op = useDerivedValue(() => (p.value < 0.15 ? p.value / 0.15 : 1 - (p.value - 0.15) / 0.85));
-  return <Line p1={p1} p2={p2} color={color} strokeWidth={width} strokeCap="round" opacity={op} />;
+  return (
+    <Group transform={tr} opacity={op}>
+      <Path path={shape}>
+        <LinearGradient start={vec(0, -len)} end={vec(0, width)} colors={['#A8DBFF', color]} />
+      </Path>
+    </Group>
+  );
 }
 
 /** เกล็ดหิมะ: ร่วงช้าพร้อมหมุน */
@@ -128,25 +147,25 @@ function Star({ x, y, s, t, phase }: { x: number; y: number; s: number; t: Clock
     return p;
   }, [x, y, s]);
   const op = useDerivedValue(() => 0.35 + 0.65 * Math.max(0, wave(t.value, phase)));
-  return <Path path={path} color="#FFD65C" opacity={op} />;
+  return <Path path={path} color="#FFD24A" opacity={op} />;
 }
 
 /* ───────────── ไอคอนแต่ละแบบ ───────────── */
 
 const C = {
-  white: ['#FFFFFF', '#DCE4EE'] as const,
-  light: ['#F2F5F9', '#C9D3DF'] as const,
-  gray: ['#C3CCD8', '#8F9BAD'] as const,
-  storm: ['#9AA5B6', '#5E6B80'] as const,
+  white: ['#FFFFFF', '#CFDAE8'] as const,
+  light: ['#F4F7FB', '#B9C6D6'] as const,
+  gray: ['#D3DAE4', '#8C99AD'] as const,
+  storm: ['#9DA8BA', '#4F5B70'] as const,
 };
 
 function SunIcon({ hot }: { hot?: boolean }) {
   const t = useLoop(hot ? 1800 : 2600);
   const spin = useLoop(hot ? 9000 : 16000);
   return hot ? (
-    <Sun cx={50} cy={50} r={22} t={t} spin={spin} inner="#FFD34D" outer="#E53A1E" glow="#FF6A3D" />
+    <Sun cx={50} cy={50} r={26} t={t} spin={spin} inner="#FFC43D" outer="#E5251B" glow="#FF5A2E" />
   ) : (
-    <Sun cx={50} cy={50} r={21} t={t} spin={spin} inner="#FFE27A" outer="#F7931E" glow="#FFB547" />
+    <Sun cx={50} cy={50} r={26} t={t} spin={spin} inner="#FFD84A" outer="#FF8A00" glow="#FFB547" />
   );
 }
 
@@ -155,8 +174,8 @@ function PartlyIcon() {
   const spin = useLoop(16000);
   return (
     <>
-      <Sun cx={62} cy={36} r={15} t={t} spin={spin} inner="#FFE27A" outer="#F7931E" glow="#FFB547" />
-      <Cloud x={8} y={34} w={70} top={C.white[0]} bottom={C.white[1]} t={t} amp={3} />
+      <Sun cx={62} cy={34} r={19} t={t} spin={spin} inner="#FFD84A" outer="#FF8A00" glow="#FFB547" />
+      <Cloud x={2} y={30} w={84} top={C.white[0]} bottom={C.white[1]} t={t} amp={3} />
     </>
   );
 }
@@ -165,8 +184,8 @@ function CloudyIcon() {
   const t = useLoop(5200);
   return (
     <>
-      <Cloud x={30} y={18} w={60} top={C.gray[0]} bottom={C.gray[1]} t={t} amp={3} phase={0.5} />
-      <Cloud x={6} y={36} w={72} top={C.white[0]} bottom={C.white[1]} t={t} amp={4} />
+      <Cloud x={26} y={10} w={70} top={C.gray[0]} bottom={C.gray[1]} t={t} amp={3} phase={0.5} />
+      <Cloud x={2} y={30} w={84} top={C.white[0]} bottom={C.white[1]} t={t} amp={4} />
     </>
   );
 }
@@ -175,7 +194,7 @@ function FogLine({ y, w, t, phase }: { y: number; w: number; t: Clock; phase: nu
   const p1 = useDerivedValue(() => vec(50 - w / 2 + wave(t.value, phase) * 7, y));
   const p2 = useDerivedValue(() => vec(50 + w / 2 + wave(t.value, phase) * 7, y));
   const op = useDerivedValue(() => 0.55 + 0.35 * wave(t.value, phase + 0.25));
-  return <Line p1={p1} p2={p2} color="#A9B4C2" strokeWidth={5} strokeCap="round" opacity={op} />;
+  return <Line p1={p1} p2={p2} color="#9FAEC2" strokeWidth={7} strokeCap="round" opacity={op} />;
 }
 function FogIcon() {
   const t = useLoop(4400);
@@ -186,7 +205,7 @@ function FogIcon() {
   ];
   return (
     <>
-      <Cloud x={14} y={14} w={70} top={C.light[0]} bottom={C.light[1]} t={t} amp={2} />
+      <Cloud x={8} y={4} w={84} top={C.light[0]} bottom={C.light[1]} t={t} amp={2} />
       {lines.map((l) => (
         <FogLine key={l.y} y={l.y} w={l.w} t={t} phase={l.ph} />
       ))}
@@ -200,16 +219,16 @@ function RainIcon({ level }: { level: 'drizzle' | 'rain' | 'heavy' }) {
   const cloud = level === 'heavy' ? C.storm : level === 'rain' ? C.gray : C.light;
   const drops =
     level === 'heavy'
-      ? [24, 34, 44, 54, 64, 74].map((x, i) => ({ x, ph: (i * 0.37) % 1 }))
+      ? [22, 36, 50, 64, 78].map((x, i) => ({ x, ph: (i * 0.37) % 1 }))
       : level === 'rain'
         ? [30, 44, 58, 72].map((x, i) => ({ x, ph: i * 0.27 }))
         : [34, 52, 70].map((x, i) => ({ x, ph: i * 0.33 }));
   return (
     <>
       {drops.map((d) => (
-        <Drop key={d.x} x={d.x} y0={60} len={level === 'drizzle' ? 6 : level === 'rain' ? 10 : 13} fall={30} t={t} phase={d.ph} color={level === 'heavy' ? '#2563C9' : '#3D8FE6'} width={level === 'drizzle' ? 3 : 4} />
+        <Drop key={d.x} x={d.x} y0={58} len={level === 'drizzle' ? 10 : level === 'rain' ? 14 : 16} fall={26} t={t} phase={d.ph} color={level === 'heavy' ? '#1F5FBF' : '#2F86E8'} width={level === 'drizzle' ? 6 : 7.5} />
       ))}
-      <Cloud x={8} y={12} w={84} top={cloud[0]} bottom={cloud[1]} t={drift} amp={2} />
+      <Cloud x={4} y={4} w={92} top={cloud[0]} bottom={cloud[1]} t={drift} amp={2} />
     </>
   );
 }
@@ -238,10 +257,17 @@ function ThunderIcon() {
   return (
     <>
       {[28, 74].map((x, i) => (
-        <Drop key={x} x={x} y0={62} len={10} fall={28} t={t} phase={i * 0.5} color="#3D8FE6" width={4} />
+        <Drop key={x} x={x} y0={58} len={14} fall={26} t={t} phase={i * 0.5} color="#2F86E8" width={7.5} />
       ))}
-      <Path path={bolt} color="#FFC21A" opacity={op} />
-      <Cloud x={8} y={10} w={84} top={C.storm[0]} bottom={C.storm[1]} t={drift} amp={2} />
+      <Group opacity={op}>
+        <Path path={bolt} color="#FFE066">
+          <BlurMask blur={4} style="outer" />
+        </Path>
+        <Path path={bolt}>
+          <LinearGradient start={vec(50, 52)} end={vec(50, 94)} colors={['#FFF3A0', '#FFB300']} />
+        </Path>
+      </Group>
+      <Cloud x={4} y={2} w={92} top={C.storm[0]} bottom={C.storm[1]} t={drift} amp={2} />
     </>
   );
 }
@@ -255,9 +281,19 @@ function ColdIcon() {
     <>
       <Group transform={big} origin={vec(50, 44)}>
         {arms.map((a) => (
-          <Line key={a} p1={vec(50 - Math.cos(a) * 24, 44 - Math.sin(a) * 24)} p2={vec(50 + Math.cos(a) * 24, 44 + Math.sin(a) * 24)} color="#4FB8E8" strokeWidth={5} strokeCap="round" />
+          <Group key={a}>
+            <Line p1={vec(50 - Math.cos(a) * 28, 44 - Math.sin(a) * 28)} p2={vec(50 + Math.cos(a) * 28, 44 + Math.sin(a) * 28)} color="#3FA9E0" strokeWidth={6} strokeCap="round" />
+            {[1, -1].map((sgn) => {
+              // กิ่งเล็กปลายแขน
+              const ex = 50 + sgn * Math.cos(a) * 18;
+              const ey = 44 + sgn * Math.sin(a) * 18;
+              return [0.6, -0.6].map((d) => (
+                <Line key={`${sgn}${d}`} p1={vec(ex, ey)} p2={vec(ex + sgn * Math.cos(a + d) * 9, ey + sgn * Math.sin(a + d) * 9)} color="#6CC4EE" strokeWidth={4} strokeCap="round" />
+              ));
+            })}
+          </Group>
         ))}
-        <Circle cx={50} cy={44} r={5} color="#E8F7FF" />
+        <Circle cx={50} cy={44} r={6} color="#E8F7FF" />
       </Group>
       {[
         { x: 22, ph: 0 },
@@ -270,30 +306,22 @@ function ColdIcon() {
   );
 }
 
-function Mote({ y, t, phase }: { y: number; t: Clock; phase: number }) {
-  const cx = useDerivedValue(() => 12 + ((t.value + phase) % 1) * 76);
-  const op = useDerivedValue(() => 0.25 + 0.55 * Math.max(0, wave(t.value, phase)));
-  return (
-    <Circle cx={cx} cy={y} r={4} color="#A27A52" opacity={op}>
-      <BlurMask blur={2} style="normal" />
-    </Circle>
-  );
+/** แถบหมอกฝุ่น: เลื่อนผ่านหน้าดวงอาทิตย์ */
+function Haze({ y, w, t, phase }: { y: number; w: number; t: Clock; phase: number }) {
+  const p1 = useDerivedValue(() => vec(50 - w / 2 + wave(t.value, phase) * 9, y));
+  const p2 = useDerivedValue(() => vec(50 + w / 2 + wave(t.value, phase) * 9, y));
+  const op = useDerivedValue(() => 0.6 + 0.3 * wave(t.value, phase + 0.25));
+  return <Line p1={p1} p2={p2} color="#B48A5E" strokeWidth={7} strokeCap="round" opacity={op} />;
 }
 function DustIcon() {
-  const t = useLoop(3600);
+  const t = useLoop(4200);
   const spin = useLoop(20000);
-  const parts = [
-    { y: 58, ph: 0 },
-    { y: 70, ph: 0.3 },
-    { y: 82, ph: 0.6 },
-    { y: 64, ph: 0.85 },
-  ];
   return (
     <>
-      <Sun cx={50} cy={40} r={18} t={t} spin={spin} inner="#F3D3A0" outer="#C98A4B" glow="#D9A76A" rays={false} />
-      {parts.map((p) => (
-        <Mote key={p.ph} y={p.y} t={t} phase={p.ph} />
-      ))}
+      <Sun cx={50} cy={40} r={24} t={t} spin={spin} inner="#F6D9A8" outer="#C7884A" glow="#D9A76A" rays={false} />
+      <Haze y={58} w={64} t={t} phase={0} />
+      <Haze y={70} w={74} t={t} phase={0.35} />
+      <Haze y={82} w={56} t={t} phase={0.7} />
     </>
   );
 }
@@ -327,19 +355,20 @@ function NightIcon() {
   const t = useLoop(3000);
   const moon = useMemo(() => {
     const a = Skia.Path.Make();
-    a.addCircle(46, 52, 26);
+    a.addCircle(44, 54, 30);
     const b = Skia.Path.Make();
-    b.addCircle(60, 42, 22);
+    b.addCircle(60, 42, 25);
     return Skia.Path.MakeFromOp(a, b, PathOp.Difference) ?? a;
   }, []);
   const glow = useDerivedValue(() => 0.35 + 0.15 * wave(t.value));
   return (
     <>
-      <Path path={moon} color="#8C8FF0" opacity={glow}>
+      <Path path={moon} color="#FFE48A" opacity={glow}>
         <BlurMask blur={8} style="normal" />
       </Path>
       <Path path={moon}>
-        <LinearGradient start={vec(20, 30)} end={vec(60, 80)} colors={['#B9BCFF', '#5B5FC7']} />
+        <LinearGradient start={vec(20, 28)} end={vec(62, 80)} colors={['#FFF6CF', '#F2C53D']} />
+        <Shadow dx={0} dy={2} blur={3} color="rgba(120,90,0,0.25)" />
       </Path>
       <Star x={74} y={24} s={7} t={t} phase={0} />
       <Star x={84} y={50} s={5} t={t} phase={0.4} />

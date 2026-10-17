@@ -1,7 +1,7 @@
 /**
  * หน้าดูตัวอย่างไอคอนอากาศทุกแบบ (สี + แอนิเมชันจริง) — เปิดจากการแตะแถบอากาศในหน้าสมุนไพร
  */
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import React from 'react';
 import { ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -29,6 +29,8 @@ const ALL: { k: SkyKind; when: string }[] = [
 ];
 
 export default function WeatherPreview() {
+  const { from } = useLocalSearchParams<{ from?: string }>();
+  const list = ALL.slice(Number(from) || 0);
   const insets = useSafeAreaInsets();
   const { width: W } = useWindowDimensions();
   const cellW = Math.floor((W - 32 - 12) / 2);
@@ -41,7 +43,7 @@ export default function WeatherPreview() {
         <T v="title" style={{ flex: 1, textAlign: 'center', marginRight: 44 }}>ไอคอนสภาพอากาศ</T>
       </View>
       <ScrollView contentContainerStyle={[styles.grid, { paddingBottom: insets.bottom + 24 }]}>
-        {ALL.map(({ k, when }) => (
+        {list.map(({ k, when }) => (
           <View key={k} style={[styles.cell, elevation.e1, { width: cellW }]}>
             <WeatherIcon sky={k} size={44} />
             <T v="title" color={SKY_COLOR[k]} style={{ marginTop: 12 }}>{SKY_LABEL[k]}</T>
