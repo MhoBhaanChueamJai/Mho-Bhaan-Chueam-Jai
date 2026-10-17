@@ -1,7 +1,7 @@
 /**
  * รายการแบบการ์ด (Design system: List) — ใช้กับหน้าตั้งค่า / ข้อมูลส่วนตัว / ตั้งค่า AI
  *   ระยะขอบหน้า 20 · การ์ดมุม 22 + เงา e1 · แถวสูงขั้นต่ำ 72 (padding 16×18)
- *   ไอคอนวงกลม 30 พื้นสีเข้มไล่เฉด สัญลักษณ์ขาว · เส้นคั่นเริ่มหลังไอคอน · หัวข้อส่วน h3 ห่างกัน 32
+ *   ไอคอนวงกลม 30 พื้นสีอ่อนไล่เฉด · เส้นคั่นเริ่มหลังไอคอน · หัวข้อส่วน h3 ห่างกัน 32
  */
 import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
@@ -23,16 +23,16 @@ function shade(hex: string, k: number) {
   return `#${out.map((v) => Math.max(0, Math.min(255, v)).toString(16).padStart(2, '0')).join('')}`;
 }
 
-/** ไอคอนวงกลม: พื้นสีเข้มไล่เฉด (สว่างบนซ้าย → เข้มล่างขวา) + สัญลักษณ์สีขาว แบบไอคอนตั้งค่าของ iOS */
+/** ไอคอนวงกลม: พื้นสีอ่อนไล่เฉด (อ่อนบนซ้าย → เข้มขึ้นเล็กน้อยล่างขวา) + สัญลักษณ์สีของหัวข้อ */
 export function CircleIcon({ name, color = palette.primary, size = ICON }: { name: string; color?: string; size?: number }) {
   return (
     <LinearGradient
-      colors={[shade(color, 0.18), shade(color, -0.12), shade(color, -0.32)]}
+      colors={[shade(color, 0.93), shade(color, 0.66)]}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={{ width: size, height: size, borderRadius: size / 2, alignItems: 'center', justifyContent: 'center' }}
     >
-      <Sym name={name as any} size={size * 0.48} color="#FFFFFF" />
+      <Sym name={name as any} size={size * 0.48} color={shade(color, -0.08)} />
     </LinearGradient>
   );
 }
