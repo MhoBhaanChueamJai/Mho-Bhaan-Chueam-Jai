@@ -1,8 +1,9 @@
 /**
  * ข้อมูลส่วนตัว — เปิดจากการ์ดโปรไฟล์ในหน้าตั้งค่า
  * บัญชี · การรับรองหมอพื้นบ้าน (ข้อมูลจากทะเบียนกรมการแพทย์แผนไทยฯ เมื่อยืนยันตัวตนแล้ว)
- * จัดการบัญชีอยู่ที่นี่ที่เดียว: แก้ไขชื่อ · เปลี่ยนรหัสผ่าน · ลบบัญชี
+ * จัดการบัญชี: เมนู ••• บนแถบเครื่องมือ (แก้ไขข้อมูลบัญชี · เปลี่ยนรหัสผ่าน · ลบบัญชี)
  */
+import { MenuView } from '@react-native-menu/menu';
 import { Stack, router } from 'expo-router';
 import React from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
@@ -36,13 +37,24 @@ export default function Profile() {
   const del = useDeleteAccount();
   return (
     <>
-    {/* แก้ไขชื่อ: ปุ่ม "แก้ไข" มุมขวาบน แบบหน้าข้อมูลติดต่อของ iOS */}
+    {/* แถบเครื่องมือ: เมนู ••• แก้ไขข้อมูลบัญชี · เปลี่ยนรหัสผ่าน (เปิดเป็นแผ่น) · ลบบัญชี */}
     <Stack.Screen
       options={{
         headerRight: () => (
-          <PressableScale haptic="select" onPress={() => router.push('/account/edit')} hitSlop={10} style={{ paddingHorizontal: 8 }} accessibilityLabel="แก้ไขข้อมูลส่วนตัว">
-            <T v="body" color={palette.primary} style={{ fontWeight: '600' }}>แก้ไข</T>
-          </PressableScale>
+          <MenuView
+            shouldOpenOnLongPress={false}
+            themeVariant="light"
+            actions={[
+              { id: 'edit', title: 'แก้ไขข้อมูลบัญชี', image: 'person.crop.circle', imageColor: palette.ink },
+              { id: 'password', title: 'เปลี่ยนรหัสผ่าน', image: 'key', imageColor: palette.ink },
+              { id: 'delete', title: 'ลบบัญชี', image: 'trash', imageColor: '#E5484D', attributes: { destructive: true } },
+            ]}
+            onPressAction={({ nativeEvent: e }) => (e.event === 'edit' ? router.push('/account/edit') : e.event === 'password' ? router.push('/account/password') : e.event === 'delete' ? del.ask() : undefined)}
+          >
+            <View style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }} accessibilityRole="button" accessibilityLabel="เพิ่มเติม">
+              <Sym name="ellipsis" size={19} color={palette.ink} weight="semibold" />
+            </View>
+          </MenuView>
         ),
       }}
     />
@@ -93,14 +105,6 @@ export default function Profile() {
         </ListSection>
       )}
 
-      {/* ── จัดการบัญชี ── */}
-      <ListSection i={3} title="จัดการบัญชี">
-        <ListRow icon={<CircleIcon name="person.crop.circle.fill" color="#3B7DD8" />} title="แก้ไขชื่อ-นามสกุล" onPress={() => router.push('/account/edit')} chevron />
-        <ListRow icon={<CircleIcon name="key.fill" color="#5E6B63" />} title="เปลี่ยนรหัสผ่าน" onPress={() => router.push('/account/password')} chevron last />
-      </ListSection>
-      <ListSection i={4} footer="ลบบัญชีแล้ว ข้อมูลผู้ป่วย ตำรา และเสียงเล่าทั้งหมดถูกลบถาวร กู้คืนไม่ได้">
-        <ListRow icon={<CircleIcon name="trash.fill" color={palette.coral} />} title="ลบบัญชี" danger onPress={del.ask} last />
-      </ListSection>
     </ScrollView>
     {del.deleting ? (
       <View style={styles.busy}>

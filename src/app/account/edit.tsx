@@ -1,11 +1,12 @@
 /**
  * แก้ไขข้อมูลส่วนตัว — ชื่อ นามสกุล (อีเมลแสดงอย่างเดียว · ข้อมูลการรับรองหมอพื้นบ้านแก้ไม่ได้)
  */
-import { Stack, router } from 'expo-router';
+import { router } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Alert, StyleSheet, TextInput, View } from 'react-native';
 import { Sym, ios } from '../../components/ios';
-import { Button, GlassDock, T, useHaptic } from '../../components/ui';
+import { FormSheet } from '../../components/FormSheet';
+import { T, useHaptic } from '../../components/ui';
 import { updateName } from '../../lib/account';
 import { useApp } from '../../store/app';
 import { elevation, palette } from '../../theme';
@@ -56,33 +57,26 @@ export default function EditAccount() {
   };
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: palette.bg }}>
-      <Stack.Screen options={{ title: 'แก้ไขข้อมูลส่วนตัว' }} />
-      <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled">
-        {demo ? (
-          <View style={styles.note}>
-            <Sym name="info.circle.fill" size={15} color="#B26A12" />
-            <T v="subhead" color="#8A5A26" style={{ flex: 1 }}>บัญชีทดลองใช้แก้ไขข้อมูลไม่ได้ สมัครบัญชีของคุณเองเพื่อใช้งานเต็มรูปแบบ</T>
-          </View>
-        ) : null}
-        <View style={[styles.card, elevation.e1]}>
-          <Field label="ชื่อ" value={first} onChange={setFirst} editable={!demo} />
-          <Field label="นามสกุล" value={last} onChange={setLast} editable={!demo} />
-          <Field label="อีเมล" value={profile?.email ?? '-'} editable={false} />
+    <FormSheet title="แก้ไขข้อมูลบัญชี" canSave={can} busy={busy} onSave={save}>
+      {demo ? (
+        <View style={styles.note}>
+          <Sym name="info.circle.fill" size={15} color="#B26A12" />
+          <T v="subhead" color="#8A5A26" style={{ flex: 1 }}>บัญชีทดลองใช้แก้ไขข้อมูลไม่ได้ สมัครบัญชีของคุณเองเพื่อใช้งานเต็มรูปแบบ</T>
         </View>
-        <T v="caption" color={ios.secondary} style={{ marginHorizontal: 6 }}>
-          ข้อมูลการรับรองหมอพื้นบ้าน (ประเภท เลขที่หนังสือรับรอง) มาจากทะเบียนของกรมการแพทย์แผนไทยฯ แก้ไขในแอปไม่ได้
-        </T>
-      </ScrollView>
-      <GlassDock>
-        <Button label={busy ? 'กำลังบันทึก…' : 'บันทึก'} disabled={!can} onPress={save} style={{ flex: 1, height: 52 }} />
-      </GlassDock>
-    </KeyboardAvoidingView>
+      ) : null}
+      <View style={[styles.card, elevation.e1]}>
+        <Field label="ชื่อ" value={first} onChange={setFirst} editable={!demo} />
+        <Field label="นามสกุล" value={last} onChange={setLast} editable={!demo} />
+        <Field label="อีเมล" value={profile?.email ?? '-'} editable={false} />
+      </View>
+      <T v="caption" color={ios.secondary} style={{ marginHorizontal: 6 }}>
+        ข้อมูลการรับรองหมอพื้นบ้าน (ประเภท เลขที่หนังสือรับรอง) มาจากทะเบียนของกรมการแพทย์แผนไทยฯ แก้ไขในแอปไม่ได้
+      </T>
+    </FormSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  page: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 130, gap: 14 },
   card: { backgroundColor: palette.surface, borderRadius: 22, borderCurve: 'continuous', padding: 16, gap: 14 },
   label: { marginBottom: 6, marginLeft: 4, fontWeight: '600' },
   input: { height: 52, borderRadius: 26, paddingHorizontal: 18, backgroundColor: palette.mint, fontSize: 17, color: palette.ink, borderWidth: 1.5, borderColor: 'transparent' },
