@@ -9,7 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CircleIcon, PAGE_PAD } from '../../components/ListRow';
 import { Sym, ios } from '../../components/ios';
 import { PatientCard } from '../../components/PatientCard';
-import { Button, GlassDock, HeaderBack, HeaderButton, PressableScale, T } from '../../components/ui';
+import { HeaderBack, PressableScale, T } from '../../components/ui';
 import { avatarFor, fullAddress, type MB5Visit, type Patient } from '../../data/mock';
 import { useApp } from '../../store/app';
 import { elevation, palette } from '../../theme';
@@ -161,6 +161,7 @@ function PatientBody({ p }: { p: Patient }) {
   };
   // บันทึกการรักษาด้วยเสียง (ครูปัญญาถามทีละเรื่อง)
   const record = () => router.push({ pathname: '/patient/visit', params: { pid: p.id } });
+  const recordManual = () => router.push({ pathname: '/patient/record', params: { pid: p.id } });
   const allergic = p.allergies && p.allergies !== 'ไม่มี';
   // ลบผู้ป่วย (เพิ่มผิด/ซ้ำ) — ยืนยันก่อน เพราะลบประวัติการรักษาทั้งหมดด้วย
   const remove = () =>
@@ -189,12 +190,23 @@ function PatientBody({ p }: { p: Patient }) {
           headerBackButtonDisplayMode: 'minimal',
           headerBackVisible: false,
           headerLeft: () => <HeaderBack fallback="/patients" color={palette.ink} />,
-          // แถบเครื่องมือ: บันทึกการรักษา (ครูปัญญา) · เพิ่มเติม (ส่งออก / ลบ)
+          // แถบเครื่องมือ: เพิ่มบันทึกการรักษา (กรอกเอง / ครูปัญญา) · เพิ่มเติม (ส่งออก / ลบ)
           headerRight: () => (
             <View style={{ flexDirection: 'row', gap: 4 }}>
-              <HeaderButton label="บันทึกการรักษาด้วยเสียง" onPress={record}>
-                <Sym name="waveform" size={19} color={palette.primary} weight="semibold" />
-              </HeaderButton>
+              <MenuView
+                shouldOpenOnLongPress={false}
+                themeVariant="light"
+                title={`บันทึกการรักษาครั้งที่ ${(p.visits[0]?.no ?? 0) + 1}`}
+                actions={[
+                  { id: 'ai', title: 'ให้ครูปัญญาบันทึก', subtitle: 'เล่าอาการด้วยเสียง ครูปัญญาถามและจดให้', image: 'waveform', imageColor: palette.primary },
+                  { id: 'manual', title: 'กรอกเอง', subtitle: 'กรอกตามแบบ ม.บ.5', image: 'square.and.pencil', imageColor: palette.ink },
+                ]}
+                onPressAction={({ nativeEvent }) => (nativeEvent.event === 'ai' ? record() : nativeEvent.event === 'manual' ? recordManual() : undefined)}
+              >
+                <View style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }} accessibilityRole="button" accessibilityLabel="เพิ่มบันทึกการรักษา">
+                  <Sym name="plus" size={20} color={palette.ink} weight="semibold" />
+                </View>
+              </MenuView>
               <MenuView
                 shouldOpenOnLongPress={false}
                 themeVariant="light"
@@ -254,16 +266,11 @@ function PatientBody({ p }: { p: Patient }) {
         ) : (
           <View style={[styles.empty, elevation.e1]}>
             <Sym name="doc.text" size={26} color={ios.tertiary} />
-            <T v="subhead" color={ios.secondary} center>ยังไม่มีประวัติการรักษา</T>
+            <T v="subhead" color={ios.secondary} center>ยังไม่มีประวัติการรักษา · กด + มุมขวาบนเพื่อบันทึก</T>
           </View>
         )}
       </ScrollView>
 
-      <GlassDock>
-        {/* บันทึกการรักษา: กรอกเอง หรือให้ครูปัญญาถามด้วยเสียง (ปุ่มกว้างเท่ากัน) */}
-        <Button kind="secondary" style={{ flex: 1, height: 52 }} label="กรอกเอง" icon={<Sym name="square.and.pencil" size={17} color={palette.primary} />} onPress={() => router.push({ pathname: '/patient/record', params: { pid: p.id } })} />
-        <Button style={{ flex: 1, height: 52 }} label="พูดบันทึก" icon={<Sym name="waveform" size={17} color="#FFFFFF" />} onPress={record} />
-      </GlassDock>
     </>
   );
 }
