@@ -40,6 +40,8 @@ type Settings = {
   role: 'member' | 'practitioner' | 'admin';
   /** แจ้งเตือนที่เปิดอ่านแล้ว (id) */
   readNotices: string[];
+  /** แจ้งเตือนที่ปัดล้างแล้ว (id) */
+  dismissedNotices?: string[];
 };
 
 const defaults: Settings = {

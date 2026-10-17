@@ -2,23 +2,59 @@
 import type { Patient, Wisdom } from '../data/mock';
 import { lastVisit } from '../data/mock';
 
-export type Notice = { id: string; icon: string; color: string; title: string; body: string; go: string };
+export type Notice = {
+  id: string;
+  icon: string;
+  /** สีไล่ของไอคอน (บน → ล่าง) */
+  colors: readonly [string, string];
+  /** หมวด (แสดงหัวการ์ดแบบชื่อแอปใน Notification Center) */
+  cat: string;
+  title: string;
+  body: string;
+  /** เวลาแบบสัมพัทธ์ เช่น "4 วันที่แล้ว" */
+  when?: string;
+  at: number;
+  go: string;
+};
+
+/** "14/10/2569" (พ.ศ.) → เวลา ms */
+function parseThai(d?: string) {
+  const m = d?.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (!m) return 0;
+  return new Date(+m[3] - 543, +m[2] - 1, +m[1]).getTime();
+}
+
+export function ago(at: number) {
+  if (!at) return undefined;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const days = Math.round((today.getTime() - at) / 86400000);
+  if (days <= 0) return 'วันนี้';
+  if (days === 1) return 'เมื่อวาน';
+  if (days < 7) return `${days} วันที่แล้ว`;
+  if (days < 30) return `${Math.floor(days / 7)} สัปดาห์ที่แล้ว`;
+  return new Date(at).toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
+}
+
+/** รวมข้อความที่มีเนื้อหาจริง (ข้ามช่องว่าง/ขีด) */
+const join = (...parts: (string | undefined)[]) => parts.map((x) => x?.trim()).filter((x) => x && !/^[-–·\s]+$/.test(x)).join(' · ');
 
 export function noticesFrom(patients: Patient[], wisdoms: Wisdom[], isPractitioner: boolean): Notice[] {
   const out: Notice[] = [];
   if (!isPractitioner)
-    out.push({ id: 'verify', icon: 'person.badge.shield.checkmark.fill', color: '#C27A12', title: 'ยืนยันตัวตนหมอพื้นบ้าน', body: 'ยืนยันด้วยเลขที่หนังสือรับรอง เพื่อใช้งานการรักษาผู้ป่วย', go: '/verify' });
-  patients
-    .filter((p) => p.status === 'ติดตามอาการ')
-    .forEach((p) => {
-      const v = lastVisit(p);
-      out.push({ id: `f-${p.id}`, icon: 'stethoscope', color: '#14905C', title: `ติดตามอาการ ${p.name}`, body: v ? `${v.diagnosis} · นัด ${v.followUp}` : 'รอติดตามอาการ', go: `/patient/${p.id}` });
-    });
-  patients
-    .filter((p) => p.status === 'ส่งต่อ รพ.สต.')
-    .forEach((p) => out.push({ id: `r-${p.id}`, icon: 'cross.case.fill', color: '#C2564B', title: `ส่งต่อ รพ.สต. · ${p.name}`, body: 'ติดตามผลการรักษาจาก รพ.สต.', go: `/patient/${p.id}` }));
+    out.push({ id: 'verify', icon: 'person.badge.shield.checkmark.fill', colors: ['#FFC25A', '#E0861A'], cat: 'บัญชี', title: 'ยืนยันตัวตนหมอพื้นบ้าน', body: 'ยืนยันด้วยเลขที่หนังสือรับรอง เพื่อใช้งานการรักษาผู้ป่วย', at: Infinity, go: '/verify' });
+  const care: Notice[] = [];
+  patients.forEach((p) => {
+    const v = lastVisit(p);
+    const at = parseThai(v?.date);
+    if (p.status === 'ติดตามอาการ')
+      care.push({ id: `f-${p.id}-${v?.no ?? 0}`, icon: 'stethoscope', colors: ['#3FD089', '#14905C'], cat: 'ติดตามอาการ', title: p.name, body: join(v?.diagnosis, v?.followUp) || 'รอติดตามอาการ', when: ago(at), at, go: `/patient/${p.id}` });
+    else if (p.status === 'ส่งต่อ รพ.สต.')
+      care.push({ id: `r-${p.id}-${v?.no ?? 0}`, icon: 'cross.case.fill', colors: ['#FF8A7A', '#D2453A'], cat: 'ส่งต่อ รพ.สต.', title: p.name, body: join(v?.diagnosis, 'ติดตามผลการรักษาจาก รพ.สต.'), when: ago(at), at, go: `/patient/${p.id}` });
+  });
+  out.push(...care.sort((a, b) => b.at - a.at));
   const pending = wisdoms.filter((w) => !w.verified);
   if (pending.length)
-    out.push({ id: 'wisdom', icon: 'book.closed.fill', color: '#B07A2A', title: `ภูมิปัญญารอตรวจทาน ${pending.length} เรื่อง`, body: pending.slice(0, 2).map((w) => w.title).join(' · '), go: '/vault' });
+    out.push({ id: `wisdom-${pending.length}`, icon: 'book.closed.fill', colors: ['#D2A36E', '#8A5E30'], cat: 'คลังภูมิปัญญา', title: `รอตรวจทาน ${pending.length} เรื่อง`, body: pending.slice(0, 2).map((w) => w.title).join(' · '), at: 0, go: '/vault' });
   return out;
 }
