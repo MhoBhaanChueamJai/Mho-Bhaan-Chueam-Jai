@@ -18,6 +18,8 @@ import { AISphere } from '../components/AISphere';
 import { supabase } from '../lib/supabase';
 import { useApp } from '../store/app';
 import { useMyAvatar } from '../lib/myAvatar';
+import { deleteAccount, verifyPassword } from '../lib/account';
+import { APP_VERSION } from './about';
 import { authenticateBiometric, biometricInfo, clearPin } from '../store/security';
 import { elevation, palette } from '../theme';
 
@@ -26,6 +28,7 @@ const enter = (i: number) => FadeInDown.delay(40 + i * 50).duration(420);
 export default function Settings() {
   const { settings, update, patients, wisdoms, clearLocal, setUnlocked, profile, isPractitioner, sync, pendingCount, syncNow, demo } = useApp();
   const [syncing, setSyncing] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const myAvatar = useMyAvatar();
   // สถานะซิงก์: ให้หมอรู้ว่าข้อมูลขึ้นคลาวด์ครบแล้วหรือยัง
   const syncAt = settings.lastSyncAt ? new Date(settings.lastSyncAt) : null;
@@ -119,9 +122,69 @@ export default function Settings() {
     ]);
 
 
+  /** ล้างข้อมูลในเครื่องแล้วกลับหน้าเข้าสู่ระบบ (ใช้หลังลบบัญชี) */
+  const leave = () => {
+    tts.stop();
+    clearLocal();
+    clearPin();
+    update({ loggedIn: false, phone: '', pinEnabled: false, faceIdEnabled: false, loginId: undefined });
+    setUnlocked(false);
+    router.dismissAll();
+    router.replace('/login');
+  };
+
+  /** ลบบัญชี: ยืนยัน 2 ขั้น (อธิบายผล → กรอกรหัสผ่าน) */
+  const askDelete = () => {
+    if (demo) return Alert.alert('ลบบัญชีทดลองใช้ไม่ได้', 'บัญชีทดลองใช้ใช้ร่วมกันหลายคน ถ้าต้องการล้างข้อมูลในเครื่อง ให้กดออกจากระบบ');
+    Alert.alert('ลบบัญชีถาวร?', 'ข้อมูลผู้ป่วย ประวัติการรักษา ตำรา เสียงเล่า และประวัติแชททั้งหมดจะถูกลบ กู้คืนไม่ได้', [
+      { text: 'ยกเลิก', style: 'cancel' },
+      {
+        text: 'ดำเนินการต่อ',
+        style: 'destructive',
+        onPress: () =>
+          Alert.prompt(
+            'ยืนยันด้วยรหัสผ่าน',
+            'กรอกรหัสผ่านของบัญชีนี้เพื่อลบบัญชี',
+            [
+              { text: 'ยกเลิก', style: 'cancel' },
+              {
+                text: 'ลบบัญชี',
+                style: 'destructive',
+                onPress: async (pw?: string) => {
+                  if (!pw || !(await verifyPassword(pw))) {
+                    h.warn();
+                    return Alert.alert('รหัสผ่านไม่ถูกต้อง', 'ยังไม่ได้ลบบัญชี');
+                  }
+                  setDeleting(true);
+                  try {
+                    await deleteAccount();
+                    h.success();
+                    leave();
+                    setTimeout(() => Alert.alert('ลบบัญชีแล้ว', 'ข้อมูลทั้งหมดของคุณถูกลบเรียบร้อย'), 400);
+                  } catch {
+                    h.warn();
+                    Alert.alert('ลบบัญชีไม่สำเร็จ', 'ตรวจสอบอินเทอร์เน็ตแล้วลองใหม่ หากยังไม่ได้ ติดต่อผู้ดูแลระบบ');
+                  } finally {
+                    setDeleting(false);
+                  }
+                },
+              },
+            ],
+            'secure-text',
+          ),
+      },
+    ]);
+  };
+
   return (
     <>
       <Stack.Screen options={{ headerLeft: () => <HeaderBack fallback="/home" color={palette.ink} /> }} />
+      {deleting ? (
+        <View style={styles.busy}>
+          <ActivityIndicator color="#FFFFFF" />
+          <T v="subhead" color="#FFFFFF">กำลังลบบัญชี…</T>
+        </View>
+      ) : null}
       <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingTop: 8, paddingBottom: 64 }} showsVerticalScrollIndicator={false}>
         {/* ── โปรไฟล์: แถวบัญชีแบบ iPhone (รูปซ้าย · ชื่อ/อีเมล/สถานะ · ลูกศร) กดเพื่อดูข้อมูลส่วนตัว ── */}
         <Animated.View entering={enter(0)}>
@@ -194,13 +257,26 @@ export default function Settings() {
           <ListRow icon={<CircleIcon name="hand.raised.fill" color="#7A5CC8" />} title="นโยบายความเป็นส่วนตัว" onPress={() => router.push('/privacy')} chevron last />
         </ListSection>
 
-        {/* ── ออกจากระบบ ── */}
-        <ListSection i={4}>
-          <ListRow icon={<CircleIcon name="rectangle.portrait.and.arrow.right" color={palette.coral} />} title="ออกจากระบบ" danger onPress={logout} last />
+        {/* ── บัญชี: แก้ไขข้อมูล · เปลี่ยนรหัสผ่าน ── */}
+        <ListSection i={4} title="บัญชี">
+          <ListRow icon={<CircleIcon name="person.crop.circle.fill" color="#3B7DD8" />} title="แก้ไขข้อมูลส่วนตัว" onPress={() => router.push('/account/edit')} chevron />
+          <ListRow icon={<CircleIcon name="key.fill" color="#5E6B63" />} title="เปลี่ยนรหัสผ่าน" onPress={() => router.push('/account/password')} chevron last />
+        </ListSection>
+
+        {/* ── เกี่ยวกับ: ช่วยเหลือ · เวอร์ชัน ── */}
+        <ListSection i={5} title="เกี่ยวกับ">
+          <ListRow icon={<CircleIcon name="questionmark.circle.fill" color={palette.primary} />} title="ช่วยเหลือ · วิธีใช้งาน" onPress={() => router.push('/help')} chevron />
+          <ListRow icon={<CircleIcon name="info.circle.fill" color="#3B7DD8" />} title="เกี่ยวกับแอป" value={`เวอร์ชัน ${APP_VERSION}`} onPress={() => router.push('/about')} chevron last />
+        </ListSection>
+
+        {/* ── ออกจากระบบ · ลบบัญชี ── */}
+        <ListSection i={6}>
+          <ListRow icon={<CircleIcon name="rectangle.portrait.and.arrow.right" color={palette.coral} />} title="ออกจากระบบ" danger onPress={logout} />
+          <ListRow icon={<CircleIcon name="trash.fill" color={palette.coral} />} title="ลบบัญชี" subtitle="ลบบัญชีและข้อมูลทั้งหมดถาวร" danger onPress={askDelete} last />
         </ListSection>
 
         <T v="caption" color={ios.tertiary} center style={{ marginTop: 28, paddingHorizontal: 24, lineHeight: 20 }}>
-          หมอบ้านเชื่อมใจ เวอร์ชัน 1.0{'\n'}คำแนะนำจากครูปัญญาเป็นข้อมูลเบื้องต้น ไม่ใช่การวินิจฉัยแทนแพทย์
+          หมอบ้านเชื่อมใจ เวอร์ชัน {APP_VERSION}{'\n'}คำแนะนำจากครูปัญญาเป็นข้อมูลเบื้องต้น ไม่ใช่การวินิจฉัยแทนแพทย์
         </T>
       </ScrollView>
     </>
@@ -208,6 +284,7 @@ export default function Settings() {
 }
 
 const styles = StyleSheet.create({
+  busy: { ...StyleSheet.absoluteFillObject, zIndex: 50, alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: 'rgba(0,0,0,0.45)' },
   card: { backgroundColor: palette.surface, borderRadius: 22, borderCurve: 'continuous' },
   profile: { flexDirection: 'row', alignItems: 'center', gap: 16, paddingVertical: 20, paddingHorizontal: 18 },
   avatarRing: { padding: 3, borderRadius: 999, backgroundColor: palette.primarySoft },
