@@ -10,15 +10,13 @@ import { ios } from './ios';
 import { PressableScale, T } from './ui';
 import { palette } from '../theme';
 
-/** สัดส่วนความสูงของแผ่น (ต้องตรงกับ sheetAllowedDetents ใน _layout) */
-export const FORM_SHEET_DETENT = 0.62;
 
 export function FormSheet({ title, canSave, busy, onSave, children }: { title: string; canSave: boolean; busy?: boolean; onSave: () => void; children: React.ReactNode }) {
   const { height: SH } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   return (
-    // ความสูงตายตัว = สัดส่วน detent ของจอ (หักขอบบน) — ใช้ flex แล้วแผ่นว่าง
-    <View style={{ height: (SH - insets.top) * FORM_SHEET_DETENT, backgroundColor: palette.bg }}>
+    // แผ่นเต็มจอ (detent 1.0) — ความสูงต้องกำหนดตายตัว ใช้ flex แล้วแผ่นว่าง
+    <View style={{ height: SH - insets.top - 10, backgroundColor: palette.bg }}>
       <View style={styles.head}>
         <PressableScale haptic="select" onPress={() => router.back()} hitSlop={10} style={styles.side} accessibilityLabel="ยกเลิก">
           <T v="body" color={palette.primary}>ยกเลิก</T>
