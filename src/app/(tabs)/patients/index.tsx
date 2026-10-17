@@ -130,7 +130,7 @@ function PatientsInner() {
                   { id: 'manual', title: 'กรอกเอง', image: 'square.and.pencil', imageColor: palette.ink },
                 ]}
                 onPressAction={({ nativeEvent: e }) =>
-                  router.push(e.event === 'ai' ? { pathname: '/patient/new', params: { start: 'voice' } } : e.event === 'scan' ? { pathname: '/patient/new', params: { start: 'scan' } } : '/patient/new')
+                  router.push(e.event === 'ai' ? { pathname: '/patient/voice', params: { then: 'new' } } : e.event === 'scan' ? { pathname: '/id-scan', params: { then: 'new' } } : '/patient/new')
                 }
               >
                 <View style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }} accessibilityRole="button" accessibilityLabel="เพิ่มผู้ป่วยใหม่">

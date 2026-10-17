@@ -2,7 +2,7 @@
  * เพิ่มผู้ป่วยใหม่ — หน้าเต็ม (push จากแท็บผู้ป่วย) ตาม DESIGN_SYSTEM.md
  * บนสุด: การ์ดพูดแนะนำผู้ป่วย (AI กรอกให้) → ฟอร์มแบ่งการ์ด ป้ายอยู่เหนือช่องแคปซูล → ปุ่มบันทึกติดล่าง
  */
-import { Stack, router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { Stack, router, useFocusEffect } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { PractitionerGate } from '../../components/PractitionerGate';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View, type KeyboardTypeOptions } from 'react-native';
@@ -203,15 +203,6 @@ function NewPatientInner() {
 
   // เลิกรับผลซักประวัติเมื่อออกจากหน้า
   useEffect(() => () => onIntakeResult(null), []);
-
-  // เปิดจากเมนูเพิ่มผู้ป่วย: ถ่ายบัตร / ให้ครูปัญญาซักประวัติ → เปิดทันที (ผลกลับมาเติมในฟอร์มนี้)
-  const { start } = useLocalSearchParams<{ start?: 'scan' | 'voice' }>();
-  useEffect(() => {
-    if (!start) return;
-    const t = setTimeout(() => router.push(start === 'scan' ? '/id-scan' : '/patient/voice'), 350);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   /** สแกนบัตรประชาชน → เปิดกล้องพร้อมกรอบบัตรทันที */
   const scanIdCard = () => router.push('/id-scan');

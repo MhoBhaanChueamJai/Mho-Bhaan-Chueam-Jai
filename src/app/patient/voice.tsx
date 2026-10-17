@@ -2,7 +2,7 @@
  * ครูปัญญาซักประวัติผู้ป่วยใหม่ — โหมดเสียง (เปิดจากปุ่มไมค์ในหน้าเพิ่มผู้ป่วย)
  * ครบแล้ววิเคราะห์ธาตุเจ้าเรือนจากวันเกิด → ถามยืนยัน → ใช้ = บันทึกผู้ป่วย · ไม่ = เติมลงฟอร์มให้แก้ต่อ
  */
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import React from 'react';
 import { VoiceSession, type VoiceData } from '../../components/VoiceSession';
 import { ageFrom, elementFromMonth, normalizeBirth, toISO } from '../../lib/birth';
@@ -21,6 +21,7 @@ function elementNote(d: VoiceData) {
 }
 
 export default function VoiceIntake() {
+  const { then } = useLocalSearchParams<{ then?: string }>();
   return (
     <VoiceSession
       title="ครูปัญญาซักประวัติ"
@@ -37,7 +38,9 @@ export default function VoiceIntake() {
       dockLabel={() => 'ใช้ข้อมูลนี้'}
       onFinish={(d, save) => {
         setIntakeResult({ ...(d as IntakeData), save });
-        router.back();
+        // เปิดจากเมนูเพิ่มผู้ป่วย → ไปฟอร์มต่อเลย (ฟอร์มรับข้อมูล/บันทึกให้) · เปิดจากฟอร์ม → กลับฟอร์มเดิม
+        if (then === 'new') router.replace('/patient/new');
+        else router.back();
       }}
     />
   );

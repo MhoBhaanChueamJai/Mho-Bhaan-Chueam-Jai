@@ -14,7 +14,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
@@ -36,6 +36,7 @@ const CARD_R = 14;
 const AURA_PAD = 110;
 
 export default function IdScan() {
+  const { then } = useLocalSearchParams<{ then?: string }>();
   const insets = useSafeAreaInsets();
   const { width: W, height: H } = useWindowDimensions();
   const h = useHaptic();
@@ -134,7 +135,8 @@ export default function IdScan() {
       h.success();
       // ปิดฉาก: บัตรลอยขึ้นหาย แล้วปิดหน้า → ฟอร์มเติมข้อมูลให้
       out.value = withDelay(700, withTiming(0, { duration: 450, easing: Easing.in(Easing.cubic) }));
-      setTimeout(() => router.back(), 1200);
+      // เปิดจากเมนูเพิ่มผู้ป่วย → ไปฟอร์มต่อเลย (ฟอร์มรับข้อมูลที่อ่านได้) · เปิดจากฟอร์ม → กลับฟอร์มเดิม
+      setTimeout(() => (then === 'new' ? router.replace('/patient/new') : router.back()), 1200);
     } catch {
       setStage('error');
       h.warn();
