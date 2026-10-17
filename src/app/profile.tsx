@@ -1,10 +1,11 @@
 /**
  * ข้อมูลส่วนตัว — เปิดจากการ์ดโปรไฟล์ในหน้าตั้งค่า
  * บัญชี · การรับรองหมอพื้นบ้าน (ข้อมูลจากทะเบียนกรมการแพทย์แผนไทยฯ เมื่อยืนยันตัวตนแล้ว)
+ * จัดการบัญชีอยู่ที่นี่ที่เดียว: แก้ไขชื่อ · เปลี่ยนรหัสผ่าน · ลบบัญชี
  */
-import { router } from 'expo-router';
+import { Stack, router } from 'expo-router';
 import React from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { CircleIcon, ListRow, ListSection, PAGE_PAD } from '../components/ListRow';
 import { Sym, ios } from '../components/ios';
@@ -13,6 +14,7 @@ import { doctor } from '../data/mock';
 import { TYPE_LABEL } from './verify';
 import { useApp } from '../store/app';
 import { changeAvatar, useMyAvatar } from '../lib/myAvatar';
+import { useDeleteAccount } from '../components/useDeleteAccount';
 import { palette } from '../theme';
 
 const thaiDate = (iso?: string | null) => {
@@ -31,7 +33,19 @@ export default function Profile() {
   const { profile, isPractitioner, settings, update } = useApp();
   const myAvatar = useMyAvatar();
   const name = profile?.display_name || [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || doctor.name;
+  const del = useDeleteAccount();
   return (
+    <>
+    {/* แก้ไขชื่อ: ปุ่ม "แก้ไข" มุมขวาบน แบบหน้าข้อมูลติดต่อของ iOS */}
+    <Stack.Screen
+      options={{
+        headerRight: () => (
+          <PressableScale haptic="select" onPress={() => router.push('/account/edit')} hitSlop={10} style={{ paddingHorizontal: 8 }} accessibilityLabel="แก้ไขข้อมูลส่วนตัว">
+            <T v="body" color={palette.primary} style={{ fontWeight: '600' }}>แก้ไข</T>
+          </PressableScale>
+        ),
+      }}
+    />
     <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingTop: 8, paddingBottom: 56 }}>
       <Animated.View entering={FadeInDown.duration(420)} style={{ alignItems: 'center', marginTop: 8 }}>
         {/* แตะภาพเพื่อเปลี่ยน: ถ่ายรูป / เลือกจากคลังภาพ / ใช้ภาพเริ่มต้น */}
@@ -78,11 +92,28 @@ export default function Profile() {
           </View>
         </ListSection>
       )}
+
+      {/* ── จัดการบัญชี ── */}
+      <ListSection i={3} title="จัดการบัญชี">
+        <ListRow icon={<CircleIcon name="person.crop.circle.fill" color="#3B7DD8" />} title="แก้ไขชื่อ-นามสกุล" onPress={() => router.push('/account/edit')} chevron />
+        <ListRow icon={<CircleIcon name="key.fill" color="#5E6B63" />} title="เปลี่ยนรหัสผ่าน" onPress={() => router.push('/account/password')} chevron last />
+      </ListSection>
+      <ListSection i={4} footer="ลบบัญชีแล้ว ข้อมูลผู้ป่วย ตำรา และเสียงเล่าทั้งหมดถูกลบถาวร กู้คืนไม่ได้">
+        <ListRow icon={<CircleIcon name="trash.fill" color={palette.coral} />} title="ลบบัญชี" danger onPress={del.ask} last />
+      </ListSection>
     </ScrollView>
+    {del.deleting ? (
+      <View style={styles.busy}>
+        <ActivityIndicator color="#FFFFFF" />
+        <T v="subhead" color="#FFFFFF">กำลังลบบัญชี…</T>
+      </View>
+    ) : null}
+    </>
   );
 }
 
 const styles = StyleSheet.create({
+  busy: { ...StyleSheet.absoluteFillObject, zIndex: 50, alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: 'rgba(0,0,0,0.45)' },
   camBadge: { position: 'absolute', right: 2, bottom: 2, width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: palette.primary, borderWidth: 2.5, borderColor: palette.bg },
   avatarRing: { padding: 4, borderRadius: 999, backgroundColor: palette.primarySoft },
   verifyBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 48, borderRadius: 24, backgroundColor: palette.primary },
