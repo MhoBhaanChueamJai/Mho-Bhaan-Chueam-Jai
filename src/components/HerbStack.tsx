@@ -67,7 +67,7 @@ function Card({ r, depth, n, onSwipe }: { r: HerbRec; depth: number; n: number; 
                 <T v="micro" color={tone.fg} style={{ fontWeight: '700' }}>รส{r.herb.taste}</T>
               </View>
             </View>
-            <T v="caption" color={ios.secondary} numberOfLines={2}>{r.reason}</T>
+            <T v="caption" color={ios.secondary} numberOfLines={1}>{r.reason}</T>
           </View>
         </View>
         <View style={styles.tip}>

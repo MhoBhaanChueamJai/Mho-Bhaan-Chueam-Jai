@@ -13,6 +13,7 @@ import { Sym, ios } from '../../../components/ios';
 import { HeaderButton, PressableScale, T } from '../../../components/ui';
 import { herbs, tasteTone, tastes, type Herb } from '../../../data/herbs';
 import { HerbStack } from '../../../components/HerbStack';
+import { SKY_COLOR, WeatherIcon } from '../../../components/WeatherIcon';
 import { getWeather, recommendForWeather, type Weather, type WeatherRecs } from '../../../lib/weatherHerbs';
 import { elementColor, elevation, palette } from '../../../theme';
 
@@ -120,10 +121,10 @@ export default function Herbs() {
         {/* สภาพอากาศ */}
         {w ? (
           <Animated.View entering={FadeInDown.duration(300)} style={styles.wxRow}>
-            <Sym name={w.icon as any} size={16} color={palette.primary} />
-            <T v="subhead" style={{ fontWeight: '700' }}>{w.temp}°</T>
+            <WeatherIcon sky={w.sky} size={22} />
+            <T v="subhead" color={SKY_COLOR[w.sky]} style={{ fontWeight: '700' }}>{w.temp}° {w.label}</T>
             <T v="subhead" color={ios.secondary} numberOfLines={1} style={{ flex: 1 }}>
-              {w.label}{w.place ? ` · ${w.place}` : ''}{w.pm25 != null ? ` · PM2.5 ${w.pm25}` : ''}
+              {w.place ? `· ${w.place}` : ''}{w.pm25 != null ? ` · PM2.5 ${w.pm25}` : ''}
             </T>
           </Animated.View>
         ) : noLoc ? (
@@ -133,7 +134,7 @@ export default function Herbs() {
             <Sym name="chevron.right" size={12} color={ios.tertiary} weight="semibold" />
           </PressableScale>
         ) : null}
-        {wx?.advice ? <T v="callout" color={palette.inkSoft} style={{ paddingHorizontal: 4, marginBottom: 12 }}>{wx.advice}</T> : null}
+        {wx?.advice ? <T v="callout" color={palette.inkSoft} numberOfLines={1} style={{ paddingHorizontal: 4, marginBottom: 12 }}>{wx.advice}</T> : null}
         {wx && wx.recs.length ? (
           <HerbStack key={wx.recs.map((r) => r.herb.id).join()} recs={wx.recs} />
         ) : (

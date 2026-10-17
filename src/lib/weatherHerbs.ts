@@ -10,7 +10,24 @@ import { chatJSON } from '../api/ai';
 import { herbs, type Herb } from '../data/herbs';
 import { seasonOf, thaiToday } from './herbDaily';
 
+/** ลักษณะท้องฟ้า (ใช้เลือกไอคอน สี และแอนิเมชัน) */
+export type SkyKind = 'sun' | 'hot' | 'partly' | 'cloudy' | 'fog' | 'drizzle' | 'rain' | 'heavy' | 'thunder' | 'cold' | 'dust';
+export const SKY_LABEL: Record<SkyKind, string> = {
+  sun: 'แดดออก',
+  hot: 'ร้อนจัด',
+  partly: 'มีเมฆบางส่วน',
+  cloudy: 'เมฆมาก',
+  fog: 'มีหมอก',
+  drizzle: 'ฝนตกปรอยๆ',
+  rain: 'ฝนตก',
+  heavy: 'ฝนตกหนัก',
+  thunder: 'ฝนฟ้าคะนอง',
+  cold: 'อากาศหนาว',
+  dust: 'ฝุ่นสูง',
+};
+
 export type Weather = {
+  sky: SkyKind;
   temp: number;
   feels: number;
   humidity: number;
@@ -56,7 +73,8 @@ export async function getWeather(ask = true): Promise<Weather | null> {
     tmax: Math.round(d.temperature_2m_max?.[0] ?? 0),
     pm25: aq?.current?.pm2_5 != null ? Math.round(aq.current.pm2_5) : null,
     place: g ? g.district || g.subregion || g.city || g.region || '' : '',
-    icon: 'sun.max.fill',
+    sky: 'sun',
+    icon: '',
     label: '',
     flags: [],
   };
@@ -69,8 +87,23 @@ export async function getWeather(ask = true): Promise<Weather | null> {
   if (w.humidity >= 85 && !w.rainy) w.flags.push('ความชื้นสูง');
   if (w.pm25 != null && w.pm25 > 50) w.flags.push('ฝุ่น PM2.5 สูง');
   if (w.uvMax >= 8) w.flags.push('แดดแรง UV สูง');
-  w.label = w.flags[0] ?? (w.feels >= 30 ? 'อากาศร้อน' : 'อากาศสบาย');
-  w.icon = w.rainy || w.rainProb >= 60 ? 'cloud.rain.fill' : w.pm25 != null && w.pm25 > 50 ? 'aqi.medium' : w.tmin <= 18 ? 'thermometer.snowflake' : w.feels >= 35 ? 'sun.max.fill' : 'cloud.sun.fill';
+  // ลักษณะท้องฟ้าจากรหัสอากาศ WMO (ฟ้าร้อง > ฝนหนัก > ฝน > ปรอยๆ > หมอก > ฝุ่น > หนาว > ร้อนจัด > เมฆ > แดด)
+  const code: number = c.weather_code ?? 0;
+  const precip: number = c.precipitation ?? 0;
+  w.sky =
+    code >= 95 ? 'thunder'
+    : [65, 67, 82].includes(code) || precip >= 4 ? 'heavy'
+    : [61, 63, 66, 80, 81].includes(code) ? 'rain'
+    : code >= 51 && code <= 57 ? 'drizzle'
+    : code === 45 || code === 48 ? 'fog'
+    : w.pm25 != null && w.pm25 > 75 ? 'dust'
+    : w.temp <= 18 ? 'cold'
+    : w.feels >= 40 ? 'hot'
+    : code === 3 ? 'cloudy'
+    : code === 2 ? 'partly'
+    : 'sun';
+  w.label = SKY_LABEL[w.sky];
+  w.icon = '';
   return w;
 }
 
