@@ -6,7 +6,7 @@ import { Alert, Linking, ScrollView, Share, StyleSheet, View } from 'react-nativ
 import { NotFound } from '../../components/NotFound';
 import Animated, { FadeIn, LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CircleIcon, PAGE_PAD } from '../../components/ListRow';
+import { CircleIcon, ListRow, ListSection, PAGE_PAD } from '../../components/ListRow';
 import { Sym, ios } from '../../components/ios';
 import { PatientCard } from '../../components/PatientCard';
 import { HeaderBack, PressableScale, T } from '../../components/ui';
@@ -64,30 +64,8 @@ function medsAdvice(meds: string[]) {
   return tips.length ? tips.join(' · ') : `ใช้ ${meds[0]} อยู่ ถามครูปัญญาก่อนจ่ายสมุนไพรที่อาจตีกับยานี้`;
 }
 
-/** ช่องข้อมูลแบบตาราง 2 คอลัมน์ (ไอคอนวงกลมเล็ก · ป้าย · ค่า) */
-function Tile({ icon, color, label, value, wide, onPress, alert }: { icon: string; color: string; label: string; value: string; wide?: boolean; onPress?: () => void; alert?: boolean }) {
-  const body = (
-    <View style={[styles.tile, elevation.e1, alert && styles.tileAlert]}>
-      <View style={styles.tileHead}>
-        <CircleIcon name={icon} color={color} size={32} />
-        <T v="caption" color={alert ? palette.coral : ios.secondary} style={{ flex: 1, fontWeight: '600' }} numberOfLines={1}>{label}</T>
-        {onPress ? <Sym name="chevron.right" size={11} color={ios.tertiary} weight="semibold" /> : null}
-      </View>
-      <T v="body" color={alert ? palette.coral : ios.label} style={{ fontWeight: '600', marginTop: 8 }} numberOfLines={wide ? 3 : 2}>{value}</T>
-    </View>
-  );
-  return (
-    <View style={wide ? { width: '100%' } : { width: '48.5%' }}>
-      {onPress ? (
-        <PressableScale onPress={onPress} scaleTo={0.98} haptic="select" accessibilityLabel={`${label} ${value}`}>
-          {body}
-        </PressableScale>
-      ) : (
-        body
-      )}
-    </View>
-  );
-}
+/** เบอร์โทรแบบอ่านง่าย 081-000-0005 */
+const fmtPhone = (t: string) => (t.length === 10 ? `${t.slice(0, 3)}-${t.slice(3, 6)}-${t.slice(6)}` : t);
 
 /** ประวัติการรักษา: วันที่แบบปฏิทินด้านซ้าย การ์ดด้านขวา แตะเพื่อดูรายละเอียด */
 function VisitItem({ v, open, onToggle, last, latest }: { v: MB5Visit; open: boolean; onToggle: () => void; last: boolean; latest: boolean }) {
@@ -230,25 +208,44 @@ function PatientBody({ p }: { p: Patient }) {
           <PatientCard p={p} avatar={avatarFor(p)} onCall={call} />
         </Animated.View>
 
-        {/* ── ข้อมูลทั่วไป: ช่องตาราง 2 คอลัมน์ ── */}
-        <T v="h3" style={styles.secTitle}>ข้อมูลทั่วไป</T>
-        <View style={styles.grid}>
-          <Tile icon="phone.fill" color={palette.primary} label="เบอร์โทร" value={p.phone} onPress={call} />
-          <Tile icon="scalemass.fill" color="#7A5CC8" label="น้ำหนัก · ส่วนสูง" value={p.weight && p.height ? `${p.weight} กก. · ${p.height} ซม.` : 'ยังไม่ระบุ'} />
-          <Tile icon="heart.fill" color="#C2564B" label="โรคประจำตัว" value={p.chronic} />
-          <Tile icon="exclamationmark.triangle.fill" color={allergic ? palette.coral : '#8E8E93'} label="แพ้ยา / อาหาร" value={p.allergies} alert={!!allergic} />
-          {p.meds.length ? <Tile wide icon="pills.fill" color="#D9921A" label="ยาที่ใช้อยู่" value={p.meds.join(', ')} /> : null}
-          <Tile wide icon="house.fill" color="#3B7DD8" label="ที่อยู่" value={fullAddress(p.address) || 'ยังไม่ระบุ'} />
-        </View>
+        {/* ── ข้อมูลทั่วไป: รายการแบบ iOS แยก 2 หมวด (สุขภาพ · ติดต่อ) ── */}
+        <ListSection i={1} title="สุขภาพ">
+          <ListRow
+            icon={<CircleIcon name="exclamationmark.triangle.fill" color={allergic ? palette.coral : '#8E8E93'} />}
+            overline="แพ้ยา / อาหาร"
+            title={allergic ? p.allergies : 'ไม่มี'}
+            titleLines={2}
+            danger={!!allergic}
+          />
+          <ListRow icon={<CircleIcon name="heart.fill" color="#C2564B" />} overline="โรคประจำตัว" title={p.chronic && p.chronic !== 'ไม่มี' ? p.chronic : 'ไม่มี'} titleLines={2} />
+          {p.meds.length ? <ListRow icon={<CircleIcon name="pills.fill" color="#D9921A" />} overline="ยาที่ใช้อยู่" title={p.meds.join(', ')} titleLines={3} /> : null}
+          <ListRow
+            icon={<CircleIcon name="scalemass.fill" color="#7A5CC8" />}
+            overline="น้ำหนัก · ส่วนสูง"
+            title={p.weight && p.height ? `${p.weight} กก. · ${p.height} ซม.` : 'ยังไม่ระบุ'}
+            last
+          />
+        </ListSection>
 
         {p.meds.length ? (
-          <View style={styles.aiNote}>
+          <View style={[styles.aiNote, { marginTop: 12 }]}>
             <Sym name="sparkles" size={15} color={palette.primary} />
             <T v="subhead" color={palette.primaryDeep} style={{ flex: 1 }}>
               ครูปัญญา: {medsAdvice(p.meds)}
             </T>
           </View>
         ) : null}
+
+        <ListSection i={2} title="ติดต่อ">
+          <ListRow
+            icon={<CircleIcon name="phone.fill" color={palette.primary} />}
+            overline="เบอร์โทร"
+            title={tel ? fmtPhone(tel) : 'ยังไม่ระบุ'}
+            onPress={tel ? call : undefined}
+            chevron={!!tel}
+          />
+          <ListRow icon={<CircleIcon name="house.fill" color="#3B7DD8" />} overline="ที่อยู่" title={fullAddress(p.address) || 'ยังไม่ระบุ'} titleLines={3} last />
+        </ListSection>
 
         {/* ── ประวัติการรักษา (ไทม์ไลน์) ── */}
         <View style={styles.histHead}>
