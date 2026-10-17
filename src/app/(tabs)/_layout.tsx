@@ -1,6 +1,7 @@
-import { Redirect } from 'expo-router';
+import { Redirect, usePathname } from 'expo-router';
 import { Icon, Label, NativeTabs } from 'expo-router/unstable-native-tabs';
-import React from 'react';
+import React, { useEffect } from 'react';
+import { askLaunch } from '../../lib/askLaunch';
 import { useApp } from '../../store/app';
 import { palette } from '../../theme';
 
@@ -13,6 +14,13 @@ import { palette } from '../../theme';
  */
 export default function TabsLayout() {
   const { settings } = useApp();
+  // จำแท็บล่าสุด (ไม่นับแท็บครูปัญญา) → ปิดแชทแล้วกลับไปที่เดิม
+  const path = usePathname();
+  useEffect(() => {
+    // เฉพาะหน้าของแท็บ (ไม่นับหน้าที่เปิดซ้อนบนแท็บ เช่น /assistant)
+    const m = path?.match(/^\/(home|patients|herbs|vault)\b/);
+    if (m) askLaunch.lastTab = `/${m[1]}`;
+  }, [path]);
   if (!settings.loggedIn) return <Redirect href="/login" />;
   return (
     <NativeTabs tintColor={palette.primary} minimizeBehavior="onScrollDown">

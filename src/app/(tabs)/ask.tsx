@@ -12,14 +12,15 @@ import { askLaunch } from '../../lib/askLaunch';
 export default function AskTab() {
   useFocusEffect(
     useCallback(() => {
-      if (askLaunch.justClosed) {
-        // เพิ่งปิดหน้าแชท → พากลับหน้าหลัก ไม่เปิดแชทซ้ำ
+      // กลับมาจากหน้าแชท (ปิดด้วยปุ่ม/ปัดย้อนกลับ — หน้าแชทอาจยังไม่ถูกถอดตอนแท็บนี้ได้โฟกัส) → กลับแท็บเดิม
+      if (askLaunch.open || askLaunch.justClosed) {
+        askLaunch.open = false;
         askLaunch.justClosed = false;
-        router.navigate('/home');
+        router.navigate(askLaunch.lastTab as any);
         return;
       }
-      const t = setTimeout(() => router.push('/assistant'), 60);
-      return () => clearTimeout(t);
+      askLaunch.open = true;
+      router.push('/assistant');
     }, []),
   );
   // สำรองไว้ ไม่ให้เห็นหน้าขาวระหว่างสลับหน้า
@@ -28,7 +29,7 @@ export default function AskTab() {
       <AISphere size={110} active />
       <T v="h2" center color="#FFFFFF" style={{ marginTop: 8 }}>ครูปัญญา</T>
       <T v="callout" center color="rgba(255,255,255,0.6)" style={{ marginTop: 4 }}>ผู้ช่วย AI สำหรับหมอพื้นบ้าน</T>
-      <Button label="เริ่มคุยกับครูปัญญา" onPress={() => router.push('/assistant')} style={{ marginTop: 24, alignSelf: 'stretch' }} />
+      <Button label="เริ่มคุยกับครูปัญญา" onPress={() => ((askLaunch.open = true), router.push('/assistant'))} style={{ marginTop: 24, alignSelf: 'stretch' }} />
     </View>
   );
 }

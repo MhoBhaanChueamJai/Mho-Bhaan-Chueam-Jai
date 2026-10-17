@@ -128,9 +128,12 @@ export default function Assistant() {
   useEffect(
     () => () => {
       tts.stop();
-      // ปิดหน้าแชท → แท็บไมค์รู้ว่าต้องพากลับหน้าหลัก
-      askLaunch.justClosed = true;
-      setTimeout(() => (askLaunch.justClosed = false), 1500);
+      // ปิดหน้าแชท → แท็บครูปัญญารู้ว่าต้องพากลับแท็บเดิม (ถ้าแท็บได้โฟกัสก่อนหน้านี้ถอด ใช้ open แทน)
+      if (askLaunch.open) {
+        askLaunch.open = false;
+        askLaunch.justClosed = true;
+        setTimeout(() => (askLaunch.justClosed = false), 1500);
+      }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
