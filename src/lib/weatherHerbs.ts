@@ -1,0 +1,141 @@
+/**
+ * แนะนำสมุนไพรตามสภาพอากาศวันนี้ (ตามตำแหน่งของคุณหมอ)
+ * 1) ตำแหน่ง (expo-location, ปัดเหลือทศนิยม 2 ตำแหน่ง ~1 กม.) → อากาศจาก Open-Meteo (อุณหภูมิ รู้สึกเหมือน ความชื้น ฝน UV) + ฝุ่น PM2.5
+ * 2) ครูปัญญาเลือกสมุนไพร 3 ตัวจากคลัง ที่ช่วยป้องกัน/บรรเทาโรคที่มากับอากาศแบบนี้ (เช่น ร้อนจัด → ลมแดด ไข้ร้อนใน)
+ * 3) จำผลไว้ตามวัน + ลักษณะอากาศ (ไม่ถามซ้ำทุกครั้งที่เปิดหน้า) · ไม่มีตำแหน่ง/AI ล่ม → เลือกตามฤดู/อากาศแบบกฎตายตัว
+ */
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Location from 'expo-location';
+import { chatJSON } from '../api/ai';
+import { herbs, type Herb } from '../data/herbs';
+import { seasonOf, thaiToday } from './herbDaily';
+
+export type Weather = {
+  temp: number;
+  feels: number;
+  humidity: number;
+  rainProb: number;
+  rainy: boolean;
+  uvMax: number;
+  tmin: number;
+  tmax: number;
+  pm25: number | null;
+  place: string;
+  icon: string; // SF Symbol
+  label: string; // ร้อนอบอ้าว / ฝนตก / หนาวเย็น / ฝุ่นสูง ...
+  flags: string[]; // ลักษณะอากาศที่มีผลต่อสุขภาพ
+};
+export type HerbRec = { herb: Herb; risk: string; reason: string; tip: string };
+export type WeatherRecs = { weather: Weather | null; recs: HerbRec[]; advice: string; source: 'ai' | 'rule' };
+
+const RAIN_CODES = new Set([51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82, 95, 96, 99]);
+
+/** ตำแหน่ง → สภาพอากาศ (null = ไม่อนุญาตตำแหน่ง/เชื่อมต่อไม่ได้) */
+export async function getWeather(ask = true): Promise<Weather | null> {
+  const perm = ask ? await Location.requestForegroundPermissionsAsync() : await Location.getForegroundPermissionsAsync();
+  if (perm.status !== 'granted') return null;
+  const pos = (await Location.getLastKnownPositionAsync({ maxAge: 3 * 3600_000 })) ?? (await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }));
+  const lat = Math.round(pos.coords.latitude * 100) / 100;
+  const lon = Math.round(pos.coords.longitude * 100) / 100;
+  const [fc, aq, geo] = await Promise.all([
+    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,uv_index_max&timezone=Asia%2FBangkok&forecast_days=1`).then((r) => r.json()),
+    fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=pm2_5`).then((r) => r.json()).catch(() => null),
+    Location.reverseGeocodeAsync({ latitude: lat, longitude: lon }).catch(() => []),
+  ]);
+  const c = fc.current ?? {};
+  const d = fc.daily ?? {};
+  const g = geo[0];
+  const w: Weather = {
+    temp: Math.round(c.temperature_2m ?? 0),
+    feels: Math.round(c.apparent_temperature ?? c.temperature_2m ?? 0),
+    humidity: Math.round(c.relative_humidity_2m ?? 0),
+    rainProb: Math.round(d.precipitation_probability_max?.[0] ?? 0),
+    rainy: RAIN_CODES.has(c.weather_code) || (c.precipitation ?? 0) > 0.2,
+    uvMax: Math.round(d.uv_index_max?.[0] ?? 0),
+    tmin: Math.round(d.temperature_2m_min?.[0] ?? 0),
+    tmax: Math.round(d.temperature_2m_max?.[0] ?? 0),
+    pm25: aq?.current?.pm2_5 != null ? Math.round(aq.current.pm2_5) : null,
+    place: g ? g.district || g.subregion || g.city || g.region || '' : '',
+    icon: 'sun.max.fill',
+    label: '',
+    flags: [],
+  };
+  // ลักษณะอากาศที่มีผลต่อสุขภาพ
+  if (w.feels >= 40) w.flags.push('ร้อนจัด เสี่ยงลมแดด');
+  else if (w.feels >= 35) w.flags.push('ร้อนอบอ้าว');
+  if (w.rainy || w.rainProb >= 60) w.flags.push('ฝนตก อากาศชื้น');
+  if (w.tmin <= 18) w.flags.push('อากาศเย็น');
+  if (w.tmax - w.tmin >= 10) w.flags.push('อุณหภูมิกลางวันกลางคืนต่างกันมาก');
+  if (w.humidity >= 85 && !w.rainy) w.flags.push('ความชื้นสูง');
+  if (w.pm25 != null && w.pm25 > 50) w.flags.push('ฝุ่น PM2.5 สูง');
+  if (w.uvMax >= 8) w.flags.push('แดดแรง UV สูง');
+  w.label = w.flags[0] ?? (w.feels >= 30 ? 'อากาศร้อน' : 'อากาศสบาย');
+  w.icon = w.rainy || w.rainProb >= 60 ? 'cloud.rain.fill' : w.pm25 != null && w.pm25 > 50 ? 'aqi.medium' : w.tmin <= 18 ? 'thermometer.snowflake' : w.feels >= 35 ? 'sun.max.fill' : 'cloud.sun.fill';
+  return w;
+}
+
+/** ไม่มี AI/ตำแหน่ง: เลือกตามลักษณะอากาศ (หรือฤดู) แบบกฎตายตัว */
+function ruleRecs(w: Weather | null): HerbRec[] {
+  const byName = (n: string) => herbs.find((h) => h.name === n);
+  const { m, d } = thaiToday();
+  const season = seasonOf(m, d);
+  const hot = w ? w.feels >= 33 : season.key === 'hot';
+  const wet = w ? w.rainy || w.rainProb >= 60 || w.humidity >= 85 : season.key === 'rain';
+  const cold = w ? w.tmin <= 20 : season.key === 'cold';
+  const plan: [string, string][] = hot
+    ? [['บัวบก', 'ร้อนใน อ่อนเพลียจากอากาศร้อน'], ['ตะไคร้', 'ท้องอืด ปัสสาวะน้อยช่วงอากาศร้อน'], ['ฟ้าทะลายโจร', 'เจ็บคอ ไข้ตัวร้อน']]
+    : wet
+      ? [['ขิง', 'หวัด ท้องอืด ช่วงฝนตก'], ['ฟ้าทะลายโจร', 'ไข้หวัด เจ็บคอ'], ['ไพล', 'ปวดเมื่อยจากอากาศชื้น']]
+      : cold
+        ? [['ขิง', 'หวัด หนาวสั่น'], ['มะกรูด', 'ไอ มีเสมหะ ช่วงอากาศเย็น'], ['ข่า', 'ท้องอืด ขับลม']]
+        : [['ขมิ้นชัน', 'ท้องอืด ท้องเฟ้อ'], ['ตะไคร้', 'ขับลม'], ['บัวบก', 'อ่อนเพลีย']];
+  return plan
+    .map(([n, risk]) => {
+      const h = byName(n);
+      return h ? { herb: h, risk, reason: h.uses.slice(0, 2).join(' · '), tip: h.howto } : null;
+    })
+    .filter((x): x is HerbRec => !!x);
+}
+
+/** สมุนไพร 3 ตัวสำหรับอากาศวันนี้ (จำไว้ตามวัน + ลักษณะอากาศ) */
+export async function recommendForWeather(w: Weather | null): Promise<WeatherRecs> {
+  const { y, m, d } = thaiToday();
+  if (!w) return { weather: null, recs: ruleRecs(null), advice: '', source: 'rule' };
+  const bucket = [w.flags.join('|') || w.label, Math.round(w.feels / 3)].join(':');
+  const key = `wxherb:${y}-${m}-${d}:${bucket}`;
+  try {
+    const saved = await AsyncStorage.getItem(key);
+    if (saved) {
+      const s = JSON.parse(saved) as { ids: string[]; risk: string[]; reason: string[]; tip: string[]; advice: string };
+      const recs = s.ids.map((id, i) => ({ herb: herbs.find((h) => h.id === id)!, risk: s.risk[i], reason: s.reason[i], tip: s.tip[i] })).filter((r) => r.herb);
+      if (recs.length) return { weather: w, recs, advice: s.advice, source: 'ai' };
+    }
+  } catch {}
+  try {
+    const season = seasonOf(m, d);
+    const r = await chatJSON<{ advice?: string; picks?: { id?: string; risk?: string; reason?: string; tip?: string }[] }>([
+      {
+        role: 'user',
+        content: `คุณคือครูปัญญา ผู้เชี่ยวชาญแพทย์แผนไทย ช่วยเลือกสมุนไพร 3 ชนิด (ไม่ซ้ำกัน) จากคลังด้านล่าง ที่ช่วยป้องกันหรือบรรเทาโรค/อาการที่มักมากับสภาพอากาศวันนี้
+สภาพอากาศที่${w.place || 'ตำแหน่งของคุณหมอ'}: ${w.temp}°C (รู้สึกเหมือน ${w.feels}°C) ต่ำสุด ${w.tmin}° สูงสุด ${w.tmax}° ความชื้น ${w.humidity}% โอกาสฝน ${w.rainProb}% UV ${w.uvMax}${w.pm25 != null ? ` PM2.5 ${w.pm25}` : ''}
+ลักษณะอากาศ: ${w.flags.join(', ') || w.label} · ฤดู: ${season.name} (${season.advice})
+คลังสมุนไพร (id: ชื่อ รส ธาตุ — สรรพคุณ | วิธีใช้ | ข้อควรระวัง):
+${herbs.map((h) => `${h.id}: ${h.name} รส${h.taste} ธาตุ${h.element} — ${h.uses.join(', ')} | ${h.howto} | ${h.caution}`).join('\n')}
+กติกา: เลือกเฉพาะ id ในคลัง · ใช้สรรพคุณและวิธีใช้ตามข้อมูลคลังเท่านั้น ห้ามแต่งขนาดยาเอง · ภาษาง่าย สั้น สำหรับหมอพื้นบ้าน
+ตอบ JSON เท่านั้น:
+{"advice":"คำแนะนำดูแลสุขภาพวันนี้ 1 ประโยค","picks":[{"id":"","risk":"โรค/อาการที่ต้องระวังกับอากาศนี้ (สั้น ไม่เกิน 6 คำ)","reason":"ทำไมสมุนไพรนี้ช่วยได้ 1 ประโยค","tip":"วิธีใช้เพื่อป้องกัน/บรรเทา 1 ประโยค"}]}`,
+      },
+    ]);
+    const seen = new Set<string>();
+    const recs = (r.picks ?? [])
+      .map((p) => ({ herb: herbs.find((h) => h.id === p.id) as Herb, risk: String(p.risk ?? ''), reason: String(p.reason ?? ''), tip: String(p.tip ?? '') }))
+      .filter((p) => p.herb && !seen.has(p.herb.id) && seen.add(p.herb.id))
+      .slice(0, 3);
+    if (recs.length < 3) throw new Error('not enough');
+    const advice = String(r.advice ?? '');
+    AsyncStorage.setItem(key, JSON.stringify({ ids: recs.map((x) => x.herb.id), risk: recs.map((x) => x.risk), reason: recs.map((x) => x.reason), tip: recs.map((x) => x.tip), advice })).catch(() => {});
+    return { weather: w, recs, advice, source: 'ai' };
+  } catch {
+    return { weather: w, recs: ruleRecs(w), advice: '', source: 'rule' };
+  }
+}

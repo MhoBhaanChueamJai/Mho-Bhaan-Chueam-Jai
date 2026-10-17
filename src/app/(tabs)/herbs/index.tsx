@@ -1,18 +1,19 @@
 /**
  * แท็บคลังสมุนไพร — โครงเดียวกับคลังภูมิ (DESIGN_SYSTEM.md)
- * การ์ดฟีเจอร์ใหม่ "สแกนหาสมุนไพร" (เปิดกล้อง) → สมุนไพรประจำวัน → กรองตามรสยา → การ์ดภาพเต็มใบ 2 คอลัมน์
+ * การ์ดฟีเจอร์ใหม่ "สแกนหาสมุนไพร" (เปิดกล้อง) → แนะนำวันนี้ตามสภาพอากาศ (การ์ดซ้อน 3 ใบ) → กรองตามรสยา → การ์ดภาพเต็มใบ 2 คอลัมน์
  */
 import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, router } from 'expo-router';
-import React, { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Linking, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
 import { Sym, ios } from '../../../components/ios';
 import { HeaderButton, PressableScale, T } from '../../../components/ui';
 import { herbs, tasteTone, tastes, type Herb } from '../../../data/herbs';
-import { dailyTip, todayPick } from '../../../lib/herbDaily';
+import { HerbStack } from '../../../components/HerbStack';
+import { getWeather, recommendForWeather, type Weather, type WeatherRecs } from '../../../lib/weatherHerbs';
 import { elementColor, elevation, palette } from '../../../theme';
 
 const TH_DAY = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์'];
@@ -54,24 +55,23 @@ function HerbCard({ h, i, w }: { h: Herb; i: number; w: number }) {
 export default function Herbs() {
   const { width: SW } = useWindowDimensions();
   const cardW = Math.floor((SW - 32 - 12) / 2);
-  // ── สมุนไพรประจำวัน: ตามฤดู + เคล็ดลับจากครูปัญญา ──
-  const pick = todayPick();
-  const today = pick.herb;
-  const [tip, setTip] = useState<string | null>(null);
+  // ── แนะนำสมุนไพรตามสภาพอากาศวันนี้ (ตำแหน่ง → อากาศ → ครูปัญญาเลือก 3 ตัว) ──
+  const [wx, setWx] = useState<WeatherRecs | null>(null);
+  const [noLoc, setNoLoc] = useState(false);
+  const loadWx = useCallback(async (ask: boolean) => {
+    let w: Weather | null = null;
+    try {
+      w = await getWeather(ask);
+    } catch {}
+    setNoLoc(!w);
+    setWx(await recommendForWeather(w));
+  }, []);
   useEffect(() => {
-    let alive = true;
-    dailyTip(pick)
-      .then((t) => alive && setTip(t || today.howto))
-      .catch(() => alive && setTip(today.howto));
-    return () => {
-      alive = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pick.dateKey, today.id]);
+    loadWx(true);
+  }, [loadWx]);
   const now = new Date();
   const dateLabel = `${TH_DAY[now.getDay()]} ${now.getDate()} ${TH_MON[now.getMonth()]}`;
-  const tTone = tasteTone[today.taste];
-  const tEl = elementColor[today.element];
+  const w = wx?.weather;
   const national = herbs.filter((h) => h.nationalList).length;
   const [taste, setTaste] = useState<(typeof tastes)[number]>('ทั้งหมด');
   // แสดงเฉพาะรสที่มีสมุนไพรจริง
@@ -112,50 +112,41 @@ export default function Herbs() {
           </PressableScale>
         </Animated.View>
 
-        {/* ── สมุนไพรประจำวัน: เลือกตามฤดู + เคล็ดลับจากครูปัญญา ── */}
+        {/* ── แนะนำวันนี้ตามสภาพอากาศ: การ์ดซ้อน 3 ใบ ── */}
         <View style={styles.secRow}>
-          <T v="h3">สมุนไพรประจำวัน</T>
-          <T v="subhead" color={ios.secondary}>{dateLabel} · {pick.season.name}</T>
+          <T v="h3">แนะนำวันนี้</T>
+          <T v="subhead" color={ios.secondary}>{dateLabel}</T>
         </View>
-        <Animated.View entering={FadeInDown.delay(80).duration(380)}>
-          <PressableScale scaleTo={0.985} haptic="select" onPress={() => router.push(`/herb/${today.id}`)} style={[styles.today, elevation.e1]} accessibilityLabel={`สมุนไพรประจำวัน ${today.name}`}>
-            {/* แบบกะทัดรัด: รูปเล็กซ้าย · ชื่อ/ป้าย ขวา · เคล็ดลับ 3 บรรทัด */}
-            <View style={styles.todayRow}>
-              <Image source={today.image} style={styles.todayImg} contentFit="cover" transition={250} />
-              <View style={{ flex: 1, gap: 2 }}>
-                <T v="h3" numberOfLines={1}>{today.name}</T>
-                <T v="caption" color={ios.secondary} numberOfLines={1} style={{ fontStyle: 'italic' }}>{today.sci}</T>
-                <View style={styles.todayPills}>
-                  <View style={[styles.tPill, { backgroundColor: tTone.bg }]}>
-                    <T v="micro" color={tTone.fg} style={{ fontWeight: '700' }}>รส{today.taste}</T>
-                  </View>
-                  <View style={[styles.tPill, { backgroundColor: tEl.bg }]}>
-                    <T v="micro" color={tEl.fg} style={{ fontWeight: '700' }}>{tEl.label}</T>
-                  </View>
-                  {pick.fitsSeason ? (
-                    <View style={[styles.tPill, { backgroundColor: palette.primarySoft }]}>
-                      <T v="micro" color={palette.primaryDeep} style={{ fontWeight: '700' }}>เหมาะกับ{pick.season.name}</T>
-                    </View>
-                  ) : null}
-                </View>
-              </View>
-              <Sym name="chevron.right" size={13} color={ios.tertiary} weight="semibold" />
-            </View>
-            <View style={styles.tip}>
-              <View style={{ paddingTop: 3 }}>
-                <Sym name="sparkles" size={13} color={palette.primary} />
-              </View>
-              {tip === null ? (
-                <View style={{ flex: 1, gap: 6, paddingVertical: 3 }}>
-                  <View style={[styles.skel, { width: '92%' }]} />
-                  <View style={[styles.skel, { width: '60%' }]} />
-                </View>
-              ) : (
-                <T v="subhead" color={palette.ink} numberOfLines={3} style={{ flex: 1, lineHeight: 21 }}>{tip}</T>
-              )}
-            </View>
+        {/* สภาพอากาศ */}
+        {w ? (
+          <Animated.View entering={FadeInDown.duration(300)} style={styles.wxRow}>
+            <Sym name={w.icon as any} size={16} color={palette.primary} />
+            <T v="subhead" style={{ fontWeight: '700' }}>{w.temp}°</T>
+            <T v="subhead" color={ios.secondary} numberOfLines={1} style={{ flex: 1 }}>
+              {w.label}{w.place ? ` · ${w.place}` : ''}{w.pm25 != null ? ` · PM2.5 ${w.pm25}` : ''}
+            </T>
+          </Animated.View>
+        ) : noLoc ? (
+          <PressableScale haptic="select" onPress={() => Linking.openSettings()} style={styles.wxRow} accessibilityLabel="เปิดตำแหน่งเพื่อดูอากาศ">
+            <Sym name="location.slash" size={15} color={ios.secondary} />
+            <T v="subhead" color={ios.secondary} style={{ flex: 1 }}>แนะนำตามฤดู · เปิดตำแหน่งเพื่อดูอากาศจริง</T>
+            <Sym name="chevron.right" size={12} color={ios.tertiary} weight="semibold" />
           </PressableScale>
-        </Animated.View>
+        ) : null}
+        {wx?.advice ? <T v="callout" color={palette.inkSoft} style={{ paddingHorizontal: 4, marginBottom: 12 }}>{wx.advice}</T> : null}
+        {wx && wx.recs.length ? (
+          <HerbStack key={wx.recs.map((r) => r.herb.id).join()} recs={wx.recs} />
+        ) : (
+          // กำลังดูอากาศและให้ครูปัญญาเลือก
+          <View style={[styles.wxSkel, elevation.e1]}>
+            <View style={styles.wxSkelImg} />
+            <View style={{ flex: 1, gap: 8 }}>
+              <View style={[styles.skel, { width: '40%' }]} />
+              <View style={[styles.skel, { width: '70%', height: 16 }]} />
+              <View style={[styles.skel, { width: '90%' }]} />
+            </View>
+          </View>
+        )}
 
         {/* ── กรองตามรสยา ── */}
         <View style={styles.secRow}>
@@ -196,13 +187,10 @@ const styles = StyleSheet.create({
   scanBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', height: 36, paddingHorizontal: 14, marginTop: 12, borderRadius: 18, backgroundColor: '#7CF0A8' },
   sec: { marginTop: 28, marginBottom: 12, marginLeft: 4 },
   secRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginTop: 28, marginBottom: 10, paddingHorizontal: 4 },
-  today: { borderRadius: 24, borderCurve: 'continuous', backgroundColor: palette.surface, padding: 12, gap: 10 },
-  todayRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  todayImg: { width: 72, height: 72, borderRadius: 18, borderCurve: 'continuous', backgroundColor: palette.bgDeep },
-  todayPills: { flexDirection: 'row', flexWrap: 'wrap', gap: 5, marginTop: 4 },
-  tPill: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999 },
-  tip: { flexDirection: 'row', gap: 8, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 16, borderCurve: 'continuous', backgroundColor: palette.mint },
-  skel: { height: 11, borderRadius: 6, backgroundColor: 'rgba(20,144,92,0.12)' },
+  wxRow: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 4, marginBottom: 8 },
+  wxSkel: { flexDirection: 'row', alignItems: 'center', gap: 12, height: 196, padding: 14, borderRadius: 26, borderCurve: 'continuous', backgroundColor: palette.surface },
+  wxSkelImg: { width: 84, height: 84, borderRadius: 20, backgroundColor: 'rgba(20,144,92,0.08)' },
+  skel: { height: 11, borderRadius: 6, backgroundColor: 'rgba(20,144,92,0.1)' },
   chips: { gap: 8, paddingHorizontal: 16, paddingBottom: 14 },
   chip: { paddingHorizontal: 14, height: 36, justifyContent: 'center', borderRadius: 18, backgroundColor: palette.surface, borderWidth: 1, borderColor: ios.separator },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
