@@ -9,7 +9,7 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect } from 'react';
-import { Linking, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown, FadeInUp, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSpeaker } from '../../components/audio';
@@ -243,17 +243,6 @@ export function HerbView({ herb, preview }: { herb: Herb; preview?: HerbScanPrev
             </Section>
           ) : null}
 
-          {herb.refs?.length ? (
-            <Section i={6} icon="checkmark.seal.fill" color={palette.primary} title="แหล่งอ้างอิง">
-              {herb.refs.map((u, i) => (
-                <PressableScale key={u} haptic="select" onPress={() => Linking.openURL(u)} style={[styles.fact, i > 0 && styles.sepTop]} accessibilityLabel={`เปิดแหล่งอ้างอิง ${i + 1}`}>
-                  <T v="caption" color={ios.secondary} style={{ width: 16, fontWeight: '700' }}>{i + 1}.</T>
-                  <T v="subhead" color={palette.primary} numberOfLines={1} style={{ flex: 1 }}>{u.replace(/^https?:\/\/(www\.)?/, '')}</T>
-                  <Sym name="arrow.up.right.square" size={14} color={ios.tertiary} />
-                </PressableScale>
-              ))}
-            </Section>
-          ) : null}
           {herb.credit ? <T v="caption" color={ios.tertiary} center style={{ marginTop: 6 }}>ภาพ: {herb.credit}</T> : null}
         </View>
       </Animated.ScrollView>
