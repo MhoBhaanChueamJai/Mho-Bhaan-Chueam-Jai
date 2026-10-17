@@ -14,6 +14,8 @@ import Animated, { FadeInDown, FadeInUp, useAnimatedScrollHandler, useAnimatedSt
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSpeaker } from '../../components/audio';
 import { BookCover } from '../../components/BookCover';
+import { HerbAnatomy } from '../../components/HerbAnatomy';
+import { ANATOMY } from '../../data/herbAnatomy';
 import { CircleIcon } from '../../components/ListRow';
 import { Sym, ios } from '../../components/ios';
 import { Button, GlassCircle, GlassDock, HeaderBack, HeaderButton, PressableScale, T } from '../../components/ui';
@@ -215,6 +217,13 @@ export function HerbView({ herb, preview }: { herb: Herb; preview?: HerbScanPrev
           {herb.caution ? (
             <Section i={3} icon="exclamationmark.triangle.fill" color={palette.coral} title="ข้อควรระวัง">
               <T v="body" style={styles.para}>{herb.caution}</T>
+            </Section>
+          ) : null}
+
+          {/* โครงสร้างทั้งต้น: ภาพพฤกษศาสตร์ + ป้ายชี้ส่วนประกอบ (เพื่อการศึกษา) */}
+          {ANATOMY[herb.id] ? (
+            <Section i={4} icon="leaf.arrow.triangle.circlepath" color={palette.primary} title="ส่วนประกอบของต้น">
+              <HerbAnatomy data={ANATOMY[herb.id]} />
             </Section>
           ) : null}
 
