@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { PractitionerGate } from '../../../components/PractitionerGate';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { Easing, FadeIn, FadeInDown, useAnimatedProps, useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated';
-import Svg, { Circle } from 'react-native-svg';
+import Svg, { Circle, Defs, LinearGradient as SvgGradient, Stop } from 'react-native-svg';
 import { IOSCard, Sym, ios } from '../../../components/ios';
 import { Avatar, HeaderButton, PressableScale, T } from '../../../components/ui';
 import { avatarFor, lastVisit, type Patient } from '../../../data/mock';
@@ -14,11 +14,11 @@ import { elevation, palette } from '../../../theme';
 
 type Filter = 'all' | Patient['status'];
 /** สถานะบนการ์ดเข้ม: สีสว่าง + ลำดับในแถบสัดส่วน */
-const SEG: { k: Patient['status']; l: string; c: string }[] = [
-  { k: 'ติดตามอาการ', l: 'ติดตาม', c: '#FFC25A' },
-  { k: 'นัดวันนี้', l: statusLabel('นัดวันนี้'), c: '#7CF0A8' },
-  { k: 'ส่งต่อ รพ.สต.', l: 'ส่งต่อ', c: '#FF8A7A' },
-  { k: 'หายดี', l: 'หายดี', c: '#8FC8FF' },
+const SEG: { k: Patient['status']; l: string; c: string; g: [string, string] }[] = [
+  { k: 'ติดตามอาการ', l: 'ติดตาม', c: '#FFC25A', g: ['#FFE7A3', '#FF9A1F'] },
+  { k: 'นัดวันนี้', l: statusLabel('นัดวันนี้'), c: '#7CF0A8', g: ['#C4FFD9', '#1FC46B'] },
+  { k: 'ส่งต่อ รพ.สต.', l: 'ส่งต่อ', c: '#FF8A7A', g: ['#FFC6BC', '#F0453A'] },
+  { k: 'หายดี', l: 'หายดี', c: '#8FC8FF', g: ['#CDE8FF', '#3A86FF'] },
 ];
 const filled = (x?: string) => !!x && x.trim() !== '' && x.trim() !== '-';
 
@@ -29,14 +29,14 @@ const CIRC = 2 * Math.PI * R;
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 /** หนึ่งส่วนของวงแหวน: วาดไล่ตามค่า p (0→1) ตอนเปิดหน้า */
-function Arc({ start, len, c, dim, p }: { start: number; len: number; c: string; dim: boolean; p: SharedValue<number> }) {
+function Arc({ start, len, c, dim, p, id }: { start: number; len: number; c: string; dim: boolean; p: SharedValue<number>; id: string }) {
   const props = useAnimatedProps(() => ({ strokeDasharray: [Math.max(0.001, len * p.value), CIRC] as any }));
   return (
     <AnimatedCircle
       cx={RING / 2}
       cy={RING / 2}
       r={R}
-      stroke={c}
+      stroke={`url(#${id})`}
       strokeOpacity={dim ? 0.25 : 1}
       strokeWidth={SW}
       strokeLinecap="round"
@@ -49,26 +49,45 @@ function Arc({ start, len, c, dim, p }: { start: number; len: number; c: string;
 }
 
 /** วงแหวนสถานะ: แต่ละสีตามสัดส่วนผู้ป่วยแต่ละสถานะ · ตัวเลขรวมกลางวง */
-function StatusRing({ segs, total }: { segs: { n: number; c: string; dim: boolean }[]; total: number }) {
+function StatusRing({ segs, total }: { segs: { n: number; c: string; g: [string, string]; dim: boolean }[]; total: number }) {
   const p = useSharedValue(0);
   useEffect(() => {
     p.value = withTiming(1, { duration: 900, easing: Easing.out(Easing.cubic) });
   }, [p]);
   const live = segs.filter((x) => x.n > 0);
-  const gap = live.length > 1 ? SW * 0.9 : 0; // ช่องว่างระหว่างสี (เผื่อหัวมน)
-  let acc = 0;
+  // ช่องว่างระหว่างสี: หัวมนกินที่ข้างละครึ่งเส้น → เว้น SW + 7 ให้เห็นช่องชัด ไม่ติดกัน
+  const gap = live.length > 1 ? SW + 7 : 0;
+  const cx = RING / 2;
+  /** จุดบนวง ที่ระยะ d ตามเส้นรอบวง (เริ่มบนสุด หมุนตามเข็ม) */
+  const at = (d: number) => {
+    const a = (d / CIRC) * Math.PI * 2 - Math.PI / 2;
+    return { x: cx + R * Math.cos(a), y: cx + R * Math.sin(a) };
+  };
+  // ไล่สีตามทิศของแต่ละส่วน: สว่างที่ต้นเส้น → เข้มที่ปลายเส้น
+  let pos = 0;
+  const arcs = total
+    ? live.map((x, i) => {
+        const start = pos + gap / 2;
+        const len = Math.max(0.001, (x.n / total) * CIRC - gap);
+        pos += (x.n / total) * CIRC;
+        return { ...x, i, start, len, a: at(start), b: at(start + len) };
+      })
+    : [];
   return (
     <View style={{ width: RING, height: RING, alignItems: 'center', justifyContent: 'center' }}>
       <Svg width={RING} height={RING} style={StyleSheet.absoluteFill}>
-        <Circle cx={RING / 2} cy={RING / 2} r={R} stroke="rgba(255,255,255,0.08)" strokeWidth={SW} fill="none" />
-        {total
-          ? live.map((x, i) => {
-              const len = Math.max(0.001, (x.n / total) * CIRC - gap);
-              const el = <Arc key={i} start={acc + gap / 2} len={len} c={x.c} dim={x.dim} p={p} />;
-              acc += (x.n / total) * CIRC;
-              return el;
-            })
-          : null}
+        <Defs>
+          {arcs.map((x) => (
+            <SvgGradient key={x.i} id={`arc${x.i}`} gradientUnits="userSpaceOnUse" x1={x.a.x} y1={x.a.y} x2={x.b.x} y2={x.b.y}>
+              <Stop offset="0" stopColor={x.g[0]} />
+              <Stop offset="1" stopColor={x.g[1]} />
+            </SvgGradient>
+          ))}
+        </Defs>
+        <Circle cx={cx} cy={cx} r={R} stroke="rgba(255,255,255,0.06)" strokeWidth={SW} fill="none" />
+        {arcs.map((x) => (
+          <Arc key={x.i} id={`arc${x.i}`} start={x.start} len={x.len} c={x.c} dim={x.dim} p={p} />
+        ))}
       </Svg>
       <T v="hero" color="#FFFFFF" style={{ fontVariant: ['tabular-nums'], lineHeight: 40 }}>{total}</T>
       <T v="caption" color="rgba(255,255,255,0.65)">ราย</T>
@@ -112,14 +131,14 @@ function PatientsInner() {
           <T v="micro" color="rgba(124,240,168,0.85)" style={styles.kicker}>ผู้ป่วยของฉัน</T>
           <View style={styles.heroBody}>
             <PressableScale haptic="select" scaleTo={0.97} onPress={() => setFilter('all')} accessibilityLabel={`ผู้ป่วยทั้งหมด ${patients.length} ราย`}>
-              <StatusRing segs={SEG.map((x) => ({ n: count(x.k), c: x.c, dim: filter !== 'all' && filter !== x.k }))} total={patients.length} />
+              <StatusRing segs={SEG.map((x) => ({ n: count(x.k), c: x.c, g: x.g, dim: filter !== 'all' && filter !== x.k }))} total={patients.length} />
             </PressableScale>
             <View style={{ flex: 1, gap: 4 }}>
               {SEG.map((x) => {
                 const on = filter === x.k;
                 return (
                   <PressableScale key={x.k} haptic="select" scaleTo={0.97} onPress={() => setFilter(on ? 'all' : x.k)} style={[styles.legRow, on && { backgroundColor: 'rgba(255,255,255,0.1)' }]} accessibilityLabel={`กรอง ${x.l} ${count(x.k)} ราย`} accessibilityState={{ selected: on }}>
-                    <View style={[styles.legDot, { backgroundColor: x.c }]} />
+                    <LinearGradient colors={x.g} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.legDot} />
                     <T v="subhead" color="rgba(255,255,255,0.85)" style={{ flex: 1, fontWeight: '600' }}>{x.l}</T>
                     <T v="bodyStrong" color="#FFFFFF" style={{ fontVariant: ['tabular-nums'] }}>{count(x.k)}</T>
                   </PressableScale>
