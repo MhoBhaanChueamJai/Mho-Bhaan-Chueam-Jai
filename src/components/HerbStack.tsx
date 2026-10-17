@@ -49,7 +49,7 @@ function Card({ r, depth, n, onSwipe }: { r: HerbRec; depth: number; n: number; 
       { translateY: withSpring(-depth * STEP, { damping: 16 }) }, // ใบหลังโผล่ด้านบน
       { scale: withSpring(1 - depth * 0.05, { damping: 16 }) },
     ],
-    opacity: withTiming(depth > 2 ? 0 : 1 - depth * 0.12, { duration: 200 }),
+    opacity: withTiming(depth > 2 ? 0 : 1, { duration: 200 }), // การ์ดทึบ ไม่โปร่ง
   }));
   return (
     <GestureDetector gesture={Gesture.Exclusive(pan, tap)}>
