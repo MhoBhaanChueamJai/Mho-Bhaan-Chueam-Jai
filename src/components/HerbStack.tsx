@@ -12,7 +12,7 @@ import type { Herb } from '../data/herbs';
 import type { HerbRec } from '../lib/weatherHerbs';
 import { elevation, palette } from '../theme';
 import { Sym, ios } from './ios';
-import { T, useHaptic } from './ui';
+import { Glass, T, useHaptic } from './ui';
 
 const CARD_H = 214;
 /** สีเน้นของบัตรตามธาตุ (บัตรพื้นขาว) */
@@ -56,7 +56,6 @@ function Card({ r, depth, n, onSwipe }: { r: HerbRec; depth: number; n: number; 
       { translateY: withSpring(-depth * STEP, { damping: 16 }) }, // ใบหลังโผล่ด้านบน
       { scale: withSpring(1 - depth * 0.05, { damping: 16 }) },
     ],
-    opacity: withTiming(depth > 2 ? 0 : 1, { duration: 200 }), // การ์ดทึบ ไม่โปร่ง
   }));
   return (
     <GestureDetector gesture={Gesture.Exclusive(pan, tap)}>
@@ -82,7 +81,10 @@ function Card({ r, depth, n, onSwipe }: { r: HerbRec; depth: number; n: number; 
             <T v="h1" color={palette.ink} numberOfLines={1}>{r.herb.name}</T>
             <T v="caption" color={ios.secondary} numberOfLines={1} style={{ fontStyle: 'italic' }}>{r.herb.sci}</T>
           </View>
-          <Image source={r.herb.image} style={styles.photo} contentFit="cover" transition={200} />
+          {/* รูปในกรอบกระจก Liquid Glass (การ์ดห้ามมีแอนิเมชันความโปร่ง ไม่งั้นกระจกไม่แสดง) */}
+          <Glass tint={`${pass.accent}22`} style={styles.glassRing}>
+            <Image source={r.herb.image} style={styles.photo} contentFit="cover" transition={200} />
+          </Glass>
         </View>
         {/* ช่องข้อมูลแบบบัตร */}
         <View style={styles.fields}>
@@ -136,7 +138,8 @@ const styles = StyleSheet.create({
   head: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, height: 34 },
   brand: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingTop: 2 },
   mid: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 10 },
-  photo: { width: 64, height: 64, borderRadius: 32, borderWidth: 2.5, borderColor: '#FFFFFF', backgroundColor: '#EEF2EF', boxShadow: '0px 2px 8px rgba(0,0,0,0.15)' },
+  glassRing: { width: 76, height: 76, borderRadius: 38, alignItems: 'center', justifyContent: 'center' },
+  photo: { width: 62, height: 62, borderRadius: 31, backgroundColor: '#EEF2EF' },
   fields: { flexDirection: 'row', gap: 10, marginTop: 12, paddingTop: 10, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(60,60,67,0.15)' },
   tipRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 'auto' },
 });
