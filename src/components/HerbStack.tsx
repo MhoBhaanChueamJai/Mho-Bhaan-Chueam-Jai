@@ -2,7 +2,9 @@
  * การ์ดสมุนไพรแนะนำแบบซ้อนชั้น (stack) 3 ใบ — ใบบนสุดปัดซ้าย/ขวาเพื่อส่งไปไว้ท้ายกอง แตะเพื่อดูรายละเอียด
  * ใบที่อยู่ด้านหลังย่อลงและโผล่ขึ้นด้านบนทีละชั้น ให้เห็นเป็นกองการ์ด
  */
+import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -11,10 +13,10 @@ import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withSpring, withTi
 import { tasteTone } from '../data/herbs';
 import type { HerbRec } from '../lib/weatherHerbs';
 import { elevation, palette } from '../theme';
-import { Sym, ios } from './ios';
+import { Sym } from './ios';
 import { T, useHaptic } from './ui';
 
-const CARD_H = 196;
+const CARD_H = 220;
 const STEP = 14; // ระยะที่การ์ดชั้นถัดไปโผล่ด้านบน
 
 function Card({ r, depth, n, onSwipe }: { r: HerbRec; depth: number; n: number; onSwipe: () => void }) {
@@ -54,25 +56,29 @@ function Card({ r, depth, n, onSwipe }: { r: HerbRec; depth: number; n: number; 
   return (
     <GestureDetector gesture={Gesture.Exclusive(pan, tap)}>
       <Animated.View style={[styles.card, elevation.e2, { zIndex: n - depth }, st]} accessibilityLabel={`${r.herb.name} ${r.risk}`}>
-        <View style={styles.top}>
-          <Image source={r.herb.image} style={styles.img} contentFit="cover" transition={200} />
-          <View style={{ flex: 1, gap: 3 }}>
-            <View style={styles.riskPill}>
-              <Sym name="shield.lefthalf.filled" size={11} color="#B4471F" />
-              <T v="micro" color="#B4471F" numberOfLines={1} style={{ fontWeight: '700', flexShrink: 1 }}>ป้องกัน {r.risk}</T>
-            </View>
-            <View style={styles.nameRow}>
-              <T v="h3" numberOfLines={1} style={{ flexShrink: 1 }}>{r.herb.name}</T>
-              <View style={[styles.taste, { backgroundColor: tone.bg }]}>
-                <T v="micro" color={tone.fg} style={{ fontWeight: '700' }}>รส{r.herb.taste}</T>
-              </View>
-            </View>
-            <T v="caption" color={ios.secondary} numberOfLines={1}>{r.reason}</T>
+        {/* ภาพเต็มใบ + ไล่เงา */}
+        <Image source={r.herb.image} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
+        <LinearGradient colors={['rgba(0,0,0,0.28)', 'rgba(0,0,0,0)', 'rgba(4,18,10,0.9)']} locations={[0, 0.3, 1]} style={StyleSheet.absoluteFill} />
+        {/* มุมบน: ป้องกันอะไร · รสยา */}
+        <View style={styles.topRow}>
+          <View style={styles.glassPill}>
+            <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFill} />
+            <Sym name="shield.lefthalf.filled" size={11} color="#FFD5C2" />
+            <T v="caption" color="#FFFFFF" numberOfLines={1} style={{ fontWeight: '700', flexShrink: 1 }}>ป้องกัน {r.risk}</T>
+          </View>
+          <View style={[styles.glassPill, { backgroundColor: `${tone.fg}CC` }]}>
+            <T v="caption" color="#FFFFFF" style={{ fontWeight: '700' }}>รส{r.herb.taste}</T>
           </View>
         </View>
-        <View style={styles.tip}>
-          <Sym name="leaf.fill" size={12} color={palette.primary} />
-          <T v="subhead" color={palette.ink} numberOfLines={2} style={{ flex: 1 }}>{r.tip}</T>
+        {/* ล่าง: ชื่อ · เหตุผล · วิธีใช้ */}
+        <View style={styles.bottom}>
+          <T v="h2" color="#FFFFFF" numberOfLines={1}>{r.herb.name}</T>
+          <T v="subhead" color="rgba(255,255,255,0.85)" numberOfLines={1}>{r.reason}</T>
+          <View style={styles.tip}>
+            <BlurView intensity={28} tint="light" style={StyleSheet.absoluteFill} />
+            <Sym name="leaf.fill" size={13} color="#BFF0C9" />
+            <T v="subhead" color="#FFFFFF" numberOfLines={1} style={{ flex: 1, fontWeight: '600' }}>{r.tip}</T>
+          </View>
         </View>
       </Animated.View>
     </GestureDetector>
@@ -103,11 +109,9 @@ export function HerbStack({ recs }: { recs: HerbRec[] }) {
 }
 
 const styles = StyleSheet.create({
-  card: { position: 'absolute', left: 0, right: 0, bottom: 0, height: CARD_H, transformOrigin: 'center top', padding: 14, gap: 12, borderRadius: 26, borderCurve: 'continuous', backgroundColor: palette.surface },
-  top: { flexDirection: 'row', gap: 12, alignItems: 'center' },
-  img: { width: 84, height: 84, borderRadius: 20, borderCurve: 'continuous', backgroundColor: palette.bgDeep },
-  riskPill: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', maxWidth: '100%', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, backgroundColor: '#FCE8DF' },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  taste: { paddingHorizontal: 7, paddingVertical: 1, borderRadius: 999 },
-  tip: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, borderRadius: 16, borderCurve: 'continuous', backgroundColor: palette.mint },
+  card: { position: 'absolute', left: 0, right: 0, bottom: 0, height: CARD_H, transformOrigin: 'center top', borderRadius: 28, borderCurve: 'continuous', overflow: 'hidden', backgroundColor: palette.bgDeep },
+  topRow: { position: 'absolute', top: 12, left: 12, right: 12, flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
+  glassPill: { flexDirection: 'row', alignItems: 'center', gap: 5, flexShrink: 1, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.12)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.3)' },
+  bottom: { position: 'absolute', left: 14, right: 14, bottom: 14, gap: 2 },
+  tip: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10, paddingHorizontal: 12, height: 38, borderRadius: 19, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.14)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.3)' },
 });
