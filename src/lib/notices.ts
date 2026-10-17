@@ -3,8 +3,18 @@ import type { Patient, Wisdom } from '../data/mock';
 import { lastVisit } from '../data/mock';
 import type { Announcement } from './announcements';
 
+/** ประเภท (ใช้กับ chip กรองในหน้าแจ้งเตือน) */
+export type NoticeGroup = 'patient' | 'wisdom' | 'update' | 'account';
+export const GROUPS: { key: NoticeGroup; label: string; color: string }[] = [
+  { key: 'patient', label: 'ผู้ป่วย', color: '#14905C' },
+  { key: 'wisdom', label: 'ภูมิปัญญา', color: '#8A5E30' },
+  { key: 'update', label: 'อัปเดต', color: '#2F7BE0' },
+  { key: 'account', label: 'บัญชี', color: '#E0861A' },
+];
+
 export type Notice = {
   id: string;
+  group: NoticeGroup;
   icon: string;
   /** สีไล่ของไอคอน (บน → ล่าง) */
   colors: readonly [string, string];
@@ -57,24 +67,24 @@ const KIND: Record<Announcement['kind'], { icon: string; colors: readonly [strin
 export function noticesFrom(patients: Patient[], wisdoms: Wisdom[], isPractitioner: boolean, ann: Announcement[] = []): Notice[] {
   const out: Notice[] = [];
   if (!isPractitioner)
-    out.push({ id: 'verify', icon: 'person.badge.shield.checkmark.fill', colors: ['#FFC25A', '#E0861A'], cat: 'บัญชี', title: 'ยืนยันตัวตนหมอพื้นบ้าน', body: 'ยืนยันด้วยเลขที่หนังสือรับรอง เพื่อใช้งานการรักษาผู้ป่วย', at: Infinity, go: '/verify' });
+    out.push({ id: 'verify', group: 'account', icon: 'person.badge.shield.checkmark.fill', colors: ['#FFC25A', '#E0861A'], cat: 'บัญชี', title: 'ยืนยันตัวตนหมอพื้นบ้าน', body: 'ยืนยันด้วยเลขที่หนังสือรับรอง เพื่อใช้งานการรักษาผู้ป่วย', at: Infinity, go: '/verify' });
   const care: Notice[] = [];
   patients.forEach((p) => {
     const v = lastVisit(p);
     const at = parseThai(v?.date);
     if (p.status === 'ติดตามอาการ')
-      care.push({ id: `f-${p.id}-${v?.no ?? 0}`, icon: 'stethoscope', colors: ['#3FD089', '#14905C'], cat: 'ติดตามอาการ', title: p.name, body: join(v?.diagnosis, v?.followUp) || 'รอติดตามอาการ', when: ago(at), at, go: `/patient/${p.id}` });
+      care.push({ id: `f-${p.id}-${v?.no ?? 0}`, group: 'patient', icon: 'stethoscope', colors: ['#3FD089', '#14905C'], cat: 'ติดตามอาการ', title: p.name, body: join(v?.diagnosis, v?.followUp) || 'รอติดตามอาการ', when: ago(at), at, go: `/patient/${p.id}` });
     else if (p.status === 'ส่งต่อ รพ.สต.')
-      care.push({ id: `r-${p.id}-${v?.no ?? 0}`, icon: 'cross.case.fill', colors: ['#FF8A7A', '#D2453A'], cat: 'ส่งต่อ รพ.สต.', title: p.name, body: join(v?.diagnosis, 'ติดตามผลการรักษาจาก รพ.สต.'), when: ago(at), at, go: `/patient/${p.id}` });
+      care.push({ id: `r-${p.id}-${v?.no ?? 0}`, group: 'patient', icon: 'cross.case.fill', colors: ['#FF8A7A', '#D2453A'], cat: 'ส่งต่อ รพ.สต.', title: p.name, body: join(v?.diagnosis, 'ติดตามผลการรักษาจาก รพ.สต.'), when: ago(at), at, go: `/patient/${p.id}` });
   });
   ann.forEach((a) => {
     const k = KIND[a.kind] ?? KIND.content;
     const at = new Date(a.created_at).getTime() || 0;
-    care.push({ id: `a-${a.id}`, icon: k.icon, colors: k.colors, cat: k.cat, title: a.title, body: a.body, when: ago(at, true), at, go: a.go || k.go });
+    care.push({ id: `a-${a.id}`, group: a.kind === 'wisdom' ? 'wisdom' : 'update', icon: k.icon, colors: k.colors, cat: k.cat, title: a.title, body: a.body, when: ago(at, true), at, go: a.go || k.go });
   });
   out.push(...care.sort((a, b) => b.at - a.at));
   const pending = wisdoms.filter((w) => !w.verified);
   if (pending.length)
-    out.push({ id: `wisdom-${pending.length}`, icon: 'book.closed.fill', colors: ['#D2A36E', '#8A5E30'], cat: 'คลังภูมิปัญญา', title: `รอตรวจทาน ${pending.length} เรื่อง`, body: pending.slice(0, 2).map((w) => w.title).join(' · '), at: 0, go: '/vault' });
+    out.push({ id: `wisdom-${pending.length}`, group: 'wisdom', icon: 'book.closed.fill', colors: ['#D2A36E', '#8A5E30'], cat: 'คลังภูมิปัญญา', title: `รอตรวจทาน ${pending.length} เรื่อง`, body: pending.slice(0, 2).map((w) => w.title).join(' · '), at: 0, go: '/vault' });
   return out;
 }
