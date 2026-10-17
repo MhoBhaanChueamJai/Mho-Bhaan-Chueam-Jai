@@ -199,7 +199,7 @@ function PatientBody({ p }: { p: Patient }) {
                 shouldOpenOnLongPress={false}
                 themeVariant="light"
                 actions={[
-                  { id: 'share', title: 'ส่งออกทะเบียนการรักษา', image: 'square.and.arrow.up', imageColor: palette.ink },
+                  { id: 'share', title: 'ส่งออก', image: 'square.and.arrow.up', imageColor: palette.ink },
                   { id: 'delete', title: 'ลบผู้ป่วย', image: 'trash', imageColor: '#E5484D', attributes: { destructive: true } },
                 ]}
                 onPressAction={({ nativeEvent }) => (nativeEvent.event === 'share' ? share() : nativeEvent.event === 'delete' ? remove() : undefined)}
