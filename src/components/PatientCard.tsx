@@ -20,7 +20,7 @@ import { elementColor, palette } from '../theme';
 
 const MAX_TILT = 9; // องศา
 
-export function PatientCard({ p, avatar }: { p: Patient; avatar: number }) {
+export function PatientCard({ p, avatar, onCall }: { p: Patient; avatar: number; onCall?: () => void }) {
   const { width: W } = useWindowDimensions();
   const cw = W - 40;
   const ch = Math.round(cw / 1.42);
@@ -101,6 +101,13 @@ export function PatientCard({ p, avatar }: { p: Patient; avatar: number }) {
                 <Sym name="leaf.fill" size={12} color="#FFFFFF" />
               </View>
               <T v="caption" color={palette.primaryDeep} style={{ fontWeight: '700', flex: 1 }}>บัตรผู้ป่วย · หมอบ้านเชื่อมใจ</T>
+              {/* โทรหาผู้ป่วย (อยู่บนบัตร) */}
+              {onCall ? (
+                <PressableScale haptic="press" scaleTo={0.92} onPress={onCall} hitSlop={8} style={styles.call} accessibilityLabel={`โทรหา ${p.name}`}>
+                  <Sym name="phone.fill" size={14} color="#FFFFFF" />
+                  <T v="caption" color="#FFFFFF" style={{ fontWeight: '700' }}>โทร</T>
+                </PressableScale>
+              ) : null}
             </View>
             <View style={styles.frontBody}>
               <View style={styles.avatarRing}>
@@ -178,6 +185,7 @@ export function PatientCard({ p, avatar }: { p: Patient; avatar: number }) {
 }
 
 const styles = StyleSheet.create({
+  call: { flexDirection: 'row', alignItems: 'center', gap: 5, height: 30, paddingHorizontal: 12, borderRadius: 15, backgroundColor: palette.primary },
   faceOuter: { ...StyleSheet.absoluteFillObject, borderRadius: 24, backfaceVisibility: 'hidden', boxShadow: '0px 10px 24px rgba(11,61,38,0.14)' },
   face: { flex: 1, borderRadius: 24, borderCurve: 'continuous', overflow: 'hidden', backfaceVisibility: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.8)' },
   glare: { position: 'absolute' },

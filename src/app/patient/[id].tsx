@@ -8,9 +8,8 @@ import Animated, { FadeIn, LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CircleIcon, PAGE_PAD } from '../../components/ListRow';
 import { Sym, ios } from '../../components/ios';
-import { AISphere } from '../../components/AISphere';
 import { PatientCard } from '../../components/PatientCard';
-import { Button, GlassDock, HeaderBack, PressableScale, T } from '../../components/ui';
+import { Button, GlassDock, HeaderBack, HeaderButton, PressableScale, T } from '../../components/ui';
 import { avatarFor, fullAddress, type MB5Visit, type Patient } from '../../data/mock';
 import { useApp } from '../../store/app';
 import { elevation, palette } from '../../theme';
@@ -51,23 +50,18 @@ const dateParts = (s: string) => {
   return { d: String(Number(d) || d), m: TH_M[Number(m) - 1] ?? '', y: (y ?? '').slice(-2) };
 };
 
-/** ปุ่มลัดวงกลม (แบบ Contacts): ไอคอนในวงกลม + ป้ายใต้ปุ่ม */
-function QuickAction({ sym, label, onPress, primary, ai }: { sym?: any; label: string; onPress?: () => void; primary?: boolean; ai?: boolean }) {
-  return (
-    <PressableScale haptic="press" scaleTo={0.94} onPress={onPress} style={styles.qa} accessibilityLabel={label}>
-      {ai ? (
-        // ไอคอน AI: ก้อนแสงครูปัญญาในวงกลมดำ
-        <View style={[styles.qaCircle, { backgroundColor: '#05090A', overflow: 'hidden' }, elevation.e2]}>
-          <AISphere size={60} active />
-        </View>
-      ) : (
-        <View style={[styles.qaCircle, primary ? { backgroundColor: palette.primary } : { backgroundColor: palette.surface }, elevation.e1]}>
-          <Sym name={sym} size={22} color={primary ? '#FFFFFF' : palette.primary} />
-        </View>
-      )}
-      <T v="subhead" color={primary ? palette.primaryDeep : ios.label} style={{ fontWeight: '600' }}>{label}</T>
-    </PressableScale>
-  );
+/**
+ * คำเตือนตามยาที่ผู้ป่วยใช้อยู่ (เดิมเป็นข้อความเดียวกันทุกคน "เลี่ยงรสร้อนจัด วัดความดัน" ซึ่งไม่ตรงกับยาจริง)
+ * อ้างอิงอันตรกิริยาสมุนไพร-ยาที่พบบ่อย (ศูนย์ข้อมูลสมุนไพร ม.มหิดล / บัญชียาหลักแห่งชาติด้านสมุนไพร)
+ */
+function medsAdvice(meds: string[]) {
+  const m = meds.join(' ').toLowerCase();
+  const tips: string[] = [];
+  if (/วาร์ฟาริน|warfarin|ละลายลิ่มเลือด|แอสไพริน|aspirin|clopidogrel|ต้านเกล็ดเลือด/.test(m)) tips.push('กินยาต้านการแข็งตัวของเลือด เลี่ยงขมิ้นชัน ขิง กระเทียม แปะก๊วย ปริมาณมาก (เลือดออกง่าย)');
+  if (/ความดัน|amlodipine|แอมโลดิปีน|enalapril|losartan|ขับปัสสาวะ/.test(m)) tips.push('กินยาลดความดัน เลี่ยงชะเอมเทศ ระวังฟ้าทะลายโจรร่วมกับยาลดความดัน วัดความดันทุกครั้ง');
+  if (/เบาหวาน|metformin|เมทฟอร์มิน|insulin|อินซูลิน|glipizide/.test(m)) tips.push('กินยาเบาหวาน ระวังสมุนไพรที่ลดน้ำตาลซ้ำกับยา เช่น มะระขี้นก อบเชย ตรวจน้ำตาลสม่ำเสมอ');
+  if (/digoxin|ดิจอกซิน|หัวใจ/.test(m)) tips.push('กินยาโรคหัวใจ เลี่ยงชะเอมเทศ และยาระบาย (มะขามแขก ชุมเห็ดเทศ) ต่อเนื่อง');
+  return tips.length ? tips.join(' · ') : `ใช้ ${meds[0]} อยู่ ถามครูปัญญาก่อนจ่ายสมุนไพรที่อาจตีกับยานี้`;
 }
 
 /** ช่องข้อมูลแบบตาราง 2 คอลัมน์ (ไอคอนวงกลมเล็ก · ป้าย · ค่า) */
@@ -195,27 +189,34 @@ function PatientBody({ p }: { p: Patient }) {
           headerBackButtonDisplayMode: 'minimal',
           headerBackVisible: false,
           headerLeft: () => <HeaderBack fallback="/patients" color={palette.ink} />,
+          // แถบเครื่องมือ: บันทึกการรักษา (ครูปัญญา) · เพิ่มเติม (ส่งออก / ลบ)
           headerRight: () => (
-            <MenuView shouldOpenOnLongPress={false} themeVariant="light" actions={[{ id: 'delete', title: 'ลบผู้ป่วย', image: 'trash', imageColor: '#E5484D', attributes: { destructive: true } }]} onPressAction={({ nativeEvent }) => nativeEvent.event === 'delete' && remove()}>
-              <View style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }} accessibilityRole="button" accessibilityLabel="เพิ่มเติม">
-                <Sym name="ellipsis" size={19} color={palette.ink} weight="semibold" />
-              </View>
-            </MenuView>
+            <View style={{ flexDirection: 'row', gap: 4 }}>
+              <HeaderButton label="บันทึกการรักษาด้วยเสียง" onPress={record}>
+                <Sym name="waveform" size={19} color={palette.primary} weight="semibold" />
+              </HeaderButton>
+              <MenuView
+                shouldOpenOnLongPress={false}
+                themeVariant="light"
+                actions={[
+                  { id: 'share', title: 'ส่งออกทะเบียนการรักษา', image: 'square.and.arrow.up', imageColor: palette.ink },
+                  { id: 'delete', title: 'ลบผู้ป่วย', image: 'trash', imageColor: '#E5484D', attributes: { destructive: true } },
+                ]}
+                onPressAction={({ nativeEvent }) => (nativeEvent.event === 'share' ? share() : nativeEvent.event === 'delete' ? remove() : undefined)}
+              >
+                <View style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }} accessibilityRole="button" accessibilityLabel="เพิ่มเติม">
+                  <Sym name="ellipsis" size={19} color={palette.ink} weight="semibold" />
+                </View>
+              </MenuView>
+            </View>
           ),
         }}
       />
       <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingBottom: insets.bottom + 120 }} showsVerticalScrollIndicator={false}>
         {/* ── บัตรผู้ป่วย 3 มิติ (แตะเพื่อพลิกดูธาตุ · เอียงมือถือแสงเปลี่ยน) ── */}
         <Animated.View entering={FadeIn.duration(350)} style={{ marginTop: 8 }}>
-          <PatientCard p={p} avatar={avatarFor(p)} />
+          <PatientCard p={p} avatar={avatarFor(p)} onCall={call} />
         </Animated.View>
-
-        {/* ── ปุ่มลัด ── */}
-        <View style={[styles.qaRow, { marginTop: 6 }]}>
-          <QuickAction sym="phone.fill" label="โทร" onPress={call} />
-          <QuickAction ai label="บันทึกการรักษา" onPress={record} primary />
-          <QuickAction sym="square.and.arrow.up" label="ส่งออก" onPress={share} />
-        </View>
 
         {/* ── ข้อมูลทั่วไป: ช่องตาราง 2 คอลัมน์ ── */}
         <T v="h3" style={styles.secTitle}>ข้อมูลทั่วไป</T>
@@ -232,7 +233,7 @@ function PatientBody({ p }: { p: Patient }) {
           <View style={styles.aiNote}>
             <Sym name="sparkles" size={15} color={palette.primary} />
             <T v="subhead" color={palette.primaryDeep} style={{ flex: 1 }}>
-              ครูปัญญา: ใช้ {p.meds[0]} อยู่ ควรเลี่ยงสมุนไพรรสร้อนจัด และวัดความดันทุกครั้ง
+              ครูปัญญา: {medsAdvice(p.meds)}
             </T>
           </View>
         ) : null}
