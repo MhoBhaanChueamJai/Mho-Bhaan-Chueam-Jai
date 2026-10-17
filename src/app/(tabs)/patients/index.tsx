@@ -138,18 +138,18 @@ function PatientsInner() {
             <PressableScale haptic="select" scaleTo={0.97} onPress={() => setFilter('all')} accessibilityLabel={`ผู้ป่วยทั้งหมด ${patients.length} ราย`}>
               <StatusRing segs={SEG.map((x) => ({ n: count(x.k), c: x.c, g: x.g, dim: filter !== 'all' && filter !== x.k }))} total={patients.length} />
             </PressableScale>
-            <BlurView intensity={24} tint="dark" style={styles.legPanel}>
+            <View style={styles.legPanel}>
               {SEG.map((x) => {
                 const on = filter === x.k;
                 return (
                   <PressableScale key={x.k} haptic="select" scaleTo={0.97} onPress={() => setFilter(on ? 'all' : x.k)} style={[styles.legRow, on && { backgroundColor: 'rgba(255,255,255,0.1)' }]} accessibilityLabel={`กรอง ${x.l} ${count(x.k)} ราย`} accessibilityState={{ selected: on }}>
                     <LinearGradient colors={x.g} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.legDot} />
-                    <T v="subhead" color="rgba(255,255,255,0.85)" style={{ flex: 1, fontWeight: '600' }}>{x.l}</T>
-                    <T v="bodyStrong" color="#FFFFFF" style={{ fontVariant: ['tabular-nums'] }}>{count(x.k)}</T>
+                    <T v="subhead" color="#FFFFFF" style={[styles.shadow, { flex: 1, fontWeight: '600' }]}>{x.l}</T>
+                    <T v="bodyStrong" color="#FFFFFF" style={[styles.shadow, { fontVariant: ['tabular-nums'] }]}>{count(x.k)}</T>
                   </PressableScale>
                 );
               })}
-            </BlurView>
+            </View>
           </View>
         </Animated.View>
 
@@ -207,7 +207,8 @@ const styles = StyleSheet.create({
   hero: { borderRadius: 24, borderCurve: 'continuous', overflow: 'hidden', padding: 18, backgroundColor: '#0A1712' },
   kicker: { fontWeight: '700', letterSpacing: 0.5 },
   heroBody: { flexDirection: 'row', alignItems: 'center', gap: 18, marginTop: 12 },
-  legPanel: { flex: 1, gap: 2, padding: 4, borderRadius: 16, overflow: 'hidden', backgroundColor: 'rgba(0,0,0,0.22)' },
+  legPanel: { flex: 1, gap: 2 },
+  shadow: { textShadowColor: 'rgba(0,0,0,0.6)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
   legRow: { flexDirection: 'row', alignItems: 'center', gap: 8, height: 30, paddingHorizontal: 10, borderRadius: 10 },
   legDot: { width: 10, height: 10, borderRadius: 5 },
   listHead: { flexDirection: 'row', alignItems: 'center', marginTop: 18, marginBottom: 8, marginHorizontal: 4 },
