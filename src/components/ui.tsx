@@ -145,15 +145,21 @@ export function GlassCircle({ children, onPress, size = control.icon, label, tin
  * แถบปุ่มลอยด้านล่าง (Design system: Floating action bar) — ใช้กับปุ่มหลักของทุกหน้าที่ต้องบันทึก/ดำเนินการ
  * Liquid Glass ใสทรงแคปซูล + เงา e3 ลอยเหนือขอบล่าง เนื้อหาเลื่อนผ่านใต้แถบได้ (เผื่อ paddingBottom ~130 ให้ ScrollView)
  */
+/**
+ * แถบปุ่มลอยด้านล่าง — ซ่อนตอนคีย์บอร์ดเปิด (แบบฟอร์มของ iOS: แถบปุ่มต้องไม่บังช่องที่กำลังพิมพ์)
+ * ฟอร์มที่ต้องบันทึกระหว่างพิมพ์ได้ ให้มีปุ่มบันทึกบนแถบหัวด้วย
+ */
 export function GlassDock({ children, style }: { children: React.ReactNode; style?: StyleProp<ViewStyle> }) {
   const insets = useSafeAreaInsets();
   const bottom = insets.bottom ? 24 : 16;
-  // คีย์บอร์ดเปิด → ยกแถบขึ้นเหนือคีย์บอร์ด (เดิมถูกบัง กดปุ่มบันทึก/จัดหน้าไม่ได้ระหว่างพิมพ์)
   const kb = useAnimatedKeyboard();
-  const lift = useAnimatedStyle(() => ({ transform: [{ translateY: -Math.max(0, kb.height.value - bottom + 10) }] }));
+  const hide = useAnimatedStyle(() => {
+    const open = kb.height.value > 40;
+    return { opacity: withTiming(open ? 0 : 1, { duration: 160 }), transform: [{ translateY: withTiming(open ? 40 : 0, { duration: 200 }) }] };
+  });
   return (
     // เว้นจากขอบจอ 24 ทั้งซ้าย ขวา ล่าง — แบบแถบลอยของ iOS 26
-    <Animated.View style={[{ position: 'absolute', left: 24, right: 24, bottom }, lift]} pointerEvents="box-none">
+    <Animated.View style={[{ position: 'absolute', left: 24, right: 24, bottom }, hide]} pointerEvents="box-none">
       {/* ขอบนอกเป็น Liquid Glass ใส (ไม่ทาสีขาวทับ) ให้เห็นเนื้อหาด้านหลังแบบกระจกจริง */}
       <Glass interactive tint="rgba(255,255,255,0.12)" style={[styles.dock, elevation.e3, style]}>{children}</Glass>
     </Animated.View>

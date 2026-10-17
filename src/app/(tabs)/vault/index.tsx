@@ -84,9 +84,9 @@ export default function Vault() {
               themeVariant="light"
               title="เพิ่มภูมิปัญญา"
               actions={[
-                { id: 'tell', title: 'เล่าให้ครูปัญญาฟัง', subtitle: 'โหมดเล่า เก็บเสียงไว้ แล้วเรียบเรียงเป็นหนังสือ', image: 'waveform' },
-                { id: 'write', title: 'เขียนเอง', image: 'square.and.pencil' },
-                { id: 'scan', title: 'สแกนตำราโบราณ', image: 'doc.viewfinder' },
+                { id: 'tell', title: 'เล่าให้ครูปัญญาฟัง', subtitle: 'โหมดเล่า เก็บเสียงไว้ แล้วเรียบเรียงเป็นหนังสือ', image: 'waveform', imageColor: palette.ink },
+                { id: 'write', title: 'เขียนเอง', image: 'square.and.pencil', imageColor: palette.ink },
+                { id: 'scan', title: 'สแกนตำราโบราณ', image: 'doc.viewfinder', imageColor: palette.ink },
               ]}
               onPressAction={({ nativeEvent: e }) =>
                 e.event === 'tell' ? router.push('/wisdom/tell') : e.event === 'scan' ? router.push({ pathname: '/scan', params: { fill: '1' } }) : router.push('/wisdom/new')

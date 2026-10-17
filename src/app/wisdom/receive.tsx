@@ -72,7 +72,7 @@ export default function ReceiveWisdom() {
 
   const w = got?.wisdom;
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: palette.bg }}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: palette.bg }}>
       <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         {/* กรอกรหัส */}
         <Animated.View layout={LinearTransition.duration(280)} style={[styles.card, elevation.e1, { alignItems: 'center' }]}>

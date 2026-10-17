@@ -246,8 +246,8 @@ function NewWisdomInner() {
                 themeVariant="light"
                 title="บันทึกด้วยเสียง"
                 actions={[
-                  { id: 'tell', title: 'โหมดเล่า', subtitle: 'เล่าต่อเนื่อง เก็บเสียงไว้ แล้วเรียบเรียงเป็นหนังสือ', image: 'waveform' },
-                  { id: 'ask', title: 'ให้ครูปัญญาถามทีละเรื่อง', subtitle: 'ตอบคำถามสั้นๆ ทีละหัวข้อ', image: 'bubble.left.and.bubble.right' },
+                  { id: 'tell', title: 'โหมดเล่า', subtitle: 'เล่าต่อเนื่อง เก็บเสียงไว้ แล้วเรียบเรียงเป็นหนังสือ', image: 'waveform', imageColor: palette.ink },
+                  { id: 'ask', title: 'ให้ครูปัญญาถามทีละเรื่อง', subtitle: 'ตอบคำถามสั้นๆ ทีละหัวข้อ', image: 'bubble.left.and.bubble.right', imageColor: palette.ink },
                 ]}
                 onPressAction={({ nativeEvent }) =>
                   nativeEvent.event === 'tell' ? router.push({ pathname: '/wisdom/tell', params: { from: 'new' } }) : router.push({ pathname: '/wisdom/voice', params: { kind } })
@@ -360,7 +360,7 @@ function NewWisdomInner() {
 
   // ── เขียนต้นฉบับ ──
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: palette.bg }}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: palette.bg }}>
       {header}
       <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.page} keyboardDismissMode="interactive" keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         {aiNote ? (

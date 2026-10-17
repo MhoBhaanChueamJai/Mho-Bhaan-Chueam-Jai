@@ -18,7 +18,12 @@
       "infoPlist": {
         "NSMicrophoneUsageDescription": "ใช้ไมโครโฟนเพื่อบันทึกเสียงเล่าอาการและภูมิปัญญา",
         "NSCameraUsageDescription": "ใช้กล้องเพื่อสแกนตำรายาและสมุดข่อย",
-        "NSPhotoLibraryUsageDescription": "เลือกภาพตำรายาเพื่อแปลงเป็นดิจิทัล"
+        "NSPhotoLibraryUsageDescription": "เลือกภาพตำรายาเพื่อแปลงเป็นดิจิทัล",
+        "CFBundleDevelopmentRegion": "th",
+        "CFBundleLocalizations": [
+          "th"
+        ],
+        "CFBundleAllowMixedLocalizations": true
       },
       "appleTeamId": "FFFGJANVWN",
       "entitlements": {

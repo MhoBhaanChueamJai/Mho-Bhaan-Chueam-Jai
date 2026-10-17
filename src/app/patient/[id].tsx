@@ -260,7 +260,9 @@ function PatientBody({ p }: { p: Patient }) {
       </ScrollView>
 
       <GlassDock>
-        <Button style={{ flex: 1, height: 52 }} label={`บันทึกการรักษาครั้งที่ ${(p.visits[0]?.no ?? 0) + 1}`} icon={<Sym name="sparkles" size={18} color="#FFFFFF" />} onPress={record} />
+        {/* บันทึกการรักษา: กรอกเอง หรือให้ครูปัญญาถามด้วยเสียง (ปุ่มกว้างเท่ากัน) */}
+        <Button kind="secondary" style={{ flex: 1, height: 52 }} label="กรอกเอง" icon={<Sym name="square.and.pencil" size={17} color={palette.primary} />} onPress={() => router.push({ pathname: '/patient/record', params: { pid: p.id } })} />
+        <Button style={{ flex: 1, height: 52 }} label="พูดบันทึก" icon={<Sym name="waveform" size={17} color="#FFFFFF" />} onPress={record} />
       </GlassDock>
     </>
   );

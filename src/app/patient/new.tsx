@@ -247,7 +247,7 @@ function NewPatientInner() {
   const recording = false;
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: palette.bg }}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: palette.bg }}>
       {/* เครื่องมือบนหัวจอ (แบบหน้าผู้ป่วย): พูดให้ AI กรอก · สแกนบัตรประชาชน */}
       <Stack.Screen
         options={{

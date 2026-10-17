@@ -85,6 +85,8 @@ type Ctx = {
   /** ลบออกจากคลังของเรา */
   removeWisdom: (id: string) => void;
   patients: Patient[];
+  /** แก้ข้อมูลผู้ป่วยบางช่อง (เช่น สถานะ) */
+  updatePatient: (id: string, patch: Partial<Omit<Patient, 'id' | 'visits'>>) => void;
   /** ลบผู้ป่วย (ทั้งในเครื่องและบนคลาวด์ พร้อมประวัติการรักษา) */
   removePatient: (id: string) => void;
   /** เพิ่มการรักษาครั้งใหม่ (ครั้งที่ n+1) ลงทะเบียนการรักษา ม.บ.5 ของผู้ป่วย */
@@ -194,7 +196,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (st === 'active' && pending.current.size) flushPending().catch(() => {});
     });
     return () => sub.remove();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [online]);
 
   const reloadCloud = async () => {
@@ -355,6 +356,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         push(() => cloud.saveWisdom(w), `w:${w.id}`);
       },
       patients,
+      updatePatient: (id, patch) => {
+        const cur = patients.find((x) => x.id === id);
+        if (!cur) return;
+        const next = { ...cur, ...patch };
+        setPatients((list) => list.map((x) => (x.id === id ? { ...x, ...patch } : x)));
+        push(() => cloud.savePatient(next), `p:${id}`);
+      },
       removePatient: (id) => {
         setPatients((list) => list.filter((x) => x.id !== id));
         push(() => cloud.deletePatient(id), `p:${id}`);
