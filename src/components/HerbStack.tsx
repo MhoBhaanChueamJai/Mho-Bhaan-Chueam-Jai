@@ -3,7 +3,6 @@
  * ใบที่อยู่ด้านหลังย่อลงและโผล่ขึ้นด้านบนทีละชั้น ให้เห็นเป็นกองการ์ด
  */
 import { Image } from 'expo-image';
-import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -11,17 +10,17 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import type { Herb } from '../data/herbs';
 import type { HerbRec } from '../lib/weatherHerbs';
-import { elevation } from '../theme';
-import { Sym } from './ios';
+import { elevation, palette } from '../theme';
+import { Sym, ios } from './ios';
 import { T, useHaptic } from './ui';
 
 const CARD_H = 214;
-/** สีบัตรตามธาตุ (ไล่เฉดเข้ม) */
-const PASS: Record<Herb['element'], { bg: [string, string] }> = {
-  ดิน: { bg: ['#B5793A', '#7A4A1E'] },
-  น้ำ: { bg: ['#2E8B67', '#145A43'] },
-  ลม: { bg: ['#2F8AA6', '#185A73'] },
-  ไฟ: { bg: ['#D4553F', '#93281C'] },
+/** สีเน้นของบัตรตามธาตุ (บัตรพื้นขาว) */
+const PASS: Record<Herb['element'], { accent: string }> = {
+  ดิน: { accent: '#A86A2E' },
+  น้ำ: { accent: '#1E8A5E' },
+  ลม: { accent: '#1F7F9E' },
+  ไฟ: { accent: '#C9432F' },
 };
 const STEP = 18; // ระยะที่บัตรชั้นถัดไปโผล่ด้านบน (แบบ Wallet)
 
@@ -63,26 +62,25 @@ function Card({ r, depth, n, onSwipe }: { r: HerbRec; depth: number; n: number; 
     <GestureDetector gesture={Gesture.Exclusive(pan, tap)}>
       <Animated.View style={[styles.card, elevation.e2, { zIndex: n - depth }, st]} accessibilityLabel={`${r.herb.name} ${r.risk}`}>
         {/* บัตรแบบ Apple Wallet: สีตามธาตุ ไล่เฉด + ลายใบไม้จางๆ */}
-        <LinearGradient colors={pass.bg} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
         <View style={styles.watermark}>
-          <Sym name="leaf.fill" size={150} color="rgba(255,255,255,0.07)" />
+          <Sym name="leaf.fill" size={150} color={`${pass.accent}12`} />
         </View>
         {/* หัวบัตร (ส่วนที่โผล่เมื่อซ้อน) */}
         <View style={styles.head}>
           <View style={styles.brand}>
-            <Sym name="leaf.fill" size={12} color="#FFFFFF" />
-            <T v="caption" color="#FFFFFF" style={{ fontWeight: '700' }}>สมุนไพรแนะนำ</T>
+            <Sym name="leaf.fill" size={12} color={pass.accent} />
+            <T v="caption" color={pass.accent} style={{ fontWeight: '700' }}>สมุนไพรแนะนำ</T>
           </View>
           <View style={{ alignItems: 'flex-end', flexShrink: 1 }}>
-            <T v="micro" color="rgba(255,255,255,0.7)" style={{ fontWeight: '600' }}>ช่วยป้องกัน</T>
-            <T v="subhead" color="#FFFFFF" numberOfLines={1} style={{ fontWeight: '700' }}>{r.risk}</T>
+            <T v="micro" color={ios.secondary} style={{ fontWeight: '600' }}>ช่วยป้องกัน</T>
+            <T v="subhead" color={palette.ink} numberOfLines={1} style={{ fontWeight: '700' }}>{r.risk}</T>
           </View>
         </View>
         {/* ชื่อ + รูปวงกลม */}
         <View style={styles.mid}>
           <View style={{ flex: 1 }}>
-            <T v="h1" color="#FFFFFF" numberOfLines={1}>{r.herb.name}</T>
-            <T v="caption" color="rgba(255,255,255,0.75)" numberOfLines={1} style={{ fontStyle: 'italic' }}>{r.herb.sci}</T>
+            <T v="h1" color={palette.ink} numberOfLines={1}>{r.herb.name}</T>
+            <T v="caption" color={ios.secondary} numberOfLines={1} style={{ fontStyle: 'italic' }}>{r.herb.sci}</T>
           </View>
           <Image source={r.herb.image} style={styles.photo} contentFit="cover" transition={200} />
         </View>
@@ -94,14 +92,15 @@ function Card({ r, depth, n, onSwipe }: { r: HerbRec; depth: number; n: number; 
             { k: 'ส่วนที่ใช้', v: r.herb.part.split(/[,，]/)[0] },
           ].map((f) => (
             <View key={f.k} style={{ flex: 1 }}>
-              <T v="micro" color="rgba(255,255,255,0.7)" style={{ fontWeight: '600' }}>{f.k}</T>
-              <T v="subhead" color="#FFFFFF" numberOfLines={1} style={{ fontWeight: '700' }}>{f.v}</T>
+              <T v="micro" color={ios.secondary} style={{ fontWeight: '600' }}>{f.k}</T>
+              <T v="subhead" color={palette.ink} numberOfLines={1} style={{ fontWeight: '700' }}>{f.v}</T>
             </View>
           ))}
         </View>
         <View style={styles.tipRow}>
-          <T v="caption" color="rgba(255,255,255,0.9)" numberOfLines={1} style={{ flex: 1 }}>{r.tip}</T>
-          <Sym name="chevron.right" size={11} color="rgba(255,255,255,0.8)" weight="semibold" />
+          <Sym name="leaf" size={12} color={pass.accent} />
+          <T v="caption" color={palette.inkSoft} numberOfLines={1} style={{ flex: 1 }}>{r.tip}</T>
+          <Sym name="chevron.right" size={11} color={ios.tertiary} weight="semibold" />
         </View>
       </Animated.View>
     </GestureDetector>
@@ -132,12 +131,12 @@ export function HerbStack({ recs }: { recs: HerbRec[] }) {
 }
 
 const styles = StyleSheet.create({
-  card: { position: 'absolute', left: 0, right: 0, bottom: 0, height: CARD_H, transformOrigin: 'center top', borderRadius: 22, borderCurve: 'continuous', overflow: 'hidden', paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12 },
+  card: { position: 'absolute', left: 0, right: 0, bottom: 0, height: CARD_H, transformOrigin: 'center top', borderRadius: 22, borderCurve: 'continuous', overflow: 'hidden', paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12, backgroundColor: '#FFFFFF', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(60,60,67,0.12)' },
   watermark: { position: 'absolute', right: -24, bottom: -30, transform: [{ rotate: '-18deg' }] },
   head: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, height: 34 },
   brand: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingTop: 2 },
   mid: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 10 },
-  photo: { width: 64, height: 64, borderRadius: 32, borderWidth: 2.5, borderColor: 'rgba(255,255,255,0.9)', backgroundColor: 'rgba(0,0,0,0.2)' },
-  fields: { flexDirection: 'row', gap: 10, marginTop: 12, paddingTop: 10, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(255,255,255,0.3)' },
+  photo: { width: 64, height: 64, borderRadius: 32, borderWidth: 2.5, borderColor: '#FFFFFF', backgroundColor: '#EEF2EF', boxShadow: '0px 2px 8px rgba(0,0,0,0.15)' },
+  fields: { flexDirection: 'row', gap: 10, marginTop: 12, paddingTop: 10, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(60,60,67,0.15)' },
   tipRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 'auto' },
 });
