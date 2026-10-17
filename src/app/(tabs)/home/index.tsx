@@ -85,7 +85,7 @@ export default function Home() {
 
         {/* ── Bento แถว 1: ครูปัญญา (ใหญ่) · ผู้ป่วย + เล่าอาการ ── */}
         <Animated.View entering={enter(1)} style={[styles.row, { height: 236, marginTop: 14 }]}>
-          <Tile onPress={() => router.push('/assistant')} style={{ flex: 1.15 }} label="ถามครูปัญญา">
+          <Tile onPress={() => router.push('/assistant')} style={{ flex: 1 }} label="ถามครูปัญญา">
             <LinearGradient colors={['#0F2A1F', '#0A1913', '#050B08']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
             <View style={styles.kruOrb} pointerEvents="none">
               <AISphere size={96} active />
