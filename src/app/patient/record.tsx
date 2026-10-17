@@ -8,6 +8,7 @@ import { Stack, router, useLocalSearchParams, useNavigation } from 'expo-router'
 import React, { useMemo, useRef, useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import Animated, { FadeIn, LinearTransition } from 'react-native-reanimated';
+import { DateField } from '../../components/FormPickers';
 import { NotFound } from '../../components/NotFound';
 import { PractitionerGate } from '../../components/PractitionerGate';
 import { Sym, ios } from '../../components/ios';
@@ -25,10 +26,8 @@ const STATUS: { k: Patient['status']; label: string }[] = [
 ];
 const SMOOTH = LinearTransition.duration(220);
 
-const todayBE = () => {
-  const t = new Date();
-  return `${String(t.getDate()).padStart(2, '0')}/${String(t.getMonth() + 1).padStart(2, '0')}/${t.getFullYear() + 543}`;
-};
+/** วันที่ → วว/ดด/ปปปป (พ.ศ.) ตามทะเบียน ม.บ.5 */
+const toBE = (t: Date) => `${String(t.getDate()).padStart(2, '0')}/${String(t.getMonth() + 1).padStart(2, '0')}/${t.getFullYear() + 543}`;
 
 function Field({ label, value, onChange, placeholder, multiline, inputRef, onNext }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; multiline?: boolean; inputRef?: React.Ref<TextInput>; onNext?: () => void }) {
   const [focus, setFocus] = useState(false);
@@ -73,7 +72,7 @@ function RecordInner() {
   const { patients, addVisit, updatePatient } = useApp();
   const p = patients.find((x) => x.id === pid);
   const h = useHaptic();
-  const [date, setDate] = useState(todayBE);
+  const [date, setDate] = useState<Date>(() => new Date());
   const [symptoms, setSymptoms] = useState('');
   const [duration, setDuration] = useState('');
   const [exam, setExam] = useState('');
@@ -110,7 +109,7 @@ function RecordInner() {
     if (!canSave || saved.current) return;
     saved.current = true;
     addVisit(p.id, {
-      date: date.trim() || todayBE(),
+      date: toBE(date),
       symptoms: [symptoms.trim(), duration.trim() ? `เป็นมา ${duration.trim()}` : ''].filter(Boolean).join(' · ') || '-',
       exam: exam.trim() || '-',
       diagnosis: diagnosis.trim() || '-',
@@ -132,29 +131,9 @@ function RecordInner() {
       {/* หน้าแบบเดียวกับเพิ่มผู้ป่วย: ปุ่มย้อนกลับมุมซ้าย · ปุ่มบันทึกลอยด้านล่าง */}
       <Stack.Screen options={{ title: `บันทึกการรักษาครั้งที่ ${no}` }} />
       <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.page} keyboardDismissMode="interactive" keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-        {/* ผู้ป่วย + สิ่งที่ต้องระวัง */}
-        <View style={styles.who}>
-          <T v="title" numberOfLines={1}>{p.name}</T>
-          <T v="caption" color={ios.secondary}>
-            {p.sex} {p.age} ปี · ธาตุ{p.element}
-            {p.chronic && p.chronic !== 'ไม่มี' ? ` · ${p.chronic}` : ''}
-          </T>
-          {p.allergies && p.allergies !== 'ไม่มี' ? (
-            <View style={styles.warn}>
-              <Sym name="exclamationmark.triangle.fill" size={12} color={palette.coral} />
-              <T v="caption" color={palette.coral} style={{ fontWeight: '700', flex: 1 }}>แพ้: {p.allergies}</T>
-            </View>
-          ) : null}
-          {p.meds.length ? (
-            <View style={styles.warn}>
-              <Sym name="pills.fill" size={12} color="#B26A12" />
-              <T v="caption" color="#8A5A26" style={{ flex: 1, fontWeight: '600' }}>ยาที่ใช้อยู่: {p.meds.join(', ')}</T>
-            </View>
-          ) : null}
-        </View>
-
         <Section title="อาการ" icon="stethoscope">
-          <Field label="วันที่รักษา" value={date} onChange={setDate} placeholder="วว/ดด/ปปปป (พ.ศ.)" />
+          {/* ปฏิทินแบบเดียวกับวันเกิดในหน้าเพิ่มผู้ป่วย (ปี พ.ศ.) */}
+          <DateField label="วันที่รักษา" value={date} onChange={setDate} />
           <Field label="อาการเจ็บป่วย" value={symptoms} onChange={setSymptoms} placeholder="เช่น ปวดเข่าสองข้าง ขึ้นลงบันไดลำบาก" multiline />
           <Field inputRef={durRef} label="เป็นมานานเท่าไร" value={duration} onChange={setDuration} placeholder="เช่น 3 วัน, 2 เดือน" onNext={() => diagRef.current?.focus()} />
         </Section>
@@ -228,8 +207,6 @@ export default function RecordVisit() {
 
 const styles = StyleSheet.create({
   page: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 130, gap: 14 },
-  who: { gap: 4, paddingHorizontal: 4, paddingBottom: 2 },
-  warn: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 },
   card: { backgroundColor: palette.surface, borderRadius: 22, borderCurve: 'continuous', padding: 16 },
   cardHead: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14 },
   cardIcon: { width: 30, height: 30, borderRadius: 9, backgroundColor: palette.primarySoft, alignItems: 'center', justifyContent: 'center' },
