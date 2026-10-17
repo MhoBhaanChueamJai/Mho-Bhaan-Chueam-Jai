@@ -64,8 +64,6 @@ function medsAdvice(meds: string[]) {
   return tips.length ? tips.join(' · ') : `ใช้ ${meds[0]} อยู่ ถามครูปัญญาก่อนจ่ายสมุนไพรที่อาจตีกับยานี้`;
 }
 
-/** เบอร์โทรแบบอ่านง่าย 081-000-0005 */
-const fmtPhone = (t: string) => (t.length === 10 ? `${t.slice(0, 3)}-${t.slice(3, 6)}-${t.slice(6)}` : t);
 
 /** ประวัติการรักษา: วันที่แบบปฏิทินด้านซ้าย การ์ดด้านขวา แตะเพื่อดูรายละเอียด */
 /** สีป้ายผลการรักษา */
@@ -262,7 +260,6 @@ function PatientBody({ p }: { p: Patient }) {
         ) : null}
 
         <ListSection i={2} title="ติดต่อ">
-          <ListRow icon={<CircleIcon name="phone.fill" color={palette.primary} />} overline="เบอร์โทร" title={tel ? fmtPhone(tel) : 'ยังไม่ระบุ'} onPress={tel ? call : undefined} chevron={!!tel} />
           <ListRow
             icon={<CircleIcon name="house.fill" color="#3B7DD8" />}
             overline="ที่อยู่"
