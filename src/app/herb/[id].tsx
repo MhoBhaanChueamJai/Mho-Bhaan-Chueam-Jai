@@ -248,7 +248,7 @@ export function HerbView({ herb, preview }: { herb: Herb; preview?: HerbScanPrev
       <GlassDock>
         {preview ? <Button kind="secondary" label="ถ่ายใหม่" icon={<Sym name="camera.fill" size={16} color={palette.primary} />} onPress={preview.onRetake} style={{ flex: 1, height: 52 }} /> : null}
         <Button
-          style={{ flex: preview ? 1.3 : 1, height: 52 }}
+          style={{ flex: 1, height: 52 }}
           label={preview ? 'ถามครูปัญญา' : 'ถามครูปัญญาเรื่องนี้'}
           icon={<Sym name="sparkles" size={18} color="#FFFFFF" />}
           onPress={() => go({ pathname: '/assistant', params: { q: preview ? `${herb.name} มีสรรพคุณและวิธีใช้ตามการแพทย์แผนไทยอย่างไร ข้อควรระวังมีอะไรบ้าง` : `${herb.name} ใช้ร่วมกับยาแผนปัจจุบันได้ไหม` } })}
