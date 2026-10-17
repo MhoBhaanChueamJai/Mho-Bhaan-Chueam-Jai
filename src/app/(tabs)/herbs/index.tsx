@@ -120,7 +120,6 @@ export default function Herbs() {
         </View>
         {/* สภาพอากาศ */}
         {w ? (
-          <PressableScale haptic="select" scaleTo={0.98} onPress={() => router.push('/weather-preview')} accessibilityLabel="ดูไอคอนสภาพอากาศทั้งหมด">
           <Animated.View entering={FadeInDown.duration(300)} style={styles.wxRow}>
             <WeatherIcon sky={w.sky} size={22} />
             <T v="subhead" color={SKY_COLOR[w.sky]} style={{ fontWeight: '700' }}>{w.temp}° {w.label}</T>
@@ -128,7 +127,6 @@ export default function Herbs() {
               {w.place ? `· ${w.place}` : ''}{w.pm25 != null ? ` · PM2.5 ${w.pm25}` : ''}
             </T>
           </Animated.View>
-          </PressableScale>
         ) : noLoc ? (
           <PressableScale haptic="select" onPress={() => Linking.openSettings()} style={styles.wxRow} accessibilityLabel="เปิดตำแหน่งเพื่อดูอากาศ">
             <Sym name="location.slash" size={15} color={ios.secondary} />
