@@ -76,7 +76,7 @@ export function LockScreen() {
       <PinShell
         hero={
           <HeroRing>
-            <Avatar name={name} src={myAvatar} size={64} />
+            <Avatar name={name} src={myAvatar} size={72} />
           </HeroRing>
         }
         title={`สวัสดี ${name}`}
@@ -114,7 +114,7 @@ export function LockScreen() {
 }
 
 const styles = StyleSheet.create({
-  bioKey: { width: 74, height: 74, alignItems: 'center', justifyContent: 'center' },
+  bioKey: { width: 76, height: 76, alignItems: 'center', justifyContent: 'center' },
   bioBig: { flexDirection: 'row', alignItems: 'center', gap: 10, height: 54, paddingHorizontal: 28, borderRadius: 27, backgroundColor: palette.primary, marginTop: 40 },
   forgot: { minHeight: 44, justifyContent: 'center', marginTop: 10, paddingHorizontal: 12 },
 });

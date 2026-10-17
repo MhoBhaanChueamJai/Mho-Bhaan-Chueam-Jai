@@ -1,14 +1,14 @@
 /**
  * แป้นรหัส PIN แบบหน้าจอ Passcode ของ iPhone
  * - จุด 6 ดวง (เติมตามที่กด, สั่นเมื่อผิด)
- * - ปุ่มตัวเลขวงกลม 78pt ใหญ่ กดง่ายสำหรับผู้สูงอายุ
+ * - ปุ่มตัวเลขวงกลม Liquid Glass 76pt ใหญ่ กดง่ายสำหรับผู้สูงอายุ
  * - ช่องซ้ายล่างใส่ปุ่มพิเศษได้ (เช่น Face ID), ขวาล่างเป็นปุ่มลบ
  */
 import React, { useEffect, useImperativeHandle } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 import { Sym } from './ios';
-import { PressableScale, useHaptic } from './ui';
+import { Glass, PressableScale, useHaptic } from './ui';
 import { PIN_LENGTH } from '../store/security';
 import { palette } from '../theme';
 
@@ -16,7 +16,7 @@ export type PinPadHandle = { shake: () => void };
 
 const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
 
-/** จุด PIN: ว่าง = วงเทาอ่อน, กรอกแล้ว = เม็ดเขียวขยายขึ้นแบบสปริง */
+/** จุด PIN: ว่าง = วงขอบเทา, กรอกแล้ว = เม็ดเขียวขยายขึ้นแบบสปริง */
 function Dot({ filled, color }: { filled: boolean; color: string }) {
   const s = useSharedValue(filled ? 1 : 0);
   useEffect(() => {
@@ -32,8 +32,10 @@ function Dot({ filled, color }: { filled: boolean; color: string }) {
 
 function Key({ label, onPress, color, light }: { label: string; onPress: () => void; color: string; light?: boolean }) {
   return (
-    <PressableScale haptic="tap" scaleTo={0.88} onPress={onPress} style={[styles.key, { backgroundColor: light ? 'rgba(255,255,255,0.14)' : palette.mint }]} accessibilityLabel={label}>
-      <Text style={[styles.keyNum, { color }]}>{label}</Text>
+    <PressableScale haptic="tap" scaleTo={0.9} onPress={onPress} style={[styles.key, styles.keyShadow]} accessibilityLabel={label}>
+      <Glass interactive tint={light ? 'rgba(255,255,255,0.14)' : 'rgba(255,255,255,0.7)'} style={styles.keyGlass}>
+        <Text style={[styles.keyNum, { color }]}>{label}</Text>
+      </Glass>
     </PressableScale>
   );
 }
@@ -92,13 +94,15 @@ export const PinPad = React.forwardRef<
   );
 });
 
-const K = 74;
+const K = 76;
 const styles = StyleSheet.create({
   dots: { flexDirection: 'row', gap: 14, marginBottom: 30 },
-  dotSlot: { width: 16, height: 16, borderRadius: 8, backgroundColor: palette.cyan, alignItems: 'center', justifyContent: 'center' },
-  dotFill: { width: 16, height: 16, borderRadius: 8 },
-  grid: { width: K * 3 + 28 * 2, flexDirection: 'row', flexWrap: 'wrap', columnGap: 28, rowGap: 14 },
+  dotSlot: { width: 16, height: 16, borderRadius: 8, borderWidth: 1.5, borderColor: 'rgba(60,60,67,0.25)', alignItems: 'center', justifyContent: 'center' },
+  dotFill: { width: 16, height: 16, borderRadius: 8, margin: -1.5 },
+  grid: { width: K * 3 + 26 * 2, flexDirection: 'row', flexWrap: 'wrap', columnGap: 26, rowGap: 16 },
   key: { width: K, height: K, borderRadius: K / 2, alignItems: 'center', justifyContent: 'center' },
-  keyNum: { fontSize: 30, fontWeight: '500' },
+  keyGlass: { width: K, height: K, borderRadius: K / 2, alignItems: 'center', justifyContent: 'center' },
+  keyShadow: { boxShadow: '0px 2px 8px rgba(0,0,0,0.06)' },
+  keyNum: { fontSize: 32, fontWeight: '400' },
   del: { width: K, height: K, alignItems: 'center', justifyContent: 'center' },
 });

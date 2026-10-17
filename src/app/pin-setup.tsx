@@ -11,7 +11,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Sym } from '../components/ios';
 import { PinPad, type PinPadHandle } from '../components/PinPad';
 import { HeroRing, PinShell } from '../components/PinShell';
-import { Button, PressableScale, T, useHaptic } from '../components/ui';
+import { Button, Glass, GlassCircle, PressableScale, T, useHaptic } from '../components/ui';
 import { useApp } from '../store/app';
 import { authenticateBiometric, biometricInfo, savePin } from '../store/security';
 import { palette } from '../theme';
@@ -88,14 +88,16 @@ export default function PinSetup() {
 
   const topLeft =
     mode !== 'onboard' ? (
-      <PressableScale onPress={() => router.back()} style={styles.topBtn} accessibilityLabel="ยกเลิก">
-        <T v="body" color="#FFFFFF">ยกเลิก</T>
-      </PressableScale>
+      <GlassCircle label="ยกเลิก" onPress={() => router.back()}>
+        <Sym name="xmark" size={17} color={palette.ink} weight="semibold" />
+      </GlassCircle>
     ) : null;
   const topRight =
     mode === 'onboard' ? (
-      <PressableScale onPress={skip} style={styles.topBtn} accessibilityLabel="ไว้ทีหลัง">
-        <T v="body" color="#FFFFFF" style={{ fontWeight: '600' }}>ไว้ทีหลัง</T>
+      <PressableScale onPress={skip} scaleTo={0.94} accessibilityLabel="ไว้ทีหลัง">
+        <Glass interactive style={styles.topBtn}>
+          <T v="callout" style={{ fontWeight: '600' }}>ไว้ทีหลัง</T>
+        </Glass>
       </PressableScale>
     ) : null;
 
@@ -106,7 +108,7 @@ export default function PinSetup() {
       hero={
         <HeroRing>
           <View style={styles.badge}>
-            <Sym name={step === 'face' ? bio.icon : 'lock.fill'} size={24} color={palette.primary} />
+            <Sym name={step === 'face' ? bio.icon : 'lock.fill'} size={28} color={palette.primary} />
           </View>
         </HeroRing>
       }
@@ -140,8 +142,8 @@ export default function PinSetup() {
 }
 
 const styles = StyleSheet.create({
-  topBtn: { height: 44, justifyContent: 'center', paddingHorizontal: 8 },
-  badge: { width: 60, height: 60, borderRadius: 30, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
+  topBtn: { height: 44, justifyContent: 'center', paddingHorizontal: 18, borderRadius: 22 },
+  badge: { width: 68, height: 68, borderRadius: 34, backgroundColor: palette.primarySoft, alignItems: 'center', justifyContent: 'center' },
   faceArt: { alignSelf: 'center', width: 112, height: 112, borderRadius: 30, backgroundColor: palette.primarySoft, alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
   later: { height: 50, alignItems: 'center', justifyContent: 'center' },
   steps: { flexDirection: 'row', gap: 6, marginTop: 18 },
