@@ -98,13 +98,6 @@ export function HerbStack({ recs }: { recs: HerbRec[] }) {
             <Card key={recs[idx].herb.id} r={recs[idx]} depth={depth} n={n} onSwipe={next} />
           ))}
       </View>
-      {/* ตัวบอกลำดับ */}
-      <View style={styles.dots}>
-        {recs.map((r, i) => (
-          <View key={r.herb.id} style={[styles.dot, order[0] === i && styles.dotOn]} />
-        ))}
-        <T v="caption" color={ios.tertiary} style={{ marginLeft: 6 }}>ปัดเพื่อดูตัวถัดไป</T>
-      </View>
     </View>
   );
 }
@@ -117,7 +110,4 @@ const styles = StyleSheet.create({
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   taste: { paddingHorizontal: 7, paddingVertical: 1, borderRadius: 999 },
   tip: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, borderRadius: 16, borderCurve: 'continuous', backgroundColor: palette.mint },
-  dots: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, marginTop: 12 },
-  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: 'rgba(60,60,67,0.2)' },
-  dotOn: { width: 16, backgroundColor: palette.primary },
 });
