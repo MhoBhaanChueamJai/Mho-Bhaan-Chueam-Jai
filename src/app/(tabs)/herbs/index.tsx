@@ -1,13 +1,14 @@
 /**
  * แท็บคลังสมุนไพร — โครงเดียวกับคลังภูมิ (DESIGN_SYSTEM.md)
- * การ์ดฟีเจอร์ใหม่ "สแกนหาสมุนไพร" (เปิดกล้อง) → สมุนไพรประจำวัน → กรองตามรสยา → รายการสมุนไพร (แถวรูปเล็ก คั่นเส้นบาง)
+ * การ์ดฟีเจอร์ใหม่ "สแกนหาสมุนไพร" (เปิดกล้อง) → สมุนไพรประจำวัน → กรองตามรสยา → การ์ดภาพเต็มใบ 2 คอลัมน์
  */
+import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, router } from 'expo-router';
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
-import Animated, { FadeIn, FadeInDown, LinearTransition } from 'react-native-reanimated';
+import { ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
+import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
 import { Sym, ios } from '../../../components/ios';
 import { HeaderButton, PressableScale, T } from '../../../components/ui';
 import { herbs, tasteTone, tastes, type Herb } from '../../../data/herbs';
@@ -16,35 +17,33 @@ import { elementColor, elevation, palette } from '../../../theme';
 /** สมุนไพรประจำวัน — เปลี่ยนทุกวัน */
 const todayHerb = () => herbs[Math.floor(Date.now() / 86400000) % herbs.length];
 
-function Pill({ text, fg, bg }: { text: string; fg: string; bg: string }) {
-  return (
-    <View style={[styles.pill, { backgroundColor: bg }]}>
-      <T v="micro" color={fg} style={{ fontWeight: '700' }}>{text}</T>
-    </View>
-  );
-}
-
-/** แถวสมุนไพร: รูปเล็กมุมโค้ง · ชื่อ (+ตราบัญชียาหลัก) · ชื่อวิทยาศาสตร์ · สรรพคุณ · ป้ายรส/ธาตุ · › */
-function HerbRow({ h, i, last }: { h: Herb; i: number; last: boolean }) {
-  const tone = tasteTone[h.taste];
+/** การ์ดสมุนไพรภาพเต็มใบ (แบบการ์ดของ Apple): ภาพเต็มการ์ด · ไล่เงาล่าง · ชื่อขาว · สรรพคุณ · แคปซูลกระจกรส/ธาตุ */
+function HerbCard({ h, i, w }: { h: Herb; i: number; w: number }) {
   const el = elementColor[h.element];
   return (
-    <Animated.View entering={FadeIn.delay(40 + (i % 10) * 30).duration(220)} layout={LinearTransition.duration(240)}>
-      <PressableScale scaleTo={0.985} haptic="select" onPress={() => router.push(`/herb/${h.id}`)} style={styles.row} accessibilityLabel={`${h.name} รส${h.taste}`}>
-        <Image source={h.image} style={styles.thumb} contentFit="cover" transition={200} />
-        <View style={[styles.rowBody, !last && styles.rowSep]}>
-          <View style={{ flex: 1, gap: 2 }}>
-            <View style={styles.nameRow}>
-              <T v="title" numberOfLines={1} style={{ flexShrink: 1 }}>{h.name}</T>
-              {h.nationalList ? <Sym name="checkmark.seal.fill" size={14} color={palette.primary} /> : null}
+    <Animated.View entering={FadeInDown.delay(40 + (i % 8) * 40).duration(320)} layout={LinearTransition.duration(260)} style={{ width: w }}>
+      <PressableScale scaleTo={0.97} haptic="select" onPress={() => router.push(`/herb/${h.id}`)} style={[styles.card, { height: w * 1.32 }, elevation.e2]} accessibilityLabel={`${h.name} รส${h.taste}`}>
+        <View style={styles.cardClip}>
+          <Image source={h.image} style={StyleSheet.absoluteFill} contentFit="cover" transition={250} />
+          <LinearGradient colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.05)', 'rgba(4,18,10,0.86)']} locations={[0, 0.42, 1]} style={StyleSheet.absoluteFill} />
+          {h.nationalList ? (
+            <View style={styles.sealWrap}>
+              <BlurView intensity={30} tint="light" style={StyleSheet.absoluteFill} />
+              <Sym name="checkmark.seal.fill" size={15} color="#FFFFFF" />
             </View>
-            <T v="caption" color={ios.secondary} numberOfLines={1}>{h.uses.slice(0, 2).join(' · ')}</T>
-            <View style={styles.tags}>
-              <Pill text={`รส${h.taste}`} fg={tone.fg} bg={tone.bg} />
-              <Pill text={el.label} fg={el.fg} bg={el.bg} />
+          ) : null}
+          <View style={styles.cardText}>
+            <T v="h3" color="#FFFFFF" numberOfLines={1}>{h.name}</T>
+            <T v="caption" color="rgba(255,255,255,0.82)" numberOfLines={1} style={{ marginTop: 1 }}>{h.uses[0]}</T>
+            <View style={styles.glassTags}>
+              {[`รส${h.taste}`, el.label].map((t) => (
+                <View key={t} style={styles.glassTag}>
+                  <BlurView intensity={28} tint="light" style={StyleSheet.absoluteFill} />
+                  <T v="micro" color="#FFFFFF" style={{ fontWeight: '700' }}>{t}</T>
+                </View>
+              ))}
             </View>
           </View>
-          <Sym name="chevron.right" size={13} color={ios.tertiary} weight="semibold" />
         </View>
       </PressableScale>
     </Animated.View>
@@ -52,6 +51,8 @@ function HerbRow({ h, i, last }: { h: Herb; i: number; last: boolean }) {
 }
 
 export default function Herbs() {
+  const { width: SW } = useWindowDimensions();
+  const cardW = Math.floor((SW - 32 - 12) / 2);
   const today = todayHerb();
   const national = herbs.filter((h) => h.nationalList).length;
   const [taste, setTaste] = useState<(typeof tastes)[number]>('ทั้งหมด');
@@ -127,11 +128,11 @@ export default function Herbs() {
             );
           })}
         </ScrollView>
-        <Animated.View layout={LinearTransition.duration(240)} style={[styles.list, elevation.e1]}>
+        <View style={styles.grid}>
           {list.map((h, i) => (
-            <HerbRow key={h.id} h={h} i={i} last={i === list.length - 1} />
+            <HerbCard key={h.id} h={h} i={i} w={cardW} />
           ))}
-        </Animated.View>
+        </View>
 
         <View style={styles.foot}>
           <Sym name="checkmark.seal.fill" size={13} color={palette.primary} />
@@ -155,13 +156,12 @@ const styles = StyleSheet.create({
   todayBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, backgroundColor: palette.primarySoft },
   chips: { gap: 8, paddingHorizontal: 16, paddingBottom: 14 },
   chip: { paddingHorizontal: 14, height: 36, justifyContent: 'center', borderRadius: 18, backgroundColor: palette.surface, borderWidth: 1, borderColor: ios.separator },
-  list: { backgroundColor: palette.surface, borderRadius: 24, borderCurve: 'continuous', overflow: 'hidden' },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingLeft: 14 },
-  thumb: { width: 64, height: 64, borderRadius: 16, borderCurve: 'continuous', backgroundColor: palette.bgDeep },
-  rowBody: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 14, paddingRight: 14 },
-  rowSep: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: ios.separator },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 5, marginTop: 4 },
-  pill: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  card: { borderRadius: 26, borderCurve: 'continuous', backgroundColor: palette.bgDeep },
+  cardClip: { flex: 1, borderRadius: 26, borderCurve: 'continuous', overflow: 'hidden' },
+  sealWrap: { position: 'absolute', top: 10, right: 10, width: 30, height: 30, borderRadius: 15, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(20,144,92,0.55)' },
+  cardText: { position: 'absolute', left: 12, right: 12, bottom: 12 },
+  glassTags: { flexDirection: 'row', flexWrap: 'wrap', gap: 5, marginTop: 8 },
+  glassTag: { paddingHorizontal: 9, paddingVertical: 3, borderRadius: 999, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.14)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.35)' },
   foot: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 18, marginLeft: 4 },
 });
