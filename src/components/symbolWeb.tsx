@@ -83,6 +83,7 @@ const MAP: Record<string, keyof typeof Ionicons.glyphMap> = {
   snowflake: 'snow-outline',
   'leaf.arrow.triangle.circlepath': 'leaf-outline',
   'hand.draw': 'hand-left-outline',
+  'hand.tap': 'finger-print-outline',
   'shield.lefthalf.filled': 'shield-half-outline',
   'location.slash': 'location-outline',
   'aqi.medium': 'cloud-outline',

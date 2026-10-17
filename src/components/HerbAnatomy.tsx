@@ -1,14 +1,11 @@
 /**
- * โครงสร้างสมุนไพรทั้งต้น — ภาพพฤกษศาสตร์ + ป้ายชี้ส่วนประกอบ (เส้นนำ + จุดเต้น) + เอียงเครื่อง/ลากนิ้วเห็นมิติ
+ * โครงสร้างสมุนไพรทั้งต้น — ภาพพฤกษศาสตร์ + ป้ายชี้ส่วนประกอบ (เส้นนำ + จุดเต้น)
  * แตะป้ายหรือจุด → ดูคำอธิบายส่วนนั้น และการใช้เป็นยา (ส่วนที่ใช้เป็นยาเป็นสีเขียวเด่น)
- * มิติ: ภาพเอียงตามเครื่อง (DeviceMotion) · ป้ายลอยเหนือภาพเคลื่อนมากกว่าภาพ (parallax) · เงาเลื่อนตามมุม
  */
 import { Image } from 'expo-image';
-import { DeviceMotion } from 'expo-sensors';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Platform, StyleSheet, View, useWindowDimensions } from 'react-native';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, { Easing, FadeIn, useAnimatedStyle, useSharedValue, withRepeat, withSpring, withTiming } from 'react-native-reanimated';
+import { StyleSheet, View, useWindowDimensions } from 'react-native';
+import Animated, { Easing, FadeIn, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import Svg, { Circle, Line } from 'react-native-svg';
 import type { Anatomy } from '../data/herbAnatomy';
 import { palette } from '../theme';
@@ -55,49 +52,12 @@ export function HerbAnatomy({ data }: { data: Anatomy }) {
     return [...place('L'), ...place('R')];
   }, [data, W, H]);
 
-  // ── มิติ: เอียงตามเครื่อง + ลากนิ้ว ──
-  const rx = useSharedValue(0);
-  const ry = useSharedValue(0);
-  const drag = useSharedValue(0);
-  useEffect(() => {
-    if (Platform.OS === 'web') return;
-    DeviceMotion.setUpdateInterval(50);
-    const sub = DeviceMotion.addListener((m) => {
-      if (drag.value) return;
-      const beta = m.rotation?.beta ?? 0; // ก้ม-เงย
-      const gamma = m.rotation?.gamma ?? 0; // เอียงซ้าย-ขวา
-      rx.value = withSpring(Math.max(-10, Math.min(10, -(beta - 0.9) * 14)), { damping: 20 });
-      ry.value = withSpring(Math.max(-12, Math.min(12, gamma * 16)), { damping: 20 });
-    });
-    return () => sub.remove();
-  }, [rx, ry, drag]);
-  const pan = Gesture.Pan()
-    .onBegin(() => {
-      drag.value = 1;
-    })
-    .onUpdate((e) => {
-      ry.value = Math.max(-14, Math.min(14, e.translationX / 8));
-      rx.value = Math.max(-12, Math.min(12, -e.translationY / 8));
-    })
-    .onFinalize(() => {
-      drag.value = 0;
-      rx.value = withSpring(0);
-      ry.value = withSpring(0);
-    });
-  const plate = useAnimatedStyle(() => ({
-    transform: [{ perspective: 900 }, { rotateX: `${rx.value}deg` }, { rotateY: `${ry.value}deg` }],
-    boxShadow: `${-ry.value * 0.8}px ${10 + rx.value * 0.8}px 24px rgba(40,30,20,0.22)`,
-  }));
-  // ป้ายลอยเหนือภาพ → เลื่อนมากกว่า (parallax)
-  const float = useAnimatedStyle(() => ({ transform: [{ translateX: ry.value * 0.9 }, { translateY: -rx.value * 0.9 }] }));
-
   const p = data.parts[sel];
   return (
     <View>
-      <GestureDetector gesture={pan}>
-        <Animated.View style={[styles.plate, { width: W, height: H, backgroundColor: data.bg }, plate]}>
+        <View style={[styles.plate, { width: W, height: H, backgroundColor: data.bg }]}>
           <Image source={data.image} style={StyleSheet.absoluteFill} contentFit="cover" transition={250} />
-          <Animated.View style={[StyleSheet.absoluteFill, float]}>
+          <View style={StyleSheet.absoluteFill}>
             {/* เส้นนำจากจุดไปป้าย */}
             <Svg width={W} height={H} style={StyleSheet.absoluteFill} pointerEvents="none">
               {labels.map((l) => {
@@ -135,9 +95,8 @@ export function HerbAnatomy({ data }: { data: Anatomy }) {
                 </PressableScale>
               );
             })}
-          </Animated.View>
-        </Animated.View>
-      </GestureDetector>
+          </View>
+        </View>
 
       {/* คำอธิบายส่วนที่เลือก */}
       {p ? (
@@ -161,15 +120,15 @@ export function HerbAnatomy({ data }: { data: Anatomy }) {
         </Animated.View>
       ) : null}
       <View style={styles.hint}>
-        <Sym name="hand.draw" size={12} color={ios.tertiary} />
-        <T v="caption" color={ios.tertiary}>แตะป้ายเพื่อดูรายละเอียด · เอียงเครื่องหรือลากภาพเพื่อดูมิติ</T>
+        <Sym name="hand.tap" size={12} color={ios.tertiary} />
+        <T v="caption" color={ios.tertiary}>แตะป้ายเพื่อดูรายละเอียดแต่ละส่วน</T>
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  plate: { alignSelf: 'center', borderRadius: 20, borderCurve: 'continuous', overflow: 'hidden' },
+  plate: { alignSelf: 'center', borderRadius: 20, borderCurve: 'continuous', overflow: 'hidden', boxShadow: '0px 8px 20px rgba(40,30,20,0.16)' },
   dotWrap: { position: 'absolute', width: 24, height: 24, alignItems: 'center', justifyContent: 'center' },
   ring: { position: 'absolute', width: 14, height: 14, borderRadius: 7, borderWidth: 2 },
   dot: { width: 11, height: 11, borderRadius: 6, borderWidth: 2, borderColor: '#FFFFFF' },
