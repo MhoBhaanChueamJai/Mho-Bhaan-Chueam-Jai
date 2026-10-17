@@ -1,8 +1,9 @@
 /**
  * รายการแบบการ์ด (Design system: List) — ใช้กับหน้าตั้งค่า / ข้อมูลส่วนตัว / ตั้งค่า AI
  *   ระยะขอบหน้า 20 · การ์ดมุม 22 + เงา e1 · แถวสูงขั้นต่ำ 72 (padding 16×18)
- *   ไอคอนวงกลม 42 พื้นสีอ่อนของสีนั้น · เส้นคั่นเริ่มหลังไอคอน · หัวข้อส่วน h3 ห่างกัน 32
+ *   ไอคอนวงกลม 30 พื้นสีเข้มไล่เฉด สัญลักษณ์ขาว · เส้นคั่นเริ่มหลังไอคอน · หัวข้อส่วน h3 ห่างกัน 32
  */
+import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
@@ -13,12 +14,26 @@ import { elevation, palette } from '../theme';
 export const PAGE_PAD = 20;
 const ICON = 30;
 
-/** ไอคอนวงกลม: พื้นสีอ่อน + สัญลักษณ์สีเข้ม */
+/** ปรับความสว่างสี #RRGGBB (k > 0 สว่างขึ้น · k < 0 เข้มขึ้น) */
+function shade(hex: string, k: number) {
+  const m = hex.replace('#', '');
+  if (m.length !== 6) return hex;
+  const c = [0, 2, 4].map((i) => parseInt(m.slice(i, i + 2), 16));
+  const out = c.map((v) => Math.round(k >= 0 ? v + (255 - v) * k : v * (1 + k)));
+  return `#${out.map((v) => Math.max(0, Math.min(255, v)).toString(16).padStart(2, '0')).join('')}`;
+}
+
+/** ไอคอนวงกลม: พื้นสีเข้มไล่เฉด (สว่างบนซ้าย → เข้มล่างขวา) + สัญลักษณ์สีขาว แบบไอคอนตั้งค่าของ iOS */
 export function CircleIcon({ name, color = palette.primary, size = ICON }: { name: string; color?: string; size?: number }) {
   return (
-    <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: `${color}1F`, alignItems: 'center', justifyContent: 'center' }}>
-      <Sym name={name as any} size={size * 0.45} color={color} />
-    </View>
+    <LinearGradient
+      colors={[shade(color, 0.18), shade(color, -0.12), shade(color, -0.32)]}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={{ width: size, height: size, borderRadius: size / 2, alignItems: 'center', justifyContent: 'center' }}
+    >
+      <Sym name={name as any} size={size * 0.48} color="#FFFFFF" />
+    </LinearGradient>
   );
 }
 
