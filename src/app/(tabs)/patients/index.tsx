@@ -1,9 +1,10 @@
 import { Stack, router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { PractitionerGate } from '../../../components/PractitionerGate';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
+import Animated, { Easing, FadeIn, FadeInDown, useAnimatedProps, useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated';
+import Svg, { Circle } from 'react-native-svg';
 import { IOSCard, Sym, ios } from '../../../components/ios';
 import { Avatar, HeaderButton, PressableScale, T } from '../../../components/ui';
 import { avatarFor, lastVisit, type Patient } from '../../../data/mock';
@@ -21,6 +22,60 @@ const SEG: { k: Patient['status']; l: string; c: string }[] = [
 ];
 const filled = (x?: string) => !!x && x.trim() !== '' && x.trim() !== '-';
 
+const RING = 124;
+const SW = 13;
+const R = (RING - SW) / 2;
+const CIRC = 2 * Math.PI * R;
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+
+/** หนึ่งส่วนของวงแหวน: วาดไล่ตามค่า p (0→1) ตอนเปิดหน้า */
+function Arc({ start, len, c, dim, p }: { start: number; len: number; c: string; dim: boolean; p: SharedValue<number> }) {
+  const props = useAnimatedProps(() => ({ strokeDasharray: [Math.max(0.001, len * p.value), CIRC] as any }));
+  return (
+    <AnimatedCircle
+      cx={RING / 2}
+      cy={RING / 2}
+      r={R}
+      stroke={c}
+      strokeOpacity={dim ? 0.25 : 1}
+      strokeWidth={SW}
+      strokeLinecap="round"
+      fill="none"
+      rotation={-90 + (start / CIRC) * 360}
+      origin={`${RING / 2}, ${RING / 2}`}
+      animatedProps={props}
+    />
+  );
+}
+
+/** วงแหวนสถานะ: แต่ละสีตามสัดส่วนผู้ป่วยแต่ละสถานะ · ตัวเลขรวมกลางวง */
+function StatusRing({ segs, total }: { segs: { n: number; c: string; dim: boolean }[]; total: number }) {
+  const p = useSharedValue(0);
+  useEffect(() => {
+    p.value = withTiming(1, { duration: 900, easing: Easing.out(Easing.cubic) });
+  }, [p]);
+  const live = segs.filter((x) => x.n > 0);
+  const gap = live.length > 1 ? SW * 0.9 : 0; // ช่องว่างระหว่างสี (เผื่อหัวมน)
+  let acc = 0;
+  return (
+    <View style={{ width: RING, height: RING, alignItems: 'center', justifyContent: 'center' }}>
+      <Svg width={RING} height={RING} style={StyleSheet.absoluteFill}>
+        <Circle cx={RING / 2} cy={RING / 2} r={R} stroke="rgba(255,255,255,0.08)" strokeWidth={SW} fill="none" />
+        {total
+          ? live.map((x, i) => {
+              const len = Math.max(0.001, (x.n / total) * CIRC - gap);
+              const el = <Arc key={i} start={acc + gap / 2} len={len} c={x.c} dim={x.dim} p={p} />;
+              acc += (x.n / total) * CIRC;
+              return el;
+            })
+          : null}
+      </Svg>
+      <T v="hero" color="#FFFFFF" style={{ fontVariant: ['tabular-nums'], lineHeight: 40 }}>{total}</T>
+      <T v="caption" color="rgba(255,255,255,0.65)">ราย</T>
+    </View>
+  );
+}
+
 /**
  * แท็บผู้ป่วย — การ์ดสรุปสีเข้ม (จำนวน · แถบสัดส่วนสถานะ · แตะสถานะเพื่อกรอง) + รายชื่อเรียงตามที่มารักษาล่าสุด
  * (หมอพื้นบ้านไม่ใช้ระบบนัดแบบคลินิก)
@@ -31,7 +86,6 @@ function PatientsInner() {
   const sorted = useMemo(() => [...patients].sort((a, b) => visitSortKey(lastVisit(b)?.date) - visitSortKey(lastVisit(a)?.date)), [patients]);
   const count = (k: Patient['status']) => patients.filter((p) => p.status === k).length;
   const list = filter === 'all' ? sorted : sorted.filter((p) => p.status === filter);
-  const total = Math.max(1, patients.length);
   const cur = SEG.find((x) => x.k === filter);
 
   return (
@@ -51,38 +105,27 @@ function PatientsInner() {
         }}
       />
       <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
-        {/* ── การ์ดสรุปสีเข้ม (แบบการ์ดครูปัญญา) ── */}
+        {/* ── การ์ดสรุปสีเข้ม: วงแหวนสถานะ (แบบแอป Fitness) + รายการสถานะแตะกรองได้ ── */}
         <Animated.View entering={FadeInDown.duration(380)} style={[styles.hero, elevation.e2]}>
           <LinearGradient colors={['#0F2A1F', '#0A1913', '#050B08']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
           <View style={styles.glow} pointerEvents="none" />
-          <PressableScale haptic="select" scaleTo={0.99} onPress={() => setFilter('all')} accessibilityLabel={`ผู้ป่วยทั้งหมด ${patients.length} ราย`}>
-            <T v="micro" color="rgba(124,240,168,0.85)" style={styles.kicker}>ผู้ป่วยของฉัน</T>
-            <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6, marginTop: 2 }}>
-              <T v="hero" color="#FFFFFF" style={{ fontVariant: ['tabular-nums'] }}>{patients.length}</T>
-              <T v="title" color="rgba(255,255,255,0.7)">ราย</T>
-            </View>
-          </PressableScale>
-          {/* แถบสัดส่วนสถานะ */}
-          <View style={styles.bar}>
-            {SEG.map((x) => {
-              const n = count(x.k);
-              return n ? <View key={x.k} style={{ flex: n / total, backgroundColor: x.c, opacity: filter === 'all' || filter === x.k ? 1 : 0.3 }} /> : null;
-            })}
-          </View>
-          {/* สถานะ: แตะเพื่อกรอง */}
-          <View style={styles.legend}>
-            {SEG.map((x) => {
-              const on = filter === x.k;
-              return (
-                <PressableScale key={x.k} haptic="select" scaleTo={0.95} onPress={() => setFilter(on ? 'all' : x.k)} style={[styles.leg, on && { backgroundColor: 'rgba(255,255,255,0.12)', borderColor: x.c }]} accessibilityLabel={`กรอง ${x.l} ${count(x.k)} ราย`} accessibilityState={{ selected: on }}>
-                  <T v="h3" color="#FFFFFF" style={{ fontVariant: ['tabular-nums'] }}>{count(x.k)}</T>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+          <T v="micro" color="rgba(124,240,168,0.85)" style={styles.kicker}>ผู้ป่วยของฉัน</T>
+          <View style={styles.heroBody}>
+            <PressableScale haptic="select" scaleTo={0.97} onPress={() => setFilter('all')} accessibilityLabel={`ผู้ป่วยทั้งหมด ${patients.length} ราย`}>
+              <StatusRing segs={SEG.map((x) => ({ n: count(x.k), c: x.c, dim: filter !== 'all' && filter !== x.k }))} total={patients.length} />
+            </PressableScale>
+            <View style={{ flex: 1, gap: 4 }}>
+              {SEG.map((x) => {
+                const on = filter === x.k;
+                return (
+                  <PressableScale key={x.k} haptic="select" scaleTo={0.97} onPress={() => setFilter(on ? 'all' : x.k)} style={[styles.legRow, on && { backgroundColor: 'rgba(255,255,255,0.1)' }]} accessibilityLabel={`กรอง ${x.l} ${count(x.k)} ราย`} accessibilityState={{ selected: on }}>
                     <View style={[styles.legDot, { backgroundColor: x.c }]} />
-                    <T v="micro" color="rgba(255,255,255,0.75)" numberOfLines={1} style={{ fontWeight: '600' }}>{x.l}</T>
-                  </View>
-                </PressableScale>
-              );
-            })}
+                    <T v="subhead" color="rgba(255,255,255,0.85)" style={{ flex: 1, fontWeight: '600' }}>{x.l}</T>
+                    <T v="bodyStrong" color="#FFFFFF" style={{ fontVariant: ['tabular-nums'] }}>{count(x.k)}</T>
+                  </PressableScale>
+                );
+              })}
+            </View>
           </View>
         </Animated.View>
 
@@ -140,10 +183,9 @@ const styles = StyleSheet.create({
   hero: { borderRadius: 24, borderCurve: 'continuous', overflow: 'hidden', padding: 18, backgroundColor: '#0A1712' },
   glow: { position: 'absolute', right: -60, top: -80, width: 220, height: 220, borderRadius: 110, backgroundColor: 'rgba(124,240,168,0.10)' },
   kicker: { fontWeight: '700', letterSpacing: 0.5 },
-  bar: { flexDirection: 'row', height: 10, borderRadius: 5, overflow: 'hidden', gap: 3, marginTop: 14, backgroundColor: 'rgba(255,255,255,0.08)' },
-  legend: { flexDirection: 'row', gap: 6, marginTop: 14 },
-  leg: { flex: 1, alignItems: 'center', gap: 2, paddingVertical: 8, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
-  legDot: { width: 6, height: 6, borderRadius: 3 },
+  heroBody: { flexDirection: 'row', alignItems: 'center', gap: 18, marginTop: 12 },
+  legRow: { flexDirection: 'row', alignItems: 'center', gap: 8, height: 30, paddingHorizontal: 10, borderRadius: 10 },
+  legDot: { width: 10, height: 10, borderRadius: 5 },
   listHead: { flexDirection: 'row', alignItems: 'center', marginTop: 18, marginBottom: 8, marginHorizontal: 4 },
   list: { backgroundColor: palette.surface, borderRadius: 20, borderCurve: 'continuous' },
   row: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 12, paddingLeft: 14, paddingRight: 16, minHeight: 76 },
