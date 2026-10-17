@@ -1,18 +1,20 @@
-import { router, useFocusEffect } from 'expo-router';
-import React, { useCallback } from 'react';
+import { router, useFocusEffect, usePathname } from 'expo-router';
+import React, { useCallback, useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { AISphere } from '../../components/AISphere';
-import { Button, T } from '../../components/ui';
+import { T } from '../../components/ui';
 import { askLaunch } from '../../lib/askLaunch';
 
 /**
- * ปุ่มไมค์ "ครูปัญญา" บนแถบเมนู — กดแล้วเปิดหน้าแชทเต็มจอ (ไม่มีแถบเมนู)
- * กดย้อนกลับจากหน้าแชท → กลับหน้าหลัก (ไม่ค้างอยู่ที่แท็บนี้)
+ * แท็บ "ครูปัญญา" บนแถบเมนู — กดแล้วเปิดหน้าแชทเต็มจอ (หน้านี้เป็นแค่ฉากรองด้านหลัง)
+ * ปิดแชท (ปุ่มย้อนกลับ / ปัดขอบจอ) → กลับแท็บที่อยู่ก่อนหน้า
+ * กันค้าง: ถ้าหน้านี้ยังแสดงอยู่เองเกินครู่หนึ่ง (ไม่มีหน้าแชททับ) → พากลับแท็บเดิมอัตโนมัติ
+ *   (ตอนปัดย้อนกลับ ลำดับเหตุการณ์ปิดแชท/โฟกัสแท็บไม่แน่นอน จึงไม่พึ่งแค่ตัวแปรสถานะ)
  */
 export default function AskTab() {
+  const path = usePathname();
   useFocusEffect(
     useCallback(() => {
-      // กลับมาจากหน้าแชท (ปิดด้วยปุ่ม/ปัดย้อนกลับ — หน้าแชทอาจยังไม่ถูกถอดตอนแท็บนี้ได้โฟกัส) → กลับแท็บเดิม
       if (askLaunch.open || askLaunch.justClosed) {
         askLaunch.open = false;
         askLaunch.justClosed = false;
@@ -23,13 +25,21 @@ export default function AskTab() {
       router.push('/assistant');
     }, []),
   );
-  // สำรองไว้ ไม่ให้เห็นหน้าขาวระหว่างสลับหน้า
+  // ฉากรองแสดงค้าง (ไม่มีหน้าแชทอยู่ด้านบน) → กลับแท็บเดิม
+  useEffect(() => {
+    if (path !== '/ask') return;
+    const t = setTimeout(() => {
+      askLaunch.open = false;
+      askLaunch.justClosed = false;
+      router.navigate(askLaunch.lastTab as any);
+    }, 700);
+    return () => clearTimeout(t);
+  }, [path]);
+  // ฉากรองระหว่างเปิด/ปิดแชท (พื้นดำเดียวกับหน้าแชท ไม่มีปุ่มให้ดูเหมือนหน้าค้าง)
   return (
     <View style={styles.page}>
       <AISphere size={110} active />
-      <T v="h2" center color="#FFFFFF" style={{ marginTop: 8 }}>ครูปัญญา</T>
-      <T v="callout" center color="rgba(255,255,255,0.6)" style={{ marginTop: 4 }}>ผู้ช่วย AI สำหรับหมอพื้นบ้าน</T>
-      <Button label="เริ่มคุยกับครูปัญญา" onPress={() => ((askLaunch.open = true), router.push('/assistant'))} style={{ marginTop: 24, alignSelf: 'stretch' }} />
+      <T v="title" center color="rgba(255,255,255,0.8)" style={{ marginTop: 8 }}>ครูปัญญา</T>
     </View>
   );
 }
