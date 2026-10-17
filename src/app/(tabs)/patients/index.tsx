@@ -1,4 +1,6 @@
 import { Stack, router } from 'expo-router';
+import { BlurView } from 'expo-blur';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useMemo, useState } from 'react';
 import { PractitionerGate } from '../../../components/PractitionerGate';
@@ -126,14 +128,17 @@ function PatientsInner() {
       <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
         {/* ── การ์ดสรุปสีเข้ม: วงแหวนสถานะ (แบบแอป Fitness) + รายการสถานะแตะกรองได้ ── */}
         <Animated.View entering={FadeInDown.duration(380)} style={[styles.hero, elevation.e2]}>
-          <LinearGradient colors={['#0F2A1F', '#0A1913', '#050B08']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
-          <View style={styles.glow} pointerEvents="none" />
+          {/* พื้นหลังภาพสมุนไพร เบลอนิดๆ + ไล่มืดฝั่งซ้าย (แบบการ์ดหัวคลังภูมิ) */}
+          <Image source={require('../../../../assets/vault/herbs.jpg')} style={StyleSheet.absoluteFill} contentFit="cover" />
+          <BlurView intensity={10} tint="dark" style={StyleSheet.absoluteFill} />
+          <LinearGradient colors={['rgba(6,20,13,0.78)', 'rgba(6,20,13,0.45)', 'rgba(6,20,13,0.2)']} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={StyleSheet.absoluteFill} />
+          <LinearGradient colors={['rgba(6,20,13,0.35)', 'rgba(6,20,13,0)', 'rgba(6,20,13,0.55)']} locations={[0, 0.4, 1]} style={StyleSheet.absoluteFill} />
           <T v="micro" color="rgba(124,240,168,0.85)" style={styles.kicker}>ผู้ป่วยของฉัน</T>
           <View style={styles.heroBody}>
             <PressableScale haptic="select" scaleTo={0.97} onPress={() => setFilter('all')} accessibilityLabel={`ผู้ป่วยทั้งหมด ${patients.length} ราย`}>
               <StatusRing segs={SEG.map((x) => ({ n: count(x.k), c: x.c, g: x.g, dim: filter !== 'all' && filter !== x.k }))} total={patients.length} />
             </PressableScale>
-            <View style={{ flex: 1, gap: 4 }}>
+            <BlurView intensity={24} tint="dark" style={styles.legPanel}>
               {SEG.map((x) => {
                 const on = filter === x.k;
                 return (
@@ -144,7 +149,7 @@ function PatientsInner() {
                   </PressableScale>
                 );
               })}
-            </View>
+            </BlurView>
           </View>
         </Animated.View>
 
@@ -200,9 +205,9 @@ function PatientsInner() {
 const styles = StyleSheet.create({
   page: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 120 },
   hero: { borderRadius: 24, borderCurve: 'continuous', overflow: 'hidden', padding: 18, backgroundColor: '#0A1712' },
-  glow: { position: 'absolute', right: -60, top: -80, width: 220, height: 220, borderRadius: 110, backgroundColor: 'rgba(124,240,168,0.10)' },
   kicker: { fontWeight: '700', letterSpacing: 0.5 },
   heroBody: { flexDirection: 'row', alignItems: 'center', gap: 18, marginTop: 12 },
+  legPanel: { flex: 1, gap: 2, padding: 4, borderRadius: 16, overflow: 'hidden', backgroundColor: 'rgba(0,0,0,0.22)' },
   legRow: { flexDirection: 'row', alignItems: 'center', gap: 8, height: 30, paddingHorizontal: 10, borderRadius: 10 },
   legDot: { width: 10, height: 10, borderRadius: 5 },
   listHead: { flexDirection: 'row', alignItems: 'center', marginTop: 18, marginBottom: 8, marginHorizontal: 4 },
