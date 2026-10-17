@@ -143,7 +143,7 @@ export default function PinSetup() {
 
 const styles = StyleSheet.create({
   topBtn: { height: 44, justifyContent: 'center', paddingHorizontal: 18, borderRadius: 22 },
-  badge: { width: 68, height: 68, borderRadius: 34, backgroundColor: palette.primarySoft, alignItems: 'center', justifyContent: 'center' },
+  badge: { width: 68, height: 68, borderRadius: 34, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center' },
   faceArt: { alignSelf: 'center', width: 112, height: 112, borderRadius: 30, backgroundColor: palette.primarySoft, alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
   later: { height: 50, alignItems: 'center', justifyContent: 'center' },
   steps: { flexDirection: 'row', gap: 6, marginTop: 18 },
