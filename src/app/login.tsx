@@ -326,11 +326,6 @@ export default function Login() {
             <PressableScale haptic="select" onPress={() => { setError(''); setInfo('ติดต่อ สสจ. หรือ รพ.สต. เพื่อตั้งรหัสผ่านใหม่'); }} style={styles.link}>
               <T v="callout" color={palette.primary}>ลืมรหัสผ่าน?</T>
             </PressableScale>
-            {/* ทดลองใช้: เข้าด้วยบัญชีสาธิต (พ่อหมอสมบัติ) */}
-            <PressableScale haptic="select" onPress={demo} disabled={busy} style={styles.demo} accessibilityLabel="ทดลองใช้งาน">
-              <Sym name="play.circle.fill" size={15} color={palette.primaryDeep} />
-              <T v="subhead" color={palette.primaryDeep} style={{ fontWeight: '600' }}>ทดลองใช้</T>
-            </PressableScale>
           </View>
         ) : (
           <T v="caption" color={ios.tertiary} center style={styles.note}>
@@ -347,6 +342,13 @@ export default function Login() {
             <T v="callout" color={palette.primary} style={{ fontWeight: '700' }}>{mode === 'login' ? 'สมัครบัญชี' : 'เข้าสู่ระบบ'}</T>
           </T>
         </PressableScale>
+        {/* ทดลองใช้: เข้าด้วยบัญชีสาธิต (พ่อหมอสมบัติ) — อยู่ใต้บรรทัดสมัคร */}
+        {mode === 'login' ? (
+          <PressableScale haptic="select" onPress={demo} disabled={busy} style={[styles.demo, { alignSelf: 'center' }]} accessibilityLabel="ทดลองใช้งาน">
+            <Sym name="play.circle.fill" size={15} color={palette.primaryDeep} />
+            <T v="subhead" color={palette.primaryDeep} style={{ fontWeight: '600' }}>ทดลองใช้</T>
+          </PressableScale>
+        ) : null}
     </>
   );
 
