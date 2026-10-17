@@ -78,19 +78,17 @@ export default function Vault() {
             <HeaderButton label="สแกนคิวอาร์โค้ดรับตำรา" onPress={() => router.push('/wisdom/scan-qr')}>
               <Sym name="qrcode.viewfinder" size={20} color={palette.ink} weight="semibold" />
             </HeaderButton>
-            {/* เพิ่มภูมิปัญญา: เล่า / เขียน / สแกน */}
+            {/* เพิ่มภูมิปัญญา: เล่าให้ครูปัญญาฟัง (AI) / เขียนเอง / สแกน */}
             <MenuView
               shouldOpenOnLongPress={false}
               themeVariant="light"
               title="เพิ่มภูมิปัญญา"
               actions={[
-                { id: 'tell', title: 'เล่าให้ครูปัญญาฟัง', subtitle: 'โหมดเล่า เก็บเสียงไว้ แล้วเรียบเรียงเป็นหนังสือ', image: 'waveform', imageColor: palette.ink },
+                { id: 'tell', title: 'เล่าให้ครูปัญญาฟัง', image: 'sparkles', imageColor: palette.primary },
                 { id: 'write', title: 'เขียนเอง', image: 'square.and.pencil', imageColor: palette.ink },
                 { id: 'scan', title: 'สแกนตำราโบราณ', image: 'doc.viewfinder', imageColor: palette.ink },
               ]}
-              onPressAction={({ nativeEvent: e }) =>
-                e.event === 'tell' ? router.push('/wisdom/tell') : e.event === 'scan' ? router.push({ pathname: '/scan', params: { fill: '1' } }) : router.push('/wisdom/new')
-              }
+              onPressAction={({ nativeEvent: e }) => (e.event === 'tell' ? router.push('/wisdom/tell') : e.event === 'scan' ? router.push('/scan') : router.push('/wisdom/new'))}
             >
               <View style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }} accessibilityRole="button" accessibilityLabel="เพิ่มภูมิปัญญา">
                 <Sym name="plus" size={20} color={palette.ink} weight="semibold" />

@@ -15,6 +15,7 @@ import { AISphere } from '../../components/AISphere';
 import { useVoiceRecorder } from '../../components/audio';
 import { Sym } from '../../components/ios';
 import { Waveform } from '../../components/Orb';
+import { useOrbMorph, type OrbFrom } from '../../components/orbMorph';
 import { GlassCircle, PressableScale, T, useHaptic } from '../../components/ui';
 import type { Wisdom, WisdomAudio } from '../../data/mock';
 import { dialectHint } from '../../lib/dialect';
@@ -42,6 +43,12 @@ const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export default function TellWisdom() {
   const { from } = useLocalSearchParams<{ from?: string }>();
+  return <TellView from={from} />;
+}
+
+/** โหมดเล่า — ใช้ได้ทั้งเป็นหน้าเอง และต่อจากหน้าเพิ่มภูมิปัญญาในหน้าเดียวกัน (ลูกแก้วเลื่อนต่อ) */
+export function TellView({ from, morphFrom }: { from?: string; morphFrom?: OrbFrom }) {
+  const orb = useOrbMorph(morphFrom);
   const insets = useSafeAreaInsets();
   const h = useHaptic();
   const rec = useVoiceRecorder();
@@ -297,9 +304,11 @@ ${KINDS.map((k) => `${k}: ${TOPICS[k].join(', ')}`).join('\n')}
       </View>
 
       <View style={{ alignItems: 'center', marginTop: 6 }}>
-        <PressableScale haptic="none" scaleTo={0.97} onPress={phase === 'ready' ? start : phase === 'recording' ? pause : phase === 'paused' ? resume : undefined} accessibilityLabel={status}>
-          <AISphere size={pieces.length || phase !== 'ready' ? 170 : 220} active={live || phase === 'checking' || phase === 'writing'} level={(live ? micLevel : undefined) as any} />
-        </PressableScale>
+        <Animated.View ref={orb.ref} onLayout={orb.onLayout} style={orb.style}>
+          <PressableScale haptic="none" scaleTo={0.97} onPress={phase === 'ready' ? start : phase === 'recording' ? pause : phase === 'paused' ? resume : undefined} accessibilityLabel={status}>
+            <AISphere size={pieces.length || phase !== 'ready' ? 170 : 220} active={live || phase === 'checking' || phase === 'writing'} level={(live ? micLevel : undefined) as any} />
+          </PressableScale>
+        </Animated.View>
         <View style={styles.statusPill}>
           {live ? <View style={styles.liveDot} /> : null}
           <T v="subhead" color="rgba(255,255,255,0.88)">{status}</T>

@@ -198,8 +198,8 @@ function PatientBody({ p }: { p: Patient }) {
                 themeVariant="light"
                 title={`บันทึกการรักษาครั้งที่ ${(p.visits[0]?.no ?? 0) + 1}`}
                 actions={[
-                  { id: 'ai', title: 'ให้ครูปัญญาบันทึก', subtitle: 'เล่าอาการด้วยเสียง ครูปัญญาถามและจดให้', image: 'waveform', imageColor: palette.primary },
-                  { id: 'manual', title: 'กรอกเอง', subtitle: 'กรอกตามแบบ ม.บ.5', image: 'square.and.pencil', imageColor: palette.ink },
+                  { id: 'ai', title: 'ให้ครูปัญญาบันทึก', image: 'sparkles', imageColor: palette.primary },
+                  { id: 'manual', title: 'กรอกเอง', image: 'square.and.pencil', imageColor: palette.ink },
                 ]}
                 onPressAction={({ nativeEvent }) => (nativeEvent.event === 'ai' ? record() : nativeEvent.event === 'manual' ? recordManual() : undefined)}
               >

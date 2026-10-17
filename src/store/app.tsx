@@ -124,6 +124,17 @@ type Ctx = {
 };
 
 const AppCtx = createContext<Ctx>(null as any);
+
+/** ตำราซ้ำ (id เดียวกัน หรือสำเนาที่รับจากเพื่อนเล่มเดียวกัน) → เก็บเล่มแรกเล่มเดียว */
+function dedupeWisdoms(list: Wisdom[]): Wisdom[] {
+  const seen = new Set<string>();
+  return list.filter((w) => {
+    const keys = [`id:${w.id}`, w.shareCode ? `code:${w.shareCode}` : '', w.sharedBy ? `from:${w.sharedBy}|${w.title}` : ''].filter(Boolean);
+    if (keys.some((k) => seen.has(k))) return false;
+    keys.forEach((k) => seen.add(k));
+    return true;
+  });
+}
 const KEY = 'suebsan.v1';
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
@@ -133,7 +144,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // mine = ตำราของผู้ใช้ (บันทึกเครื่อง/คลาวด์) · wisdoms = ของผู้ใช้ + ตำราเริ่มต้นในระบบ
   const [mine, setMineRaw] = useState<Wisdom[]>(seedWisdoms);
   const setWisdoms = (v: Wisdom[] | ((l: Wisdom[]) => Wisdom[])) =>
-    setMineRaw((l) => (typeof v === 'function' ? v(l) : v).filter((x) => !isLegacyWisdom(x) && !x.builtin));
+    setMineRaw((l) => dedupeWisdoms((typeof v === 'function' ? v(l) : v).filter((x) => !isLegacyWisdom(x) && !x.builtin)));
   const wisdoms = useMemo(() => [...mine, ...LIBRARY], [mine]);
   const [patients, setPatientsRaw] = useState<Patient[]>(seedPatients);
   // กรองผู้ป่วยตัวอย่างรุ่นเก่าออกเสมอ
