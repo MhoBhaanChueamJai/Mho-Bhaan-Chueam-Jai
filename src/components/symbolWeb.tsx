@@ -79,6 +79,8 @@ const MAP: Record<string, keyof typeof Ionicons.glyphMap> = {
   wind: 'cloudy-outline',
   'camera.viewfinder': 'scan-outline',
   'leaf.circle': 'leaf-outline',
+  'cloud.rain.fill': 'rainy',
+  snowflake: 'snow-outline',
   'doc.plaintext': 'document-text-outline',
   'clock.fill': 'time',
   'person.crop.circle': 'person-circle-outline',

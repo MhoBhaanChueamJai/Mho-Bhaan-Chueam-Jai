@@ -6,16 +6,17 @@ import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, router } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated, { FadeInDown, LinearTransition } from 'react-native-reanimated';
 import { Sym, ios } from '../../../components/ios';
 import { HeaderButton, PressableScale, T } from '../../../components/ui';
 import { herbs, tasteTone, tastes, type Herb } from '../../../data/herbs';
+import { dailyTip, todayPick } from '../../../lib/herbDaily';
 import { elementColor, elevation, palette } from '../../../theme';
 
-/** สมุนไพรประจำวัน — เปลี่ยนทุกวัน */
-const todayHerb = () => herbs[Math.floor(Date.now() / 86400000) % herbs.length];
+const TH_DAY = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์'];
+const TH_MON = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
 
 /** การ์ดสมุนไพรภาพเต็มใบ (แบบการ์ดของ Apple): ภาพเต็มการ์ด · ไล่เงาล่าง · ชื่อขาว · สรรพคุณ · แคปซูลกระจกรส/ธาตุ */
 function HerbCard({ h, i, w }: { h: Herb; i: number; w: number }) {
@@ -53,7 +54,24 @@ function HerbCard({ h, i, w }: { h: Herb; i: number; w: number }) {
 export default function Herbs() {
   const { width: SW } = useWindowDimensions();
   const cardW = Math.floor((SW - 32 - 12) / 2);
-  const today = todayHerb();
+  // ── สมุนไพรประจำวัน: ตามฤดู + เคล็ดลับจากครูปัญญา ──
+  const pick = todayPick();
+  const today = pick.herb;
+  const [tip, setTip] = useState<string | null>(null);
+  useEffect(() => {
+    let alive = true;
+    dailyTip(pick)
+      .then((t) => alive && setTip(t || today.howto))
+      .catch(() => alive && setTip(today.howto));
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pick.dateKey, today.id]);
+  const now = new Date();
+  const dateLabel = `${TH_DAY[now.getDay()]} ${now.getDate()} ${TH_MON[now.getMonth()]}`;
+  const tTone = tasteTone[today.taste];
+  const tEl = elementColor[today.element];
   const national = herbs.filter((h) => h.nationalList).length;
   const [taste, setTaste] = useState<(typeof tastes)[number]>('ทั้งหมด');
   // แสดงเฉพาะรสที่มีสมุนไพรจริง
@@ -94,21 +112,62 @@ export default function Herbs() {
           </PressableScale>
         </Animated.View>
 
-        {/* ── สมุนไพรประจำวัน ── */}
-        <T v="h3" style={styles.sec}>สมุนไพรประจำวัน</T>
+        {/* ── สมุนไพรประจำวัน: เลือกตามฤดู + เคล็ดลับจากครูปัญญา ── */}
+        <View style={styles.secRow}>
+          <T v="h3">สมุนไพรประจำวัน</T>
+          <T v="subhead" color={ios.secondary}>{dateLabel}</T>
+        </View>
         <Animated.View entering={FadeInDown.delay(80).duration(380)}>
-          <PressableScale scaleTo={0.98} haptic="select" onPress={() => router.push(`/herb/${today.id}`)} style={[styles.today, elevation.e1]} accessibilityLabel={`สมุนไพรประจำวัน ${today.name}`}>
-            <Image source={today.image} style={styles.todayImg} contentFit="cover" transition={250} />
-            <View style={{ flex: 1, gap: 3 }}>
-              <View style={styles.todayBadge}>
-                <Sym name="sun.max.fill" size={11} color={palette.primaryDeep} />
-                <T v="micro" color={palette.primaryDeep} style={{ fontWeight: '700' }}>วันนี้</T>
+          <PressableScale scaleTo={0.985} haptic="select" onPress={() => router.push(`/herb/${today.id}`)} style={[styles.today, elevation.e1]} accessibilityLabel={`สมุนไพรประจำวัน ${today.name}`}>
+            {/* ภาพเต็มกว้าง + ชื่อบนภาพ */}
+            <View style={styles.todayPhoto}>
+              <Image source={today.image} style={StyleSheet.absoluteFill} contentFit="cover" transition={250} />
+              <LinearGradient colors={['rgba(0,0,0,0)', 'rgba(4,18,10,0.82)']} locations={[0.35, 1]} style={StyleSheet.absoluteFill} />
+              <View style={styles.seasonBadge}>
+                <BlurView intensity={30} tint="light" style={StyleSheet.absoluteFill} />
+                <Sym name={pick.season.key === 'hot' ? 'sun.max.fill' : pick.season.key === 'rain' ? 'cloud.rain.fill' : 'snowflake'} size={12} color="#FFFFFF" />
+                <T v="micro" color="#FFFFFF" style={{ fontWeight: '700' }}>{pick.season.name} · {pick.season.advice}</T>
               </View>
-              <T v="h3" numberOfLines={1}>{today.name}</T>
-              <T v="caption" color={ios.secondary} numberOfLines={1} style={{ fontStyle: 'italic' }}>{today.sci}</T>
-              <T v="subhead" color={palette.inkSoft} numberOfLines={2}>{today.uses.slice(0, 2).join(' · ')}</T>
+              <View style={styles.todayText}>
+                <T v="h2" color="#FFFFFF" numberOfLines={1}>{today.name}</T>
+                <T v="subhead" color="rgba(255,255,255,0.8)" numberOfLines={1} style={{ fontStyle: 'italic' }}>{today.sci}</T>
+              </View>
             </View>
-            <Sym name="chevron.right" size={13} color={ios.tertiary} weight="semibold" />
+            <View style={styles.todayBody}>
+              <View style={styles.todayPills}>
+                <View style={[styles.tPill, { backgroundColor: tTone.bg }]}>
+                  <T v="caption" color={tTone.fg} style={{ fontWeight: '700' }}>รส{today.taste}</T>
+                </View>
+                <View style={[styles.tPill, { backgroundColor: tEl.bg }]}>
+                  <T v="caption" color={tEl.fg} style={{ fontWeight: '700' }}>{tEl.label}</T>
+                </View>
+                {pick.fitsSeason ? (
+                  <View style={[styles.tPill, { backgroundColor: palette.primarySoft }]}>
+                    <T v="caption" color={palette.primaryDeep} style={{ fontWeight: '700' }}>เหมาะกับ{pick.season.name}</T>
+                  </View>
+                ) : null}
+              </View>
+              {/* เคล็ดลับประจำวันจากครูปัญญา */}
+              <View style={styles.tip}>
+                <View style={styles.tipHead}>
+                  <Sym name="sparkles" size={13} color={palette.primary} />
+                  <T v="caption" color={palette.primaryDeep} style={{ fontWeight: '700' }}>เคล็ดลับวันนี้จากครูปัญญา</T>
+                </View>
+                {tip === null ? (
+                  <View style={{ gap: 6, marginTop: 4 }}>
+                    <View style={[styles.skel, { width: '92%' }]} />
+                    <View style={[styles.skel, { width: '64%' }]} />
+                  </View>
+                ) : (
+                  <T v="body" color={palette.ink} style={{ lineHeight: 24 }}>{tip}</T>
+                )}
+              </View>
+              <View style={styles.todayFoot}>
+                <T v="caption" color={ios.secondary} style={{ flex: 1 }}>{pick.season.pali} · หลักกินตามฤดูแพทย์แผนไทย</T>
+                <T v="subhead" color={palette.primary} style={{ fontWeight: '600' }}>ดูรายละเอียด</T>
+                <Sym name="chevron.right" size={12} color={palette.primary} weight="semibold" />
+              </View>
+            </View>
           </PressableScale>
         </Animated.View>
 
@@ -151,9 +210,17 @@ const styles = StyleSheet.create({
   scanBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', height: 36, paddingHorizontal: 14, marginTop: 12, borderRadius: 18, backgroundColor: '#7CF0A8' },
   sec: { marginTop: 28, marginBottom: 12, marginLeft: 4 },
   secRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginTop: 28, marginBottom: 10, paddingHorizontal: 4 },
-  today: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 12, borderRadius: 24, borderCurve: 'continuous', backgroundColor: palette.surface },
-  todayImg: { width: 92, height: 92, borderRadius: 18, borderCurve: 'continuous', backgroundColor: palette.bgDeep },
-  todayBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, backgroundColor: palette.primarySoft },
+  today: { borderRadius: 26, borderCurve: 'continuous', backgroundColor: palette.surface, overflow: 'hidden' },
+  todayPhoto: { height: 190, backgroundColor: palette.bgDeep, justifyContent: 'flex-end' },
+  seasonBadge: { position: 'absolute', top: 12, left: 12, flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.14)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.35)' },
+  todayText: { padding: 16 },
+  todayBody: { padding: 16, gap: 12 },
+  todayPills: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  tPill: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999 },
+  tip: { padding: 14, borderRadius: 18, borderCurve: 'continuous', backgroundColor: palette.mint, gap: 4 },
+  tipHead: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  skel: { height: 12, borderRadius: 6, backgroundColor: 'rgba(20,144,92,0.12)' },
+  todayFoot: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   chips: { gap: 8, paddingHorizontal: 16, paddingBottom: 14 },
   chip: { paddingHorizontal: 14, height: 36, justifyContent: 'center', borderRadius: 18, backgroundColor: palette.surface, borderWidth: 1, borderColor: ios.separator },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
