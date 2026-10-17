@@ -1,7 +1,8 @@
 /**
- * โครงหน้าจอ PIN (ปลดล็อก / ตั้ง PIN) — ชั้นเดียวแบบหน้าใส่รหัสของ iPhone บนพื้นสว่างเรียบ
+ * โครงหน้าจอ PIN (ปลดล็อก / ตั้ง PIN) — ชั้นเดียวแบบหน้าใส่รหัสของ iPhone บนพื้นสว่าง ไล่สีเขียวอ่อนมาก
  * ปุ่มบนสุด → รูป/ไอคอน → หัวข้อ → คำอธิบาย → ข้อความแจ้ง → จุด PIN + แป้นตัวเลข (Liquid Glass) → footer
  */
+import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -34,6 +35,8 @@ export function PinShell({
   return (
     <View style={[styles.page, { paddingTop: insets.top + 4, paddingBottom: insets.bottom + 8 }]}>
       <StatusBar style="dark" />
+      {/* ไล่สีเขียวอ่อนมาก: บนเขียวมิ้นต์ → กลางจอพื้นแอป → ล่างเขียวจางๆ */}
+      <LinearGradient colors={['#DDF1E5', '#EEF8F2', palette.bg, '#EAF6EF']} locations={[0, 0.35, 0.65, 1]} style={StyleSheet.absoluteFill} />
       <View style={styles.topBar}>
         <View>{topLeft}</View>
         <View>{topRight}</View>
