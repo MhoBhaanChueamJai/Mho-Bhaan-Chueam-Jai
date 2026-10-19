@@ -202,7 +202,7 @@ function PatientBody({ p }: { p: Patient }) {
                 themeVariant="light"
                 actions={[
                   { id: 'refer', title: 'ใบส่งต่อ รพ.สต.', image: 'arrowshape.turn.up.right.fill', imageColor: palette.ink },
-                  { id: 'share', title: 'ส่งออกแบบ ม.บ.5 (PDF)', image: 'square.and.arrow.up', imageColor: palette.ink },
+                  { id: 'share', title: 'ส่งออก ม.บ.5', image: 'square.and.arrow.up', imageColor: palette.ink },
                   { id: 'delete', title: 'ลบผู้ป่วย', image: 'trash', imageColor: '#E5484D', attributes: { destructive: true } },
                 ]}
                 onPressAction={({ nativeEvent: e }) => (e.event === 'refer' ? router.push({ pathname: '/patient/referral', params: { pid: p.id } }) : e.event === 'share' ? exportMb5() : e.event === 'delete' ? remove() : undefined)}
