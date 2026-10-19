@@ -2,7 +2,7 @@
  * แก้ไขข้อมูลส่วนตัว — ชื่อ นามสกุล (อีเมลแสดงอย่างเดียว · ข้อมูลการรับรองหมอพื้นบ้านแก้ไม่ได้)
  */
 import { router } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Alert } from '../../lib/alert';
 import { TextInput } from '../../components/AppText';
@@ -38,6 +38,13 @@ export default function EditAccount() {
   const h = useHaptic();
   const [first, setFirst] = useState(profile?.first_name ?? profile?.display_name?.split(' ')[0] ?? '');
   const [last, setLast] = useState(profile?.last_name ?? profile?.display_name?.split(' ').slice(1).join(' ') ?? '');
+  // โปรไฟล์โหลดมาทีหลัง (เปิดหน้านี้ก่อนโหลดเสร็จ) → เติมค่าให้ ถ้ายังไม่ได้พิมพ์อะไร
+  const touched = useRef(false);
+  useEffect(() => {
+    if (touched.current || !profile) return;
+    setFirst(profile.first_name ?? profile.display_name?.split(' ')[0] ?? '');
+    setLast(profile.last_name ?? profile.display_name?.split(' ').slice(1).join(' ') ?? '');
+  }, [profile]);
   const [busy, setBusy] = useState(false);
   const changed = first.trim() !== (profile?.first_name ?? '') || last.trim() !== (profile?.last_name ?? '');
   const can = !!first.trim() && !!last.trim() && changed && !busy && !demo;
@@ -67,8 +74,8 @@ export default function EditAccount() {
         </View>
       ) : null}
       <View style={[styles.card, elevation.e1]}>
-        <Field label="ชื่อ" value={first} onChange={setFirst} editable={!demo} />
-        <Field label="นามสกุล" value={last} onChange={setLast} editable={!demo} />
+        <Field label="ชื่อ" value={first} onChange={(v) => ((touched.current = true), setFirst(v))} editable={!demo} />
+        <Field label="นามสกุล" value={last} onChange={(v) => ((touched.current = true), setLast(v))} editable={!demo} />
         <Field label="อีเมล" value={profile?.email ?? '-'} editable={false} />
       </View>
       <T v="caption" color={ios.secondary} style={{ marginHorizontal: 6 }}>
