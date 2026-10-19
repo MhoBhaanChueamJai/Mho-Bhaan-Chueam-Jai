@@ -171,6 +171,7 @@ const MAP: Record<string, string> = {
   'printer.fill': 'print',
   'paperplane.fill': 'paper-plane',
   circle: 'ellipse-outline',
+  link: 'link',
   'building.2.fill': 'business',
   'arrowshape.turn.up.right.fill': 'arrow-redo',
   flask: 'flask-outline',

@@ -10,8 +10,9 @@ import { TextInput } from '../../components/AppText';
 import { Switch } from '../../components/AppSwitch';
 import { NotFound } from '../../components/NotFound';
 import { Sym, ios } from '../../components/ios';
-import { Button, GlassDock, T, useHaptic } from '../../components/ui';
+import { Button, GlassDock, PressableScale, T, useHaptic } from '../../components/ui';
 import { useDoctor } from '../../components/useDoctor';
+import { FACILITIES } from '../../data/facilities';
 import { lastVisit } from '../../data/mock';
 import { Alert } from '../../lib/alert';
 import { outputPdf, referralHtml } from '../../lib/printDocs';
@@ -27,7 +28,8 @@ export default function Referral() {
   const h = useHaptic();
   const p = patients.find((x) => x.id === pid);
   const v = p ? lastVisit(p) : undefined;
-  const [to, setTo] = useState('รพ.สต. ');
+  const [fid, setFid] = useState(FACILITIES[0].id);
+  const to = FACILITIES.find((f) => f.id === fid)!.name;
   const [reason, setReason] = useState(v?.diagnosis ? `อาการ${v.diagnosis}ไม่ดีขึ้นหลังการรักษาแบบแผนไทย ควรได้รับการตรวจวินิจฉัยเพิ่มเติม` : '');
   const [extra, setExtra] = useState('');
   const [urgent, setUrgent] = useState(false);
@@ -41,7 +43,7 @@ export default function Referral() {
 
   // ส่งข้อมูลให้สถานพยาบาลปลายทาง (จำลอง: เตรียมข้อมูล → ส่ง → ปลายทางได้รับ)
   const send = async () => {
-    if (phase !== 'form' || !to.trim()) return;
+    if (phase !== 'form' || !to) return;
     setPhase('sending');
     for (let i = 0; i < SEND_STEPS.length; i++) {
       setStep(i);
@@ -59,7 +61,7 @@ export default function Referral() {
     if (busy) return;
     setBusy(true);
     try {
-      await outputPdf(referralHtml(p, v, { to: to.trim(), reason: reason.trim(), urgent, extra: extra.trim(), no: refNo }, dr), `ใบส่งต่อ ${p.name}`);
+      await outputPdf(referralHtml(p, v, { to: to, reason: reason.trim(), urgent, extra: extra.trim(), no: refNo }, dr), `ใบส่งต่อ ${p.name}`);
     } catch {
       Alert.alert('สร้างเอกสารไม่สำเร็จ', 'ลองใหม่อีกครั้ง');
     } finally {
@@ -85,13 +87,13 @@ export default function Referral() {
             </Animated.View>
             <Animated.View entering={FadeInDown.delay(120)} style={{ gap: 4 }}>
               <T v="h2" center>ส่งข้อมูลแล้ว</T>
-              <T v="callout" color={ios.secondary} center>{to.trim()} ได้รับข้อมูลผู้ป่วยแล้ว</T>
+              <T v="callout" color={ios.secondary} center>{to} ได้รับข้อมูลผู้ป่วยแล้ว</T>
             </Animated.View>
             <Animated.View entering={FadeInDown.delay(200)} style={[styles.card, elevation.e1, { gap: 0, paddingVertical: 4 }]}>
               {[
                 ['เลขที่ส่งต่อ', refNo],
                 ['ผู้ป่วย', p.name],
-                ['ส่งถึง', to.trim()],
+                ['ส่งถึง', to],
                 ['เวลาที่ส่ง', `${sentAt} น.`],
                 ['ความเร่งด่วน', urgent ? 'ด่วน' : 'ปกติ'],
               ].map(([k, val], i) => (
@@ -112,8 +114,31 @@ export default function Referral() {
               <T v="caption" color={ios.secondary}>{v ? `การรักษาครั้งที่ ${v.no} · ${v.date} · ${v.diagnosis || 'ไม่ระบุการวินิจฉัย'}` : 'ยังไม่มีบันทึกการรักษา'}</T>
             </View>
           </View>
+          <View style={{ gap: 6 }}>
+            <View style={styles.secHead}>
+              <T v="subhead" color={ios.secondary} style={{ fontWeight: '600', flex: 1 }}>ส่งถึง</T>
+              <Sym name="link" size={12} color={palette.primary} />
+              <T v="caption" color={palette.primary} style={{ fontWeight: '600' }}>เชื่อมกับระบบ {FACILITIES.length} แห่ง</T>
+            </View>
+            <View style={[styles.card, elevation.e1, { paddingVertical: 4 }]}>
+              {FACILITIES.map((f, i) => {
+                const on = f.id === fid;
+                return (
+                  <PressableScale key={f.id} haptic="select" scaleTo={0.98} disabled={phase !== 'form'} onPress={() => setFid(f.id)} style={[styles.fac, i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: ios.separator }]} accessibilityState={{ selected: on }} accessibilityLabel={f.name}>
+                    <View style={[styles.facIcon, { backgroundColor: f.kind === 'โรงพยาบาล' ? '#3B7DD8' : palette.primary }]}>
+                      <Sym name="building.2.fill" size={16} color="#FFFFFF" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <T v="body" style={{ fontWeight: on ? '700' : '500' }}>{f.name}</T>
+                      <T v="caption" color={ios.secondary}>{f.area} · {f.km} กม.</T>
+                    </View>
+                    <Sym name={on ? 'checkmark.circle.fill' : 'circle'} size={22} color={on ? palette.primary : ios.tertiary} />
+                  </PressableScale>
+                );
+              })}
+            </View>
+          </View>
           <View style={[styles.card, elevation.e1, { gap: 14 }]}>
-            {Field({ label: 'ส่งถึง', value: to, onChange: setTo, placeholder: 'เช่น รพ.สต.บ้านดอนแก้ว' })}
             {Field({ label: 'เหตุผลที่ส่งต่อ', value: reason, onChange: setReason, multiline: true })}
             {Field({ label: 'หมายเหตุเพิ่มเติม (ถ้ามี)', value: extra, onChange: setExtra, multiline: true, placeholder: 'เช่น ผู้ป่วยแพ้ยาแก้ปวด' })}
           </View>
@@ -147,7 +172,7 @@ export default function Referral() {
               <Button label="เสร็จ" kind="secondary" onPress={() => router.back()} style={{ height: 52 }} />
             </View>
           ) : (
-            <Button label={phase === 'sending' ? 'กำลังส่งข้อมูล…' : 'ส่งข้อมูลให้สถานพยาบาล'} icon={phase === 'form' ? <Sym name="paperplane.fill" size={17} color="#FFFFFF" /> : undefined} disabled={phase !== 'form' || !to.trim()} onPress={send} style={{ flex: 1, height: 52 }} />
+            <Button label={phase === 'sending' ? 'กำลังส่งข้อมูล…' : 'ส่งข้อมูลให้สถานพยาบาล'} icon={phase === 'form' ? <Sym name="paperplane.fill" size={17} color="#FFFFFF" /> : undefined} disabled={phase !== 'form' || !to} onPress={send} style={{ flex: 1, height: 52 }} />
           )}
         </GlassDock>
       </KeyboardAvoidingView>
@@ -161,6 +186,9 @@ const styles = StyleSheet.create({
   who: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   input: { minHeight: 52, borderRadius: 26, paddingHorizontal: 18, backgroundColor: palette.mint, fontSize: 17, color: palette.ink },
   sw: { flexDirection: 'row', alignItems: 'center', minHeight: 52, gap: 10 },
+  secHead: { flexDirection: 'row', alignItems: 'center', gap: 4, marginHorizontal: 4 },
+  fac: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 60, paddingVertical: 8 },
+  facIcon: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   step: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   done: { alignSelf: 'center', width: 84, height: 84, borderRadius: 42, alignItems: 'center', justifyContent: 'center', backgroundColor: palette.primary, marginTop: 12 },
 });
