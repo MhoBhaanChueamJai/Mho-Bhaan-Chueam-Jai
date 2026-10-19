@@ -6,13 +6,13 @@
  */
 import * as WebBrowser from 'expo-web-browser';
 import { Platform } from 'react-native';
-import { supabase } from './supabase';
+import { SUPABASE_KEY, SUPABASE_URL, supabase } from './supabase';
 
 // เว็บ: เก็บ # ที่ Google ส่งกลับไว้ตั้งแต่โหลดหน้า (ก่อน router เปลี่ยน URL)
 const WEB_RETURN = Platform.OS === 'web' && typeof window !== 'undefined' ? window.location.hash : '';
 
 const webRedirect = () => {
-  const base = (process.env.EXPO_BASE_URL ?? '').replace(/\/$/, '');
+  const base = __DEV__ ? '' : (process.env.EXPO_BASE_URL ?? '').replace(/\/$/, '');
   return `${window.location.origin}${base}/login`;
 };
 
@@ -48,6 +48,11 @@ export async function googleDisplayName() {
  * คืน true เมื่อได้ session แล้ว (iOS/Android) · false เมื่อผู้ใช้ยกเลิก · เว็บ: เปลี่ยนหน้าไป Google (ไม่คืนค่า)
  */
 export async function signInWithGoogle(): Promise<boolean> {
+  // ยังไม่เปิด Google ใน Supabase → แจ้งในแอป (ไม่พาไปหน้า error ของเซิร์ฟเวอร์)
+  const st = await fetch(`${SUPABASE_URL}/auth/v1/settings`, { headers: { apikey: SUPABASE_KEY } })
+    .then((r) => r.json())
+    .catch(() => null);
+  if (st && !st.external?.google) throw new Error('provider is not enabled');
   const redirectTo = Platform.OS === 'web' ? webRedirect() : 'suebsan://login';
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
