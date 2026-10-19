@@ -202,5 +202,40 @@ export async function resetCloud() {
   for (const t of ['user_events', 'appointments', 'visits', 'wisdoms', 'patients']) {
     check(await supabase.from(t).delete().not('owner', 'is', null));
   }
+  await removePatientFile().catch(() => {});
   await seedIfEmpty();
+}
+
+/**
+ * ผู้ป่วยของบัญชีที่ยังไม่ได้ยืนยันกับทะเบียน (ตารางผู้ป่วยให้สิทธิ์เฉพาะหมอที่ยืนยันแล้ว)
+ * → เก็บทั้งชุดเป็นไฟล์ส่วนตัวใน Storage โฟลเดอร์ของผู้ใช้ (เจ้าของเท่านั้นที่อ่าน/เขียนได้ · ลบบัญชีแล้วลบตาม)
+ */
+const RECORDS_BUCKET = 'wisdom-audio';
+const recordsPath = async () => {
+  const { data } = await supabase.auth.getSession();
+  const uid = data.session?.user.id;
+  if (!uid) throw new Error('no session');
+  return `${uid}/patients/records.json`;
+};
+export async function loadPatientFile(): Promise<{ patients: Patient[]; savedAt: number } | null> {
+  const path = await recordsPath();
+  const b = supabase.storage.from(RECORDS_BUCKET);
+  const { data: list, error: le } = await b.list(path.replace(/\/[^/]+$/, ''), { search: 'records.json' });
+  if (le) throw le;
+  if (!list?.some((x) => x.name === 'records.json')) return null;
+  const { data, error } = await b.createSignedUrl(path, 60);
+  if (error) throw error;
+  const r = await fetch(data.signedUrl, { cache: 'no-store' });
+  if (!r.ok) throw new Error(`records ${r.status}`);
+  const j = await r.json();
+  return Array.isArray(j?.patients) ? { patients: j.patients, savedAt: Number(j.savedAt) || 0 } : null;
+}
+export async function savePatientFile(patients: Patient[]) {
+  const path = await recordsPath();
+  const body = new TextEncoder().encode(JSON.stringify({ v: 1, savedAt: Date.now(), patients }));
+  const { error } = await supabase.storage.from(RECORDS_BUCKET).upload(path, body, { contentType: 'application/json', upsert: true });
+  if (error) throw error;
+}
+async function removePatientFile() {
+  await supabase.storage.from(RECORDS_BUCKET).remove([await recordsPath()]);
 }

@@ -182,7 +182,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
    */
   const pending = useRef(new Map<string, () => Promise<unknown>>());
   const [pendingCount, setPendingCount] = useState(0);
-  // บัญชีที่ยังไม่ได้ยืนยันกับทะเบียน (เซิร์ฟเวอร์ไม่ให้สิทธิ์ข้อมูลผู้ป่วย) → ผู้ป่วยเก็บในเครื่องอย่างเดียว ไม่ส่งขึ้นคลาวด์
+  // บัญชีที่ยังไม่ได้ยืนยันกับทะเบียน (ตารางผู้ป่วยไม่ให้สิทธิ์) → ไม่เขียนลงตาราง แต่สำรองทั้งชุดเป็นไฟล์ส่วนตัวบนคลาวด์แทน
   const patientsLocal = useRef(false);
   const pushPatient = (fn: () => Promise<unknown>, key: string) => {
     if (patientsLocal.current) return;
@@ -257,6 +257,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       // ── รวมข้อมูล (ไม่ทับ): ของที่บันทึกในเครื่องหลังซิงก์ครั้งล่าสุดแต่ยังไม่ขึ้นคลาวด์ → เก็บไว้และอัปโหลด ──
       const since = settings.lastSyncAt ?? 0;
       const idTime = (id: string) => Number(id.replace(/^[a-z]+/, '')) || 0;
+      // ยังไม่ได้ยืนยันกับทะเบียน: ผู้ป่วยอยู่ในไฟล์ส่วนตัวบนคลาวด์ → รวมกับของในเครื่อง
+      if (!practitioner) {
+        const f = await cloud.loadPatientFile();
+        if (f) {
+          const cloudNewer = f.savedAt > since; // มีเครื่องอื่นบันทึกหลังซิงก์ครั้งล่าสุดของเครื่องนี้
+          const localMap = new Map(patients.map((x) => [x.id, x]));
+          const cloudIds = new Set(f.patients.map((x) => x.id));
+          const merged: Patient[] = [];
+          for (const cp of f.patients) {
+            const lp = localMap.get(cp.id);
+            if (!lp) {
+              if (cloudNewer) merged.push(cp); // ลบในเครื่องนี้ไปแล้ว (คลาวด์ไม่ได้ใหม่กว่า) → ไม่เอากลับมา
+              continue;
+            }
+            const base = cloudNewer ? cp : lp;
+            const byNo = new Map([...cp.visits, ...lp.visits].map((v) => [v.no, v]));
+            base.visits.forEach((v) => byNo.set(v.no, v));
+            merged.push({ ...base, visits: [...byNo.values()].sort((a, b) => b.no - a.no) });
+          }
+          for (const lp of patients) if (!cloudIds.has(lp.id) && (!cloudNewer || idTime(lp.id) > since)) merged.push(lp);
+          setPatients(merged);
+        }
+      }
       const cloudP = new Map(d.patients.map((x) => [x.id, x]));
       const upP: Patient[] = [];
       const upV: { pid: string; v: MB5Visit }[] = [];
@@ -348,6 +371,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (ready) AsyncStorage.setItem(KEY, JSON.stringify({ settings, wisdoms: mine, patients, searchLog, openLog, agenda })).catch(() => {});
   }, [settings, mine, patients, searchLog, openLog, agenda, ready]);
 
+  // บัญชีที่ยังไม่ได้ยืนยัน: ผู้ป่วยเปลี่ยน → อัปโหลดไฟล์สำรองขึ้นคลาวด์ (รวบหลายการแก้ไขเป็นครั้งเดียว)
+  const fileTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!online || demo || !patientsLocal.current) return;
+    if (fileTimer.current) clearTimeout(fileTimer.current);
+    const snapshot = patients;
+    fileTimer.current = setTimeout(() => {
+      push(async () => {
+        await cloud.savePatientFile(snapshot);
+        setSettings((st) => ({ ...st, lastSyncAt: Date.now() }));
+      }, 'patients-file');
+    }, 1200);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [patients, online, demo]);
+
   const value = useMemo<Ctx>(
     () => ({
       settings,
@@ -434,7 +472,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       // ช่วงทดสอบ: ทุกบัญชีใช้งานการรักษาผู้ป่วยได้ ไม่ต้องยืนยันตัวตนหมอพื้นบ้าน
       isPractitioner: true,
       certified: (profile?.role ?? settings.role) !== 'member',
-      patientsLocalOnly: demo || (profile?.role ?? settings.role) === 'member',
+      patientsLocalOnly: demo,
       clearLocal: () => {
         // ประวัติแชทครูปัญญาเป็นข้อมูลส่วนตัวของผู้ใช้คนนี้ → ล้างเมื่อออกจากระบบ
         clearChats().catch(() => {});
