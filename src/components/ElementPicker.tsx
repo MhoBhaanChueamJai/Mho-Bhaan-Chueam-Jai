@@ -20,20 +20,25 @@ import { palette } from '../theme';
 type El = Patient['element'];
 
 const P = (d: string) => Skia.Path.MakeFromSVGString(d)!;
+/** เส้นทางรูปร่าง (สร้างครั้งแรกตอนวาด — บนเว็บ Skia พร้อมหลังโหลด CanvasKit) */
+let _paths: Record<string, ReturnType<typeof P>> | null = null;
+const PT = () =>
+  (_paths ??= {
+    FLAME_OUT: P('M50 8 C 60 24 80 36 79 60 C 78 79 65 91 50 91 C 35 91 22 79 21 61 C 20 47 29 39 35 30 C 37 40 41 45 46 45 C 43 31 45 19 50 8 Z'),
+    FLAME_IN: P('M50 40 C 58 51 66 60 65 72 C 64 83 57 88 50 88 C 43 88 36 83 35 72 C 34 62 43 53 50 40 Z'),
+    DROP: P('M50 8 C 58 24 77 42 77 62 C 77 79 65 91 50 91 C 35 91 23 79 23 62 C 23 42 42 24 50 8 Z'),
+    BACK_LIT: P('M68 34 L50 86 L70 86 Z'),
+    BACK_SH: P('M68 34 L70 86 L93 86 Z'),
+    FRONT_LIT: P('M40 20 L8 86 L44 86 Z'),
+    FRONT_SH: P('M40 20 L44 86 L74 86 Z'),
+    SNOW_F: P('M40 20 L49.5 39.5 L45 37 L41 42 L37 37 L31 40.5 Z'),
+    SNOW_B: P('M68 34 L75.5 49 L72 47 L68.5 50 L65 46.5 L61.5 48.5 Z'),
+    ROCK_A: P('M14 86 C 14 80 19 77 24 78 C 29 77 33 81 32 86 Z'),
+    ROCK_B: P('M70 86 C 70 81 74 79 78 80 C 82 80 85 83 84 86 Z'),
+  });
 // ไฟ
-const FLAME_OUT = P('M50 8 C 60 24 80 36 79 60 C 78 79 65 91 50 91 C 35 91 22 79 21 61 C 20 47 29 39 35 30 C 37 40 41 45 46 45 C 43 31 45 19 50 8 Z');
-const FLAME_IN = P('M50 40 C 58 51 66 60 65 72 C 64 83 57 88 50 88 C 43 88 36 83 35 72 C 34 62 43 53 50 40 Z');
 // น้ำ
-const DROP = P('M50 8 C 58 24 77 42 77 62 C 77 79 65 91 50 91 C 35 91 23 79 23 62 C 23 42 42 24 50 8 Z');
 // ดิน = ภูเขาหิน 2 ยอด (แบ่งด้านรับแสง/ด้านเงา) + หิมะบนยอด
-const BACK_LIT = P('M68 34 L50 86 L70 86 Z');
-const BACK_SH = P('M68 34 L70 86 L93 86 Z');
-const FRONT_LIT = P('M40 20 L8 86 L44 86 Z');
-const FRONT_SH = P('M40 20 L44 86 L74 86 Z');
-const SNOW_F = P('M40 20 L49.5 39.5 L45 37 L41 42 L37 37 L31 40.5 Z');
-const SNOW_B = P('M68 34 L75.5 49 L72 47 L68.5 50 L65 46.5 L61.5 48.5 Z');
-const ROCK_A = P('M14 86 C 14 80 19 77 24 78 C 29 77 33 81 32 86 Z');
-const ROCK_B = P('M70 86 C 70 81 74 79 78 80 C 82 80 85 83 84 86 Z');
 
 const TINT: Record<El, string> = { ไฟ: '#FF7A2F', น้ำ: '#2BA7F0', ลม: '#4FBFD0', ดิน: '#8C7461' };
 
@@ -126,7 +131,7 @@ export function ElementIcon({ el, active, size = 58 }: { el: El; active: boolean
               {/* ย่อเปลวไฟ 0.86 จากฐาน เผื่อที่ให้ยืดสูงตอนลุกโชน ไม่ให้ปลายโดนตัด */}
               <Group transform={[{ translateX: 50 }, { translateY: 91 }, { scale: 0.86 }, { translateX: -50 }, { translateY: -91 }]}>
               <Group transform={flameOut}>
-                <Path path={FLAME_OUT}>
+                <Path path={PT().FLAME_OUT}>
                   <LinearGradient start={vec(50, 8)} end={vec(50, 91)} colors={['#FFC24A', '#FF7A2F', '#F0442A']} />
                 </Path>
                 <Oval x={30} y={44} width={9} height={22} color="rgba(255,255,255,0.45)">
@@ -134,7 +139,7 @@ export function ElementIcon({ el, active, size = 58 }: { el: El; active: boolean
                 </Oval>
               </Group>
               <Group transform={flameIn}>
-                <Path path={FLAME_IN}>
+                <Path path={PT().FLAME_IN}>
                   <LinearGradient start={vec(50, 40)} end={vec(50, 88)} colors={['#FFF6B8', '#FFD24A']} />
                 </Path>
                 <Oval x={42} y={58} width={6} height={12} color="rgba(255,255,255,0.7)">
@@ -152,7 +157,7 @@ export function ElementIcon({ el, active, size = 58 }: { el: El; active: boolean
               <Oval x={r0x} y={r0y} width={r0w} height={r0h} style="stroke" strokeWidth={1.8} color="#5CC8FF" opacity={r0o} />
               <Oval x={r1x} y={r1y} width={r1w} height={r1h} style="stroke" strokeWidth={1.8} color="#5CC8FF" opacity={r1o} />
               <Group transform={dropT}>
-                <Path path={DROP}>
+                <Path path={PT().DROP}>
                   <RadialGradient c={vec(40, 48)} r={52} colors={['#A6EBFF', '#45BDF5', '#1A7FDC']} />
                 </Path>
                 <Oval x={52} y={72} width={18} height={9} color="rgba(255,255,255,0.35)">
@@ -246,27 +251,27 @@ export function ElementIcon({ el, active, size = 58 }: { el: El; active: boolean
                 </Oval>
               </Group>
               {/* ยอดหลัง */}
-              <Path path={BACK_LIT}>
+              <Path path={PT().BACK_LIT}>
                 <CornerPathEffect r={5} />
                 <LinearGradient start={vec(60, 34)} end={vec(60, 86)} colors={['#B3A698', '#8E8174']} />
               </Path>
-              <Path path={BACK_SH}>
+              <Path path={PT().BACK_SH}>
                 <CornerPathEffect r={5} />
                 <LinearGradient start={vec(80, 34)} end={vec(80, 86)} colors={['#86796C', '#5F554C']} />
               </Path>
-              <Path path={SNOW_B} color="#F4F8FF">
+              <Path path={PT().SNOW_B} color="#F4F8FF">
                 <CornerPathEffect r={2} />
               </Path>
               {/* ยอดหน้า */}
-              <Path path={FRONT_LIT}>
+              <Path path={PT().FRONT_LIT}>
                 <CornerPathEffect r={6} />
                 <LinearGradient start={vec(28, 20)} end={vec(28, 86)} colors={['#D2C1AE', '#A48F79']} />
               </Path>
-              <Path path={FRONT_SH}>
+              <Path path={PT().FRONT_SH}>
                 <CornerPathEffect r={6} />
                 <LinearGradient start={vec(58, 20)} end={vec(58, 86)} colors={['#8F7B68', '#66574A']} />
               </Path>
-              <Path path={SNOW_F}>
+              <Path path={PT().SNOW_F}>
                 <CornerPathEffect r={2} />
                 <LinearGradient start={vec(36, 20)} end={vec(44, 42)} colors={['#FFFFFF', '#DDE8F5']} />
               </Path>
@@ -278,12 +283,12 @@ export function ElementIcon({ el, active, size = 58 }: { el: El; active: boolean
               </Group>
               {/* ก้อนหินที่ฐาน (กระโดดเมื่อเลือก) */}
               <Group transform={hopA}>
-                <Path path={ROCK_A}>
+                <Path path={PT().ROCK_A}>
                   <LinearGradient start={vec(22, 77)} end={vec(22, 86)} colors={['#B9AA9A', '#7C6D60']} />
                 </Path>
               </Group>
               <Group transform={hopB}>
-                <Path path={ROCK_B}>
+                <Path path={PT().ROCK_B}>
                   <LinearGradient start={vec(77, 79)} end={vec(77, 86)} colors={['#A99A8B', '#6F6156']} />
                 </Path>
               </Group>

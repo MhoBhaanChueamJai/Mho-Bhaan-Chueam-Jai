@@ -51,7 +51,9 @@ half4 main(float2 fc) {
   return half4(half3(c), half(a));
 }`;
 
-const FX = Skia.RuntimeEffect.Make(SPHERE_SKSL);
+// คอมไพล์ครั้งแรกตอนวาด (บนเว็บ Skia พร้อมหลังโหลด CanvasKit)
+let _fx: ReturnType<typeof Skia.RuntimeEffect.Make> | undefined;
+const fx = () => (_fx ??= Skia.RuntimeEffect.Make(SPHERE_SKSL));
 
 export function AISphere({ size = 200, level, active = true }: { size?: number; level?: SharedValue<number>; active?: boolean }) {
   const t = useSharedValue(0);
@@ -106,6 +108,7 @@ export function AISphere({ size = 200, level, active = true }: { size?: number; 
   const breathe = size >= 100 || !!level;
   const pulse = useDerivedValue(() => (breathe ? withSpring(0.93 + 0.14 * e.value + Math.sin(t.value * 1.4) * 0.012, { damping: 14, stiffness: 180, mass: 0.6 }) : 1));
   const scaleSt = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
+  const FX = fx();
   if (!FX) return <View style={{ width: size, height: size }} />;
   const big = size * 1.5;
   return (

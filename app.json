@@ -36,7 +36,8 @@
         "backgroundColor": "#1F6B4A"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "th.bms.suebsan"
     },
     "web": {
       "favicon": "./assets/favicon.png",

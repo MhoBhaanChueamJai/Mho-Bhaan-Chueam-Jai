@@ -354,7 +354,9 @@ export function IridescentPill({ children, style }: { children: React.ReactNode;
  * กลีบนอก 8 + กลีบใน 6 แต่ละกลีบพลิ้วไหวคนละจังหวะ: โบกซ้ายขวา · พลิก (บีบกว้าง) · ยืด-หด
  * active = พลิ้วเร็วขึ้น · level (0..1) = กลีบบานออกตามระดับเสียง
  */
-const PETAL = Skia.Path.MakeFromSVGString('M0 0 C -9 -9 -15 -24 -11 -33 C -8 -40 -3 -43 0 -44 C 3 -43 8 -40 11 -33 C 15 -24 9 -9 0 0 Z')!;
+// สร้างครั้งแรกตอนวาด (บนเว็บ Skia พร้อมหลังโหลด CanvasKit)
+let _petal: ReturnType<typeof Skia.Path.Make> | null = null;
+const petal = () => (_petal ??= Skia.Path.MakeFromSVGString('M0 0 C -9 -9 -15 -24 -11 -33 C -8 -40 -3 -43 0 -44 C 3 -43 8 -40 11 -33 C 15 -24 9 -9 0 0 Z')!);
 const PETAL_HUES = ['#FF9A4D', '#FF5FA8', '#C85BFF', '#8C74FF', '#4FA9FF', '#59DDF5', '#FFB86B', '#FF6F7D'];
 const OUTER = Array.from({ length: 8 }, (_, i) => ({ a: (i / 8) * Math.PI * 2, hue: PETAL_HUES[i], len: 1, ph: i * 1.7 }));
 const INNER = Array.from({ length: 6 }, (_, i) => ({ a: (i / 6) * Math.PI * 2 + 0.4, hue: PETAL_HUES[(i * 3 + 2) % 8], len: 0.72, ph: i * 2.3 + 0.6 }));
@@ -376,12 +378,12 @@ function FlowerPetal({ p, t, speed, lv, inner }: { p: { a: number; hue: string; 
     <Group transform={tr}>
       {/* หักเหแสง: เบลอสิ่งที่อยู่หลังกลีบ (กลีบชั้นนอก/แสงหลังดอก) เหมือนมองผ่านแก้ว */}
       {inner ? (
-        <BackdropBlur blur={2.2} clip={PETAL}>
+        <BackdropBlur blur={2.2} clip={petal()}>
           <Fill color="rgba(255,255,255,0.05)" />
         </BackdropBlur>
       ) : null}
       {/* เนื้อแก้วใส อมสีจางๆ */}
-      <SkPath path={PETAL}>
+      <SkPath path={petal()}>
         <SkLinear start={vec(0, 0)} end={vec(0, -44)} colors={inner ? [`${p.hue}80`, `${p.hue}38`, 'rgba(255,255,255,0.18)'] : [`${p.hue}A0`, `${p.hue}55`, 'rgba(255,255,255,0.32)']} />
       </SkPath>
       {/* แสงรวมในเนื้อแก้ว (caustic) */}
@@ -391,19 +393,19 @@ function FlowerPetal({ p, t, speed, lv, inner }: { p: { a: number; hue: string; 
         </Oval>
       </Group>
       {/* แสงขอบด้านใน */}
-      <SkPath path={PETAL} style="stroke" strokeWidth={3} color={`${p.hue}88`}>
+      <SkPath path={petal()} style="stroke" strokeWidth={3} color={`${p.hue}88`}>
         <BlurMask blur={2} style="normal" />
       </SkPath>
       {/* แสงแยกสีรุ้งที่ขอบ (ฟ้า / ชมพู เหลื่อมกัน) */}
       <Group transform={fringeL} opacity={rimO}>
-        <SkPath path={PETAL} style="stroke" strokeWidth={0.7} color="rgba(90,225,255,0.75)" />
+        <SkPath path={petal()} style="stroke" strokeWidth={0.7} color="rgba(90,225,255,0.75)" />
       </Group>
       <Group transform={fringeR} opacity={rimO}>
-        <SkPath path={PETAL} style="stroke" strokeWidth={0.7} color="rgba(255,95,200,0.75)" />
+        <SkPath path={petal()} style="stroke" strokeWidth={0.7} color="rgba(255,95,200,0.75)" />
       </Group>
       {/* ขอบแก้วคม */}
       <Group opacity={rimO}>
-        <SkPath path={PETAL} style="stroke" strokeWidth={0.9} color="rgba(255,255,255,0.95)" />
+        <SkPath path={petal()} style="stroke" strokeWidth={0.9} color="rgba(255,255,255,0.95)" />
       </Group>
       {/* ไฮไลต์สะท้อน + ประกาย */}
       <Oval x={-6.5} y={-38} width={3} height={20} color="rgba(255,255,255,0.8)">
