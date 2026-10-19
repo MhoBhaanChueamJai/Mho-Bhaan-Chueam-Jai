@@ -30,6 +30,13 @@ const TYPES = [
 ];
 export const TYPE_LABEL: Record<string, string> = Object.fromEntries(TYPES.map((t) => [t.k, t.l]));
 
+function validThaiId(id: string) {
+  if (!/^\d{13}$/.test(id)) return false;
+  let sum = 0;
+  for (let i = 0; i < 12; i++) sum += Number(id[i]) * (13 - i);
+  return (11 - (sum % 11)) % 10 === Number(id[12]);
+}
+const fmtId = (d: string) => [d.slice(0, 1), d.slice(1, 5), d.slice(5, 10), d.slice(10, 12), d.slice(12, 13)].filter(Boolean).join('-');
 
 function Field({ label, value, onChange, placeholder, keyboard, right, hint, error }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; keyboard?: KeyboardTypeOptions; right?: React.ReactNode; hint?: string; error?: string }) {
   return (
@@ -44,7 +51,7 @@ function Field({ label, value, onChange, placeholder, keyboard, right, hint, err
   );
 }
 
-type Result = { ok: true; info: { name: string; cert: string; types: string[] } } | { ok: false; reason: string };
+type Result = { ok: true; registry: { title: string; first_name: string; last_name: string; province: string; certificate_number: string; expiry: string | null; types: string[] } } | { ok: false; reason: string };
 
 export default function Verify() {
   const insets = useSafeAreaInsets();
@@ -54,31 +61,28 @@ export default function Verify() {
   const [first, setFirst] = useState(profile?.first_name ?? '');
   const [last, setLast] = useState(profile?.last_name ?? '');
   const [age, setAge] = useState('');
+  const [nid, setNid] = useState('');
   const [edu, setEdu] = useState('');
   const [types, setTypes] = useState<string[]>([]);
   const [cert, setCert] = useState('');
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
 
+  const digits = nid.replace(/\D/g, '');
+  const nidErr = digits.length === 13 && !validThaiId(digits) ? 'เลขบัตรประชาชนไม่ถูกต้อง' : '';
   const ageN = Number(age);
   const ageErr = age && (ageN < 20 || ageN > 110) ? 'อายุต้องอยู่ระหว่าง 20–110 ปี' : '';
-  // ยังไม่ตรวจกับทะเบียนกรมการแพทย์แผนไทยฯ: กรอกอะไรก็ได้ (หรือไม่กรอก) แล้วยืนยันได้เลย
-  const ready = !ageErr;
+  const ready = first.trim() && last.trim() && ageN >= 20 && ageN <= 110 && validThaiId(digits) && edu && types.length && cert.trim().length >= 4;
 
   const submit = async () => {
     if (!ready || busy) return;
     setBusy(true);
     setResult(null);
     try {
-      const { error } = await supabase.rpc('verify_practitioner_self', {
-        p_title: title,
-        p_first_name: first.trim(),
-        p_last_name: last.trim(),
-        p_healer_types: types,
-        p_cert_number: cert.trim(),
+      const { data, error } = await supabase.functions.invoke('verify-practitioner', {
+        body: { title, first_name: first.trim(), last_name: last.trim(), age: ageN, national_id: digits, education: edu, healer_types: types, cert_number: cert.trim() },
       });
-      const name = `${first.trim()} ${last.trim()}`.trim();
-      const r: Result = error ? { ok: false, reason: 'ยืนยันตัวตนไม่สำเร็จ ลองใหม่อีกครั้ง' } : { ok: true, info: { name: name ? `${title}${name}` : '-', cert: cert.trim(), types } };
+      const r = (data ?? { ok: false, reason: error?.message ?? 'ตรวจสอบไม่สำเร็จ' }) as Result;
       setResult(r);
       if (r.ok) {
         h.success();
@@ -92,7 +96,7 @@ export default function Verify() {
   };
 
   if (result?.ok) {
-    const r = result.info;
+    const r = result.registry;
     return (
       <View style={[styles.page, { paddingTop: insets.top + 40, paddingHorizontal: 24, alignItems: 'center' }]}>
         <Animated.View entering={FadeInDown.duration(400)} style={{ alignItems: 'center' }}>
@@ -100,13 +104,15 @@ export default function Verify() {
             <Sym name="checkmark.seal.fill" size={28} color="#FFFFFF" />
           </View>
           <T v="h1" center style={{ marginTop: 16 }}>ยืนยันตัวตนสำเร็จ</T>
-          <T v="callout" color={ios.secondary} center style={{ marginTop: 6 }}>ใช้งานการรักษาและบันทึกข้อมูลผู้ป่วยได้แล้ว</T>
+          <T v="callout" color={ios.secondary} center style={{ marginTop: 6 }}>พบข้อมูลในทะเบียนหมอพื้นบ้านที่ได้รับการรับรอง{'\n'}กรมการแพทย์แผนไทยและการแพทย์ทางเลือก</T>
         </Animated.View>
         <Animated.View entering={FadeInDown.delay(120).duration(400)} style={styles.card}>
           {[
-            ['ชื่อ', r.name],
+            ['ชื่อ', `${r.title}${r.first_name} ${r.last_name}`],
+            ['เลขที่หนังสือ', r.certificate_number],
+            ['จังหวัดที่รับรอง', r.province],
             ['ประเภท', r.types.map((t) => TYPE_LABEL[t]).join(', ') || '-'],
-            ['เลขที่หนังสือ', r.cert || '-'],
+            ['หมดอายุ', r.expiry ?? '-'],
           ].map(([k, v], i) => (
             <View key={k} style={[styles.kv, i > 0 && styles.sep]}>
               <T v="callout" color={ios.secondary}>{k}</T>
@@ -132,7 +138,7 @@ export default function Verify() {
           <View style={{ flex: 1 }}>
             <T v="body" style={{ fontWeight: '600' }}>ยืนยันตัวตนหมอพื้นบ้าน</T>
             <T v="caption" color={ios.secondary}>
-              กรอกข้อมูลของคุณหมอ แล้วกดยืนยันตัวตนเพื่อเริ่มใช้งานการรักษาและบันทึกข้อมูลผู้ป่วย
+              เพื่อใช้งานการรักษาผู้ป่วย ระบบจะตรวจชื่อและเลขที่หนังสือรับรองกับทะเบียนกรมการแพทย์แผนไทยฯ
             </T>
           </View>
         </View>
@@ -153,10 +159,20 @@ export default function Verify() {
               <Field label="นามสกุล" value={last} onChange={setLast} />
             </View>
           </View>
-          <Field label="อายุ (ปี) · ไม่บังคับ" value={age} onChange={(v) => setAge(v.replace(/\D/g, '').slice(0, 3))} keyboard="number-pad" placeholder="เช่น 58" error={ageErr} />
+          <Field label="อายุ (ปี)" value={age} onChange={(v) => setAge(v.replace(/\D/g, '').slice(0, 3))} keyboard="number-pad" placeholder="เช่น 58" error={ageErr} />
+          <Field
+            label="เลขบัตรประชาชน 13 หลัก"
+            value={fmtId(digits)}
+            onChange={(v) => setNid(v.replace(/\D/g, '').slice(0, 13))}
+            keyboard="number-pad"
+            placeholder="x-xxxx-xxxxx-xx-x"
+            error={nidErr}
+            hint="ระบบเก็บเฉพาะค่าเข้ารหัสและ 4 หลักท้าย"
+            right={digits.length === 13 && !nidErr ? <Sym name="checkmark.circle.fill" size={18} color={palette.primary} /> : undefined}
+          />
         </View>
 
-        <T v="title" style={styles.sec}>วุฒิการศึกษา <T v="callout" color={ios.tertiary}>· ไม่บังคับ</T></T>
+        <T v="title" style={styles.sec}>วุฒิการศึกษา</T>
         <View style={styles.chips}>
           {EDUCATION.map((e) => (
             <Chip key={e} label={e} active={edu === e} onPress={() => setEdu(e)} />
@@ -164,15 +180,15 @@ export default function Verify() {
         </View>
 
         <T v="title" style={styles.sec}>ประเภทหมอพื้นบ้าน</T>
-        <T v="caption" color={ios.secondary} style={[styles.label, { marginBottom: 8 }]}>เลือกได้มากกว่า 1</T>
+        <T v="caption" color={ios.secondary} style={[styles.label, { marginBottom: 8 }]}>เลือกได้มากกว่า 1 — ต้องตรงกับที่ระบุในหนังสือรับรอง</T>
         <View style={styles.chips}>
           {TYPES.map((t) => (
             <Chip key={t.k} label={t.l} active={types.includes(t.k)} onPress={() => setTypes((x) => (x.includes(t.k) ? x.filter((y) => y !== t.k) : [...x, t.k]))} />
           ))}
         </View>
 
-        <T v="title" style={styles.sec}>หนังสือรับรองการเป็นหมอพื้นบ้าน <T v="callout" color={ios.tertiary}>· ไม่บังคับ</T></T>
-        <Field label="เลขที่หนังสือรับรอง (ถ้ามี)" value={cert} onChange={setCert} placeholder="เช่น นพ 00106" />
+        <T v="title" style={styles.sec}>หนังสือรับรองการเป็นหมอพื้นบ้าน</T>
+        <Field label="เลขที่หนังสือรับรอง" value={cert} onChange={setCert} placeholder="เช่น นพ 00106" hint="อักษรย่อจังหวัด + เลข 5 หลัก ตามหนังสือรับรอง" />
 
         {result && !result.ok ? (
           <Animated.View entering={FadeIn} style={styles.fail}>
@@ -182,7 +198,7 @@ export default function Verify() {
         ) : null}
 
         <Button
-          label={busy ? 'กำลังยืนยัน…' : 'ยืนยันตัวตน'}
+          label={busy ? 'กำลังตรวจสอบกับทะเบียน…' : 'ยืนยันตัวตน'}
           disabled={!ready || busy}
           onPress={submit}
           icon={busy ? <ActivityIndicator color="#FFFFFF" /> : undefined}
@@ -191,6 +207,9 @@ export default function Verify() {
         <PressableScale onPress={() => router.back()} style={styles.later}>
           <T v="callout" color={palette.primary}>ไว้ทีหลัง</T>
         </PressableScale>
+        <T v="caption" color={ios.tertiary} center style={{ marginTop: 8 }}>
+          อ้างอิงทะเบียน: dtam.moph.go.th/traditional-cert
+        </T>
       </ScrollView>
     </KeyboardAvoidingView>
     </SheetFrame>

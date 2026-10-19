@@ -123,6 +123,8 @@ type Ctx = {
   profile: Profile | null;
   /** ยืนยันตัวตนหมอพื้นบ้านแล้ว → ใช้งานการรักษาผู้ป่วยได้ */
   isPractitioner: boolean;
+  /** ยืนยันกับทะเบียนกรมการแพทย์แผนไทยฯ แล้วจริง (ใช้แสดงป้าย "ได้รับการรับรอง") */
+  certified: boolean;
 };
 
 const AppCtx = createContext<Ctx>(null as any);
@@ -178,6 +180,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
    */
   const pending = useRef(new Map<string, () => Promise<unknown>>());
   const [pendingCount, setPendingCount] = useState(0);
+  // บัญชีที่ยังไม่ได้ยืนยันกับทะเบียน (เซิร์ฟเวอร์ไม่ให้สิทธิ์ข้อมูลผู้ป่วย) → ผู้ป่วยเก็บในเครื่องอย่างเดียว ไม่ส่งขึ้นคลาวด์
+  const patientsLocal = useRef(false);
+  const pushPatient = (fn: () => Promise<unknown>, key: string) => {
+    if (patientsLocal.current) return;
+    push(fn, key);
+  };
   const push = (fn: () => Promise<unknown>, key = `x${Date.now()}${Math.random()}`) => {
     if (!online) return;
     pending.current.delete(key);
@@ -240,6 +248,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         return;
       }
       const practitioner = prof?.role === 'practitioner' || prof?.role === 'admin';
+      patientsLocal.current = !practitioner;
       // ข้อมูลผู้ป่วยตัวอย่างใส่ให้เฉพาะหมอพื้นบ้านที่ยืนยันแล้ว (สมาชิกทั่วไปไม่มีสิทธิ์ข้อมูลผู้ป่วย)
       if (practitioner) await cloud.seedIfEmpty();
       const d = await cloud.loadAll();
@@ -249,7 +258,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const cloudP = new Map(d.patients.map((x) => [x.id, x]));
       const upP: Patient[] = [];
       const upV: { pid: string; v: MB5Visit }[] = [];
-      for (const lp of patients) {
+      for (const lp of practitioner ? patients : []) {
         const cp = cloudP.get(lp.id);
         if (!cp) {
           if (idTime(lp.id) > since) {
@@ -279,7 +288,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       });
       Promise.all([...upP.map((x) => cloud.savePatient(x)), ...upV.map((x) => cloud.saveVisit(x.pid, x.v)), ...upW.map((x) => cloud.saveWisdom(x))]).catch(() => {});
       setSettings((st) => ({ ...st, lastSyncAt: Date.now() }));
-      setPatients(d.patients);
+      // ยังไม่ได้ยืนยันกับทะเบียน: คลาวด์ไม่มีข้อมูลผู้ป่วยให้ → ใช้ของในเครื่องต่อ (ไม่ทับ)
+      if (practitioner) setPatients(d.patients);
       // ผู้ป่วย/ประวัติ/นัดหมายตัวอย่างรุ่นเก่าในคลาวด์ → ลบทิ้ง
       const legacyP = d.patients.filter((x) => LEGACY_SAMPLE_PATIENTS.includes(x.id)).map((x) => x.id);
       if (legacyP.length) cloud.deleteLegacySamples(legacyP).catch(() => {});
@@ -374,24 +384,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (!cur) return;
         const next = { ...cur, ...patch };
         setPatients((list) => list.map((x) => (x.id === id ? { ...x, ...patch } : x)));
-        push(() => cloud.savePatient(next), `p:${id}`);
+        pushPatient(() => cloud.savePatient(next), `p:${id}`);
       },
       removePatient: (id) => {
         setPatients((list) => list.filter((x) => x.id !== id));
-        push(() => cloud.deletePatient(id), `p:${id}`);
+        pushPatient(() => cloud.deletePatient(id), `p:${id}`);
       },
       addVisit: (pid, visit) => {
         const p = patients.find((x) => x.id === pid);
         const no = (p?.visits[0]?.no ?? 0) + 1;
         setPatients((list) => list.map((x) => (x.id === pid ? { ...x, visits: [{ ...visit, no }, ...x.visits] } : x)));
-        push(() => cloud.saveVisit(pid, { ...visit, no }), `v:${pid}:${no}`);
+        pushPatient(() => cloud.saveVisit(pid, { ...visit, no }), `v:${pid}:${no}`);
         return no;
       },
       addPatient: (p, firstVisit) => {
         const id = `p${Date.now()}`;
         const np: Patient = { ...p, id, visits: firstVisit ? [{ ...firstVisit, no: 1 }] : [] };
         setPatients((list) => [np, ...list]);
-        push(() => cloud.savePatient(np), `p:${np.id}`);
+        pushPatient(() => cloud.savePatient(np), `p:${np.id}`);
         return id;
       },
       unlocked,
@@ -419,7 +429,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       },
       reloadCloud,
       profile,
-      isPractitioner: (profile?.role ?? settings.role) !== 'member',
+      // ช่วงทดสอบ: ทุกบัญชีใช้งานการรักษาผู้ป่วยได้ ไม่ต้องยืนยันตัวตนหมอพื้นบ้าน
+      isPractitioner: true,
+      certified: (profile?.role ?? settings.role) !== 'member',
       clearLocal: () => {
         // ประวัติแชทครูปัญญาเป็นข้อมูลส่วนตัวของผู้ใช้คนนี้ → ล้างเมื่อออกจากระบบ
         clearChats().catch(() => {});

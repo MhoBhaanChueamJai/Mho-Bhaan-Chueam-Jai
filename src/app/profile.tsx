@@ -9,7 +9,7 @@ import React from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { CircleIcon, ListRow, ListSection, PAGE_PAD } from '../components/ListRow';
-import { Sym, ios } from '../components/ios';
+import { Sym } from '../components/ios';
 import { Avatar, PressableScale, T } from '../components/ui';
 import { doctor } from '../data/mock';
 import { TYPE_LABEL } from './verify';
@@ -31,7 +31,7 @@ function Info({ icon, bg, label, value, last }: { icon: string; bg: string; labe
 }
 
 export default function Profile() {
-  const { profile, isPractitioner, settings, update } = useApp();
+  const { profile, certified, settings, update } = useApp();
   const myAvatar = useMyAvatar();
   const name = profile?.display_name || [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || doctor.name;
   const del = useDeleteAccount();
@@ -70,7 +70,7 @@ export default function Profile() {
           </View>
         </PressableScale>
         <T v="h2" center style={{ marginTop: 12 }}>{name}</T>
-        <T v="subhead" color={isPractitioner ? palette.primaryDeep : ios.secondary}>{isPractitioner ? 'หมอพื้นบ้านที่ได้รับการรับรอง' : 'สมาชิกทั่วไป'}</T>
+        <T v="subhead" color={palette.primaryDeep}>{certified ? 'หมอพื้นบ้านที่ได้รับการรับรอง' : 'หมอพื้นบ้าน'}</T>
       </Animated.View>
 
       <ListSection i={1} title="บัญชี">
@@ -79,7 +79,8 @@ export default function Profile() {
         <Info icon="envelope.fill" bg="#3B7DD8" label="อีเมล" value={profile?.email ?? '-'} last />
       </ListSection>
 
-      {isPractitioner ? (
+      {/* ช่วงทดสอบ: ไม่ต้องยืนยันตัวตน → แสดงข้อมูลการรับรองเฉพาะบัญชีที่ยืนยันกับทะเบียนแล้ว */}
+      {certified ? (
         <ListSection i={2} title="การรับรองหมอพื้นบ้าน" footer="ข้อมูลการรับรองมาจากทะเบียนหมอพื้นบ้าน กรมการแพทย์แผนไทยและการแพทย์ทางเลือก">
           {/* หลายประเภทได้ → เขียนต่อกันคั่นด้วยจุลภาค */}
           <ListRow
@@ -93,17 +94,7 @@ export default function Profile() {
           <Info icon="calendar" bg="#D9921A" label="หนังสือรับรองหมดอายุ" value={thaiDate(profile?.cert_expiry)} />
           <Info icon="checkmark.shield.fill" bg="#2A8C7A" label="ยืนยันตัวตนเมื่อ" value={thaiDate(profile?.verified_at)} last />
         </ListSection>
-      ) : (
-        <ListSection i={2} title="การรับรองหมอพื้นบ้าน">
-          <View style={{ padding: 20, gap: 14 }}>
-          <T v="subhead" color={ios.secondary}>ยังไม่ได้ยืนยันตัวตน ยืนยันด้วยเลขที่หนังสือรับรองหมอพื้นบ้าน เพื่อใช้งานการรักษาผู้ป่วย</T>
-          <PressableScale haptic="press" onPress={() => router.push('/verify')} style={styles.verifyBtn}>
-            <Sym name="person.badge.shield.checkmark.fill" size={18} color="#FFFFFF" />
-            <T v="bodyStrong" color="#FFFFFF">ยืนยันตัวตนหมอพื้นบ้าน</T>
-          </PressableScale>
-          </View>
-        </ListSection>
-      )}
+      ) : null}
 
     </ScrollView>
     {del.deleting ? (
