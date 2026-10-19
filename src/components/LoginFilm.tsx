@@ -40,7 +40,7 @@ export function LoginFilm({ height }: { height: number }) {
     <View style={[styles.wrap, { height }]}>
       <StatusBar style={dark ? 'light' : 'dark'} animated />
       <Animated.View style={[StyleSheet.absoluteFill, fade]}>
-        <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="cover" nativeControls={false} allowsPictureInPicture={false} />
+        <VideoView player={player} style={styles.video} contentFit="cover" nativeControls={false} allowsPictureInPicture={false} />
       </Animated.View>
     </View>
   );
@@ -49,4 +49,6 @@ export function LoginFilm({ height }: { height: number }) {
 const styles = StyleSheet.create({
   // สีเดียวกับเฟรมแรกของวิดีโอ (พื้นสว่างมิ้นต์) ระหว่างรอโหลด
   wrap: { width: '100%', overflow: 'hidden', backgroundColor: '#F1F8F4' },
+  // เว็บ: แท็ก <video> ไม่ยืดตาม left/right/top/bottom → ต้องกำหนดกว้าง/สูงเอง (ไม่งั้นแสดงขนาดจริงของวิดีโอ)
+  video: { ...StyleSheet.absoluteFillObject, width: '100%', height: '100%' },
 });
