@@ -1985,3 +1985,65 @@ p.nav__gh {
 /* ข้อความอยู่ใต้หัวข้อ (ไม่ลอยกลางความสูงของภาพโทรศัพท์) */
 .doc__sec { grid-template-rows: auto 1fr; }
 .doc__sec > p { align-self: start; }
+
+/* ───────── มือถือ: หน้ารวมการ์ด → เปิดทีละบท ───────── */
+.mhome, .mbar { display: none; }
+@media (max-width: 760px) {
+  /* หัวเล็กลง บรรทัดเดียว */
+  .hero { padding: 0 16px 26px; }
+  .hero__bar { padding-top: 14px; }
+  .brand { font-size: 16px; white-space: nowrap; }
+  .brand em { display: none; }
+  .hero__back { display: none; }
+  .hero__body { padding-top: 18px; }
+  .hero__eyebrow { display: none; }
+  .hero h1 { font-size: 27px; line-height: 1.3; margin: 0 0 6px; }
+  .hero__lead { font-size: 14.5px; line-height: 1.6; margin: 0 0 16px; }
+  .hsearch__box { height: 50px; border-radius: 25px; }
+  .hero__cards { display: none; }
+
+  body.m-home .layout { display: none; }
+  body.m-home .mhome { display: block; }
+  body.m-article .hero { display: none; }
+  body.m-article .toc { display: none; }
+  body.m-article .mbar { display: flex; }
+
+  /* หน้ารวม: การ์ดบท 2 คอลัมน์ แยกตามเมนู */
+  .mhome { padding: 6px 16px 48px; }
+  .mgroup { margin-top: 22px; }
+  .mgroup h2 { display: flex; align-items: center; gap: 8px; margin: 0 4px 10px; font: 800 18px/1.3 var(--font); color: var(--ink); }
+  .mgroup h2 svg { color: var(--brand); }
+  .mgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .mcard {
+    position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 3px;
+    padding: 10px 10px 13px; border-radius: 22px; background: #fff; text-align: left;
+    box-shadow: 0 1px 3px rgba(20, 50, 30, 0.06), 0 6px 18px rgba(20, 50, 30, 0.06);
+    transition: transform 0.18s ease;
+  }
+  .mcard:active { transform: scale(0.97); }
+  .mcard__shot { display: block; width: 100%; aspect-ratio: 1 / 0.82; overflow: hidden; border-radius: 15px; background: color-mix(in srgb, var(--c) 10%, #f4f7f3); margin-bottom: 8px; }
+  .mcard__shot img { width: 100%; height: auto; transform: translateY(-7%); }
+  .mcard__ic {
+    position: absolute; top: 18px; left: 18px; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%;
+    color: #fff; background: linear-gradient(135deg, color-mix(in srgb, var(--c) 72%, white), var(--c));
+    box-shadow: 0 3px 8px color-mix(in srgb, var(--c) 40%, transparent);
+  }
+  .mcard b { font: 700 15px/1.35 var(--font); color: var(--ink); padding: 0 4px; }
+  .mcard small { font: 500 12px/1.45 var(--font); color: var(--muted); padding: 0 4px; }
+
+  /* หน้าบทความ: แถบบนแบบ iOS (ปุ่มกลับ · ชื่อบท) */
+  .mbar {
+    position: sticky; top: 0; z-index: 20; align-items: center; gap: 8px; height: 54px; padding: 0 10px;
+    background: rgba(244, 247, 243, 0.86); backdrop-filter: saturate(1.6) blur(18px); -webkit-backdrop-filter: saturate(1.6) blur(18px);
+    border-bottom: 1px solid rgba(20, 60, 40, 0.07);
+  }
+  .mbar__back { display: flex; align-items: center; gap: 2px; height: 40px; padding: 0 12px 0 6px; border-radius: 20px; color: var(--brand); font: 600 16px/1 var(--font); background: #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08); }
+  .mbar__title { flex: 1; text-align: center; font: 700 15px/1.2 var(--font); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mbar__sp { width: 76px; }
+  body.m-article .layout { display: block; margin: 0; padding: 0 0 40px; }
+  body.m-article .doc__crumb { display: none; }
+}
+@media (max-width: 760px) {
+  body.m-article .doc { padding: 20px 18px 28px; border-radius: 0; box-shadow: none; background: transparent; }
+  body.m-article .doc__head h1 { font-size: 25px; }
+}

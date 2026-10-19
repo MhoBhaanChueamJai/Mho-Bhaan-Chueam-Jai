@@ -3,7 +3,6 @@
  * ยังสงสัย → ถามครูปัญญา (เปิดแชทพร้อมคำถาม)
  */
 import { Stack, router } from 'expo-router';
-import * as WebBrowser from 'expo-web-browser';
 import React, { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn, LinearTransition } from 'react-native-reanimated';
@@ -11,10 +10,8 @@ import { CircleIcon, PAGE_PAD } from '../components/ListRow';
 import { Sym, ios } from '../components/ios';
 import { PressableScale, T } from '../components/ui';
 import { elevation, palette } from '../theme';
+import { openManual } from '../lib/manual';
 
-/** คู่มือฉบับเว็บ (อยู่บน GitHub Pages คู่กับเว็บแอป) */
-const MANUAL_URL = 'https://mhobhaanchueamjai.github.io/Mho-Bhaan-Chueam-Jai/tutorial/';
-const openManual = () => WebBrowser.openBrowserAsync(MANUAL_URL, { presentationStyle: WebBrowser.WebBrowserPresentationStyle.PAGE_SHEET, controlsColor: palette.primary }).catch(() => {});
 
 type Topic = { id: string; title: string; icon: string; color: string; steps: string[] };
 

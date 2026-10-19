@@ -24,6 +24,7 @@ import { APP_VERSION } from './about';
 import { authenticateBiometric, biometricInfo, clearPin } from '../store/security';
 import { elevation, palette } from '../theme';
 import { LargeTitle, useLargeTitleScroll } from '../components/nav/LargeTitle';
+import { openManual } from '../lib/manual';
 
 const enter = (i: number) => FadeInDown.delay(40 + i * 50).duration(420);
 
@@ -202,7 +203,7 @@ export default function Settings() {
 
         {/* ── เกี่ยวกับ: ช่วยเหลือ · เวอร์ชัน ── */}
         <ListSection i={4} title="เกี่ยวกับ">
-          <ListRow icon={<CircleIcon name="questionmark.circle.fill" color={palette.primary} />} title="ช่วยเหลือ · วิธีใช้งาน" onPress={() => router.push('/help')} chevron />
+          <ListRow icon={<CircleIcon name="questionmark.circle.fill" color={palette.primary} />} title="ช่วยเหลือ · วิธีใช้งาน" onPress={openManual} chevron />
           <ListRow icon={<CircleIcon name="info.circle.fill" color="#3B7DD8" />} title="เกี่ยวกับแอป" value={`เวอร์ชัน ${APP_VERSION}`} onPress={() => router.push('/about')} chevron last />
         </ListSection>
 

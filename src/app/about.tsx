@@ -10,6 +10,7 @@ import { CircleIcon, ListRow, ListSection, PAGE_PAD } from '../components/ListRo
 import { ios } from '../components/ios';
 import { T } from '../components/ui';
 import { palette } from '../theme';
+import { openManual } from '../lib/manual';
 
 export const APP_VERSION = Constants.expoConfig?.version ?? '1.0.0';
 export const APP_BUILD = Constants.expoConfig?.ios?.buildNumber ?? '1';
@@ -30,7 +31,7 @@ export default function About() {
 
         <ListSection i={1} title="ข้อมูลแอป">
           <ListRow icon={<CircleIcon name="info.circle.fill" color="#3B7DD8" />} title="เวอร์ชัน" value={`${APP_VERSION} (${APP_BUILD})`} />
-          <ListRow icon={<CircleIcon name="questionmark.circle.fill" color={palette.primary} />} title="ช่วยเหลือ · วิธีใช้งาน" onPress={() => router.push('/help')} chevron />
+          <ListRow icon={<CircleIcon name="questionmark.circle.fill" color={palette.primary} />} title="ช่วยเหลือ · วิธีใช้งาน" onPress={openManual} chevron />
           <ListRow icon={<CircleIcon name="hand.raised.fill" color="#7A5CC8" />} title="นโยบายความเป็นส่วนตัว" onPress={() => router.push('/privacy')} chevron last />
         </ListSection>
 
