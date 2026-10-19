@@ -22,6 +22,7 @@ import { AIGlow, Waveform } from './Orb';
 import { Button, GlassCircle, PressableScale, T, useHaptic } from './ui';
 import type { Turn } from '../lib/intake';
 import { palette } from '../theme';
+import { AiDownBanner } from './AiDownBanner';
 
 type Phase = 'speaking' | 'listening' | 'thinking' | 'done';
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -453,6 +454,7 @@ export function VoiceSession({ scribe, initialOptions, title, opening, topics, h
       <StatusBar style="light" />
       <LinearGradient colors={['#000000', '#050B08', '#000000']} style={StyleSheet.absoluteFill} />
       <AIGlow active={phase === 'listening' || phase === 'speaking'} />
+      <AiDownBanner dark style={{ position: 'absolute', top: insets.top + 64, left: 16, right: 16, zIndex: 5 }} />
       {/* แตะพื้นที่ว่างเพื่อปิดคีย์บอร์ด */}
       <Pressable style={StyleSheet.absoluteFill} onPress={Keyboard.dismiss} accessible={false} />
 

@@ -19,6 +19,8 @@ import { citedSources, think, tidyReply } from '../lib/brain';
 import { deleteThread, getThread, loadChats, newThreadId, onChatsChange, saveThread, whenLabel, type ChatSource, type ChatThread, type StoredMsg } from '../lib/chatStore';
 import { useApp } from '../store/app';
 import { control, palette } from '../theme';
+import { AiDownBanner } from '../components/AiDownBanner';
+import { AI_DOWN_MSG, checkAi } from '../lib/aiHealth';
 
 const SUGGEST = [
   { q: 'ผู้สูงอายุปวดเข่า ใช้สมุนไพรอะไรดี', sym: 'figure.walk' },
@@ -91,7 +93,8 @@ export default function Assistant() {
         commit([...msgsRef.current, a]);
         return a;
       } catch {
-        const e: Msg = { id: `e${Date.now()}`, role: 'assistant', content: 'ขออภัยครับ ตอนนี้เชื่อมต่อครูปัญญาไม่ได้ ลองใหม่อีกครั้งนะครับ', failed: true };
+        const down = !(await checkAi(true));
+        const e: Msg = { id: `e${Date.now()}`, role: 'assistant', content: down ? `ขออภัยครับ ${AI_DOWN_MSG}` : 'ขออภัยครับ ตอนนี้เชื่อมต่อครูปัญญาไม่ได้ ลองใหม่อีกครั้งนะครับ', failed: true };
         commit([...msgsRef.current, e]);
         return e;
       }
@@ -219,6 +222,7 @@ export default function Assistant() {
         onScrollBeginDrag={Keyboard.dismiss}
         showsVerticalScrollIndicator={false}
       >
+        <AiDownBanner dark />
         {/* ก้อนแสงครูปัญญา: ใหญ่ตอนยังไม่คุย · เล็กติดด้านบนเมื่อเริ่มคุย */}
         <View style={{ alignItems: 'center', paddingTop: msgs.length ? 0 : 12 }}>
           {/* ระหว่างโหมดเสียง ลูกแก้วของหน้าแชทถูกทับอยู่ → ไม่ต้องวาด (ประหยัดแบต) */}

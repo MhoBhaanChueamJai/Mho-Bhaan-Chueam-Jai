@@ -125,6 +125,8 @@ type Ctx = {
   isPractitioner: boolean;
   /** ยืนยันกับทะเบียนกรมการแพทย์แผนไทยฯ แล้วจริง (ใช้แสดงป้าย "ได้รับการรับรอง") */
   certified: boolean;
+  /** ข้อมูลผู้ป่วยเก็บในเครื่องนี้อย่างเดียว (บัญชีทดลองใช้ / ยังไม่ได้ยืนยันกับทะเบียน) — ลบแอปหรือเปลี่ยนเครื่องแล้วหาย */
+  patientsLocalOnly: boolean;
 };
 
 const AppCtx = createContext<Ctx>(null as any);
@@ -432,6 +434,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       // ช่วงทดสอบ: ทุกบัญชีใช้งานการรักษาผู้ป่วยได้ ไม่ต้องยืนยันตัวตนหมอพื้นบ้าน
       isPractitioner: true,
       certified: (profile?.role ?? settings.role) !== 'member',
+      patientsLocalOnly: demo || (profile?.role ?? settings.role) === 'member',
       clearLocal: () => {
         // ประวัติแชทครูปัญญาเป็นข้อมูลส่วนตัวของผู้ใช้คนนี้ → ล้างเมื่อออกจากระบบ
         clearChats().catch(() => {});

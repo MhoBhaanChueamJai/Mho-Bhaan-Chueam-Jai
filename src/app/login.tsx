@@ -325,7 +325,7 @@ export default function Login() {
 
         {mode === 'login' ? (
           <View style={styles.linkRow}>
-            <PressableScale haptic="select" onPress={() => { setError(''); setInfo('ติดต่อ สสจ. หรือ รพ.สต. เพื่อตั้งรหัสผ่านใหม่'); }} style={styles.link}>
+            <PressableScale haptic="select" onPress={() => { setError(''); setInfo(''); router.push({ pathname: '/forgot', params: { email: user.trim() } }); }} style={styles.link}>
               <T v="callout" color={palette.primary}>ลืมรหัสผ่าน?</T>
             </PressableScale>
           </View>

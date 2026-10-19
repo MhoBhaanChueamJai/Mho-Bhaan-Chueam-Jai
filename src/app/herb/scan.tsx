@@ -16,6 +16,7 @@ import { Sym, ios } from '../../components/ios';
 import { GlassCircle, Button, Glass, PressableScale, T, useHaptic } from '../../components/ui';
 import { identifyHerb, setLastScan, type ScanResult } from '../../lib/herbScan';
 import { palette } from '../../theme';
+import { AiDownBanner } from '../../components/AiDownBanner';
 
 const MINT = '#7CF0A8';
 
@@ -138,6 +139,7 @@ export default function HerbScan() {
       <StatusBar style="light" />
       {photo ? <Image source={{ uri: photo }} style={StyleSheet.absoluteFill} contentFit="cover" /> : <CameraView ref={cam} style={StyleSheet.absoluteFill} facing="back" enableTorch={torch} />}
 
+      <AiDownBanner dark style={{ position: 'absolute', top: insets.top + 64, left: 16, right: 16, zIndex: 5 }} />
       {/* กรอบเล็ง */}
       {state !== 'done' ? (
         <View pointerEvents="none" style={[styles.frame, { width: size, height: size, left: (W - size) / 2, top: H * 0.4 - size / 2 }]}>

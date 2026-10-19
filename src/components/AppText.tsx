@@ -3,7 +3,7 @@
  * Android / เว็บ: ใช้ฟอนต์ไทยที่ใกล้ iOS ที่สุดตามน้ำหนักตัวอักษร (ดู lib/font.ts)
  */
 import React from 'react';
-import { Text as RNText, TextInput as RNTextInput, type TextInputProps, type TextProps } from 'react-native';
+import { Platform, Text as RNText, TextInput as RNTextInput, type TextInputProps, type TextProps } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { NEEDS_FONT, withAppFont } from '../lib/font';
 
@@ -13,9 +13,11 @@ export const Text = NEEDS_FONT
     })
   : RNText;
 
+// เว็บ: ไม่มีกรอบสีน้ำเงินของเบราว์เซอร์ตอนแตะช่อง (ช่องของแอปมีพื้นแคปซูลบอกตำแหน่งอยู่แล้ว เหมือน iOS)
+const WEB_NO_OUTLINE = Platform.OS === 'web' ? ({ outlineStyle: 'none' } as object) : null;
 export const TextInput = NEEDS_FONT
   ? React.forwardRef<RNTextInput, TextInputProps>(function TextInput(p, ref) {
-      return <RNTextInput ref={ref} {...p} style={withAppFont(p.style)} />;
+      return <RNTextInput ref={ref} {...p} style={[withAppFont(p.style), WEB_NO_OUTLINE]} />;
     })
   : RNTextInput;
 

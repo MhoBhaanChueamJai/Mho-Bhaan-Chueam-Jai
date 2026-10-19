@@ -15,6 +15,8 @@ import { avatarFor, fullAddress, type MB5Visit, type Patient } from '../../data/
 import { useApp } from '../../store/app';
 import { elevation, palette } from '../../theme';
 import { headerInset } from '../../components/nav/headerScroll';
+import { mb5Html, outputPdf } from '../../lib/printDocs';
+import { useDoctor } from '../../components/useDoctor';
 
 /** ข้อความสำหรับส่งออก (รูปแบบทะเบียนการรักษาของกรมการแพทย์แผนไทยฯ) */
 function exportText(p: Patient) {
@@ -153,8 +155,10 @@ function PatientBody({ p }: { p: Patient }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [p?.id]);
   const insets = useSafeAreaInsets();
+  const dr = useDoctor();
   const [openNo, setOpenNo] = useState<number | null>(p.visits[0]?.no ?? null);
   const share = () => Share.share({ message: exportText(p), title: p.name });
+  const printMb5 = () => outputPdf(mb5Html([p], dr), `ม.บ.5 ${p.name}`).catch(() => Alert.alert('สร้างเอกสารไม่สำเร็จ', 'ลองใหม่อีกครั้ง'));
   const tel = (p.phone ?? '').replace(/[^0-9]/g, '');
   const call = () => {
     if (!tel) return Alert.alert('ไม่มีเบอร์โทร', 'ยังไม่ได้บันทึกเบอร์โทรของผู้ป่วยรายนี้');
@@ -218,10 +222,12 @@ function PatientBody({ p }: { p: Patient }) {
                 shouldOpenOnLongPress={false}
                 themeVariant="light"
                 actions={[
+                  { id: 'mb5', title: 'พิมพ์แบบ ม.บ.5', image: 'printer.fill', imageColor: palette.ink },
+                  { id: 'refer', title: 'ใบส่งต่อ รพ.สต.', image: 'arrowshape.turn.up.right.fill', imageColor: palette.ink },
                   { id: 'share', title: 'ส่งออก', image: 'square.and.arrow.up', imageColor: palette.ink },
                   { id: 'delete', title: 'ลบผู้ป่วย', image: 'trash', imageColor: '#E5484D', attributes: { destructive: true } },
                 ]}
-                onPressAction={({ nativeEvent }) => (nativeEvent.event === 'share' ? share() : nativeEvent.event === 'delete' ? remove() : undefined)}
+                onPressAction={({ nativeEvent: e }) => (e.event === 'mb5' ? printMb5() : e.event === 'refer' ? router.push({ pathname: '/patient/referral', params: { pid: p.id } }) : e.event === 'share' ? share() : e.event === 'delete' ? remove() : undefined)}
               >
                 <View style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }} accessibilityRole="button" accessibilityLabel="เพิ่มเติม">
                   <Sym name="ellipsis" size={19} color={palette.ink} weight="semibold" />

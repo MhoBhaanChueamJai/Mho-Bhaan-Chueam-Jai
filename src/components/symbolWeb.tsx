@@ -166,6 +166,10 @@ const MAP: Record<string, string> = {
   'eye.fill': 'eye',
   'rectangle.portrait.and.arrow.right': 'log-out-outline',
   // คำเดี่ยว
+  'exclamationmark.bubble.fill': 'chatbubble-ellipses',
+  'lightbulb.fill': 'bulb',
+  'printer.fill': 'print',
+  'arrowshape.turn.up.right.fill': 'arrow-redo',
   flask: 'flask-outline',
   headphones: 'headset-outline',
   heart: 'heart-outline',

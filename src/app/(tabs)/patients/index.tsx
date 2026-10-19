@@ -15,6 +15,8 @@ import { statusLabel, statusTone, visitSortKey } from '../../../data/tones';
 import { useApp } from '../../../store/app';
 import { elevation, palette } from '../../../theme';
 import { LargeTitle, useLargeTitleScroll } from '../../../components/nav/LargeTitle';
+import { mb5Html, outputPdf } from '../../../lib/printDocs';
+import { useDoctor } from '../../../components/useDoctor';
 
 type Filter = 'all' | Patient['status'];
 /** สถานะบนการ์ดเข้ม: สีสว่าง + ลำดับในแถบสัดส่วน */
@@ -105,7 +107,9 @@ function StatusRing({ segs, total }: { segs: { n: number; c: string; g: [string,
  */
 function PatientsInner() {
   const lt = useLargeTitleScroll();
-  const { patients } = useApp();
+  const { patients, patientsLocalOnly } = useApp();
+  const dr = useDoctor();
+  const printAll = () => outputPdf(mb5Html(patients, dr), 'ทะเบียน ม.บ.5').catch(() => {});
   const [filter, setFilter] = useState<Filter>('all');
   const sorted = useMemo(() => [...patients].sort((a, b) => visitSortKey(lastVisit(b)?.date) - visitSortKey(lastVisit(a)?.date)), [patients]);
   const count = (k: Patient['status']) => patients.filter((p) => p.status === k).length;
@@ -172,6 +176,21 @@ function PatientsInner() {
           </View>
         </Animated.View>
 
+        {/* ข้อมูลผู้ป่วยไม่ได้สำรองขึ้นคลาวด์ → เตือน + พิมพ์ ม.บ.5 เก็บไว้ */}
+        {patientsLocalOnly && patients.length ? (
+          <Animated.View entering={FadeInDown.delay(80).duration(380)} style={[styles.localNote, elevation.e1]}>
+            <Sym name="iphone.radiowaves.left.and.right" size={20} color="#B86E00" />
+            <View style={{ flex: 1, gap: 2 }}>
+              <T v="subhead" color="#7A4A00" style={{ fontWeight: '700' }}>ข้อมูลผู้ป่วยเก็บในเครื่องนี้เท่านั้น</T>
+              <T v="caption" color="#8A5A10">ลบแอปหรือเปลี่ยนเครื่องแล้วข้อมูลจะหาย พิมพ์แบบ ม.บ.5 เก็บไว้เป็นสำรองได้</T>
+              <PressableScale haptic="select" scaleTo={0.96} onPress={printAll} style={styles.localBtn} accessibilityLabel="พิมพ์แบบ ม.บ.5 ผู้ป่วยทุกคน">
+                <Sym name="printer.fill" size={14} color="#FFFFFF" />
+                <T v="caption" color="#FFFFFF" style={{ fontWeight: '700' }}>พิมพ์ ม.บ.5 ทุกคน</T>
+              </PressableScale>
+            </View>
+          </Animated.View>
+        ) : null}
+
         <View style={styles.listHead}>
           <T v="caption" color={ios.secondary} style={{ flex: 1 }}>{cur ? `${cur.l} · ${list.length} ราย` : 'เรียงตามที่มารักษาล่าสุด'}</T>
           {cur ? (
@@ -222,6 +241,8 @@ function PatientsInner() {
 }
 
 const styles = StyleSheet.create({
+  localNote: { flexDirection: 'row', gap: 12, padding: 14, borderRadius: 20, backgroundColor: '#FDF1DC', borderWidth: 1, borderColor: '#F3D9A8', marginTop: 12 },
+  localBtn: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8, paddingHorizontal: 12, height: 32, borderRadius: 16, backgroundColor: '#C27A12' },
   page: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 120 },
   hero: { borderRadius: 24, borderCurve: 'continuous', overflow: 'hidden', padding: 18, backgroundColor: '#0A1712' },
   kicker: { fontWeight: '700', letterSpacing: 0.5 },
