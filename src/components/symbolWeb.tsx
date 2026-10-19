@@ -170,6 +170,7 @@ const MAP: Record<string, string> = {
   'exclamationmark.bubble.fill': 'chatbubble-ellipses',
   'lightbulb.fill': 'bulb',
   'printer.fill': 'print',
+  'flag.fill': 'flag',
   'paperplane.fill': 'paper-plane',
   circle: 'ellipse-outline',
   link: 'link',

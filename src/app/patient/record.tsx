@@ -85,7 +85,8 @@ function RecordInner() {
   const [result, setResult] = useState('');
   const [followUp, setFollowUp] = useState('');
   const [note, setNote] = useState('');
-  const [status, setStatus] = useState<Patient['status'] | null>(null);
+  // สถานะหลังการรักษาครั้งนี้ (เลือกก่อน แล้วถามเฉพาะช่องที่ต้องใช้) — มารักษาใหม่ = เริ่มที่ติดตามอาการ
+  const [status, setStatus] = useState<Patient['status']>('ติดตามอาการ');
   // ส่งต่อ: เลือกสถานะ "ส่งต่อ รพ.สต." → กรอกปลายทางในหน้านี้ แล้วบันทึกและส่งข้อมูลทีเดียว
   const [fid, setFid] = useState(FACILITIES[0].id);
   const [referReason, setReferReason] = useState('');
@@ -127,11 +128,10 @@ function RecordInner() {
       diagnosis: diagnosis.trim() || '-',
       treatment: treatment.trim() || '-',
       result: result.trim() || '-',
-      followUp: followUp.trim() || '-',
+      followUp: status === 'ติดตามอาการ' ? followUp.trim() || '-' : status === 'หายดี' ? 'หายดี ไม่ต้องติดตาม' : `ส่งต่อ ${fac.name}`,
       note: note.trim() || undefined,
     });
-    const st = status;
-    if (st && st !== p.status) updatePatient(p.id, { status: st });
+    if (status !== p.status) updatePatient(p.id, { status });
     h.success();
     if (!referring) return router.back();
     const reason = referReason.trim() || (diagnosis.trim() ? `อาการ${diagnosis.trim()}ไม่ดีขึ้นหลังการรักษาแบบแผนไทย ควรได้รับการตรวจวินิจฉัยเพิ่มเติม` : 'ควรได้รับการตรวจวินิจฉัยเพิ่มเติม');
@@ -172,27 +172,24 @@ function RecordInner() {
           <Field label="ผลการรักษา" value={result} onChange={setResult} placeholder="เช่น ปวดลดลง เดินได้ดีขึ้น" multiline />
         </Section>
 
-        <Section title="ติดตามผล" icon="calendar">
-          <Field label="การติดตามผล" value={followUp} onChange={setFollowUp} placeholder="เช่น นัด 1 สัปดาห์ งดของแสลง" multiline />
-          <Field label="หมายเหตุ / ข้อห้าม" value={note} onChange={setNote} placeholder="ของแสลง ข้อห้าม หรือเรื่องที่ต้องจำ" multiline />
-          <View>
-            <T v="subhead" color={ios.secondary} style={styles.label}>สถานะผู้ป่วย</T>
-            <View style={styles.chips}>
-              {STATUS.map((s) => {
-                const on = (status ?? p.status) === s.k;
-                return (
-                  <PressableScale key={s.k} haptic="select" scaleTo={0.95} onPress={() => setStatus(s.k)} style={[styles.chip, on && styles.chipOn]} accessibilityState={{ selected: on }} accessibilityLabel={`สถานะ ${s.label}`}>
-                    <T v="subhead" color={on ? '#FFFFFF' : palette.ink} style={{ fontWeight: '600' }}>{s.label}</T>
-                  </PressableScale>
-                );
-              })}
-            </View>
+        {/* สถานะก่อน → ช่องที่ต้องกรอกเปลี่ยนตามสถานะ */}
+        <Section title="สถานะผู้ป่วย" icon="flag.fill">
+          <View style={styles.chips}>
+            {STATUS.map((x) => {
+              const on = status === x.k;
+              return (
+                <PressableScale key={x.k} haptic="select" scaleTo={0.95} onPress={() => setStatus(x.k)} style={[styles.chip, on && styles.chipOn]} accessibilityState={{ selected: on }} accessibilityLabel={`สถานะ ${x.label}`}>
+                  <T v="subhead" color={on ? '#FFFFFF' : palette.ink} style={{ fontWeight: '600' }}>{x.label}</T>
+                </PressableScale>
+              );
+            })}
           </View>
-        </Section>
-
-        {referring ? (
-          <Animated.View entering={FadeIn.duration(220)} layout={SMOOTH}>
-            <Section title="ส่งต่อ" icon="arrowshape.turn.up.right.fill">
+          {status === 'ติดตามอาการ' ? (
+            <Animated.View key="follow" entering={FadeIn.duration(200)}>
+              <Field label="การติดตามผล" value={followUp} onChange={setFollowUp} placeholder="เช่น นัด 1 สัปดาห์ งดของแสลง" multiline />
+            </Animated.View>
+          ) : status === 'ส่งต่อ รพ.สต.' ? (
+            <Animated.View key="refer" entering={FadeIn.duration(200)} style={{ gap: 14 }}>
               <View style={{ gap: 6 }}>
                 <Dropdown label="ส่งถึง" value={fac.name} options={FACILITIES.map((f) => f.name)} onChange={(n) => setFid(FACILITIES.find((f) => f.name === n)?.id ?? fid)} />
                 <View style={styles.facNote}>
@@ -211,9 +208,10 @@ function RecordInner() {
                 <T v="body" style={{ flex: 1 }}>ส่งต่อด่วน</T>
                 <Switch value={urgent} onValueChange={setUrgent} trackColor={{ true: palette.coral }} />
               </View>
-            </Section>
-          </Animated.View>
-        ) : null}
+            </Animated.View>
+          ) : null}
+          <Field label="หมายเหตุ / ข้อห้าม" value={note} onChange={setNote} placeholder={status === 'หายดี' ? 'ถ้ามี เช่น ของแสลงที่ควรเลี่ยงต่อ' : 'ของแสลง ข้อห้าม หรือเรื่องที่ต้องจำ'} multiline />
+        </Section>
       </ScrollView>
 
       <GlassDock>
