@@ -43,8 +43,10 @@ fetch("chapters.json")
     DATA = d;
     renderHeroCards();
     renderToc();
+    renderMobileHome();
     const want = location.hash.slice(1);
-    open(ORDER.includes(want) ? want : ORDER[0], false);
+    if (MOBILE.matches && !ORDER.includes(want)) showHome();
+    else open(ORDER.includes(want) ? want : ORDER[0], false);
   });
 
 function renderStats() {
@@ -111,9 +113,55 @@ function scrollSpy() {
   document.querySelectorAll(".doc__sec").forEach((s) => spy.observe(s));
 }
 
-function open(id, scroll = true) {
+/* ── มือถือ: หน้ารวมการ์ด ↔ หน้าบทความ (ปุ่มกลับ/ปัดกลับของเบราว์เซอร์ใช้ได้) ── */
+const MOBILE = matchMedia("(max-width: 760px)");
+function renderMobileHome() {
+  $("#mhome").innerHTML = GROUPS.map((g) => {
+    const ids = ORDER.filter((id) => INFO[id].group === g);
+    return `<section class="mgroup">
+      <h2>${icon(GROUP_ICON[g] || "book-open", 16)}${g}</h2>
+      <div class="mgrid">${ids
+        .map((id) => {
+          const c = INFO[id], d = DATA[id];
+          return `<button class="mcard" data-open="${id}" style="--c:${c.color}">
+            <span class="mcard__shot"><img src="${d?.poster}" alt="" loading="lazy" /></span>
+            <span class="mcard__ic">${icon(c.icon, 16)}</span>
+            <b>${c.title}</b>
+            <small>${d?.steps.length || 0} ขั้นตอน · ${c.short}</small>
+          </button>`;
+        })
+        .join("")}</div>
+    </section>`;
+  }).join("");
+  $("#mhome").querySelectorAll("[data-open]").forEach((b) => b.addEventListener("click", () => open(b.dataset.open)));
+}
+function showHome() {
+  current = null;
+  document.body.classList.add("m-home");
+  document.body.classList.remove("m-article");
+  $("#mhome").hidden = false;
+  $("#mbar").hidden = true;
+  if (location.hash) history.replaceState(null, "", location.pathname);
+  scrollTo(0, 0);
+}
+addEventListener("popstate", () => {
+  if (!MOBILE.matches) return;
+  const id = location.hash.slice(1);
+  ORDER.includes(id) ? open(id, false, true) : showHome();
+});
+
+function open(id, scroll = true, fromPop = false) {
+  const wasHome = document.body.classList.contains("m-home");
   current = id;
-  history.replaceState(null, "", "#" + id);
+  if (MOBILE.matches) {
+    // จากหน้ารวม → เพิ่มประวัติ (ปุ่มกลับของเบราว์เซอร์กลับหน้ารวมได้) · ระหว่างบท → แทนที่
+    if (!fromPop) wasHome ? history.pushState({ a: 1 }, "", "#" + id) : history.replaceState({ a: 1 }, "", "#" + id);
+    document.body.classList.remove("m-home");
+    document.body.classList.add("m-article");
+    $("#mhome").hidden = true;
+    $("#mbar").hidden = false;
+    $("#mtitle").textContent = INFO[id].title;
+  } else history.replaceState(null, "", "#" + id);
   document.querySelectorAll(".nav__it").forEach((b) => b.classList.toggle("is-on", b.dataset.id === id));
   document.querySelector(`.nav__it[data-id="${id}"]`)?.closest(".nav__group")?.classList.remove("is-closed");
   const c = INFO[id];
@@ -172,16 +220,18 @@ function open(id, scroll = true) {
         </div>
         <nav class="pager">
           ${prev ? `<button class="pager__btn" data-go="${prev}"><small>${icon("arrow-left", 13)} ก่อนหน้า</small><b>${INFO[prev].title}</b></button>` : "<span></span>"}
-          ${next ? `<button class="pager__btn is-next" data-go="${next}"><small>ถัดไป ${icon("arrow-right", 13)}</small><b>${INFO[next].title}</b></button>` : `<a class="pager__btn is-next" href="../"><small>ดูครบทุกหัวข้อแล้ว</small><b>เปิดแอปหมอบ้านเชื่อมใจ</b></a>`}
+          ${next ? `<button class="pager__btn is-next" data-go="${next}"><small>ถัดไป ${icon("arrow-right", 13)}</small><b>${INFO[next].title}</b></button>` : `<button class="pager__btn is-next" data-home="1"><small>ดูครบทุกหัวข้อแล้ว</small><b>กลับหน้ารวมคู่มือ</b></button>`}
         </nav>
       </footer>
     </article>`;
   wireFlow();
   scrollSpy();
   L.querySelectorAll("[data-go]").forEach((b) => b.addEventListener("click", () => open(b.dataset.go)));
+  L.querySelectorAll("[data-home]").forEach((b) => b.addEventListener("click", () => (MOBILE.matches ? (history.state?.a ? history.back() : showHome()) : open(ORDER[0]))));
   L.querySelectorAll("[data-jump]").forEach((b) => b.addEventListener("click", (e) => (e.preventDefault(), $("#s-" + b.dataset.jump).scrollIntoView({ behavior: "smooth", block: "start" }))));
   reveal();
-  if (scroll) $(".layout").scrollIntoView({ behavior: "smooth", block: "start" });
+  if (MOBILE.matches) scrollTo(0, 0);
+  else if (scroll) $(".layout").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 /* ── tap-demo animation engine: still frames + animated finger, looping like a GIF ── */
@@ -401,4 +451,6 @@ function reveal() {
   clear.innerHTML = icon("x", 14);
 })();
 document.querySelector(".brand__mark").innerHTML = icon("book-open", 18);
+$("#mbacki").innerHTML = icon("arrow-left", 18);
+$("#mback").addEventListener("click", () => (history.state?.a ? history.back() : showHome()));
 
