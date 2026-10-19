@@ -2,7 +2,7 @@ import { MenuView } from '../../components/Menu';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { PractitionerGate } from '../../components/PractitionerGate';
-import { Linking, ScrollView, Share, StyleSheet, View } from 'react-native';
+import { Linking, ScrollView, StyleSheet, View } from 'react-native';
 import { Alert } from '../../lib/alert';
 import { NotFound } from '../../components/NotFound';
 import Animated, { FadeIn, LinearTransition } from 'react-native-reanimated';
@@ -17,27 +17,6 @@ import { elevation, palette } from '../../theme';
 import { headerInset } from '../../components/nav/headerScroll';
 import { mb5Html, outputPdf } from '../../lib/printDocs';
 import { useDoctor } from '../../components/useDoctor';
-
-/** ข้อความสำหรับส่งออก (รูปแบบทะเบียนการรักษาของกรมการแพทย์แผนไทยฯ) */
-function exportText(p: Patient) {
-  const head = [
-    'ทะเบียนการรักษา ประวัติการรักษา และผลการรักษาผู้ป่วย',
-    '',
-    `ชื่อ-สกุล ${p.name}  เพศ ${p.sex}  อายุ ${p.age} ปี`,
-    `ที่อยู่ ${fullAddress(p.address)}`,
-    `เบอร์โทรศัพท์ ${p.phone}`,
-    `โรคประจำตัว ${p.chronic}  การแพ้ยา/อาหาร ${p.allergies}`,
-    `น้ำหนัก ${p.weight} กิโลกรัม  ส่วนสูง ${p.height} เซนติเมตร`,
-    '',
-  ];
-  const rows = [...p.visits]
-    .reverse()
-    .map(
-      (v) =>
-        `ครั้งที่ ${v.no} | ${v.date}\nอาการเจ็บป่วย: ${v.symptoms}\nตรวจร่างกาย: ${v.exam}\nวินิจฉัยโรค: ${v.diagnosis}\nการรักษา: ${v.treatment}\nผลการรักษา: ${v.result}\nการติดตามผล: ${v.followUp}${v.note ? `\nหมายเหตุ: ${v.note}` : ''}`,
-    );
-  return [...head, ...rows].join('\n');
-}
 
 const DETAIL: { k: keyof MB5Visit; l: string; icon: string; color: string }[] = [
   { k: 'symptoms', l: 'อาการ', icon: 'waveform.path.ecg', color: '#C2564B' },
@@ -157,8 +136,8 @@ function PatientBody({ p }: { p: Patient }) {
   const insets = useSafeAreaInsets();
   const dr = useDoctor();
   const [openNo, setOpenNo] = useState<number | null>(p.visits[0]?.no ?? null);
-  const share = () => Share.share({ message: exportText(p), title: p.name });
-  const printMb5 = () => outputPdf(mb5Html([p], dr), `ม.บ.5 ${p.name}`).catch(() => Alert.alert('สร้างเอกสารไม่สำเร็จ', 'ลองใหม่อีกครั้ง'));
+  // ส่งออก = แบบ ม.บ.5 ของผู้ป่วยรายนี้ (PDF)
+  const exportMb5 = () => outputPdf(mb5Html([p], dr), `ม.บ.5 ${p.name}`).catch(() => Alert.alert('สร้างเอกสารไม่สำเร็จ', 'ลองใหม่อีกครั้ง'));
   const tel = (p.phone ?? '').replace(/[^0-9]/g, '');
   const call = () => {
     if (!tel) return Alert.alert('ไม่มีเบอร์โทร', 'ยังไม่ได้บันทึกเบอร์โทรของผู้ป่วยรายนี้');
@@ -222,12 +201,11 @@ function PatientBody({ p }: { p: Patient }) {
                 shouldOpenOnLongPress={false}
                 themeVariant="light"
                 actions={[
-                  { id: 'mb5', title: 'พิมพ์แบบ ม.บ.5', image: 'printer.fill', imageColor: palette.ink },
                   { id: 'refer', title: 'ใบส่งต่อ รพ.สต.', image: 'arrowshape.turn.up.right.fill', imageColor: palette.ink },
-                  { id: 'share', title: 'ส่งออก', image: 'square.and.arrow.up', imageColor: palette.ink },
+                  { id: 'share', title: 'ส่งออกแบบ ม.บ.5 (PDF)', image: 'square.and.arrow.up', imageColor: palette.ink },
                   { id: 'delete', title: 'ลบผู้ป่วย', image: 'trash', imageColor: '#E5484D', attributes: { destructive: true } },
                 ]}
-                onPressAction={({ nativeEvent: e }) => (e.event === 'mb5' ? printMb5() : e.event === 'refer' ? router.push({ pathname: '/patient/referral', params: { pid: p.id } }) : e.event === 'share' ? share() : e.event === 'delete' ? remove() : undefined)}
+                onPressAction={({ nativeEvent: e }) => (e.event === 'refer' ? router.push({ pathname: '/patient/referral', params: { pid: p.id } }) : e.event === 'share' ? exportMb5() : e.event === 'delete' ? remove() : undefined)}
               >
                 <View style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }} accessibilityRole="button" accessibilityLabel="เพิ่มเติม">
                   <Sym name="ellipsis" size={19} color={palette.ink} weight="semibold" />

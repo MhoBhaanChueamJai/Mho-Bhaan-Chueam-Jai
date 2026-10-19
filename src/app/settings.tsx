@@ -25,8 +25,6 @@ import { authenticateBiometric, biometricInfo, clearPin } from '../store/securit
 import { elevation, palette } from '../theme';
 import { LargeTitle, useLargeTitleScroll } from '../components/nav/LargeTitle';
 import { openManual } from '../lib/manual';
-import { mb5Html, outputPdf } from '../lib/printDocs';
-import { useDoctor } from '../components/useDoctor';
 
 const enter = (i: number) => FadeInDown.delay(40 + i * 50).duration(420);
 
@@ -61,7 +59,6 @@ export default function Settings() {
     biometricInfo().then(setBio);
   }, []);
   const tts = useSpeaker();
-  const dr = useDoctor();
   const h = useHaptic();
   const dialect = settings.dialect ?? 'central';
   // ประเภทหมอพื้นบ้านจากทะเบียน (ยืนยันตัวตนแล้ว) หรือจากที่ตั้งไว้
@@ -200,7 +197,6 @@ export default function Settings() {
             onPress={doSync}
             right={syncing ? <ActivityIndicator /> : <Sym name="arrow.triangle.2.circlepath" size={18} color={palette.primary} />}
           />
-          <ListRow icon={<CircleIcon name="printer.fill" color="#2A8C7A" />} title="พิมพ์แบบ ม.บ.5" subtitle="ทะเบียนการรักษาผู้ป่วยทุกคน (PDF)" onPress={() => outputPdf(mb5Html(patients, dr), 'ทะเบียน ม.บ.5').catch(() => {})} chevron />
           <ListRow icon={<CircleIcon name="square.and.arrow.up" color="#3B7DD8" />} title="ส่งออกข้อมูลผู้ป่วย" subtitle={`ผู้ป่วย ${patients.length} ราย · ภูมิปัญญา ${wisdoms.length} เรื่อง`} onPress={exportAll} chevron />
           <ListRow icon={<CircleIcon name="hand.raised.fill" color="#7A5CC8" />} title="นโยบายความเป็นส่วนตัว" onPress={() => router.push('/privacy')} chevron last />
         </ListSection>
