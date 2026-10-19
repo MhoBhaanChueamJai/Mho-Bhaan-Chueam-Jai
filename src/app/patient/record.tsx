@@ -23,7 +23,6 @@ import { herbsMentioned } from '../../lib/brain';
 import { useApp } from '../../store/app';
 import { elevation, palette } from '../../theme';
 
-const RESULTS = ['หาย', 'ดีขึ้น', 'ทุเลา', 'ทรงตัว', 'แย่ลง', 'ส่งต่อ', 'รอติดตามผล'] as const;
 const STATUS: { k: Patient['status']; label: string }[] = [
   { k: 'ติดตามอาการ', label: 'ติดตามอาการ' },
   { k: 'หายดี', label: 'หายดี' },
@@ -83,15 +82,15 @@ function RecordInner() {
   const [exam, setExam] = useState('');
   const [diagnosis, setDiagnosis] = useState('');
   const [treatment, setTreatment] = useState('');
-  const [result, setResult] = useState<(typeof RESULTS)[number]>('รอติดตามผล');
+  const [result, setResult] = useState('');
   const [followUp, setFollowUp] = useState('');
   const [note, setNote] = useState('');
   const [status, setStatus] = useState<Patient['status'] | null>(null);
-  // ส่งต่อ: เลือกผลการรักษา "ส่งต่อ" หรือสถานะ "ส่งต่อ รพ.สต." → กรอกปลายทางในหน้านี้ แล้วบันทึกและส่งข้อมูลทีเดียว
+  // ส่งต่อ: เลือกสถานะ "ส่งต่อ รพ.สต." → กรอกปลายทางในหน้านี้ แล้วบันทึกและส่งข้อมูลทีเดียว
   const [fid, setFid] = useState(FACILITIES[0].id);
   const [referReason, setReferReason] = useState('');
   const [urgent, setUrgent] = useState(false);
-  const referring = result === 'ส่งต่อ' || status === 'ส่งต่อ รพ.สต.';
+  const referring = status === 'ส่งต่อ รพ.สต.';
   const saved = useRef(false);
   const durRef = useRef<TextInput>(null);
   const diagRef = useRef<TextInput>(null);
@@ -101,7 +100,7 @@ function RecordInner() {
   const navigation = useNavigation();
 
   const canSave = !!(symptoms.trim() || diagnosis.trim() || treatment.trim());
-  const dirty = !!(canSave || exam.trim() || followUp.trim() || note.trim());
+  const dirty = !!(canSave || exam.trim() || result.trim() || followUp.trim() || note.trim());
   // กรอกไว้แล้วกดย้อนกลับ/ปัดกลับ → ถามก่อน (กันข้อมูลหายโดยไม่ตั้งใจ)
   usePreventRemove(dirty, ({ data }) => {
     // บันทึกแล้ว → ออกได้เลย
@@ -115,16 +114,6 @@ function RecordInner() {
   if (!p) return <NotFound title="ไม่พบผู้ป่วย" />;
   const no = (p.visits[0]?.no ?? 0) + 1;
 
-  const pickResult = (r: (typeof RESULTS)[number]) => {
-    setResult(r);
-    if (r === 'ส่งต่อ') setStatus('ส่งต่อ รพ.สต.');
-    else if (status === 'ส่งต่อ รพ.สต.') setStatus(null);
-  };
-  const pickStatus = (k: Patient['status']) => {
-    setStatus(k);
-    if (k === 'ส่งต่อ รพ.สต.') setResult('ส่งต่อ');
-    else if (result === 'ส่งต่อ') setResult('รอติดตามผล');
-  };
   const fac = FACILITIES.find((f) => f.id === fid)!;
   const lastRef = (p.referrals ?? []).find((r) => r.to === fac.name);
 
@@ -137,12 +126,11 @@ function RecordInner() {
       exam: exam.trim() || '-',
       diagnosis: diagnosis.trim() || '-',
       treatment: treatment.trim() || '-',
-      result,
+      result: result.trim() || '-',
       followUp: followUp.trim() || '-',
       note: note.trim() || undefined,
     });
-    // ผลการรักษา "ส่งต่อ" / "หาย" → ปรับสถานะผู้ป่วยให้ตรง (เลือกเองได้)
-    const st = status ?? (result === 'ส่งต่อ' ? 'ส่งต่อ รพ.สต.' : result === 'หาย' ? 'หายดี' : null);
+    const st = status;
     if (st && st !== p.status) updatePatient(p.id, { status: st });
     h.success();
     if (!referring) return router.back();
@@ -181,19 +169,7 @@ function RecordInner() {
               ))}
             </Animated.View>
           ) : null}
-          <View>
-            <T v="subhead" color={ios.secondary} style={styles.label}>ผลการรักษา</T>
-            <View style={styles.chips}>
-              {RESULTS.map((r) => {
-                const on = result === r;
-                return (
-                  <PressableScale key={r} haptic="select" scaleTo={0.95} onPress={() => pickResult(r)} style={[styles.chip, on && styles.chipOn]} accessibilityState={{ selected: on }} accessibilityLabel={`ผลการรักษา ${r}`}>
-                    <T v="subhead" color={on ? '#FFFFFF' : palette.ink} style={{ fontWeight: '600' }}>{r}</T>
-                  </PressableScale>
-                );
-              })}
-            </View>
-          </View>
+          <Field label="ผลการรักษา" value={result} onChange={setResult} placeholder="เช่น ปวดลดลง เดินได้ดีขึ้น" multiline />
         </Section>
 
         <Section title="ติดตามผล" icon="calendar">
@@ -205,7 +181,7 @@ function RecordInner() {
               {STATUS.map((s) => {
                 const on = (status ?? p.status) === s.k;
                 return (
-                  <PressableScale key={s.k} haptic="select" scaleTo={0.95} onPress={() => pickStatus(s.k)} style={[styles.chip, on && styles.chipOn]} accessibilityState={{ selected: on }} accessibilityLabel={`สถานะ ${s.label}`}>
+                  <PressableScale key={s.k} haptic="select" scaleTo={0.95} onPress={() => setStatus(s.k)} style={[styles.chip, on && styles.chipOn]} accessibilityState={{ selected: on }} accessibilityLabel={`สถานะ ${s.label}`}>
                     <T v="subhead" color={on ? '#FFFFFF' : palette.ink} style={{ fontWeight: '600' }}>{s.label}</T>
                   </PressableScale>
                 );
