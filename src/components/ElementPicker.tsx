@@ -3,9 +3,11 @@
  *   ไฟ = flame.fill · น้ำ = drop.fill · ลม = wind · ดิน = mountain.2.fill
  */
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { SymbolView, type SFSymbol } from 'expo-symbols';
+import { Platform, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { Sym, ios } from './ios';
+import { WebSymbol } from './symbolWeb';
 import { Glass, PressableScale, T } from './ui';
 import { ELEMENT_PROFILE, ageSamutthan, seasonNow } from '../lib/elements';
 import type { Patient } from '../data/mock';
@@ -19,7 +21,12 @@ const SYMBOL: Record<El, string> = { ไฟ: 'flame.fill', น้ำ: 'drop.fill
 export function ElementIcon({ el, size = 58 }: { el: El; active?: boolean; size?: number }) {
   return (
     <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
-      <Sym name={SYMBOL[el] as any} size={size * 0.74} color={TINT[el]} weight="semibold" />
+      {/* ขนาดตามจริง (ไม่ปัดตามขั้นขนาดไอคอนของแอป ที่จำกัดไว้ไม่เกินขนาดไอคอนทั่วไป) */}
+      {Platform.OS === 'ios' ? (
+        <SymbolView name={SYMBOL[el] as SFSymbol} size={size * 0.72} tintColor={TINT[el]} weight="semibold" style={{ width: size * 0.72, height: size * 0.72 }} />
+      ) : (
+        <WebSymbol name={SYMBOL[el]} size={size * 0.72} color={TINT[el]} />
+      )}
     </View>
   );
 }
