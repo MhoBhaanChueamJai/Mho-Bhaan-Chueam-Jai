@@ -86,6 +86,7 @@ const MAP: Record<string, string> = {
   'leaf.arrow.triangle.circlepath': 'm:leaf-maple',
   'drop.fill': 'water',
   'flame.fill': 'flame',
+  wind: 'm:weather-windy',
   'thermometer.snowflake': 'thermometer-outline',
   // หนังสือ / เอกสาร
   'book.closed': 'book-outline',
