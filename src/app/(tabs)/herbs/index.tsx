@@ -6,7 +6,7 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, router, useFocusEffect } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { AppState, FlatList, Linking, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { AppState, Linking, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useIsFocused } from '@react-navigation/native';
 import { Sym, ios } from '../../../components/ios';
@@ -16,6 +16,7 @@ import { HerbStack } from '../../../components/HerbStack';
 import { SKY_COLOR, WeatherIcon } from '../../../components/WeatherIcon';
 import { WeatherError, getWeather, quickRecs, recommendForWeather, type Weather, type WeatherRecs } from '../../../lib/weatherHerbs';
 import { elementColor, elevation, palette } from '../../../theme';
+import { LargeTitle, useLargeTitleScroll } from '../../../components/nav/LargeTitle';
 
 const TH_DAY = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์'];
 const TH_MON = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
@@ -52,6 +53,7 @@ const HerbCard = React.memo(function HerbCard({ h, i, w }: { h: Herb; i: number;
 });
 
 export default function Herbs() {
+  const lt = useLargeTitleScroll();
   const { width: SW } = useWindowDimensions();
   const cardW = Math.floor((SW - 32 - 12) / 2);
   // ── แนะนำสมุนไพรตามสภาพอากาศวันนี้ (ตำแหน่ง → อากาศ → ครูปัญญาเลือก 3 ตัว) ──
@@ -105,7 +107,8 @@ export default function Herbs() {
         }}
       />
       {/* รายการ 100 ชนิด: FlatList (โหลดเฉพาะที่เห็นบนจอ ไม่สร้างทั้งหมดพร้อมกัน) */}
-      <FlatList
+      <Animated.FlatList
+        {...lt}
         data={list}
         keyExtractor={(h) => h.id}
         numColumns={2}
@@ -121,6 +124,7 @@ export default function Herbs() {
         renderItem={({ item, index }) => <HerbCard h={item} i={index} w={cardW} />}
         ListHeaderComponent={
           <View>
+            <LargeTitle title="คลังสมุนไพร" bleed={16} />
         {/* ── ฟีเจอร์ใหม่: สแกนหาสมุนไพรด้วยกล้อง (การ์ดกะทัดรัด พื้นหลังภาพสมุนไพรบนพื้นเขียวเข้ม) ── */}
         <Animated.View entering={FadeInDown.duration(420)}>
           <PressableScale scaleTo={0.98} haptic="press" onPress={() => router.push('/herb/scan')} style={[styles.heroWrap, elevation.e2]} accessibilityLabel="สแกนหาสมุนไพรด้วยกล้อง">

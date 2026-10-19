@@ -5,7 +5,7 @@
  */
 import { Stack, router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, Share, StyleSheet, Switch, View } from 'react-native';
+import { ActivityIndicator, Alert, Share, StyleSheet, Switch, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSpeaker } from '../components/audio';
 import { CircleIcon, ListRow, ListSection, PAGE_PAD } from '../components/ListRow';
@@ -21,10 +21,12 @@ import { useMyAvatar } from '../lib/myAvatar';
 import { APP_VERSION } from './about';
 import { authenticateBiometric, biometricInfo, clearPin } from '../store/security';
 import { elevation, palette } from '../theme';
+import { LargeTitle, useLargeTitleScroll } from '../components/nav/LargeTitle';
 
 const enter = (i: number) => FadeInDown.delay(40 + i * 50).duration(420);
 
 export default function Settings() {
+  const lt = useLargeTitleScroll();
   const { settings, update, patients, wisdoms, clearLocal, setUnlocked, profile, isPractitioner, sync, pendingCount, syncNow, demo } = useApp();
   const [syncing, setSyncing] = useState(false);
   const myAvatar = useMyAvatar();
@@ -123,7 +125,8 @@ export default function Settings() {
   return (
     <>
       <Stack.Screen options={{ headerLeft: () => <HeaderBack fallback="/home" color={palette.ink} /> }} />
-      <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingTop: 8, paddingBottom: 64 }} showsVerticalScrollIndicator={false}>
+      <Animated.ScrollView {...lt} contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingTop: 8, paddingBottom: 64 }} showsVerticalScrollIndicator={false}>
+        <LargeTitle title="ตั้งค่า" bleed={16} />
         {/* ── โปรไฟล์: แถวบัญชีแบบ iPhone (รูปซ้าย · ชื่อ/อีเมล/สถานะ · ลูกศร) กดเพื่อดูข้อมูลส่วนตัว ── */}
         <Animated.View entering={enter(0)}>
           <PressableScale haptic="select" scaleTo={0.98} onPress={() => router.push('/profile')} style={[styles.card, styles.profile, elevation.e1]} accessibilityLabel="ดูข้อมูลส่วนตัว">
@@ -209,7 +212,7 @@ export default function Settings() {
         <T v="caption" color={ios.tertiary} center style={{ marginTop: 28, paddingHorizontal: 24, lineHeight: 20 }}>
           หมอบ้านเชื่อมใจ เวอร์ชัน {APP_VERSION}{'\n'}คำแนะนำจากครูปัญญาเป็นข้อมูลเบื้องต้น ไม่ใช่การวินิจฉัยแทนแพทย์
         </T>
-      </ScrollView>
+      </Animated.ScrollView>
     </>
   );
 }

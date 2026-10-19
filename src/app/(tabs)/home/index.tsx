@@ -15,6 +15,7 @@ import { visitSortKey } from '../../../data/tones';
 import { useApp } from '../../../store/app';
 import { todayPick } from '../../../lib/herbDaily';
 import { elevation, palette } from '../../../theme';
+import { LargeTitle, useLargeTitleScroll } from '../../../components/nav/LargeTitle';
 
 const enter = (i: number) => FadeInDown.delay(30 + i * 50).duration(420);
 
@@ -41,6 +42,7 @@ function Bell({ unread, shake }: { unread: number; shake: number }) {
 }
 
 export default function Home() {
+  const lt = useLargeTitleScroll();
   const { patients, settings, isPractitioner, profile, wisdoms: allW } = useApp();
   const wisdoms = allW; // นับรวมตำราอ้างอิงในระบบ
   // ผู้ป่วยที่มารักษาล่าสุด 3 ราย (หมอพื้นบ้านไม่ใช้ระบบนัด)
@@ -78,7 +80,8 @@ export default function Home() {
           ),
         }}
       />
-      <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
+      <Animated.ScrollView {...lt} contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
+        <LargeTitle title="วันนี้" bleed={16} />
         <Animated.View entering={enter(0)}>
           <T v="callout" color={ios.secondary} style={{ paddingHorizontal: 4 }}>
             {thaiDate(TODAY)} · สวัสดีครับ {me}
@@ -161,7 +164,7 @@ export default function Home() {
             )}
           </Animated.View>
         ) : null}
-      </ScrollView>
+      </Animated.ScrollView>
     </>
   );
 }

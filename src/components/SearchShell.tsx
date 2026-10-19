@@ -5,7 +5,8 @@
  */
 import { router } from 'expo-router';
 import React, { useEffect, useRef } from 'react';
-import { Keyboard, ScrollView, StyleSheet, TextInput, View, useWindowDimensions } from 'react-native';
+import { Keyboard, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { TextInput } from './AppText';
 import Animated, { Easing, FadeInDown, interpolate, runOnJS, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Sym, ios } from './ios';

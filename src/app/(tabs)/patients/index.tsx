@@ -5,7 +5,7 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useMemo, useState } from 'react';
 import { PractitionerGate } from '../../../components/PractitionerGate';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import Animated, { Easing, FadeIn, FadeInDown, useAnimatedProps, useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated';
 import Svg, { Circle, Defs, LinearGradient as SvgGradient, Stop } from 'react-native-svg';
 import { IOSCard, Sym, ios } from '../../../components/ios';
@@ -14,6 +14,7 @@ import { avatarFor, lastVisit, type Patient } from '../../../data/mock';
 import { statusLabel, statusTone, visitSortKey } from '../../../data/tones';
 import { useApp } from '../../../store/app';
 import { elevation, palette } from '../../../theme';
+import { LargeTitle, useLargeTitleScroll } from '../../../components/nav/LargeTitle';
 
 type Filter = 'all' | Patient['status'];
 /** สถานะบนการ์ดเข้ม: สีสว่าง + ลำดับในแถบสัดส่วน */
@@ -103,6 +104,7 @@ function StatusRing({ segs, total }: { segs: { n: number; c: string; g: [string,
  * (หมอพื้นบ้านไม่ใช้ระบบนัดแบบคลินิก)
  */
 function PatientsInner() {
+  const lt = useLargeTitleScroll();
   const { patients } = useApp();
   const [filter, setFilter] = useState<Filter>('all');
   const sorted = useMemo(() => [...patients].sort((a, b) => visitSortKey(lastVisit(b)?.date) - visitSortKey(lastVisit(a)?.date)), [patients]);
@@ -141,7 +143,8 @@ function PatientsInner() {
           ),
         }}
       />
-      <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
+      <Animated.ScrollView {...lt} contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
+        <LargeTitle title="ผู้ป่วย" bleed={16} />
         {/* ── การ์ดสรุปสีเข้ม: วงแหวนสถานะ (แบบแอป Fitness) + รายการสถานะแตะกรองได้ ── */}
         <Animated.View entering={FadeInDown.duration(380)} style={[styles.hero, elevation.e2]}>
           {/* พื้นหลังภาพสมุนไพร เบลอนิดๆ + ไล่มืดฝั่งซ้าย (แบบการ์ดหัวคลังภูมิ) */}
@@ -213,7 +216,7 @@ function PatientsInner() {
             <T v="callout" color={ios.secondary}>{patients.length ? 'ไม่มีผู้ป่วยในสถานะนี้' : 'ยังไม่มีผู้ป่วย กด + เพื่อเพิ่ม'}</T>
           </IOSCard>
         )}
-      </ScrollView>
+      </Animated.ScrollView>
     </>
   );
 }

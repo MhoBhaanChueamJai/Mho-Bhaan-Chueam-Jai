@@ -5,7 +5,8 @@
 import { router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useMemo, useRef, useState } from 'react';
-import { Keyboard, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Keyboard, ScrollView, StyleSheet, View } from 'react-native';
+import { TextInput } from '../../components/AppText';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AISphere } from '../../components/AISphere';

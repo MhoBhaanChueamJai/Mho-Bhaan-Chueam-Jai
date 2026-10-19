@@ -9,7 +9,7 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, router, useFocusEffect } from 'expo-router';
 import React, { useCallback } from 'react';
-import { ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { BookCover } from '../../../components/BookCover';
 import { KindIcon } from '../../../components/KindIcon';
@@ -19,6 +19,7 @@ import { HeaderButton, PressableScale, T } from '../../../components/ui';
 import { type Wisdom } from '../../../data/mock';
 import { useApp } from '../../../store/app';
 import { elevation, palette } from '../../../theme';
+import { LargeTitle, useLargeTitleScroll } from '../../../components/nav/LargeTitle';
 
 const KIND: Record<Wisdom['kind'], { icon: string; color: string }> = {
   ตำรับยา: { icon: 'leaf.fill', color: palette.primary },
@@ -50,6 +51,7 @@ function Book({ w, width, i }: { w: Wisdom; width: number; i: number }) {
 }
 
 export default function Vault() {
+  const lt = useLargeTitleScroll();
   const { wisdoms, updateWisdom } = useApp();
   // ตำราที่เพื่อนแชร์มา: เปิดคลังเมื่อไหร่ ดึงเนื้อหาล่าสุดจากต้นฉบับ (เพื่อนแก้แล้วอัปเดตตาม)
   useFocusEffect(
@@ -98,7 +100,8 @@ export default function Vault() {
         ),
       }}
     />
-    <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={{ paddingTop: 4, paddingBottom: 130 }} showsVerticalScrollIndicator={false}>
+    <Animated.ScrollView {...lt} contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={{ paddingTop: 4, paddingBottom: 130 }} showsVerticalScrollIndicator={false}>
+        <LargeTitle title="คลังภูมิปัญญา" bleed={0} />
       {/* ── Hero: สันหนังสือบนหิ้ง (เบลอ) ── */}
       <View style={[styles.heroWrap, elevation.e3]}>
       <View style={styles.hero}>
@@ -177,7 +180,7 @@ export default function Vault() {
           </View>
         </>
       ) : null}
-    </ScrollView>
+    </Animated.ScrollView>
     </>
   );
 }

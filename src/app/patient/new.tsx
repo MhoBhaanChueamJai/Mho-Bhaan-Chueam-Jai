@@ -5,7 +5,8 @@
 import { Stack, router, useFocusEffect } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { PractitionerGate } from '../../components/PractitionerGate';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View, type KeyboardTypeOptions } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View, type KeyboardTypeOptions } from 'react-native';
+import { TextInput } from '../../components/AppText';
 import Animated, { FadeIn, FadeInDown, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { Sym, ios } from '../../components/ios';
 import { Button, GlassDock, HeaderButton, T, useHaptic } from '../../components/ui';

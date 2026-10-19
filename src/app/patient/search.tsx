@@ -6,7 +6,8 @@
 import { router } from 'expo-router';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { PractitionerGate } from '../../components/PractitionerGate';
-import { ActivityIndicator, Keyboard, ScrollView, StyleSheet, TextInput, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Keyboard, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { TextInput } from '../../components/AppText';
 import Animated, { Easing, FadeIn, FadeInDown, interpolate, runOnJS, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Sym, ios } from '../../components/ios';

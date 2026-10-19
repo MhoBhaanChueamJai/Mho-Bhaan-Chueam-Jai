@@ -3,7 +3,8 @@
  */
 import { router } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, StyleSheet, TextInput, View } from 'react-native';
+import { Alert, StyleSheet, View } from 'react-native';
+import { TextInput } from '../../components/AppText';
 import { Sym, ios } from '../../components/ios';
 import { FormSheet } from '../../components/FormSheet';
 import { T, useHaptic } from '../../components/ui';

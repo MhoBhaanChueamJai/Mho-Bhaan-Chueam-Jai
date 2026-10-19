@@ -5,7 +5,8 @@
  * - ช่องซ้ายล่างใส่ปุ่มพิเศษได้ (เช่น Face ID), ขวาล่างเป็นปุ่มลบ
  */
 import React, { useEffect, useImperativeHandle } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { Text } from './AppText';
 import Animated, { useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 import { Sym } from './ios';
 import { Glass, PressableScale, useHaptic } from './ui';

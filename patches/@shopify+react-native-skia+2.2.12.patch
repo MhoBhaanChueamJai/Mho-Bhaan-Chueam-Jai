@@ -247635,7 +247635,7 @@ new file mode 100644
 index 0000000..477b068
 Binary files /dev/null and b/node_modules/@shopify/react-native-skia/android/build/tmp/compileDebugJavaWithJavac/previous-compilation-data.bin differ
 diff --git a/node_modules/@shopify/react-native-skia/lib/commonjs/skia/Skia.web.js b/node_modules/@shopify/react-native-skia/lib/commonjs/skia/Skia.web.js
-index 5a60295..8c1068a 100644
+index 5a60295..7fa2cdf 100644
 --- a/node_modules/@shopify/react-native-skia/lib/commonjs/skia/Skia.web.js
 +++ b/node_modules/@shopify/react-native-skia/lib/commonjs/skia/Skia.web.js
 @@ -5,5 +5,6 @@ Object.defineProperty(exports, "__esModule", {
@@ -247644,11 +247644,11 @@ index 5a60295..8c1068a 100644
  var _web = require("./web");
 -const Skia = exports.Skia = (0, _web.JsiSkApi)(global.CanvasKit);
 +let api;
-+const Skia = exports.Skia = new Proxy({}, { get: (_, k) => (api ??= (0, _web.JsiSkApi)(global.CanvasKit))[k] });
++const Skia = exports.Skia = new Proxy({}, { get: (_, k) => (global.CanvasKit ? (api ??= (0, _web.JsiSkApi)(global.CanvasKit)) : (0, _web.JsiSkApi)(global.CanvasKit))[k] });
  //# sourceMappingURL=Skia.web.js.map
 \ No newline at end of file
 diff --git a/node_modules/@shopify/react-native-skia/lib/module/skia/Skia.web.js b/node_modules/@shopify/react-native-skia/lib/module/skia/Skia.web.js
-index d1d23ea..f3bce13 100644
+index d1d23ea..3b913bb 100644
 --- a/node_modules/@shopify/react-native-skia/lib/module/skia/Skia.web.js
 +++ b/node_modules/@shopify/react-native-skia/lib/module/skia/Skia.web.js
 @@ -1,3 +1,5 @@
@@ -247656,6 +247656,6 @@ index d1d23ea..f3bce13 100644
 -export const Skia = JsiSkApi(global.CanvasKit);
 +// สร้าง API ตอนใช้ครั้งแรก (CanvasKit โหลดแบบ async บนเว็บ — ห้ามผูกตอน import)
 +let api;
-+export const Skia = new Proxy({}, { get: (_, k) => (api ??= JsiSkApi(global.CanvasKit))[k] });
++export const Skia = new Proxy({}, { get: (_, k) => (global.CanvasKit ? (api ??= JsiSkApi(global.CanvasKit)) : JsiSkApi(global.CanvasKit))[k] });
  //# sourceMappingURL=Skia.web.js.map
 \ No newline at end of file

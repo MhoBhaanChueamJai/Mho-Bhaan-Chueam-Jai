@@ -15,7 +15,7 @@ function make(name: SFSymbol, filled?: SFSymbol) {
     const useFilled = filled && fill && fill !== 'transparent';
     const weight: SymbolWeight = strokeWidth && strokeWidth >= 2.3 ? 'semibold' : 'medium';
     const s = iconTier(size);
-    if (Platform.OS === 'web') return <WebSymbol name={useFilled ? filled! : name} size={s} color={color} />;
+    if (Platform.OS !== 'ios') return <WebSymbol name={useFilled ? filled! : name} size={s} color={color} />;
     return <SymbolView name={useFilled ? filled : name} size={s} tintColor={color} weight={weight} style={[{ width: s, height: s }, style]} />;
   };
   Icon.displayName = name;

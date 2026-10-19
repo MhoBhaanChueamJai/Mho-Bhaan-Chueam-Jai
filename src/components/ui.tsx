@@ -6,10 +6,9 @@ import { router } from 'expo-router';
 import { ChevronLeft, Search } from './icons';
 import React, { useEffect } from 'react';
 import {
+  Platform,
   Pressable,
   StyleSheet,
-  Text,
-  TextInput,
   View,
   type PressableProps,
   type StyleProp,
@@ -18,6 +17,7 @@ import {
   type TextStyle,
   type ViewStyle,
 } from 'react-native';
+import { Text, TextInput } from './AppText';
 import Animated, { Easing, useAnimatedKeyboard, useAnimatedProps, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Path } from 'react-native-svg';
@@ -120,10 +120,13 @@ export function Glass({
       </GlassView>
     );
   }
+  // Android / เว็บ (และ iOS รุ่นเก่า): กระจกฝ้าเบลอ — พื้นขาวโปร่ง + เบลอฉากหลัง + ขอบสะท้อนแสงบางๆ แบบ Liquid Glass
+  const dark = !!tint && /rgba?\(\s*(\d+)/.exec(tint)?.[1] !== undefined && Number(/rgba?\(\s*(\d+)/.exec(tint)![1]) < 90;
   return (
     <View style={[{ overflow: 'hidden' }, style]}>
-      <BlurView intensity={50} tint="light" style={StyleSheet.absoluteFill} />
+      <BlurView intensity={Platform.OS === 'android' ? 28 : 50} tint={dark ? 'dark' : 'light'} experimentalBlurMethod="dimezisBlurView" style={StyleSheet.absoluteFill} />
       <View style={[StyleSheet.absoluteFill, { backgroundColor: tint ?? 'rgba(255,255,255,0.6)' }]} />
+      <View pointerEvents="none" style={[StyleSheet.absoluteFill, { borderRadius: (StyleSheet.flatten(style) as ViewStyle | undefined)?.borderRadius, borderWidth: StyleSheet.hairlineWidth * 2, borderColor: dark ? 'rgba(255,255,255,0.16)' : 'rgba(255,255,255,0.85)' }]} />
       {children}
     </View>
   );

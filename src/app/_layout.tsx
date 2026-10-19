@@ -6,8 +6,11 @@ import { AppState } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { LockScreen } from '../components/LockScreen';
+import { platformHeader } from '../components/nav/platformHeader';
 import { usePushRouting } from '../lib/pushRouting';
 import { useSkiaWeb } from '../lib/skiaWeb';
+import { APP_FONTS, NEEDS_FONT } from '../lib/font';
+import { useFonts } from 'expo-font';
 import { AppProvider, useApp } from '../store/app';
 import { palette } from '../theme';
 
@@ -40,7 +43,7 @@ function Root() {
   return (
     <>
       <StatusBar style="dark" />
-      <Stack screenOptions={{ headerShown: false, headerBackButtonDisplayMode: 'minimal', headerBackTitle: 'กลับ', contentStyle: { backgroundColor: palette.bg }, animation: 'default' }}>
+      <Stack screenOptions={{ headerShown: false, headerBackButtonDisplayMode: 'minimal', headerBackTitle: 'กลับ', contentStyle: { backgroundColor: palette.bg }, animation: 'default', ...platformHeader }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="login" options={{ animation: 'fade', gestureEnabled: false }} />
         <Stack.Screen name="patient/tell" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
@@ -85,7 +88,9 @@ function Root() {
 
 export default function Layout() {
   const skia = useSkiaWeb();
-  if (!skia) return null;
+  // Android / เว็บ: โหลดฟอนต์ไทยที่ใกล้ฟอนต์ iOS ก่อนวาด (iOS ใช้ฟอนต์ระบบ)
+  const [fonts] = useFonts(NEEDS_FONT ? APP_FONTS : {});
+  if (!skia || (NEEDS_FONT && !fonts)) return null;
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: palette.bg }}>
       <SafeAreaProvider>

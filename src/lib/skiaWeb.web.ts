@@ -6,10 +6,9 @@ export function useSkiaWeb() {
   const [ok, setOk] = useState(!!(globalThis as any).CanvasKit);
   useEffect(() => {
     if (ok) return;
-    // เว็บจริง (GitHub Pages) อยู่ใต้ base path · ตอนพัฒนา (Metro) ไฟล์อยู่ที่ราก → ลอง base ก่อน ไม่ได้ค่อยลองราก
-    const base = (process.env.EXPO_BASE_URL ?? '').replace(/\/$/, '');
+    // เว็บจริง (GitHub Pages) อยู่ใต้ base path · ตอนพัฒนา (Metro) ไฟล์ public/ อยู่ที่ราก
+    const base = __DEV__ ? '' : (process.env.EXPO_BASE_URL ?? '').replace(/\/$/, '');
     LoadSkiaWeb({ locateFile: (f: string) => `${base}/${f}` })
-      .catch(() => (base ? LoadSkiaWeb({ locateFile: (f: string) => `/${f}` }) : null))
       .catch(() => {})
       .finally(() => setOk(true));
   }, [ok]);

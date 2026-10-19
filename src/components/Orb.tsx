@@ -27,6 +27,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect } from 'react';
 import { Dimensions, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { AnimatedText } from './AppText';
 import Animated, {
   Easing,
   cancelAnimation,
@@ -328,9 +329,9 @@ export function ProgressHalo({ size = 220, progress, children }: { size?: number
         </Circle>
       </Canvas>
       {children}
-      <Animated.Text style={{ position: 'absolute', top: size * 0.04, right: size * 0.06, fontSize: 15, fontWeight: '600', color: '#7A6A8A', fontVariant: ['tabular-nums'] }}>
+      <AnimatedText style={{ position: 'absolute', top: size * 0.04, right: size * 0.06, fontSize: 15, fontWeight: '600', color: '#7A6A8A', fontVariant: ['tabular-nums'] }}>
         {pct}%
-      </Animated.Text>
+      </AnimatedText>
     </View>
   );
 }

@@ -6,7 +6,8 @@
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
-import { Platform, StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
+import { Text } from './AppText';
 import type { Wisdom } from '../data/mock';
 
 export const COVERS: Record<Wisdom['kind'], { src: number; ink: string; rect: [number, number, number, number] }> = {
