@@ -54,7 +54,11 @@ export type Patient = {
   element: 'ดิน' | 'น้ำ' | 'ลม' | 'ไฟ';
   status: 'ติดตามอาการ' | 'นัดวันนี้' | 'หายดี' | 'ส่งต่อ รพ.สต.';
   meds: string[];
+  // ประวัติการส่งต่อ (กันส่งข้อมูลซ้ำ · พิมพ์ใบเดิมซ้ำได้)
+  referrals?: ReferralRecord[];
 };
+
+export type ReferralRecord = { no: string; to: string; at: number; visitNo?: number; urgent: boolean; reason: string; extra?: string };
 
 /** ผู้ป่วยตัวอย่างถูกเอาออกแล้ว */
 export const patients: Patient[] = [];

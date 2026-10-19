@@ -10,12 +10,15 @@ import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 're
 import { Alert } from '../../lib/alert';
 import { TextInput } from '../../components/AppText';
 import Animated, { FadeIn, LinearTransition } from 'react-native-reanimated';
-import { DateField } from '../../components/FormPickers';
+import { Switch } from '../../components/AppSwitch';
+import { DateField, Dropdown } from '../../components/FormPickers';
 import { NotFound } from '../../components/NotFound';
 import { PractitionerGate } from '../../components/PractitionerGate';
 import { Sym, ios } from '../../components/ios';
 import { Button, GlassDock, PressableScale, T, useHaptic } from '../../components/ui';
+import { FACILITIES } from '../../data/facilities';
 import type { Patient } from '../../data/mock';
+import { thDate } from '../../lib/referral';
 import { herbsMentioned } from '../../lib/brain';
 import { useApp } from '../../store/app';
 import { elevation, palette } from '../../theme';
@@ -84,6 +87,11 @@ function RecordInner() {
   const [followUp, setFollowUp] = useState('');
   const [note, setNote] = useState('');
   const [status, setStatus] = useState<Patient['status'] | null>(null);
+  // ส่งต่อ: เลือกผลการรักษา "ส่งต่อ" หรือสถานะ "ส่งต่อ รพ.สต." → กรอกปลายทางในหน้านี้ แล้วบันทึกและส่งข้อมูลทีเดียว
+  const [fid, setFid] = useState(FACILITIES[0].id);
+  const [referReason, setReferReason] = useState('');
+  const [urgent, setUrgent] = useState(false);
+  const referring = result === 'ส่งต่อ' || status === 'ส่งต่อ รพ.สต.';
   const saved = useRef(false);
   const durRef = useRef<TextInput>(null);
   const diagRef = useRef<TextInput>(null);
@@ -107,6 +115,19 @@ function RecordInner() {
   if (!p) return <NotFound title="ไม่พบผู้ป่วย" />;
   const no = (p.visits[0]?.no ?? 0) + 1;
 
+  const pickResult = (r: (typeof RESULTS)[number]) => {
+    setResult(r);
+    if (r === 'ส่งต่อ') setStatus('ส่งต่อ รพ.สต.');
+    else if (status === 'ส่งต่อ รพ.สต.') setStatus(null);
+  };
+  const pickStatus = (k: Patient['status']) => {
+    setStatus(k);
+    if (k === 'ส่งต่อ รพ.สต.') setResult('ส่งต่อ');
+    else if (result === 'ส่งต่อ') setResult('รอติดตามผล');
+  };
+  const fac = FACILITIES.find((f) => f.id === fid)!;
+  const lastRef = (p.referrals ?? []).find((r) => r.to === fac.name);
+
   const save = () => {
     if (!canSave || saved.current) return;
     saved.current = true;
@@ -124,7 +145,9 @@ function RecordInner() {
     const st = status ?? (result === 'ส่งต่อ' ? 'ส่งต่อ รพ.สต.' : result === 'หาย' ? 'หายดี' : null);
     if (st && st !== p.status) updatePatient(p.id, { status: st });
     h.success();
-    router.back();
+    if (!referring) return router.back();
+    const reason = referReason.trim() || (diagnosis.trim() ? `อาการ${diagnosis.trim()}ไม่ดีขึ้นหลังการรักษาแบบแผนไทย ควรได้รับการตรวจวินิจฉัยเพิ่มเติม` : 'ควรได้รับการตรวจวินิจฉัยเพิ่มเติม');
+    router.replace({ pathname: '/patient/referral', params: { pid: p.id, fid, reason, urgent: urgent ? '1' : '0', visitNo: String(no) } });
   };
 
 
@@ -164,7 +187,7 @@ function RecordInner() {
               {RESULTS.map((r) => {
                 const on = result === r;
                 return (
-                  <PressableScale key={r} haptic="select" scaleTo={0.95} onPress={() => setResult(r)} style={[styles.chip, on && styles.chipOn]} accessibilityState={{ selected: on }} accessibilityLabel={`ผลการรักษา ${r}`}>
+                  <PressableScale key={r} haptic="select" scaleTo={0.95} onPress={() => pickResult(r)} style={[styles.chip, on && styles.chipOn]} accessibilityState={{ selected: on }} accessibilityLabel={`ผลการรักษา ${r}`}>
                     <T v="subhead" color={on ? '#FFFFFF' : palette.ink} style={{ fontWeight: '600' }}>{r}</T>
                   </PressableScale>
                 );
@@ -182,7 +205,7 @@ function RecordInner() {
               {STATUS.map((s) => {
                 const on = (status ?? p.status) === s.k;
                 return (
-                  <PressableScale key={s.k} haptic="select" scaleTo={0.95} onPress={() => setStatus(s.k)} style={[styles.chip, on && styles.chipOn]} accessibilityState={{ selected: on }} accessibilityLabel={`สถานะ ${s.label}`}>
+                  <PressableScale key={s.k} haptic="select" scaleTo={0.95} onPress={() => pickStatus(s.k)} style={[styles.chip, on && styles.chipOn]} accessibilityState={{ selected: on }} accessibilityLabel={`สถานะ ${s.label}`}>
                     <T v="subhead" color={on ? '#FFFFFF' : palette.ink} style={{ fontWeight: '600' }}>{s.label}</T>
                   </PressableScale>
                 );
@@ -190,10 +213,35 @@ function RecordInner() {
             </View>
           </View>
         </Section>
+
+        {referring ? (
+          <Animated.View entering={FadeIn.duration(220)} layout={SMOOTH}>
+            <Section title="ส่งต่อ" icon="arrowshape.turn.up.right.fill">
+              <View style={{ gap: 6 }}>
+                <Dropdown label="ส่งถึง" value={fac.name} options={FACILITIES.map((f) => f.name)} onChange={(n) => setFid(FACILITIES.find((f) => f.name === n)?.id ?? fid)} />
+                <View style={styles.facNote}>
+                  <Sym name="link" size={12} color={palette.primary} />
+                  <T v="caption" color={ios.secondary}>{fac.area} · {fac.km} กม. · เชื่อมกับระบบแล้ว</T>
+                </View>
+                {lastRef ? (
+                  <View style={styles.refWarn}>
+                    <Sym name="clock.arrow.circlepath" size={14} color="#B86E00" />
+                    <T v="caption" color="#7A4A00" style={{ flex: 1 }}>เคยส่งต่อให้ที่นี่แล้ว เมื่อ {thDate(lastRef.at)}{lastRef.visitNo ? ` (การรักษาครั้งที่ ${lastRef.visitNo})` : ''}</T>
+                  </View>
+                ) : null}
+              </View>
+              <Field label="เหตุผลที่ส่งต่อ" value={referReason} onChange={setReferReason} placeholder={diagnosis.trim() ? `เช่น อาการ${diagnosis.trim()}ไม่ดีขึ้น ควรตรวจเพิ่มเติม` : 'เช่น อาการไม่ดีขึ้น ควรตรวจเพิ่มเติม'} multiline />
+              <View style={styles.sw}>
+                <T v="body" style={{ flex: 1 }}>ส่งต่อด่วน</T>
+                <Switch value={urgent} onValueChange={setUrgent} trackColor={{ true: palette.coral }} />
+              </View>
+            </Section>
+          </Animated.View>
+        ) : null}
       </ScrollView>
 
       <GlassDock>
-        <Button label="บันทึกการรักษา" icon={<Sym name="checkmark" size={17} color="#FFFFFF" weight="bold" />} disabled={!canSave} onPress={save} style={{ flex: 1, height: 52 }} />
+        <Button label={referring ? 'บันทึกและส่งต่อ' : 'บันทึกการรักษา'} icon={<Sym name={referring ? 'paperplane.fill' : 'checkmark'} size={17} color="#FFFFFF" weight="bold" />} disabled={!canSave} onPress={save} style={{ flex: 1, height: 52 }} />
       </GlassDock>
     </KeyboardAvoidingView>
   );
@@ -216,6 +264,9 @@ const styles = StyleSheet.create({
   input: { height: 52, borderRadius: 26, paddingHorizontal: 18, backgroundColor: palette.mint, fontSize: 17, color: palette.ink, borderWidth: 1.5, borderColor: 'transparent' },
   inputMulti: { height: undefined, minHeight: 76, borderRadius: 22, paddingTop: 14, paddingBottom: 14, textAlignVertical: 'top' },
   inputFocus: { backgroundColor: palette.surface, borderColor: palette.primary },
+  facNote: { flexDirection: 'row', alignItems: 'center', gap: 4, marginLeft: 6 },
+  refWarn: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4, padding: 10, borderRadius: 14, backgroundColor: '#FDF1DC' },
+  sw: { flexDirection: 'row', alignItems: 'center', minHeight: 44, gap: 10 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: { height: 40, paddingHorizontal: 16, borderRadius: 20, backgroundColor: palette.mint, alignItems: 'center', justifyContent: 'center' },
   chipOn: { backgroundColor: palette.primary },

@@ -17,6 +17,7 @@ import { elevation, palette } from '../../theme';
 import { headerInset } from '../../components/nav/headerScroll';
 import { mb5Html, outputPdf } from '../../lib/printDocs';
 import { useDoctor } from '../../components/useDoctor';
+import { printReferral, thDate, thTime } from '../../lib/referral';
 
 const DETAIL: { k: keyof MB5Visit; l: string; icon: string; color: string }[] = [
   { k: 'symptoms', l: 'อาการ', icon: 'waveform.path.ecg', color: '#C2564B' },
@@ -201,11 +202,10 @@ function PatientBody({ p }: { p: Patient }) {
                 shouldOpenOnLongPress={false}
                 themeVariant="light"
                 actions={[
-                  { id: 'refer', title: 'ใบส่งต่อ รพ.สต.', image: 'arrowshape.turn.up.right.fill', imageColor: palette.ink },
                   { id: 'share', title: 'ส่งออก ม.บ.5', image: 'square.and.arrow.up', imageColor: palette.ink },
                   { id: 'delete', title: 'ลบผู้ป่วย', image: 'trash', imageColor: '#E5484D', attributes: { destructive: true } },
                 ]}
-                onPressAction={({ nativeEvent: e }) => (e.event === 'refer' ? router.push({ pathname: '/patient/referral', params: { pid: p.id } }) : e.event === 'share' ? exportMb5() : e.event === 'delete' ? remove() : undefined)}
+                onPressAction={({ nativeEvent: e }) => (e.event === 'share' ? exportMb5() : e.event === 'delete' ? remove() : undefined)}
               >
                 <View style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }} accessibilityRole="button" accessibilityLabel="เพิ่มเติม">
                   <Sym name="ellipsis" size={19} color={palette.ink} weight="semibold" />
@@ -256,6 +256,24 @@ function PatientBody({ p }: { p: Patient }) {
             last
           />
         </ListSection>
+
+        {/* ── ประวัติการส่งต่อ: แตะเพื่อพิมพ์หนังสือส่งต่อใบเดิม ── */}
+        {p.referrals?.length ? (
+          <ListSection i={3} title="ประวัติการส่งต่อ" footer="แตะรายการเพื่อพิมพ์หนังสือส่งต่อใบเดิมอีกครั้ง">
+            {p.referrals.map((r, i) => (
+              <ListRow
+                key={r.no}
+                icon={<CircleIcon name="arrowshape.turn.up.right.fill" color={r.urgent ? '#D2453A' : '#2A8C7A'} />}
+                overline={`${thDate(r.at)} ${thTime(r.at)} น.${r.visitNo ? ` · การรักษาครั้งที่ ${r.visitNo}` : ''}${r.urgent ? ' · ด่วน' : ''}`}
+                title={r.to}
+                subtitle={r.no}
+                right={<Sym name="printer.fill" size={17} color={palette.primary} />}
+                onPress={() => printReferral(p, r, dr)}
+                last={i === p.referrals!.length - 1}
+              />
+            ))}
+          </ListSection>
+        ) : null}
 
         {/* ── ประวัติการรักษา (ไทม์ไลน์) ── */}
         <View style={styles.histHead}>
