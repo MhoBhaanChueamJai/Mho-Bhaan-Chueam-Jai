@@ -1,11 +1,10 @@
 /**
  * ตัวเลือกธาตุเจ้าเรือน — ไอคอนธาตุแบบไอคอนระบบ (SF Symbols) ในปุ่ม Liquid Glass
  *   ไฟ = flame.fill · น้ำ = drop.fill · ลม = wind · ดิน = mountain.2.fill
- * เลือกแล้ว = ไอคอนเด้งขึ้นเล็กน้อย
  */
-import React, { useEffect } from 'react';
+import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import Animated, { Easing, FadeInDown, FadeOut, LinearTransition, useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, { FadeInDown, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { Sym, ios } from './ios';
 import { Glass, PressableScale, T } from './ui';
 import { ELEMENT_PROFILE, ageSamutthan, seasonNow } from '../lib/elements';
@@ -17,24 +16,11 @@ type El = Patient['element'];
 const TINT: Record<El, string> = { ไฟ: '#FF7A2F', น้ำ: '#2BA7F0', ลม: '#4FBFD0', ดิน: '#8C7461' };
 const SYMBOL: Record<El, string> = { ไฟ: 'flame.fill', น้ำ: 'drop.fill', ลม: 'wind', ดิน: 'mountain.2.fill' };
 
-/** badge = วงกลมสีธาตุ + ไอคอนขาว (ใช้บนพื้นเข้ม เช่น หลังบัตรผู้ป่วย) */
-export function ElementIcon({ el, active, size = 58, badge }: { el: El; active: boolean; size?: number; badge?: boolean }) {
-  const s = useSharedValue(1);
-  useEffect(() => {
-    if (active) s.value = withSequence(withTiming(1.18, { duration: 140, easing: Easing.out(Easing.cubic) }), withSpring(1, { damping: 8, stiffness: 180 }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active]);
-  const st = useAnimatedStyle(() => ({ transform: [{ scale: s.value }] }));
+export function ElementIcon({ el, size = 58 }: { el: El; active?: boolean; size?: number }) {
   return (
-    <Animated.View style={[{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }, st]}>
-      {badge ? (
-        <View style={{ width: size * 0.86, height: size * 0.86, borderRadius: size, alignItems: 'center', justifyContent: 'center', backgroundColor: TINT[el], borderWidth: 2, borderColor: 'rgba(255,255,255,0.85)', boxShadow: `0px 0px 14px ${TINT[el]}AA` }}>
-          <Sym name={SYMBOL[el] as any} size={size * 0.56} color="#FFFFFF" weight="semibold" />
-        </View>
-      ) : (
-        <Sym name={SYMBOL[el] as any} size={size * 0.74} color={TINT[el]} weight="semibold" />
-      )}
-    </Animated.View>
+    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+      <Sym name={SYMBOL[el] as any} size={size * 0.74} color={TINT[el]} weight="semibold" />
+    </View>
   );
 }
 
