@@ -4,7 +4,7 @@ import { MenuView } from '../../../components/Menu';
  * Hero (การ์ด): พื้นหลังสันหนังสือ/ตำราเรียงบนหิ้ง (เบลอ) + ชื่อหน้า + KPI จำนวนตามประเภท · แถบเครื่องมือบนหัวจอ: สแกน QR รับตำรา · เพิ่ม
  * → เรื่องล่าสุด (การ์ดภาพใหญ่เลื่อนแนวนอน) → รายการทั้งหมด
  */
-import { BlurView } from 'expo-blur';
+import { BlurView } from '../../../components/Blur';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, router, useFocusEffect } from 'expo-router';

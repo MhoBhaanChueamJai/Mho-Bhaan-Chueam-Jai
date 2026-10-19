@@ -14,6 +14,7 @@ import { HeaderBack, PressableScale, T } from '../../components/ui';
 import { avatarFor, fullAddress, type MB5Visit, type Patient } from '../../data/mock';
 import { useApp } from '../../store/app';
 import { elevation, palette } from '../../theme';
+import { headerInset } from '../../components/nav/headerScroll';
 
 /** ข้อความสำหรับส่งออก (รูปแบบทะเบียนการรักษาของกรมการแพทย์แผนไทยฯ) */
 function exportText(p: Patient) {
@@ -230,7 +231,7 @@ function PatientBody({ p }: { p: Patient }) {
           ),
         }}
       />
-      <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingBottom: insets.bottom + 120 }} showsVerticalScrollIndicator={false}>
+      <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingTop: headerInset(insets.top), paddingBottom: insets.bottom + 120 }} showsVerticalScrollIndicator={false}>
         {/* ── บัตรผู้ป่วย 3 มิติ (แตะเพื่อพลิกดูธาตุ · เอียงมือถือแสงเปลี่ยน) ── */}
         <Animated.View entering={FadeIn.duration(350)} style={{ marginTop: 8 }}>
           <PatientCard p={p} avatar={avatarFor(p)} onCall={call} />

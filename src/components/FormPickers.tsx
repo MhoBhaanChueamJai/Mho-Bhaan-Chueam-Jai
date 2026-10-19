@@ -5,8 +5,9 @@
  */
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { MenuView } from './Menu';
-import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
+import { DatePopover } from './DatePopover';
 import { Sym, ios } from './ios';
 import { T } from './ui';
 import { palette } from '../theme';
@@ -44,6 +45,20 @@ export const thaiDateLong = (d: Date) => `${d.getDate()} ${TH_MONTHS[d.getMonth(
  * locale "th-TH@calendar=buddhist" + patch datetimepicker (patches/) → ปฏิทิน พ.ศ.
  */
 export function DateField({ label, value, onChange, flex, placeholder = 'เลือกวันที่', fallback = new Date(1960, 0, 1) }: { label: string; value: Date | null; onChange: (d: Date) => void; flex?: number; placeholder?: string; fallback?: Date }) {
+  // Android / เว็บ: ปฏิทินป๊อปโอเวอร์แบบ iOS ที่วาดเอง (ปฏิทินของ Android เป็นกล่อง Material · เว็บไม่มี)
+  const ref = useRef<View>(null);
+  const [anchor, setAnchor] = useState<null | { x: number; y: number; w: number; h: number }>(null);
+  if (Platform.OS !== 'ios')
+    return (
+      <View style={flex ? { flex } : undefined}>
+        <Label text={label} />
+        <Pressable ref={ref} onPress={() => ref.current?.measureInWindow((x, y, w, h) => setAnchor({ x, y, w, h }))} style={styles.box} accessibilityRole="button" accessibilityLabel={`${label} ${value ? thaiDateLong(value) : placeholder}`}>
+          <T v="body" color={value ? palette.ink : ios.tertiary} style={{ flex: 1 }} numberOfLines={1}>{value ? thaiDateLong(value) : placeholder}</T>
+          <Sym name="calendar" size={16} color={palette.primary} />
+        </Pressable>
+        <DatePopover anchor={anchor} value={value ?? fallback} onChange={onChange} onClose={() => setAnchor(null)} max={new Date()} min={new Date(1900, 0, 1)} />
+      </View>
+    );
   return (
     <View style={flex ? { flex } : undefined}>
       <Label text={label} />

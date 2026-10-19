@@ -5,7 +5,7 @@
  * สแกนเจอ/กรอกครบ 8 ตัว → อ่านรหัสอัตโนมัติ → เปิดแผ่นล่างแบบ iOS (wisdom/got) ตัวอย่างตำรา + ปุ่มเพิ่มลงคลัง
  */
 import SegmentedControl from '@react-native-segmented-control/segmented-control';
-import { BlurView } from 'expo-blur';
+import { BlurView } from '../../components/Blur';
 import { Image } from 'expo-image';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { router, useFocusEffect } from 'expo-router';

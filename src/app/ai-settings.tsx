@@ -3,7 +3,8 @@
  * ครูปัญญาใช้ 2 โมเดลช่วยกันอัตโนมัติ และเสียงเดียวทั้งแอป จึงตั้งได้แค่ภาษาพูด (ภาษาถิ่น)
  */
 import React, { useEffect } from 'react';
-import { ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
+import { Switch } from '../components/AppSwitch';
 import { Alert } from '../lib/alert';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { AISphere } from '../components/AISphere';

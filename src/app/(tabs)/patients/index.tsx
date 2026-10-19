@@ -1,6 +1,6 @@
 import { MenuView } from '../../../components/Menu';
 import { Stack, router } from 'expo-router';
-import { BlurView } from 'expo-blur';
+import { BlurView } from '../../../components/Blur';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useMemo, useState } from 'react';

@@ -7,6 +7,7 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import React from 'react';
+import { View } from 'react-native';
 
 const MAP: Record<string, string> = {
   // ลูกศร / ทิศทาง
@@ -165,6 +166,7 @@ const MAP: Record<string, string> = {
   'eye.fill': 'eye',
   'rectangle.portrait.and.arrow.right': 'log-out-outline',
   // คำเดี่ยว
+  flask: 'flask-outline',
   headphones: 'headset-outline',
   heart: 'heart-outline',
   location: 'location-outline',
@@ -202,7 +204,9 @@ const MAP: Record<string, string> = {
   'aqi.medium': 'm:blur',
 };
 
-export function WebSymbol({ name, size, color }: { name: string; size: number; color: string }) {
+export function WebSymbol({ name, size, color }: { name?: string; size: number; color: string }) {
+  // ชื่อว่าง (เช่น ข้อมูลไม่มีไอคอน) → เว้นที่ว่างไว้เหมือน SF Symbols บน iOS
+  if (!name) return <View style={{ width: size, height: size }} />;
   const v = MAP[name];
   if (v?.startsWith('m:')) return <MaterialCommunityIcons name={v.slice(2) as any} size={size} color={color} />;
   return <Ionicons name={(v ?? (name.endsWith('.fill') ? 'ellipse' : 'ellipse-outline')) as any} size={size} color={color} />;

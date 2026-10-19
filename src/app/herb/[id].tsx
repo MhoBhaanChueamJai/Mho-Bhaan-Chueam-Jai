@@ -4,7 +4,7 @@
  * การ์ด: ข้อมูลสมุนไพร (ชื่อท้องถิ่น ส่วนที่ใช้ ธาตุ) · สรรพคุณ · วิธีใช้ · ข้อควรระวัง · ตำราในคลังที่ใช้สมุนไพรนี้
  * หัวขวา: อ่านออกเสียง · แถบลอยล่าง: ถามครูปัญญา
  */
-import { BlurView } from 'expo-blur';
+import { BlurView } from '../../components/Blur';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, router, useLocalSearchParams } from 'expo-router';

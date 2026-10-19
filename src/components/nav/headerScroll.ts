@@ -24,3 +24,6 @@ export const tabMinimized = makeMutable(0);
 
 /** ระยะบนของแถบหัว: เว็บไม่มีแถบสถานะ → เว้น 8 ไม่ให้ปุ่มชิดขอบ */
 export const topOf = (insetTop: number) => (Platform.OS === 'web' ? Math.max(insetTop, 8) : insetTop);
+
+/** หัวโปร่ง: iOS ดันเนื้อหาลงใต้แถบหัวให้เอง (contentInsetAdjustmentBehavior) · Android / เว็บต้องเว้นเอง */
+export const headerInset = (insetTop: number) => (Platform.OS === 'ios' ? 0 : topOf(insetTop) + BAR_H);

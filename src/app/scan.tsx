@@ -7,7 +7,7 @@
  * - fill=1 (เปิดจากหน้าเพิ่มภูมิปัญญา) → "ใช้ข้อมูลนี้" ส่งกลับไปเติมฟอร์ม แทนการเก็บเข้าคลังทันที
  */
 import { Asset } from 'expo-asset';
-import { BlurView } from 'expo-blur';
+import { BlurView } from '../components/Blur';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { Image } from 'expo-image';
 import * as ImageManipulator from 'expo-image-manipulator';

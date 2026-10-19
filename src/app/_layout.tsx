@@ -13,6 +13,8 @@ import { usePushRouting } from '../lib/pushRouting';
 import { useSkiaWeb } from '../lib/skiaWeb';
 import { APP_FONTS, NEEDS_FONT } from '../lib/font';
 import { useFonts } from 'expo-font';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { AppProvider, useApp } from '../store/app';
 import { palette } from '../theme';
 
@@ -96,7 +98,7 @@ const sheet = (o: NativeStackNavigationOptions): NativeStackNavigationOptions =>
 export default function Layout() {
   const skia = useSkiaWeb();
   // Android / เว็บ: โหลดฟอนต์ไทยที่ใกล้ฟอนต์ iOS ก่อนวาด (iOS ใช้ฟอนต์ระบบ)
-  const [fonts] = useFonts(NEEDS_FONT ? APP_FONTS : {});
+  const [fonts] = useFonts(NEEDS_FONT ? { ...APP_FONTS, ...Ionicons.font, ...MaterialCommunityIcons.font } : {});
   if (!skia || (NEEDS_FONT && !fonts)) return null;
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: palette.bg }}>
