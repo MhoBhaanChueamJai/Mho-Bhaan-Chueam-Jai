@@ -8,8 +8,8 @@ import { useVideoPlayer, VideoView } from 'expo-video';
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedStyle, withTiming } from 'react-native-reanimated';
+import { FILM } from './loginFilmSource';
 
-const FILM = require('../../assets/intro/login.mp4');
 /** ช่วงที่ส่วนบนของวิดีโอเป็นโทนมืด (วินาที): ครูปัญญา AI · สวนสมุนไพร + สแกนตำรา */
 const DARK: [number, number][] = [
   [18.4, 31.0],
@@ -29,8 +29,11 @@ export function LoginFilm({ height }: { height: number }) {
   const dark = DARK.some(([a, b]) => currentTime >= a && currentTime < b);
   const [shown, setShown] = useState(false);
   useEffect(() => {
-    if (status === 'readyToPlay') setShown(true);
-  }, [status]);
+    if (status !== 'readyToPlay') return;
+    setShown(true);
+    // เว็บ: play() ตอนสร้าง player อาจถูกข้ามเพราะวิดีโอยังไม่พร้อม → สั่งเล่นอีกครั้ง (ปิดเสียงอยู่แล้ว เล่นอัตโนมัติได้)
+    if (!player.playing) player.play();
+  }, [status, player]);
   const fade = useAnimatedStyle(() => ({ opacity: withTiming(shown ? 1 : 0, { duration: 400 }) }), [shown]);
 
   return (

@@ -161,8 +161,13 @@ const MAP: Record<string, string> = {
   faceid: 'm:face-recognition',
   touchid: 'finger-print',
   'eye.slash': 'eye-off-outline',
+  eye: 'eye-outline',
+  'eye.fill': 'eye',
   'rectangle.portrait.and.arrow.right': 'log-out-outline',
   // คำเดี่ยว
+  headphones: 'headset-outline',
+  heart: 'heart-outline',
+  location: 'location-outline',
   magnifyingglass: 'search',
   person: 'person-outline',
   trash: 'trash-outline',
