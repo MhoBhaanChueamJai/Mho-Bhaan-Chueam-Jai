@@ -240,7 +240,7 @@ export function PatientCard({ p, avatar, onCall }: { p: Patient; avatar: number;
                 {/* เหรียญธาตุ: วงทองล้อมไอคอนธาตุ */}
                 <LinearGradient colors={['#FBEFC8', '#B8893E', '#F7E2A8', '#8E6526']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.medal}>
                   <View style={[styles.medalInner, { backgroundColor: th.bg[2] }]}>
-                    <ElementIcon el={p.element} active={flipped} size={ch * 0.3} />
+                    <ElementIcon el={p.element} active={flipped} size={ch * 0.34} badge />
                     <T v="caption" color={th.accent} center style={{ fontWeight: '700' }}>{el.label}</T>
                   </View>
                 </LinearGradient>
