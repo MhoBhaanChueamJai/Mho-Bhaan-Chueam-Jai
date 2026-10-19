@@ -8,6 +8,7 @@ import { MenuView } from './Menu';
 import React, { useRef, useState } from 'react';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import { DatePopover } from './DatePopover';
+import { measureOnScreen } from '../lib/measure';
 import { Sym, ios } from './ios';
 import { T } from './ui';
 import { palette } from '../theme';
@@ -52,7 +53,7 @@ export function DateField({ label, value, onChange, flex, placeholder = 'เล�
     return (
       <View style={flex ? { flex } : undefined}>
         <Label text={label} />
-        <Pressable ref={ref} onPress={() => ref.current?.measureInWindow((x, y, w, h) => setAnchor({ x, y, w, h }))} style={styles.box} accessibilityRole="button" accessibilityLabel={`${label} ${value ? thaiDateLong(value) : placeholder}`}>
+        <Pressable ref={ref} onPress={() => measureOnScreen(ref.current, setAnchor)} style={styles.box} accessibilityRole="button" accessibilityLabel={`${label} ${value ? thaiDateLong(value) : placeholder}`}>
           <T v="body" color={value ? palette.ink : ios.tertiary} style={{ flex: 1 }} numberOfLines={1}>{value ? thaiDateLong(value) : placeholder}</T>
           <Sym name="calendar" size={16} color={palette.primary} />
         </Pressable>

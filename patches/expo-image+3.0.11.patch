@@ -1,0 +1,32 @@
+diff --git a/node_modules/expo-image/src/web/AnimationManager.tsx b/node_modules/expo-image/src/web/AnimationManager.tsx
+index 735ee85..5ed03eb 100644
+--- a/node_modules/expo-image/src/web/AnimationManager.tsx
++++ b/node_modules/expo-image/src/web/AnimationManager.tsx
+@@ -140,12 +140,19 @@ export default function AnimationManager({
+   };
+ 
+   const newNode = useAnimationManagerNode(renderFunction);
++  // ภาพในแคชโหลดเสร็จ (onReady) ก่อน effect ด้านล่างเพิ่ม node → จำไว้ ไม่งั้นค้างโปร่งใส
++  const readyKeys = React.useRef(new Set<string>());
+ 
+   React.useEffect(() => {
+     setNodes((n) => {
+       if (!newNode) {
+         return n;
+       }
++      if (readyKeys.current.has(newNode.animationKey) && !n.some((x) => x.animationKey === newNode.animationKey)) {
++        return animation
++          ? [...n.map((x) => ({ ...x, status: 'out' as NodeStatus })), { ...newNode, status: 'in' }]
++          : [{ ...newNode, status: 'in' }];
++      }
+       const existingNodeIndex = n.findIndex((node) => node.animationKey === newNode.animationKey);
+       if (existingNodeIndex >= 0) {
+         if (animation) {
+@@ -166,6 +173,7 @@ export default function AnimationManager({
+     if (renderFunction[0] === node.animationKey) {
+       return renderFunction[1]({
+         onReady: () => {
++          readyKeys.current.add(node.animationKey);
+           if (animation) {
+             setNodes((nodes) =>
+               nodes.map((n) => (n === newNode ? { ...n, status: 'in' } : { ...n, status: 'out' }))

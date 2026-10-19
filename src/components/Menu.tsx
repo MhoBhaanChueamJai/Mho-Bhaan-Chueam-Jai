@@ -10,6 +10,7 @@ import React, { useRef, useState } from 'react';
 import { Modal, Pressable, StyleSheet, View, useWindowDimensions, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { Sym } from './ios';
+import { measureOnScreen } from '../lib/measure';
 import { Glass, T, useHaptic } from './ui';
 
 type Action = { id?: string; title: string; image?: string; imageColor?: string; state?: 'on' | 'off' | 'mixed'; attributes?: { destructive?: boolean; disabled?: boolean; hidden?: boolean } };
@@ -23,6 +24,7 @@ type Props = {
   children: React.ReactNode;
 };
 const W = 248, ROW = 42, RED = '#E5484D';
+const childLabel = (c: React.ReactNode): string | undefined => (React.isValidElement(c) ? (c.props as { accessibilityLabel?: string }).accessibilityLabel : undefined);
 
 export function MenuView({ actions, title, onPressAction, shouldOpenOnLongPress, themeVariant = 'light', style, children }: Props) {
   const ref = useRef<View>(null);
@@ -35,9 +37,9 @@ export function MenuView({ actions, title, onPressAction, shouldOpenOnLongPress,
   const hasLead = list.some((a) => a.image || a.state);
 
   const show = () => {
-    ref.current?.measureInWindow((x, y, w, hh) => {
+    measureOnScreen(ref.current, (r) => {
       h.select();
-      setOpen({ x, y, w, h: hh });
+      setOpen(r);
       p.value = 0;
       p.value = withSpring(1, { damping: 19, stiffness: 260, mass: 0.7 });
     });
@@ -71,7 +73,18 @@ export function MenuView({ actions, title, onPressAction, shouldOpenOnLongPress,
 
   return (
     <>
-      <Pressable ref={ref} collapsable={false} style={style} onPress={shouldOpenOnLongPress ? undefined : show} onLongPress={shouldOpenOnLongPress ? show : undefined} delayLongPress={380}>
+      <Pressable
+        ref={ref}
+        collapsable={false}
+        style={style}
+        onPress={shouldOpenOnLongPress ? undefined : show}
+        onLongPress={shouldOpenOnLongPress ? show : undefined}
+        delayLongPress={380}
+        // ปุ่มเปิดเมนู: ใช้ชื่อปุ่มของลูก (ลูกปิดการแตะไว้ จึงต้องยกชื่อขึ้นมาให้โปรแกรมอ่านจอ)
+        accessible={!shouldOpenOnLongPress}
+        accessibilityRole={shouldOpenOnLongPress ? undefined : 'button'}
+        accessibilityLabel={shouldOpenOnLongPress ? undefined : childLabel(children)}
+      >
         {shouldOpenOnLongPress ? <View pointerEvents="box-none">{children}</View> : <View pointerEvents="none">{children}</View>}
       </Pressable>
       <Modal visible={!!open} transparent animationType="none" statusBarTranslucent onRequestClose={() => close()}>
