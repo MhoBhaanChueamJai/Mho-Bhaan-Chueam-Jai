@@ -1,11 +1,13 @@
+import type { NativeStackNavigationOptions } from '@react-navigation/native-stack';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef } from 'react';
-import { AppState } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { LockScreen } from '../components/LockScreen';
+import { AlertHost } from '../lib/alert';
 import { platformHeader } from '../components/nav/platformHeader';
 import { usePushRouting } from '../lib/pushRouting';
 import { useSkiaWeb } from '../lib/skiaWeb';
@@ -51,19 +53,19 @@ function Root() {
         <Stack.Screen name="id-scan" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
         <Stack.Screen name="herb/scan" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
         {/* ผลสแกนสมุนไพร: Sheet ของ iOS (แบบแผ่นรับตำรา) */}
-        <Stack.Screen name="herb/found" options={{ presentation: 'formSheet', sheetAllowedDetents: [1.0], sheetGrabberVisible: false, contentStyle: { backgroundColor: palette.bg } }} />
+        <Stack.Screen name="herb/found" options={sheet({ presentation: 'formSheet', sheetAllowedDetents: [1.0], sheetGrabberVisible: false, contentStyle: { backgroundColor: palette.bg } })} />
         <Stack.Screen name="wisdom/scan-qr" options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }} />
         {/* Sheet ของ iOS (แบบหน้ากิจกรรมใหม่ในปฏิทิน): ตัวอย่างตำราที่ได้จากรหัส */}
-        <Stack.Screen name="wisdom/got" options={{ presentation: 'formSheet', sheetAllowedDetents: [1.0], sheetGrabberVisible: false, contentStyle: { backgroundColor: palette.bg } }} />
-        <Stack.Screen name="wisdom/share" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="wisdom/got" options={sheet({ presentation: 'formSheet', sheetAllowedDetents: [1.0], sheetGrabberVisible: false, contentStyle: { backgroundColor: palette.bg } })} />
+        <Stack.Screen name="wisdom/share" options={sheet({ presentation: 'modal' })} />
         <Stack.Screen name="wisdom/read" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
         <Stack.Screen name="wisdom/voice" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
         <Stack.Screen name="wisdom/tell" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
         <Stack.Screen name="patient/voice" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
         <Stack.Screen name="patient/visit" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
         <Stack.Screen name="assistant" />
-        <Stack.Screen name="verify" options={{ presentation: 'modal', headerShown: true, title: 'ยืนยันตัวตน', headerShadowVisible: false, headerStyle: { backgroundColor: '#FFFFFF' } }} />
-        <Stack.Screen name="privacy" options={{ presentation: 'modal', headerShown: true, title: 'นโยบายความเป็นส่วนตัว', headerShadowVisible: false, headerStyle: { backgroundColor: '#FFFFFF' } }} />
+        <Stack.Screen name="verify" options={sheet({ presentation: 'modal', headerShown: true, title: 'ยืนยันตัวตน', headerShadowVisible: false, headerStyle: { backgroundColor: '#FFFFFF' } })} />
+        <Stack.Screen name="privacy" options={sheet({ presentation: 'modal', headerShown: true, title: 'นโยบายความเป็นส่วนตัว', headerShadowVisible: false, headerStyle: { backgroundColor: '#FFFFFF' } })} />
         <Stack.Screen name="pin-setup" options={{ animation: 'fade', gestureEnabled: false }} />
         <Stack.Screen name="patient/search" options={{ animation: 'fade', animationDuration: 120, gestureEnabled: false }} />
         <Stack.Screen name="herb/search" options={{ animation: 'fade', animationDuration: 120, gestureEnabled: false }} />
@@ -73,8 +75,8 @@ function Root() {
         <Stack.Screen name="wisdom/new" options={{ headerShown: true, title: 'เพิ่มภูมิปัญญา', headerBackButtonDisplayMode: 'minimal', headerTintColor: palette.ink, headerShadowVisible: false, headerStyle: { backgroundColor: palette.bg }, contentStyle: { backgroundColor: palette.bg } }} />
         <Stack.Screen name="wisdom/receive" options={{ headerShown: true, title: 'รับตำราจากเพื่อน', headerBackButtonDisplayMode: 'minimal', headerTintColor: palette.ink, headerShadowVisible: false, headerStyle: { backgroundColor: palette.bg }, contentStyle: { backgroundColor: palette.bg } }} />
         <Stack.Screen name="settings" options={{ headerShown: true, title: 'ตั้งค่า', headerLargeTitle: true, headerTransparent: true, headerShadowVisible: false, headerLargeTitleShadowVisible: false, headerBackVisible: false }} />
-        <Stack.Screen name="account/edit" options={{ presentation: 'formSheet', sheetAllowedDetents: [1.0], sheetGrabberVisible: false, contentStyle: { backgroundColor: palette.bg } }} />
-        <Stack.Screen name="account/password" options={{ presentation: 'formSheet', sheetAllowedDetents: [1.0], sheetGrabberVisible: false, contentStyle: { backgroundColor: palette.bg } }} />
+        <Stack.Screen name="account/edit" options={sheet({ presentation: 'formSheet', sheetAllowedDetents: [1.0], sheetGrabberVisible: false, contentStyle: { backgroundColor: palette.bg } })} />
+        <Stack.Screen name="account/password" options={sheet({ presentation: 'formSheet', sheetAllowedDetents: [1.0], sheetGrabberVisible: false, contentStyle: { backgroundColor: palette.bg } })} />
         <Stack.Screen name="help" options={{ headerShown: true, headerBackButtonDisplayMode: 'minimal', headerTintColor: palette.ink, headerShadowVisible: false, headerStyle: { backgroundColor: palette.bg } }} />
         <Stack.Screen name="about" options={{ headerShown: true, headerBackButtonDisplayMode: 'minimal', headerTintColor: palette.ink, headerShadowVisible: false, headerStyle: { backgroundColor: palette.bg } }} />
         <Stack.Screen name="profile" options={{ headerShown: true, title: 'ข้อมูลส่วนตัว', headerBackButtonDisplayMode: 'minimal', headerTintColor: palette.ink, headerShadowVisible: false, headerStyle: { backgroundColor: palette.bg } }} />
@@ -82,9 +84,14 @@ function Root() {
         <Stack.Screen name="ai-settings" options={{ headerShown: true, title: 'ตั้งค่า AI', headerBackButtonDisplayMode: 'minimal', headerTintColor: palette.ink, headerShadowVisible: false, headerStyle: { backgroundColor: palette.bg } }} />
       </Stack>
       {lockEnabled && !unlocked ? <LockScreen /> : null}
+      <AlertHost />
     </>
   );
 }
+
+/** Android / เว็บ: ชีท/โมดัลแบบ iOS วาดเอง (SheetFrame) — หน้าโปร่ง ไม่มีแอนิเมชันของ stack (ชีทเลื่อนขึ้นเอง) */
+const sheet = (o: NativeStackNavigationOptions): NativeStackNavigationOptions =>
+  Platform.OS === 'ios' ? o : { ...o, presentation: 'transparentModal', animation: 'none', headerShown: false, contentStyle: { backgroundColor: 'transparent' } };
 
 export default function Layout() {
   const skia = useSkiaWeb();

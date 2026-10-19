@@ -8,6 +8,7 @@ import { ActivityIndicator, Keyboard, Pressable, StyleSheet, View, useWindowDime
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Sym, ios } from './ios';
 import { GlassCircle, PressableScale, T } from './ui';
+import { SHEET_NATIVE, SheetFrame } from './nav/SheetFrame';
 import { palette } from '../theme';
 
 
@@ -16,7 +17,8 @@ export function FormSheet({ title, canSave, busy, onSave, children }: { title: s
   const insets = useSafeAreaInsets();
   return (
     // แผ่นเต็มจอ (detent 1.0) — ความสูงต้องกำหนดตายตัว ใช้ flex แล้วแผ่นว่าง
-    <View style={{ height: SH - insets.top - 10, backgroundColor: palette.bg }}>
+    <SheetFrame>
+    <View style={{ height: SHEET_NATIVE ? SH - insets.top - 10 : '100%', backgroundColor: palette.bg }}>
       {/* หัวแผ่นแบบ iOS 26: ปุ่มกระจกวงกลม ✕ (ยกเลิก) · ชื่อ · ✓ (บันทึก สีเด่นเมื่อกดได้) */}
       <View style={styles.head}>
         <GlassCircle label="ยกเลิก" onPress={() => router.back()}>
@@ -34,6 +36,7 @@ export function FormSheet({ title, canSave, busy, onSave, children }: { title: s
         {children}
       </Pressable>
     </View>
+    </SheetFrame>
   );
 }
 

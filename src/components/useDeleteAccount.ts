@@ -4,7 +4,7 @@
  */
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Alert } from 'react-native';
+import { Alert } from '../lib/alert';
 import { deleteAccount, verifyPassword } from '../lib/account';
 import { useApp } from '../store/app';
 import { clearPin } from '../store/security';

@@ -14,6 +14,7 @@ import { doctor } from '../../data/mock';
 import { useApp } from '../../store/app';
 import { NotFound } from '../../components/NotFound';
 import { elevation, palette } from '../../theme';
+import { SheetFrame } from '../../components/nav/SheetFrame';
 
 export default function ShareWisdom() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -32,6 +33,7 @@ export default function ShareWisdom() {
 
   if (!w) return <NotFound title="ไม่พบตำรานี้" />;
   return (
+    <SheetFrame>
     <View style={styles.page}>
       <View style={styles.grab} />
       <View style={styles.head}>
@@ -70,6 +72,7 @@ export default function ShareWisdom() {
 
       <Button label="ส่งทาง LINE / ข้อความ" icon={<Sym name="square.and.arrow.up" size={17} color="#FFFFFF" />} disabled={!code} onPress={() => code && w && shareCodeText(w.title, me, code)} style={{ height: 52, marginTop: 'auto' }} />
     </View>
+    </SheetFrame>
   );
 }
 

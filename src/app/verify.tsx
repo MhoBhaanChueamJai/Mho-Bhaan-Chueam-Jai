@@ -15,6 +15,7 @@ import { doctorTypes } from '../data/mock';
 import { supabase } from '../lib/supabase';
 import { useApp } from '../store/app';
 import { control, palette } from '../theme';
+import { SheetFrame } from '../components/nav/SheetFrame';
 
 const TITLES = ['นาย', 'นาง', 'นางสาว'];
 const EDUCATION = ['ไม่ได้เรียนในระบบ', 'ประถมศึกษา', 'มัธยมศึกษา', 'ปวช./ปวส.', 'ปริญญาตรี', 'สูงกว่าปริญญาตรี'];
@@ -129,6 +130,7 @@ export default function Verify() {
   }
 
   return (
+    <SheetFrame title="ยืนยันตัวตน">
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.page}>
       <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: insets.bottom + 40 }} keyboardDismissMode="interactive" showsVerticalScrollIndicator={false}>
         <View style={styles.intro}>
@@ -210,6 +212,7 @@ export default function Verify() {
         </T>
       </ScrollView>
     </KeyboardAvoidingView>
+    </SheetFrame>
   );
 }
 

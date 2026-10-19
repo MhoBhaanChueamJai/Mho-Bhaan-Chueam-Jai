@@ -1,8 +1,9 @@
-import { MenuView } from '@react-native-menu/menu';
+import { MenuView } from '../components/Menu';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Keyboard, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Keyboard, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert } from '../lib/alert';
 import { TextInput } from '../components/AppText';
 import Animated, { FadeIn, FadeInDown, FadeInUp, useAnimatedKeyboard, useAnimatedStyle, useDerivedValue, useSharedValue, withDelay, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';

@@ -1,4 +1,4 @@
-import { MenuView } from '@react-native-menu/menu';
+import { MenuView } from '../../../components/Menu';
 import { Stack, router } from 'expo-router';
 import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';

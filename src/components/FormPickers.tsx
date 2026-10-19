@@ -4,7 +4,7 @@
  * - DateField: แคปซูลเหมือนช่องอื่น + UIDatePicker compact ของ iOS 26 จริง (ปฏิทินพุทธศักราช)
  */
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { MenuView } from '@react-native-menu/menu';
+import { MenuView } from './Menu';
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Sym, ios } from './ios';

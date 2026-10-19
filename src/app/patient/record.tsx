@@ -6,7 +6,8 @@
 import { usePreventRemove } from '@react-navigation/native';
 import { Stack, router, useLocalSearchParams, useNavigation } from 'expo-router';
 import React, { useMemo, useRef, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert } from '../../lib/alert';
 import { TextInput } from '../../components/AppText';
 import Animated, { FadeIn, LinearTransition } from 'react-native-reanimated';
 import { DateField } from '../../components/FormPickers';

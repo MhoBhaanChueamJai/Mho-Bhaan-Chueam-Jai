@@ -13,6 +13,7 @@ import { cachedShare, cleanCode, fetchShare, type ReceivedShare } from '../../li
 import { useApp } from '../../store/app';
 import { palette } from '../../theme';
 import { WisdomView } from './[id]';
+import { SHEET_NATIVE, SheetFrame } from '../../components/nav/SheetFrame';
 
 export default function GotWisdom() {
   const { code: raw } = useLocalSearchParams<{ code: string }>();
@@ -20,7 +21,7 @@ export default function GotWisdom() {
   const insets = useSafeAreaInsets();
   // ความสูงชัดเจน (ไม่พึ่ง flex:1) — Sheet ของ iOS บางครั้งวัดความสูงเนื้อหาเป็น 0 ทำให้หน้าว่าง
   const { height: SH } = useWindowDimensions();
-  const sheetH = SH - insets.top - 10;
+  const sheetH: number | '100%' = SHEET_NATIVE ? SH - insets.top - 10 : '100%';
   const { addWisdom, wisdoms } = useApp();
   const h = useHaptic();
   const [got, setGot] = useState<ReceivedShare | null>(() => cachedShare(code));
@@ -83,9 +84,11 @@ export default function GotWisdom() {
   const w: Wisdom = { ...got.wisdom, id: `preview-${code}`, source: 'เพื่อนแชร์', sharedBy: got.fromName, date: '', verified: true, summary: got.wisdom.summary ?? '' };
   const dup = !savedId && !!existing;
   return (
+    <SheetFrame>
     <View style={{ height: sheetH, backgroundColor: palette.bg }}>
       <WisdomView w={w} preview={{ onClose: () => router.back(), onAdd: add, onOpen: open, added: !!savedId, dup }} />
     </View>
+    </SheetFrame>
   );
 }
 

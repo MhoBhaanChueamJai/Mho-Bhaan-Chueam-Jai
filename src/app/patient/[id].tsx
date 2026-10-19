@@ -1,8 +1,9 @@
-import { MenuView } from '@react-native-menu/menu';
+import { MenuView } from '../../components/Menu';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { PractitionerGate } from '../../components/PractitionerGate';
-import { Alert, Linking, ScrollView, Share, StyleSheet, View } from 'react-native';
+import { Linking, ScrollView, Share, StyleSheet, View } from 'react-native';
+import { Alert } from '../../lib/alert';
 import { NotFound } from '../../components/NotFound';
 import Animated, { FadeIn, LinearTransition } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';

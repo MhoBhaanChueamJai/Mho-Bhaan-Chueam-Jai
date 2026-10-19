@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ios } from '../components/ios';
 import { T } from '../components/ui';
 import { palette } from '../theme';
+import { SheetFrame } from '../components/nav/SheetFrame';
 
 export const PRIVACY_VERSION = '16 ตุลาคม 2569';
 
@@ -75,6 +76,7 @@ const SECTIONS: { h: string; p?: string; li?: string[] }[] = [
 export default function Privacy() {
   const insets = useSafeAreaInsets();
   return (
+    <SheetFrame title="นโยบายความเป็นส่วนตัว">
     <ScrollView style={{ flex: 1, backgroundColor: '#FFFFFF' }} contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 32 }}>
       <T v="caption" color={ios.secondary}>ปรับปรุงล่าสุด {PRIVACY_VERSION}</T>
       <T v="callout" color={palette.ink} style={{ marginTop: 10, lineHeight: 24 }}>
@@ -95,6 +97,7 @@ export default function Privacy() {
         </View>
       ))}
     </ScrollView>
+    </SheetFrame>
   );
 }
 

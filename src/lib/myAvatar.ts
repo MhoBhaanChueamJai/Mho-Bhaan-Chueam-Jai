@@ -4,7 +4,8 @@
  */
 import { Directory, File, Paths } from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
-import { Alert, Linking } from 'react-native';
+import { Linking } from 'react-native';
+import { Alert } from './alert';
 import { avatars } from '../data/mock';
 import { useApp } from '../store/app';
 

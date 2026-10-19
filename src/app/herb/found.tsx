@@ -11,12 +11,13 @@ import type { Herb, Taste } from '../../data/herbs';
 import { getLastScan } from '../../lib/herbScan';
 import { palette } from '../../theme';
 import { HerbView } from './[id]';
+import { SHEET_NATIVE, SheetFrame } from '../../components/nav/SheetFrame';
 
 export default function HerbFound() {
   const insets = useSafeAreaInsets();
   // ความสูงชัดเจน (Sheet ของ iOS บางครั้งวัดความสูงเนื้อหาเป็น 0)
   const { height: SH } = useWindowDimensions();
-  const sheetH = SH - insets.top - 10;
+  const sheetH: number | '100%' = SHEET_NATIVE ? SH - insets.top - 10 : '100%';
   const scan = getLastScan();
   const [pick, setPick] = useState(0);
   if (!scan || !scan.result.guesses.length) return <View style={{ height: sheetH, backgroundColor: palette.bg }} />;
@@ -47,6 +48,7 @@ export default function HerbFound() {
       : 'ยังไม่มีในคลังสมุนไพร กด “ถามครูปัญญา” เพื่อดูสรรพคุณและวิธีใช้';
 
   return (
+    <SheetFrame>
     <View style={{ height: sheetH, backgroundColor: palette.bg }}>
       <HerbView
         key={pick}
@@ -61,5 +63,6 @@ export default function HerbFound() {
         }}
       />
     </View>
+    </SheetFrame>
   );
 }

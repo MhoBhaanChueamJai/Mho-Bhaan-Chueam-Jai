@@ -5,7 +5,8 @@
  */
 import { Stack, router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Share, StyleSheet, Switch, View } from 'react-native';
+import { ActivityIndicator, Share, StyleSheet, Switch, View } from 'react-native';
+import { Alert } from '../lib/alert';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSpeaker } from '../components/audio';
 import { CircleIcon, ListRow, ListSection, PAGE_PAD } from '../components/ListRow';

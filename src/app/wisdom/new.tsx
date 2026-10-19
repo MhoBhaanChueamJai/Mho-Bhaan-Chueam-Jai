@@ -8,7 +8,8 @@
  */
 import { Stack, router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Alert } from '../../lib/alert';
 import { TextInput } from '../../components/AppText';
 import Animated, { FadeIn, FadeInDown, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { AISphere } from '../../components/AISphere';
@@ -22,7 +23,7 @@ import { KIND_FORM, joinMethod, splitMethod } from '../../lib/wisdomKinds';
 import { draftFromWisdom, organizeWisdom, organizedToWisdom, type Organized } from '../../lib/wisdomOrganize';
 import type { Wisdom, WisdomAudio } from '../../data/mock';
 import { uploadClips } from '../../lib/wisdomAudio';
-import { MenuView } from '@react-native-menu/menu';
+import { MenuView } from '../../components/Menu';
 import { useApp } from '../../store/app';
 import { elevation, palette } from '../../theme';
 
