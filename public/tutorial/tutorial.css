@@ -2047,3 +2047,6 @@ p.nav__gh {
   body.m-article .doc { padding: 20px 18px 28px; border-radius: 0; box-shadow: none; background: transparent; }
   body.m-article .doc__head h1 { font-size: 25px; }
 }
+.hero__slides { text-decoration: none; margin: 0 0 26px; }
+@media (max-width: 760px) { .hero__slides { margin-bottom: 18px; } }
+.hero__body > .hero__slides:first-of-type { margin-left: 0; }
