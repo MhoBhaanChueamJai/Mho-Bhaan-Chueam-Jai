@@ -96,7 +96,8 @@
         {
           "mode": "development"
         }
-      ]
+      ],
+      "expo-web-browser"
     ],
     "scheme": "suebsan",
     "experiments": {

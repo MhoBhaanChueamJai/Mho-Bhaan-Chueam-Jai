@@ -1,0 +1,895 @@
+{
+ "home": {
+  "id": "home",
+  "poster": "media/home-f1.webp",
+  "steps": [
+   {
+    "n": 1,
+    "title": "หน้าหลักมีอะไรบ้าง",
+    "detail": "หน้าหลักรวมทางลัดที่ใช้บ่อย: ถามครูปัญญา ผู้ป่วยที่ต้องติดตาม เล่าอาการ สมุนไพรประจำวัน สแกนตำรา และภูมิปัญญาที่บันทึกไว้",
+    "start": "media/home-f1.webp",
+    "actions": [
+     {
+      "kind": "point",
+      "x": 26.37,
+      "y": 39.53,
+      "w": 37.81,
+      "h": 3.09,
+      "frame": "media/home-f2.webp"
+     },
+     {
+      "kind": "point",
+      "x": 73.63,
+      "y": 33.3,
+      "w": 37.81,
+      "h": 2.75,
+      "frame": "media/home-f3.webp"
+     },
+     {
+      "kind": "point",
+      "x": 73.63,
+      "y": 47.37,
+      "w": 37.81,
+      "h": 2.75,
+      "frame": "media/home-f4.webp"
+     },
+     {
+      "kind": "point",
+      "x": 73.63,
+      "y": 64.53,
+      "w": 37.81,
+      "h": 2.75,
+      "frame": "media/home-f5.webp"
+     }
+    ]
+   },
+   {
+    "n": 2,
+    "title": "ดูแจ้งเตือน",
+    "detail": "กระดิ่งมุมขวาบนมีจุดแดงเมื่อมีเรื่องใหม่ แตะเพื่อดูผู้ป่วยที่ต้องติดตามอาการ ผู้ป่วยส่งต่อ และอัปเดตจากระบบ",
+    "start": "media/home-f6.webp",
+    "actions": [
+     {
+      "kind": "tap",
+      "x": 90.55,
+      "y": 9.61,
+      "w": 8.96,
+      "h": 4.12,
+      "frame": "media/home-f7.webp"
+     }
+    ]
+   },
+   {
+    "n": 3,
+    "title": "ข้อมูลส่วนตัวและตั้งค่า",
+    "detail": "แตะรูปโปรไฟล์มุมซ้ายบนเพื่อเปิดหน้าตั้งค่า ดูข้อมูลบัญชี ตั้งรหัส PIN และตั้งค่าครูปัญญา",
+    "start": "media/home-f8.webp",
+    "actions": [
+     {
+      "kind": "tap",
+      "x": 15.86,
+      "y": 9.61,
+      "w": 21.77,
+      "h": 4.12,
+      "frame": "media/home-f9.webp"
+     }
+    ]
+   }
+  ]
+ },
+ "patients": {
+  "id": "patients",
+  "poster": "media/patients-f1.webp",
+  "steps": [
+   {
+    "n": 1,
+    "title": "ภาพรวมผู้ป่วย",
+    "detail": "วงแหวนด้านบนสรุปจำนวนผู้ป่วยตามสถานะ แตะสถานะเพื่อกรองรายชื่อ แตะซ้ำเพื่อดูทั้งหมด",
+    "start": "media/patients-f1.webp",
+    "actions": [
+     {
+      "kind": "point",
+      "x": 23.88,
+      "y": 31.92,
+      "w": 30.85,
+      "h": 14.19,
+      "frame": "media/patients-f2.webp"
+     },
+     {
+      "kind": "tap",
+      "x": 67.66,
+      "y": 26.43,
+      "w": 47.76,
+      "h": 3.43,
+      "frame": "media/patients-f3.webp"
+     },
+     {
+      "kind": "tap",
+      "x": 67.66,
+      "y": 26.43,
+      "w": 47.76,
+      "h": 3.43,
+      "frame": "media/patients-f4.webp"
+     }
+    ]
+   },
+   {
+    "n": 2,
+    "title": "ค้นหาผู้ป่วย",
+    "detail": "แตะแว่นขยายบนแถบด้านบน แล้วพิมพ์ชื่อ อาการ หรือเบอร์โทร รายชื่อจะกรองทันทีขณะพิมพ์",
+    "start": "media/patients-f5.webp",
+    "actions": [
+     {
+      "kind": "tap",
+      "x": 83.83,
+      "y": 9.61,
+      "w": 10.95,
+      "h": 5.03,
+      "frame": "media/patients-f6.webp"
+     },
+     {
+      "kind": "type",
+      "x": 46.08,
+      "y": 10.98,
+      "w": 65.05,
+      "h": 5.03,
+      "text": "บุญมา",
+      "frame": "media/patients-f7.webp"
+     }
+    ]
+   },
+   {
+    "n": 3,
+    "title": "เปิดข้อมูลผู้ป่วย",
+    "detail": "แตะชื่อผู้ป่วยเพื่อเปิดบัตรผู้ป่วย ข้อมูลสุขภาพ และประวัติการรักษาทั้งหมด",
+    "start": "media/patients-f8.webp",
+    "actions": [
+     {
+      "kind": "tap",
+      "x": 54.6,
+      "y": 59.5,
+      "w": 61.44,
+      "h": 2.75,
+      "frame": "media/patients-f9.webp"
+     }
+    ]
+   }
+  ]
+ },
+ "addpatient": {
+  "id": "addpatient",
+  "poster": "media/addpatient-f1.webp",
+  "steps": [
+   {
+    "n": 1,
+    "title": "เลือกวิธีเพิ่มผู้ป่วย",
+    "detail": "แตะปุ่ม + บนแถบด้านบน เลือกได้ 3 แบบ: ให้ครูปัญญาซักประวัติด้วยเสียง ถ่ายบัตรประชาชน หรือกรอกเอง",
+    "start": "media/addpatient-f1.webp",
+    "actions": [
+     {
+      "kind": "tap",
+      "x": 92.29,
+      "y": 9.61,
+      "w": 10.95,
+      "h": 5.03,
+      "frame": "media/addpatient-f2.webp"
+     },
+     {
+      "kind": "tap",
+      "x": 71.39,
+      "y": 23.8,
+      "w": 42.79,
+      "h": 2.86,
+      "frame": "media/addpatient-f3.webp"
+     }
+    ]
+   },
+   {
+    "n": 2,
+    "title": "กรอกชื่อและวันเกิด",
+    "detail": "เลือกคำนำหน้า พิมพ์ชื่อ-สกุล แล้วแตะช่องวันเกิดเพื่อเลือกจากปฏิทิน (พ.ศ.) อายุคำนวณให้อัตโนมัติ",
+    "start": "media/addpatient-f4.webp",
+    "actions": [
+     {
+      "kind": "tap",
+      "x": 21.16,
+      "y": 27.12,
+      "w": 26.4,
+      "h": 5.95,
+      "frame": "media/addpatient-f5.webp"
+     },
+     {
+      "kind": "tap",
+      "x": 41.54,
+      "y": 35.58,
+      "w": 42.79,
+      "h": 2.86,
+      "frame": "media/addpatient-f6.webp"
+     },
+     {
+      "kind": "type",
+      "x": 64.44,
+      "y": 27.12,
+      "w": 55.19,
+      "h": 5.95,
+      "text": "นางสมใจ ใจดี",
+      "frame": "media/addpatient-f7.webp"
+     },
+     {
+      "kind": "tap",
+      "x": 35.56,
+      "y": 37.76,
+      "w": 55.19,
+      "h": 5.95,
+      "frame": "media/addpatient-f8.webp"
+     },
+     {
+      "kind": "tap",
+      "x": 64.43,
+      "y": 63.04,
+      "w": 5.69,
+      "h": 2.97,
+      "frame": "media/addpatient-f9.webp"
+     }
+    ]
+   },
+   {
+    "n": 3,
+    "title": "ธาตุเจ้าเรือนและข้อมูลสุขภาพ",
+    "detail": "ถ้ารู้วันเกิด แอปบอกธาตุเจ้าเรือนให้ หรือแตะเลือกเองได้ จากนั้นกรอกโรคประจำตัว การแพ้ยา แล้วแตะ \"บันทึกผู้ป่วย\"",
+    "start": "media/addpatient-f10.webp",
+    "actions": [
+     {
+      "kind": "tap",
+      "x": 81.53,
+      "y": 88.5,
+      "w": 3.94,
+      "h": 2.4,
+      "frame": "media/addpatient-f11.webp"
+     },
+     {
+      "kind": "point",
+      "x": 50,
+      "y": 93.25,
+      "w": 21.45,
+      "h": 2.86,
+      "frame": "media/addpatient-f12.webp"
+     }
+    ]
+   }
+  ]
+ },
+ "patient": {
+  "id": "patient",
+  "poster": "media/patient-f1.webp",
+  "steps": [
+   {
+    "n": 1,
+    "title": "บัตรผู้ป่วย",
+    "detail": "บัตรสีตามธาตุเจ้าเรือน แสดงเพศ อายุ ธาตุ และ BMI แตะบัตรเพื่อพลิกดูด้านหลัง (การแพ้ยาและโรคประจำตัว) ปุ่ม \"โทร\" โทรหาผู้ป่วยได้ทันที",
+    "start": "media/patient-f1.webp",
+    "actions": [
+     {
+      "kind": "tap",
+      "x": 50,
+      "y": 26.32,
+      "w": 10.95,
+      "h": 5.03,
+      "frame": "media/patient-f2.webp"
+     },
+     {
+      "kind": "tap",
+      "x": 50,
+      "y": 26.32,
+      "w": 10.95,
+      "h": 5.03,
+      "frame": "media/patient-f3.webp"
+     }
+    ]
+   },
+   {
+    "n": 2,
+    "title": "ข้อมูลสุขภาพ",
+    "detail": "การแพ้ยา โรคประจำตัว ยาที่ใช้อยู่ น้ำหนัก ส่วนสูง และ BMI พร้อมคำเตือนจากครูปัญญาเรื่องยาที่ใช้ร่วมกับสมุนไพร",
+    "start": "media/patient-f4.webp",
+    "actions": [
+     {
+      "kind": "scroll",
+      "x": 50,
+      "y": 70,
+      "frame": "media/patient-f5.webp"
+     },
+     {
+      "kind": "point",
+      "x": 52.61,
+      "y": 63.73,
+      "w": 78.86,
+      "h": 4.81,
+      "frame": "media/patient-f6.webp"
+     }
+    ]
+   },
+   {
+    "n": 3,
+    "title": "ประวัติการรักษา",
+    "detail": "เลื่อนลงเพื่อดูไทม์ไลน์การรักษาแบบ ม.บ.5 แตะวันที่เพื่อเปิดหรือปิดรายละเอียด อาการ การตรวจ การรักษา และการติดตามผลของแต่ละครั้ง",
+    "start": "media/patient-f7.webp",
+    "actions": [
+     {
+      "kind": "point",
+      "x": 58.46,
+      "y": 50,
+      "w": 65.17,
+      "h": 2.06,
+      "frame": "media/patient-f8.webp"
+     },
+     {
+      "kind": "point",
+      "x": 58.46,
+      "y": 61.9,
+      "w": 65.17,
+      "h": 2.06,
+      "frame": "media/patient-f9.webp"
+     }
+    ]
+   },
+   {
+    "n": 4,
+    "title": "เมนูเพิ่มเติม",
+    "detail": "ปุ่ม ••• มุมขวาบนใช้ส่งออกข้อมูลการรักษา หรือลบผู้ป่วย",
+    "start": "media/patient-f10.webp",
+    "actions": [
+     {
+      "kind": "tap",
+      "x": 92.04,
+      "y": 9.61,
+      "w": 10.95,
+      "h": 5.03,
+      "frame": "media/patient-f11.webp"
+     }
+    ]
+   }
+  ]
+ },
+ "record": {
+  "id": "record",
+  "poster": "media/record-f1.webp",
+  "steps": [
+   {
+    "n": 1,
+    "title": "เริ่มบันทึกการรักษา",
+    "detail": "ในหน้าผู้ป่วย แตะ + บนแถบด้านบน เลือก \"ให้ครูปัญญาบันทึก\" (เล่าด้วยเสียง) หรือ \"กรอกเอง\"",
+    "start": "media/record-f1.webp",
+    "actions": [
+     {
+      "kind": "tap",
+      "x": 80.85,
+      "y": 9.61,
+      "w": 10.95,
+      "h": 5.03,
+      "frame": "media/record-f2.webp"
+     },
+     {
+      "kind": "tap",
+      "x": 61.44,
+      "y": 18.99,
+      "w": 42.79,
+      "h": 2.86,
+      "frame": "media/record-f3.webp"
+     }
+    ]
+   },
+   {
+    "n": 2,
+    "title": "กรอกอาการและการวินิจฉัย",
+    "detail": "วันที่รักษาเป็นวันนี้ให้อัตโนมัติ แตะเปลี่ยนได้ กรอกอาการ ระยะเวลา การตรวจร่างกาย และการวินิจฉัย ตามแบบ ม.บ.5",
+    "start": "media/record-f4.webp",
+    "actions": [
+     {
+      "kind": "type",
+      "x": 50,
+      "y": 39.13,
+      "w": 84.08,
+      "h": 8.7,
+      "text": "ปวดเข่าขวา ขึ้นบันไดลำบาก",
+      "frame": "media/record-f5.webp"
+     },
+     {
+      "kind": "type",
+      "x": 50,
+      "y": 71.85,
+      "w": 84.08,
+      "h": 8.7,
+      "text": "เข่าบวมเล็กน้อย กดเจ็บ",
+      "frame": "media/record-f6.webp"
+     },
+     {
+      "kind": "type",
+      "x": 50,
+      "y": 83.87,
+      "w": 84.08,
+      "h": 5.95,
+      "text": "ลมจับโปง",
+      "frame": "media/record-f7.webp"
+     }
+    ]
+   },
+   {
+    "n": 3,
+    "title": "การรักษาและผลการรักษา",
+    "detail": "กรอกการรักษาหรือยาที่ให้ (มีคำเตือนสมุนไพรที่ต้องระวัง) เลือกผลการรักษาและสถานะผู้ป่วย แล้วแตะ \"บันทึกการรักษา\"",
+    "start": "media/record-f8.webp",
+    "actions": [
+     {
+      "kind": "type",
+      "x": 50,
+      "y": 45.08,
+      "w": 84.08,
+      "h": 8.7,
+      "text": "นวดคลายเส้น ประคบสมุนไพร",
+      "frame": "media/record-f9.webp"
+     },
+     {
+      "kind": "tap",
+      "x": 31.92,
+      "y": 56.41,
+      "w": 7.04,
+      "h": 2.4,
+      "frame": "media/record-f10.webp"
+     },
+     {
+      "kind": "point",
+      "x": 53.11,
+      "y": 93.25,
+      "w": 27.05,
+      "h": 2.86,
+      "frame": "media/record-f11.webp"
+     }
+    ]
+   }
+  ]
+ },
+ "herbs": {
+  "id": "herbs",
+  "poster": "media/herbs-f1.webp",
+  "steps": [
+   {
+    "n": 1,
+    "title": "คลังสมุนไพร 100 ชนิด",
+    "detail": "แตะรสยาเพื่อกรองสมุนไพร แต่ละการ์ดมีภาพ ชื่อ และตราบัญชียาหลักแห่งชาติ",
+    "start": "media/herbs-f1.webp",
+    "actions": [
+     {
+      "kind": "tap",
+      "x": 33.43,
+      "y": 17.62,
+      "w": 8.63,
+      "h": 2.4,
+      "frame": "media/herbs-f2.webp"
+     }
+    ]
+   },
+   {
+    "n": 2,
+    "title": "สมุนไพรแนะนำวันนี้",
+    "detail": "ครูปัญญาเลือกสมุนไพรให้เหมาะกับฤดูและอากาศวันนี้ บอกว่าช่วยป้องกันอาการอะไร ปัดการ์ดเพื่อดูตัวถัดไป แตะการ์ดเพื่อเปิดรายละเอียด",
+    "start": "media/herbs-f3.webp",
+    "actions": [
+     {
+      "kind": "point",
+      "x": 84.64,
+      "y": 31.81,
+      "w": 14.3,
+      "h": 1.83,
+      "frame": "media/herbs-f4.webp"
+     },
+     {
+      "kind": "tap",
+      "x": 22.94,
+      "y": 32.15,
+      "w": 20.51,
+      "h": 2.06,
+      "frame": "media/herbs-f5.webp"
+     }
+    ]
+   },
+   {
+    "n": 3,
+    "title": "รายละเอียดสมุนไพร",
+    "detail": "ข้อมูลสมุนไพร สรรพคุณ วิธีใช้ ข้อควรระวัง และภาพส่วนประกอบของต้น แตะชื่อส่วนเพื่อดูว่าใช้ทำอะไร ปุ่มหูฟังอ่านออกเสียงให้ฟัง",
+    "start": "media/herbs-f6.webp",
+    "actions": [
+     {
+      "kind": "scroll",
+      "x": 50,
+      "y": 70,
+      "frame": "media/herbs-f7.webp"
+     },
+     {
+      "kind": "tap",
+      "x": 82.22,
+      "y": 67.91,
+      "w": 10.19,
+      "h": 2.06,
+      "frame": "media/herbs-f8.webp"
+     }
+    ]
+   },
+   {
+    "n": 4,
+    "title": "ค้นหาตามอาการ",
+    "detail": "แตะแว่นขยาย พิมพ์ชื่อสมุนไพรหรืออาการ หรือแตะอาการที่พบบ่อยเพื่อดูสมุนไพรที่ช่วยได้",
+    "start": "media/herbs-f9.webp",
+    "actions": [
+     {
+      "kind": "tap",
+      "x": 90.8,
+      "y": 9.61,
+      "w": 10.95,
+      "h": 5.03,
+      "frame": "media/herbs-f10.webp"
+     },
+     {
+      "kind": "tap",
+      "x": 68.41,
+      "y": 21.62,
+      "w": 12.28,
+      "h": 2.63,
+      "frame": "media/herbs-f11.webp"
+     }
+    ]
+   }
+  ]
+ },
+ "vault": {
+  "id": "vault",
+  "poster": "media/vault-f1.webp",
+  "steps": [
+   {
+    "n": 1,
+    "title": "คลังภูมิปัญญา",
+    "detail": "เก็บตำรับยา วิธีรักษา คาถา/พิธี และตำราโบราณของคุณหมอ พร้อมตำราอ้างอิงจากบัญชียาหลักแห่งชาติ",
+    "start": "media/vault-f1.webp",
+    "actions": [
+     {
+      "kind": "point",
+      "x": 50,
+      "y": 28.03,
+      "w": 82.09,
+      "h": 4.12,
+      "frame": "media/vault-f2.webp"
+     },
+     {
+      "kind": "scroll",
+      "x": 50,
+      "y": 70,
+      "frame": "media/vault-f3.webp"
+     }
+    ]
+   },
+   {
+    "n": 2,
+    "title": "เปิดอ่านตำรา",
+    "detail": "แตะปกตำราเพื่อเปิด ปุ่มหนังสือบนแถบด้านบนเปิดอ่านแบบพลิกหน้า ปุ่มหูฟังให้ครูปัญญาอ่านออกเสียง",
+    "start": "media/vault-f4.webp",
+    "actions": [
+     {
+      "kind": "tap",
+      "x": 18.16,
+      "y": 19.61,
+      "w": 11.6,
+      "h": 2.59,
+      "frame": "media/vault-f5.webp"
+     }
+    ]
+   },
+   {
+    "n": 3,
+    "title": "อ่านแบบหนังสือ",
+    "detail": "ปัดหรือแตะด้านขวาของหน้าเพื่อพลิกไปหน้าถัดไป แตะด้านซ้ายเพื่อย้อนกลับ เหมือนอ่านหนังสือจริง",
+    "start": "media/vault-f6.webp",
+    "actions": [
+     {
+      "kind": "tap",
+      "x": 82.09,
+      "y": 59.5,
+      "w": 10.95,
+      "h": 5.03,
+      "frame": "media/vault-f7.webp"
+     },
+     {
+      "kind": "tap",
+      "x": 82.09,
+      "y": 59.5,
+      "w": 10.95,
+      "h": 5.03,
+      "frame": "media/vault-f8.webp"
+     }
+    ]
+   },
+   {
+    "n": 4,
+    "title": "เพิ่มภูมิปัญญา",
+    "detail": "แตะ + เลือก เล่าให้ครูปัญญาฟัง (ครูปัญญาเขียนเป็นหนังสือให้) เขียนเอง หรือสแกนตำราโบราณ",
+    "start": "media/vault-f9.webp",
+    "actions": [
+     {
+      "kind": "tap",
+      "x": 90.8,
+      "y": 9.61,
+      "w": 10.95,
+      "h": 5.03,
+      "frame": "media/vault-f10.webp"
+     },
+     {
+      "kind": "tap",
+      "x": 71.39,
+      "y": 18.99,
+      "w": 42.79,
+      "h": 2.86,
+      "frame": "media/vault-f11.webp"
+     }
+    ]
+   }
+  ]
+ },
+ "share": {
+  "id": "share",
+  "poster": "media/share-f1.webp",
+  "steps": [
+   {
+    "n": 1,
+    "title": "แชร์ตำราให้เพื่อน",
+    "detail": "ในหน้าตำรา แตะ ••• แล้วเลือก \"แชร์ให้เพื่อน\" ได้คิวอาร์โค้ดและรหัส 8 ตัว ส่งทาง LINE ได้ ใช้ได้ 30 วัน",
+    "start": "media/share-f1.webp",
+    "actions": [
+     {
+      "kind": "tap",
+      "x": 90.8,
+      "y": 9.61,
+      "w": 10.95,
+      "h": 5.03,
+      "frame": "media/share-f2.webp"
+     },
+     {
+      "kind": "tap",
+      "x": 71.39,
+      "y": 10.98,
+      "w": 42.79,
+      "h": 2.86,
+      "frame": "media/share-f3.webp"
+     }
+    ]
+   },
+   {
+    "n": 2,
+    "title": "รับตำราจากเพื่อน",
+    "detail": "ในคลังภูมิ แตะไอคอนคิวอาร์เพื่อสแกน หรือกรอกรหัสที่เพื่อนส่งมา แล้วแตะ \"ดูตำรา\"",
+    "start": "media/share-f4.webp",
+    "actions": [
+     {
+      "kind": "type",
+      "x": 50,
+      "y": 34.67,
+      "w": 83.08,
+      "h": 6.86,
+      "text": "ABCD2345",
+      "frame": "media/share-f5.webp"
+     },
+     {
+      "kind": "point",
+      "x": 50,
+      "y": 42.68,
+      "w": 11.23,
+      "h": 2.86,
+      "frame": "media/share-f6.webp"
+     }
+    ]
+   }
+  ]
+ },
+ "assistant": {
+  "id": "assistant",
+  "poster": "media/assistant-f1.webp",
+  "steps": [
+   {
+    "n": 1,
+    "title": "ถามครูปัญญา",
+    "detail": "แตะปุ่มประกายดาวมุมขวาล่าง พิมพ์คำถามหรือแตะคำถามแนะนำ ครูปัญญาตอบจากตำราและบัญชียาหลักแห่งชาติ",
+    "start": "media/assistant-f1.webp",
+    "actions": [
+     {
+      "kind": "tap",
+      "x": 88.06,
+      "y": 93.94,
+      "w": 15.42,
+      "h": 7.09,
+      "frame": "media/assistant-f2.webp"
+     },
+     {
+      "kind": "tap",
+      "x": 52.86,
+      "y": 67.73,
+      "w": 66.42,
+      "h": 2.86,
+      "frame": "media/assistant-f3.webp"
+     }
+    ]
+   },
+   {
+    "n": 2,
+    "title": "คุยด้วยเสียง",
+    "detail": "แตะ \"คุยด้วยเสียง\" แล้วพูดได้เลย ครูปัญญาฟังและตอบเป็นเสียง รองรับภาษากลาง อีสาน เหนือ และใต้",
+    "start": "media/assistant-f4.webp",
+    "actions": [
+     {
+      "kind": "point",
+      "x": 53.48,
+      "y": 54.81,
+      "w": 21.91,
+      "h": 2.86,
+      "frame": "media/assistant-f5.webp"
+     }
+    ]
+   },
+   {
+    "n": 3,
+    "title": "ประวัติแชทและแชทใหม่",
+    "detail": "ปุ่มนาฬิกาบนแถบด้านบนเปิดประวัติการคุยทั้งหมด ปุ่มดินสอเริ่มแชทใหม่",
+    "start": "media/assistant-f6.webp",
+    "actions": [
+     {
+      "kind": "tap",
+      "x": 80.1,
+      "y": 9.61,
+      "w": 10.95,
+      "h": 5.03,
+      "frame": "media/assistant-f7.webp"
+     }
+    ]
+   }
+  ]
+ },
+ "notifications": {
+  "id": "notifications",
+  "poster": "media/notifications-f1.webp",
+  "steps": [
+   {
+    "n": 1,
+    "title": "แจ้งเตือนที่ยังไม่อ่าน",
+    "detail": "แจ้งเตือนที่ยังไม่อ่านมีจุดเขียวและอยู่ในกลุ่ม \"ยังไม่อ่าน\" ถ้ามีหลายประเภทจะมีชิปให้กรอง แตะ \"อ่านทั้งหมด\" มุมขวาบนเพื่อทำเครื่องหมายว่าอ่านแล้ว",
+    "start": "media/notifications-f1.webp",
+    "actions": [
+     {
+      "kind": "point",
+      "x": 15.74,
+      "y": 16.88,
+      "w": 19.54,
+      "h": 3.09,
+      "frame": "media/notifications-f2.webp"
+     },
+     {
+      "kind": "tap",
+      "x": 83.45,
+      "y": 9.61,
+      "w": 23.15,
+      "h": 4.12,
+      "frame": "media/notifications-f3.webp"
+     }
+    ]
+   },
+   {
+    "n": 2,
+    "title": "ล้างแจ้งเตือน",
+    "detail": "ปัดการ์ดไปทางซ้ายแล้วแตะ \"ล้าง\" หรือแตะ \"ล้าง\" ที่หัวกลุ่มเพื่อล้างทั้งกลุ่ม แตะการ์ดเพื่อเปิดผู้ป่วยคนนั้น",
+    "start": "media/notifications-f4.webp",
+    "actions": [
+     {
+      "kind": "drag",
+      "x": 55.97,
+      "y": 24.54,
+      "w": 71.14,
+      "h": 2.86,
+      "x2": 18.66,
+      "y2": 24.54,
+      "frame": "media/notifications-f5.webp"
+     },
+     {
+      "kind": "tap",
+      "x": 85.07,
+      "y": 25.92,
+      "w": 19.9,
+      "h": 13.16,
+      "frame": "media/notifications-f6.webp"
+     }
+    ]
+   }
+  ]
+ },
+ "settings": {
+  "id": "settings",
+  "poster": "media/settings-f1.webp",
+  "steps": [
+   {
+    "n": 1,
+    "title": "ตั้งค่าครูปัญญา",
+    "detail": "เลือกภาษาพูดให้ตรงกับผู้ป่วย (กลาง อีสาน เหนือ ใต้) และกดทดลองฟังเสียง",
+    "start": "media/settings-f1.webp",
+    "actions": [
+     {
+      "kind": "tap",
+      "x": 52.11,
+      "y": 45.37,
+      "w": 63.43,
+      "h": 2.86,
+      "frame": "media/settings-f2.webp"
+     },
+     {
+      "kind": "tap",
+      "x": 50.75,
+      "y": 75.46,
+      "w": 60.7,
+      "h": 2.86,
+      "frame": "media/settings-f3.webp"
+     }
+    ]
+   },
+   {
+    "n": 2,
+    "title": "ตั้งรหัส PIN",
+    "detail": "เปิดสวิตช์ \"รหัส PIN\" แล้วตั้งรหัส 6 หลัก ครั้งต่อไปเปิดแอปด้วย PIN หรือ Face ID ได้ทันที",
+    "start": "media/settings-f4.webp",
+    "actions": [
+     {
+      "kind": "tap",
+      "x": 84.2,
+      "y": 63.96,
+      "w": 12.69,
+      "h": 3.55,
+      "frame": "media/settings-f5.webp"
+     },
+     {
+      "kind": "tap",
+      "x": 24.63,
+      "y": 51.49,
+      "w": 4.56,
+      "h": 5.84,
+      "frame": "media/settings-f6.webp"
+     },
+     {
+      "kind": "tap",
+      "x": 50,
+      "y": 51.49,
+      "w": 4.56,
+      "h": 5.84,
+      "frame": "media/settings-f7.webp"
+     },
+     {
+      "kind": "tap",
+      "x": 75.37,
+      "y": 51.49,
+      "w": 4.56,
+      "h": 5.84,
+      "frame": "media/settings-f8.webp"
+     }
+    ]
+   },
+   {
+    "n": 3,
+    "title": "จัดการบัญชี",
+    "detail": "ในหน้าข้อมูลส่วนตัว ปุ่ม ••• ใช้แก้ไขข้อมูลบัญชี เปลี่ยนรหัสผ่าน หรือลบบัญชี",
+    "start": "media/settings-f9.webp",
+    "actions": [
+     {
+      "kind": "tap",
+      "x": 92.04,
+      "y": 9.61,
+      "w": 10.95,
+      "h": 5.03,
+      "frame": "media/settings-f10.webp"
+     }
+    ]
+   }
+  ]
+ }
+}

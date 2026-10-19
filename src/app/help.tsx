@@ -3,6 +3,7 @@
  * ยังสงสัย → ถามครูปัญญา (เปิดแชทพร้อมคำถาม)
  */
 import { Stack, router } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
 import React, { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn, LinearTransition } from 'react-native-reanimated';
@@ -10,6 +11,10 @@ import { CircleIcon, PAGE_PAD } from '../components/ListRow';
 import { Sym, ios } from '../components/ios';
 import { PressableScale, T } from '../components/ui';
 import { elevation, palette } from '../theme';
+
+/** คู่มือฉบับเว็บ (อยู่บน GitHub Pages คู่กับเว็บแอป) */
+const MANUAL_URL = 'https://mhobhaanchueamjai.github.io/Mho-Bhaan-Chueam-Jai/tutorial/';
+const openManual = () => WebBrowser.openBrowserAsync(MANUAL_URL, { presentationStyle: WebBrowser.WebBrowserPresentationStyle.PAGE_SHEET, controlsColor: palette.primary }).catch(() => {});
 
 type Topic = { id: string; title: string; icon: string; color: string; steps: string[] };
 
@@ -121,6 +126,16 @@ export default function Help() {
             </Animated.View>
           );
         })}
+
+        {/* คู่มือฉบับเต็มบนเว็บ: ภาพหน้าจอจริงพร้อมนิ้วสาธิตการกด */}
+        <PressableScale haptic="press" scaleTo={0.98} onPress={openManual} style={[styles.ask, elevation.e1]} accessibilityLabel="เปิดคู่มือการใช้งานแบบมีภาพ">
+          <CircleIcon name="book.pages.fill" color="#3B7DD8" />
+          <View style={{ flex: 1 }}>
+            <T v="bodyStrong">คู่มือการใช้งานแบบมีภาพ</T>
+            <T v="subhead" color={ios.secondary}>ภาพหน้าจอจริงทุกขั้นตอน ว่าต้องกดตรงไหน</T>
+          </View>
+          <Sym name="arrow.up.right.square" size={15} color={ios.tertiary} weight="semibold" />
+        </PressableScale>
 
         {/* ยังสงสัย → ถามครูปัญญา */}
         <PressableScale haptic="press" scaleTo={0.98} onPress={() => router.push({ pathname: '/assistant', params: { q: 'ช่วยสอนวิธีใช้แอปหมอบ้านเชื่อมใจหน่อย' } })} style={[styles.ask, elevation.e1]} accessibilityLabel="ถามครูปัญญาเรื่องการใช้งาน">
