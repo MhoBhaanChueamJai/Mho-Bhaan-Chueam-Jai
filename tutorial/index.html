@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="th">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>หมอบ้านเชื่อมใจ · คู่มือการใช้งาน</title>
+    <meta name="description" content="คู่มือการใช้งานแอปหมอบ้านเชื่อมใจ ทุกฟีเจอร์ พร้อมภาพหน้าจอจริงสาธิตว่าต้องกดตรงไหน" />
+    <link rel="icon" href="../favicon.ico" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai+Looped:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="tutorial.css" />
+  </head>
+  <body>
+    <header class="hero">
+      <div class="hero__glow"></div>
+      <nav class="hero__bar">
+        <span class="brand"><span class="brand__mark">✦</span> หมอบ้านเชื่อมใจ <em>คู่มือการใช้งาน</em></span>
+        <a class="hero__back" href="../">เปิดแอป →</a>
+      </nav>
+      <div class="hero__body">
+        <p class="hero__eyebrow">คู่มือการใช้งาน</p>
+        <h1>ใช้หมอบ้านเชื่อมใจ<br /><span>ให้ครบทุกฟีเจอร์</span></h1>
+        <p class="hero__lead">วิธีใช้แยกตามเมนูของแอป ทุกขั้นตอนมีภาพหน้าจอจริงและนิ้วชี้สาธิตว่าต้องกดตรงไหน</p>
+        <div class="hsearch">
+          <label class="hsearch__box">
+            <span id="hqi"></span>
+            <input id="hq" type="search" placeholder="ค้นหาวิธีใช้ เช่น เพิ่มผู้ป่วย, แชร์ตำรา, PIN" autocomplete="off" />
+            <button id="hqx" type="button" aria-label="ล้าง" hidden></button>
+          </label>
+          <div class="hres" id="hres" hidden></div>
+        </div>
+      </div>
+      <div class="hero__cards" id="heroCards" aria-hidden="true"></div>
+    </header>
+
+    <main class="layout">
+      <aside class="toc" id="toc" aria-label="ฟีเจอร์"></aside>
+      <section class="lesson" id="lesson" aria-live="polite"></section>
+    </main>
+
+    <div class="lightbox" id="lightbox" hidden>
+      <button class="lightbox__x" aria-label="ปิด">✕</button>
+      <img alt="" />
+      <p></p>
+    </div>
+
+    <script src="icons.js"></script>
+    <script src="tutorial.js"></script>
+  </body>
+</html>
