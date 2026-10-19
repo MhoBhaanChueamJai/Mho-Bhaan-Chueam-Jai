@@ -5,7 +5,7 @@
  * พลิกหน้าแบบกระดาษม้วนจริง (Skia page curl): ลากจากตรงไหนก็ได้ ลากเฉียง = พับเฉียง · แตะขวา/ซ้ายเพื่อพลิก
  */
 import { NotoSerifThai_400Regular, NotoSerifThai_700Bold, useFonts } from '@expo-google-fonts/noto-serif-thai';
-import { Canvas, Group, Image as SkImg, ImageShader, LinearGradient as SkLinear, Rect, Vertices, makeImageFromView, type SkImage } from '@shopify/react-native-skia';
+import { Canvas, Group, Image as SkImg, ImageShader, LinearGradient as SkLinear, Rect, Vertices, type SkImage } from '@shopify/react-native-skia';
 import { Image as ExpoImage } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -24,6 +24,7 @@ import { GlassCircle, T, useHaptic } from '../../components/ui';
 import { KIND_FORM, plainText, splitMethod } from '../../lib/wisdomKinds';
 import type { Wisdom } from '../../data/mock';
 import { useApp } from '../../store/app';
+import { snapView } from '../../lib/snapView';
 
 const PAPER = '#F5ECD9';
 const INK = '#3A2C1C';
@@ -265,7 +266,7 @@ function ReadBookInner({ w }: { w: Wisdom }) {
     const snap = async (k: number) => {
       const r = refs.current[k];
       if (k < 0 || k >= n || !r?.current) return;
-      const im = await makeImageFromView(r as React.RefObject<View>).catch(() => null);
+      const im = await snapView(r as React.RefObject<View>).catch(() => null);
       if (!im) return;
       if (!alive) return im.dispose?.();
       const old = cache.current.get(k);
