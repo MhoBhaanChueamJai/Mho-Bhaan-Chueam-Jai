@@ -223,5 +223,5 @@ const styles = StyleSheet.create({
   voiceBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, alignSelf: 'flex-start', height: 36, paddingHorizontal: 14, marginTop: 10, borderRadius: 18, backgroundColor: '#7CF0A8' },
   track: { height: 5, borderRadius: 3, backgroundColor: '#E3EDE7', marginTop: 8, overflow: 'hidden' },
   fillBar: { height: 5, borderRadius: 3, backgroundColor: palette.primary },
-  pCard: { width: 138, height: 150, padding: 12, borderRadius: 20, borderCurve: 'continuous', backgroundColor: palette.surface },
+  pCard: { width: 168, height: 150, padding: 14, borderRadius: 20, borderCurve: 'continuous', backgroundColor: palette.surface },
 });
