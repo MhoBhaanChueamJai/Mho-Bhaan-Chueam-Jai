@@ -1,9 +1,11 @@
 /**
- * หนังสือส่งต่อผู้ป่วย — กรอกหน่วยบริการที่ส่งไปและเหตุผล แล้วสร้าง PDF (ใช้ข้อมูลการรักษาครั้งล่าสุด)
+ * ส่งต่อผู้ป่วย — กรอกสถานพยาบาลปลายทางและเหตุผล → ส่งข้อมูลให้ปลายทาง → พิมพ์หนังสือส่งต่อ (PDF)
+ * การส่งข้อมูลตอนนี้เป็นการจำลอง (ยังไม่เชื่อมระบบสถานพยาบาลจริง) ให้เห็นขั้นตอนการทำงาน
  */
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { Stack, router, useLocalSearchParams } from 'expo-router';
 import React, { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import Animated, { FadeIn, FadeInDown, ZoomIn } from 'react-native-reanimated';
 import { TextInput } from '../../components/AppText';
 import { Switch } from '../../components/AppSwitch';
 import { NotFound } from '../../components/NotFound';
@@ -15,6 +17,8 @@ import { Alert } from '../../lib/alert';
 import { outputPdf, referralHtml } from '../../lib/printDocs';
 import { useApp } from '../../store/app';
 import { elevation, palette } from '../../theme';
+
+const SEND_STEPS = ['เตรียมข้อมูลผู้ป่วยและการรักษา', 'ส่งข้อมูลไปยังสถานพยาบาลปลายทาง', 'ปลายทางได้รับข้อมูลแล้ว'];
 
 export default function Referral() {
   const { pid } = useLocalSearchParams<{ pid: string }>();
@@ -28,16 +32,34 @@ export default function Referral() {
   const [extra, setExtra] = useState('');
   const [urgent, setUrgent] = useState(false);
   const [mark, setMark] = useState(p?.status !== 'ส่งต่อ รพ.สต.');
+  const [phase, setPhase] = useState<'form' | 'sending' | 'sent'>('form');
+  const [step, setStep] = useState(0);
+  const [refNo, setRefNo] = useState('');
+  const [sentAt, setSentAt] = useState('');
   const [busy, setBusy] = useState(false);
   if (!p) return <NotFound />;
 
-  const make = async () => {
+  // ส่งข้อมูลให้สถานพยาบาลปลายทาง (จำลอง: เตรียมข้อมูล → ส่ง → ปลายทางได้รับ)
+  const send = async () => {
+    if (phase !== 'form' || !to.trim()) return;
+    setPhase('sending');
+    for (let i = 0; i < SEND_STEPS.length; i++) {
+      setStep(i);
+      await new Promise((r) => setTimeout(r, 700));
+    }
+    const d = new Date();
+    setRefNo(`RF${String(d.getFullYear() + 543).slice(2)}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}-${String(Math.floor(Math.random() * 9000) + 1000)}`);
+    setSentAt(d.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }));
+    if (mark) updatePatient(p.id, { status: 'ส่งต่อ รพ.สต.' });
+    h.success();
+    setPhase('sent');
+  };
+
+  const print = async () => {
     if (busy) return;
     setBusy(true);
     try {
-      await outputPdf(referralHtml(p, v, { to: to.trim(), reason: reason.trim(), urgent, extra: extra.trim() }, dr), `ใบส่งต่อ ${p.name}`);
-      if (mark) updatePatient(p.id, { status: 'ส่งต่อ รพ.สต.' });
-      h.success();
+      await outputPdf(referralHtml(p, v, { to: to.trim(), reason: reason.trim(), urgent, extra: extra.trim(), no: refNo }, dr), `ใบส่งต่อ ${p.name}`);
     } catch {
       Alert.alert('สร้างเอกสารไม่สำเร็จ', 'ลองใหม่อีกครั้ง');
     } finally {
@@ -56,6 +78,32 @@ export default function Referral() {
     <>
       <Stack.Screen options={{ title: 'ใบส่งต่อผู้ป่วย' }} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: palette.bg }}>
+        {phase === 'sent' ? (
+          <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.page}>
+            <Animated.View entering={ZoomIn.springify().damping(14)} style={styles.done}>
+              <Sym name="checkmark.circle.fill" size={44} color="#FFFFFF" />
+            </Animated.View>
+            <Animated.View entering={FadeInDown.delay(120)} style={{ gap: 4 }}>
+              <T v="h2" center>ส่งข้อมูลแล้ว</T>
+              <T v="callout" color={ios.secondary} center>{to.trim()} ได้รับข้อมูลผู้ป่วยแล้ว</T>
+            </Animated.View>
+            <Animated.View entering={FadeInDown.delay(200)} style={[styles.card, elevation.e1, { gap: 0, paddingVertical: 4 }]}>
+              {[
+                ['เลขที่ส่งต่อ', refNo],
+                ['ผู้ป่วย', p.name],
+                ['ส่งถึง', to.trim()],
+                ['เวลาที่ส่ง', `${sentAt} น.`],
+                ['ความเร่งด่วน', urgent ? 'ด่วน' : 'ปกติ'],
+              ].map(([k, val], i) => (
+                <View key={k} style={[styles.sw, i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: ios.separator }]}>
+                  <T v="body" color={ios.secondary} style={{ width: 110 }}>{k}</T>
+                  <T v="body" style={{ flex: 1, textAlign: 'right', fontWeight: '600' }} color={k === 'ความเร่งด่วน' && urgent ? palette.coral : palette.ink}>{val}</T>
+                </View>
+              ))}
+            </Animated.View>
+            <T v="caption" color={ios.tertiary} style={{ marginHorizontal: 4 }}>ปลายทางจะตอบกลับผลการรักษาเข้ามาในแอป · พิมพ์หนังสือส่งต่อให้ผู้ป่วยถือไปด้วยได้</T>
+          </ScrollView>
+        ) : (
         <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.page} keyboardDismissMode="interactive">
           <View style={[styles.card, elevation.e1, styles.who]}>
             <Sym name="person.crop.circle.fill" size={34} color={palette.primary} />
@@ -79,10 +127,28 @@ export default function Referral() {
               <Switch value={mark} onValueChange={setMark} trackColor={{ true: palette.primary }} />
             </View>
           </View>
-          <T v="caption" color={ios.tertiary} style={{ marginHorizontal: 4 }}>เอกสารใช้ข้อมูลผู้ป่วยและการรักษาครั้งล่าสุด มีส่วนให้หน่วยบริการตอบกลับผลการรักษา</T>
+          <T v="caption" color={ios.tertiary} style={{ marginHorizontal: 4 }}>ส่งข้อมูลผู้ป่วยและการรักษาครั้งล่าสุดให้สถานพยาบาลปลายทาง แล้วพิมพ์หนังสือส่งต่อได้หลังส่ง</T>
+          {phase === 'sending' ? (
+            <Animated.View entering={FadeIn} style={[styles.card, elevation.e1, { gap: 10 }]}>
+              {SEND_STEPS.map((t, i) => (
+                <View key={t} style={styles.step}>
+                  <Sym name={i < step ? 'checkmark.circle.fill' : i === step ? 'paperplane.fill' : 'circle'} size={18} color={i <= step ? palette.primary : ios.tertiary} />
+                  <T v="body" color={i <= step ? palette.ink : ios.tertiary}>{t}</T>
+                </View>
+              ))}
+            </Animated.View>
+          ) : null}
         </ScrollView>
+        )}
         <GlassDock>
-          <Button label={busy ? 'กำลังสร้างเอกสาร…' : 'สร้างหนังสือส่งต่อ (PDF)'} disabled={busy || !to.trim()} onPress={make} style={{ flex: 1, height: 52 }} />
+          {phase === 'sent' ? (
+            <View style={{ flex: 1, gap: 10 }}>
+              <Button label={busy ? 'กำลังสร้างเอกสาร…' : 'พิมพ์หนังสือส่งต่อ (PDF)'} icon={<Sym name="printer.fill" size={17} color="#FFFFFF" />} disabled={busy} onPress={print} style={{ height: 52 }} />
+              <Button label="เสร็จ" kind="secondary" onPress={() => router.back()} style={{ height: 52 }} />
+            </View>
+          ) : (
+            <Button label={phase === 'sending' ? 'กำลังส่งข้อมูล…' : 'ส่งข้อมูลให้สถานพยาบาล'} icon={phase === 'form' ? <Sym name="paperplane.fill" size={17} color="#FFFFFF" /> : undefined} disabled={phase !== 'form' || !to.trim()} onPress={send} style={{ flex: 1, height: 52 }} />
+          )}
         </GlassDock>
       </KeyboardAvoidingView>
     </>
@@ -95,4 +161,6 @@ const styles = StyleSheet.create({
   who: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   input: { minHeight: 52, borderRadius: 26, paddingHorizontal: 18, backgroundColor: palette.mint, fontSize: 17, color: palette.ink },
   sw: { flexDirection: 'row', alignItems: 'center', minHeight: 52, gap: 10 },
+  step: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  done: { alignSelf: 'center', width: 84, height: 84, borderRadius: 42, alignItems: 'center', justifyContent: 'center', backgroundColor: palette.primary, marginTop: 12 },
 });

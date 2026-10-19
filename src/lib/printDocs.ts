@@ -80,12 +80,12 @@ export function mb5Html(patients: Patient[], dr: Doctor) {
   return page('แบบ ม.บ.5', sheets.join(''), true);
 }
 
-export type Referral = { to: string; reason: string; urgent: boolean; extra?: string };
+export type Referral = { to: string; reason: string; urgent: boolean; extra?: string; no?: string };
 
 /** หนังสือส่งต่อผู้ป่วย → รพ.สต. / โรงพยาบาล (ใช้ข้อมูลการรักษาครั้งล่าสุด) */
 export function referralHtml(p: Patient, v: MB5Visit | undefined, r: Referral, dr: Doctor) {
   const body = `
-    <div style="text-align:right">วันที่ ${today()}</div>
+    <div style="display:flex;justify-content:space-between"><span>${r.no ? `เลขที่ส่งต่อ ${esc(r.no)}` : ''}</span><span>วันที่ ${today()}</span></div>
     <h1 style="margin-top:8px">หนังสือส่งต่อผู้ป่วย</h1>
     ${r.urgent ? '<div style="text-align:center;margin-top:4px"><span style="border:1.5px solid #c00;color:#c00;padding:2px 12px;border-radius:4px;font-weight:700">ด่วน</span></div>' : ''}
     <div style="margin-top:14px"><b>เรียน</b> ผู้อำนวยการ${esc(r.to || '..............................................')}</div>
