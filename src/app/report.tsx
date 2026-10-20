@@ -10,7 +10,9 @@ import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import Svg, { Circle } from 'react-native-svg';
 import { Sym, ios } from '../components/ios';
 import SegmentedControl from '@react-native-segmented-control/segmented-control';
-import { Button, GlassDock, PressableScale, T } from '../components/ui';
+import * as Print from 'expo-print';
+import { MenuView } from '../components/Menu';
+import { PressableScale, T } from '../components/ui';
 import { NEEDS_FONT } from '../lib/font';
 import { useDoctor } from '../components/useDoctor';
 import { Alert } from '../lib/alert';
@@ -130,7 +132,28 @@ export default function Report() {
 
   return (
     <>
-      <Stack.Screen options={{ title: 'รายงาน' }} />
+      {/* ส่งออก/พิมพ์: เมนูบนแถบด้านบน */}
+      <Stack.Screen
+        options={{
+          title: 'รายงาน',
+          headerRight: () => (
+            <MenuView
+              shouldOpenOnLongPress={false}
+              themeVariant="light"
+              title={`รายงาน ${r.label}`}
+              actions={[
+                { id: 'pdf', title: 'ส่งออก PDF', image: 'square.and.arrow.up', imageColor: palette.ink },
+                { id: 'print', title: 'พิมพ์', image: 'printer.fill', imageColor: palette.ink },
+              ]}
+              onPressAction={({ nativeEvent }) => (nativeEvent.event === 'print' ? Print.printAsync({ html: reportHtml(r, dr) }).catch(() => {}) : pdf())}
+            >
+              <View style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }} accessibilityRole="button" accessibilityLabel="ส่งออกรายงาน">
+                <Sym name="square.and.arrow.up" size={19} color={palette.ink} weight="semibold" />
+              </View>
+            </MenuView>
+          ),
+        }}
+      />
       <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={styles.page}>
         {/* แท็บแบบ iOS (UISegmentedControl · Android/เว็บวาดให้เหมือน) */}
         <SegmentedControl
@@ -217,18 +240,15 @@ export default function Report() {
           <Card i={4} title="สมุนไพรที่ใช้บ่อย" icon="leaf.fill" color="#3E8E2E">
             <HBars items={r.herbs} color="#6FBF4A" />
           </Card>
-          <T v="caption" color={ios.tertiary} style={{ marginHorizontal: 4 }}>นับจากบันทึกการรักษาตามแบบ ม.บ.5 · ผลการรักษาจัดกลุ่มจากคำที่หมอพิมพ์ · PDF มีรายการรักษาทุกครั้งและช่องลงชื่อ</T>
+          <T v="caption" color={ios.tertiary} style={{ marginHorizontal: 4 }}>นับจากบันทึกการรักษาตามแบบ ม.บ.5 · ผลการรักษาจัดกลุ่มจากคำที่หมอพิมพ์ · ส่งออก PDF หรือพิมพ์ได้จากปุ่มมุมขวาบน (มีรายการรักษาทุกครั้งและช่องลงชื่อ)</T>
         </Animated.View>
       </ScrollView>
-      <GlassDock>
-        <Button label="ส่งออก PDF" icon={<Sym name="square.and.arrow.up" size={17} color="#FFFFFF" />} onPress={pdf} style={{ flex: 1, height: 52 }} />
-      </GlassDock>
     </>
   );
 }
 
 const styles = StyleSheet.create({
-  page: { padding: 16, paddingBottom: 140, gap: 12 },
+  page: { padding: 16, paddingBottom: 48, gap: 12 },
   period: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   arrow: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: palette.surface },
   grid: { flexDirection: 'row', gap: 12 },
