@@ -9,7 +9,9 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import Svg, { Circle } from 'react-native-svg';
 import { Sym, ios } from '../components/ios';
-import { Button, GlassDock, PressableScale, Segmented, T } from '../components/ui';
+import SegmentedControl from '@react-native-segmented-control/segmented-control';
+import { Button, GlassDock, PressableScale, T } from '../components/ui';
+import { NEEDS_FONT } from '../lib/font';
 import { useDoctor } from '../components/useDoctor';
 import { Alert } from '../lib/alert';
 import { buildReport, reportHtml, type Span } from '../lib/monthReport';
@@ -130,7 +132,16 @@ export default function Report() {
     <>
       <Stack.Screen options={{ title: 'รายงาน' }} />
       <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={styles.page}>
-        <Segmented items={SPANS} value={String(span) as '1' | '3' | '12'} onChange={(k) => setSpan(Number(k) as Span)} />
+        {/* แท็บแบบ iOS (UISegmentedControl · Android/เว็บวาดให้เหมือน) */}
+        <SegmentedControl
+          values={SPANS.map((x) => x.label)}
+          selectedIndex={SPANS.findIndex((x) => Number(x.key) === span)}
+          onChange={(e) => setSpan(Number(SPANS[e.nativeEvent.selectedSegmentIndex].key) as Span)}
+          appearance="light"
+          style={{ height: 34 }}
+          fontStyle={NEEDS_FONT ? { fontFamily: 'NotoSansThaiLooped_500Medium', fontSize: 14 } : { fontSize: 14 }}
+          activeFontStyle={NEEDS_FONT ? { fontFamily: 'NotoSansThaiLooped_600SemiBold', fontSize: 14 } : { fontSize: 14, fontWeight: '600' }}
+        />
         <View style={styles.period}>
           <PressableScale haptic="select" onPress={() => shift(-1)} style={styles.arrow} accessibilityLabel="ช่วงก่อนหน้า">
             <Sym name="chevron.left" size={17} color={palette.ink} weight="semibold" />
