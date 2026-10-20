@@ -188,10 +188,12 @@ export default function Settings() {
           />
         </ListSection>
 
-        {/* ── เครื่องมือของหมอ: รายงาน · คลังยา ── */}
+        {/* ── เครื่องมือของหมอ: รายงาน · คลังยา · ตรวจยาตีกัน · นัดหมาย ── */}
         <ListSection i={3} title="เครื่องมือของหมอ">
           <ListRow icon={<CircleIcon name="chart.bar.doc.horizontal.fill" color="#14905C" />} title="รายงาน" subtitle="dashboard การรักษา · รายเดือน/ปี · ส่งออก PDF" onPress={() => router.push('/report')} chevron />
-          <ListRow icon={<CircleIcon name="cross.vial.fill" color="#C27A12" />} title="คลังยาของหมอ" subtitle="ยาที่ปรุงไว้ · วันหมดอายุ · เหลือเท่าไร" onPress={() => router.push('/stock')} chevron last />
+          <ListRow icon={<CircleIcon name="cross.vial.fill" color="#C27A12" />} title="คลังยาของหมอ" subtitle="ยาที่ปรุงไว้ · วันหมดอายุ · เหลือเท่าไร" onPress={() => router.push('/stock')} chevron />
+          <ListRow icon={<CircleIcon name="pills.circle.fill" color="#D2453A" />} title="ตรวจยาตีกัน" subtitle="สมุนไพร × โรคประจำตัว × ยาที่กินอยู่" onPress={() => router.push('/interactions')} chevron />
+          <ListRow icon={<CircleIcon name="calendar" color="#2F7BE0" />} title="นัดหมาย" subtitle="นัดติดตามอาการวันนี้และสัปดาห์นี้" onPress={() => router.push('/appointments')} chevron last />
         </ListSection>
 
         {/* ── ข้อมูล ── */}

@@ -118,6 +118,9 @@ function PatientsInner() {
         options={{
           headerRight: () => (
             <View style={{ flexDirection: 'row', gap: 4 }}>
+              <HeaderButton label="นัดหมาย" onPress={() => router.push('/appointments')}>
+                <Sym name="calendar" size={20} color={palette.ink} weight="semibold" />
+              </HeaderButton>
               <HeaderButton label="ค้นหาผู้ป่วย" onPress={() => router.push('/patient/search')}>
                 <Sym name="magnifyingglass" size={20} color={palette.ink} weight="semibold" />
               </HeaderButton>

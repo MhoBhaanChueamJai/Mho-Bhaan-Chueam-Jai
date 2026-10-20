@@ -13,6 +13,7 @@ import { useMyAvatar } from '../../../lib/myAvatar';
 import { TODAY, avatarFor, doctor, lastVisit, thaiDate } from '../../../data/mock';
 import { visitSortKey } from '../../../data/tones';
 import { useStock } from '../../../lib/stock';
+import { useMorningDigest } from '../../../lib/digest';
 import { useApp } from '../../../store/app';
 import { todayPick } from '../../../lib/herbDaily';
 import { elevation, palette } from '../../../theme';
@@ -44,7 +45,7 @@ function Bell({ unread, shake }: { unread: number; shake: number }) {
 
 export default function Home() {
   const lt = useLargeTitleScroll();
-  const { patients, settings, isPractitioner, profile, wisdoms: allW } = useApp();
+  const { patients, settings, isPractitioner, profile, wisdoms: allW, ready } = useApp();
   const wisdoms = allW; // นับรวมตำราอ้างอิงในระบบ
   // ผู้ป่วยที่มารักษาล่าสุด 3 ราย (หมอพื้นบ้านไม่ใช้ระบบนัด)
   const recent = [...patients].sort((a, b) => visitSortKey(lastVisit(b)?.date) - visitSortKey(lastVisit(a)?.date)).slice(0, 8);
@@ -54,6 +55,8 @@ export default function Home() {
   const name = settings.username && settings.username !== 'somchai' ? settings.username : doctor.short;
   const ann = useAnnouncements();
   const [stock] = useStock();
+  // สรุปงานตอนเช้า (นัดติดตาม · ยาใกล้หมดอายุ) — ตั้งแจ้งเตือนล่วงหน้า 7 วัน
+  useMorningDigest(patients, stock, ready);
   const notices = noticesFrom(patients, wisdoms, isPractitioner, ann, stock);
   const pendingW = wisdoms.filter((w) => !w.verified).length;
   const unread = notices.filter((n) => !settings.readNotices?.includes(n.id)).length;

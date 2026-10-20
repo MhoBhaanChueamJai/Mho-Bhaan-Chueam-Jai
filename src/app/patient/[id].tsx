@@ -19,6 +19,7 @@ import { mb5Html, outputPdf } from '../../lib/printDocs';
 import { useDoctor } from '../../components/useDoctor';
 import { printReferral, thDate, thTime } from '../../lib/referral';
 import { thShort, todayIso } from '../../lib/reminders';
+import { VitalsTrend } from '../../components/VitalsTrend';
 
 const DETAIL: { k: keyof MB5Visit; l: string; icon: string; color: string }[] = [
   { k: 'symptoms', l: 'อาการ', icon: 'waveform.path.ecg', color: '#C2564B' },
@@ -224,10 +225,11 @@ function PatientBody({ p }: { p: Patient }) {
                 shouldOpenOnLongPress={false}
                 themeVariant="light"
                 actions={[
+                  { id: 'interact', title: 'ตรวจยาตีกัน', image: 'pills.circle.fill', imageColor: palette.ink },
                   { id: 'share', title: 'ส่งออก ม.บ.5', image: 'square.and.arrow.up', imageColor: palette.ink },
                   { id: 'delete', title: 'ลบผู้ป่วย', image: 'trash', imageColor: '#E5484D', attributes: { destructive: true } },
                 ]}
-                onPressAction={({ nativeEvent: e }) => (e.event === 'share' ? exportMb5() : e.event === 'delete' ? remove() : undefined)}
+                onPressAction={({ nativeEvent: e }) => (e.event === 'interact' ? router.push({ pathname: '/interactions', params: { pid: p.id } }) : e.event === 'share' ? exportMb5() : e.event === 'delete' ? remove() : undefined)}
               >
                 <View style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }} accessibilityRole="button" accessibilityLabel="เพิ่มเติม">
                   <Sym name="ellipsis" size={19} color={palette.ink} weight="semibold" />
@@ -266,6 +268,9 @@ function PatientBody({ p }: { p: Patient }) {
             </T>
           </View>
         ) : null}
+
+        {/* ค่าสุขภาพ: ความดัน น้ำตาล น้ำหนัก ตามครั้งที่รักษา */}
+        <VitalsTrend p={p} />
 
         <ListSection i={2} title="ติดต่อ">
           <ListRow

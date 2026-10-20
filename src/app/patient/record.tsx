@@ -21,6 +21,7 @@ import type { Patient } from '../../data/mock';
 import { thDate } from '../../lib/referral';
 import { cancelReminder, isoIn, remindCheckIn, remindFollowUp, thShort } from '../../lib/reminders';
 import { stockState, useStock } from '../../lib/stock';
+import { LEVEL, SRC, assess, vitalsText, type Vitals } from '../../lib/vitals';
 import { herbsMentioned } from '../../lib/brain';
 import { useApp } from '../../store/app';
 import { elevation, palette } from '../../theme';
@@ -89,6 +90,10 @@ function RecordInner() {
   const [symptoms, setSymptoms] = useState('');
   const [duration, setDuration] = useState('');
   const [exam, setExam] = useState('');
+  // ค่าสุขภาพ (ถ้าวัด) — ประเมินตามแนวทางเวชปฏิบัติทันทีที่กรอก
+  const [vt, setVt] = useState<Record<keyof Vitals, string>>({ sys: '', dia: '', pulse: '', sugar: '', weight: '' });
+  const vitals: Vitals = Object.fromEntries(Object.entries(vt).map(([k, v]) => [k, Number(v) || undefined])) as Vitals;
+  const checks = assess(vitals);
   const [diagnosis, setDiagnosis] = useState('');
   const [treatment, setTreatment] = useState('');
   const [result, setResult] = useState('');
@@ -115,7 +120,7 @@ function RecordInner() {
   const navigation = useNavigation();
 
   const canSave = !!(symptoms.trim() || diagnosis.trim() || treatment.trim());
-  const dirty = !!(canSave || exam.trim() || result.trim() || followUp.trim() || note.trim());
+  const dirty = !!(canSave || exam.trim() || result.trim() || followUp.trim() || note.trim() || Object.values(vt).some(Boolean));
   // กรอกไว้แล้วกดย้อนกลับ/ปัดกลับ → ถามก่อน (กันข้อมูลหายโดยไม่ตั้งใจ)
   usePreventRemove(dirty, ({ data }) => {
     // บันทึกแล้ว → ออกได้เลย
@@ -138,7 +143,7 @@ function RecordInner() {
     addVisit(p.id, {
       date: toBE(date),
       symptoms: [symptoms.trim(), duration.trim() ? `เป็นมา ${duration.trim()}` : ''].filter(Boolean).join(' · ') || '-',
-      exam: exam.trim() || '-',
+      exam: [vitalsText(vitals), exam.trim()].filter(Boolean).join(' · ') || '-',
       diagnosis: diagnosis.trim() || '-',
       treatment: treatment.trim() || '-',
       result: result.trim() || '-',
@@ -147,7 +152,7 @@ function RecordInner() {
     });
     // นัดติดตาม + เตือนถามอาการหลังรักษา 3 วัน (เตือนในเครื่อง)
     const fuOn = status === 'ติดตามอาการ' && fuDays ? isoIn(fuDays, date) : undefined;
-    updatePatient(p.id, { status, followUpOn: fuOn });
+    updatePatient(p.id, { status, followUpOn: fuOn, ...(vitals.weight ? { weight: vitals.weight } : {}) });
     if (fuOn) remindFollowUp(p.id, p.name, fuOn, diagnosis.trim() || symptoms.trim()).catch(() => {});
     else cancelReminder(`fu-${p.id}`).catch(() => {});
     if (status !== 'หายดี') remindCheckIn(p.id, p.name).catch(() => {});
@@ -172,6 +177,47 @@ function RecordInner() {
         </Section>
 
         <Section title="ตรวจและวินิจฉัย" icon="hand.raised.fill">
+          <View>
+            <T v="subhead" color={ios.secondary} style={styles.label}>ค่าสุขภาพ (ถ้าวัด)</T>
+            <View style={styles.vRow}>
+              <View style={[styles.vBox, { flex: 1.6 }]}>
+                <T v="micro" color={ios.secondary}>ความดัน</T>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <TextInput value={vt.sys} onChangeText={(x) => setVt((o) => ({ ...o, sys: x.replace(/\D/g, '').slice(0, 3) }))} keyboardType="number-pad" placeholder="120" placeholderTextColor={ios.tertiary} style={[styles.vIn, styles.vBp]} accessibilityLabel="ความดันตัวบน" />
+                  <T v="body" color={ios.tertiary}>/</T>
+                  <TextInput value={vt.dia} onChangeText={(x) => setVt((o) => ({ ...o, dia: x.replace(/\D/g, '').slice(0, 3) }))} keyboardType="number-pad" placeholder="80" placeholderTextColor={ios.tertiary} style={[styles.vIn, styles.vBp, { textAlign: 'left', paddingLeft: 4 }]} accessibilityLabel="ความดันตัวล่าง" />
+                </View>
+              </View>
+              <View style={styles.vBox}>
+                <T v="micro" color={ios.secondary}>ชีพจร</T>
+                <TextInput value={vt.pulse} onChangeText={(x) => setVt((o) => ({ ...o, pulse: x.replace(/\D/g, '').slice(0, 3) }))} keyboardType="number-pad" placeholder="72" placeholderTextColor={ios.tertiary} style={styles.vIn} accessibilityLabel="ชีพจร" />
+              </View>
+            </View>
+            <View style={[styles.vRow, { marginTop: 8 }]}>
+              <View style={styles.vBox}>
+                <T v="micro" color={ios.secondary}>น้ำตาล (มก./ดล.)</T>
+                <TextInput value={vt.sugar} onChangeText={(x) => setVt((o) => ({ ...o, sugar: x.replace(/\D/g, '').slice(0, 3) }))} keyboardType="number-pad" placeholder="100" placeholderTextColor={ios.tertiary} style={styles.vIn} accessibilityLabel="น้ำตาลในเลือด" />
+              </View>
+              <View style={styles.vBox}>
+                <T v="micro" color={ios.secondary}>น้ำหนัก (กก.)</T>
+                <TextInput value={vt.weight} onChangeText={(x) => setVt((o) => ({ ...o, weight: x.replace(/[^\d.]/g, '').slice(0, 5) }))} keyboardType="decimal-pad" placeholder={p.weight ? String(p.weight) : '60'} placeholderTextColor={ios.tertiary} style={styles.vIn} accessibilityLabel="น้ำหนัก" />
+              </View>
+            </View>
+            {checks.length ? (
+              <Animated.View entering={FadeIn.duration(200)} layout={SMOOTH} style={{ gap: 6, marginTop: 10 }}>
+                {checks.map((c) => (
+                  <View key={c.k} style={[styles.vCheck, { backgroundColor: LEVEL[c.level].bg }]}>
+                    <Sym name={LEVEL[c.level].icon} size={15} color={LEVEL[c.level].color} />
+                    <View style={{ flex: 1 }}>
+                      <T v="subhead" color={LEVEL[c.level].color} style={{ fontWeight: '700' }}>{c.title}</T>
+                      <T v="caption" color={palette.inkSoft}>{c.text}</T>
+                    </View>
+                  </View>
+                ))}
+                <T v="micro" color={ios.tertiary} style={{ marginLeft: 4 }}>เกณฑ์จาก{SRC}</T>
+              </Animated.View>
+            ) : null}
+          </View>
           <Field label="ตรวจร่างกาย" value={exam} onChange={setExam} placeholder="เช่น เข่าบวม กดเจ็บ ชีพจร" multiline />
           <Field inputRef={diagRef} label="วินิจฉัยโรค" value={diagnosis} onChange={setDiagnosis} placeholder="เช่น ลมจับโปง (ข้อเข่าเสื่อม)" />
         </Section>
@@ -288,6 +334,11 @@ const styles = StyleSheet.create({
   input: { height: 52, borderRadius: 26, paddingHorizontal: 18, backgroundColor: palette.mint, fontSize: 17, color: palette.ink, borderWidth: 1.5, borderColor: 'transparent' },
   inputMulti: { height: undefined, minHeight: 76, borderRadius: 22, paddingTop: 14, paddingBottom: 14, textAlignVertical: 'top' },
   inputFocus: { backgroundColor: palette.surface, borderColor: palette.primary },
+  vRow: { flexDirection: 'row', gap: 8 },
+  vBox: { flex: 1, paddingHorizontal: 14, paddingTop: 8, paddingBottom: 4, borderRadius: 18, backgroundColor: palette.mint },
+  vIn: { flex: 1, minWidth: 40, height: 34, fontSize: 20, fontWeight: '600', color: palette.ink, padding: 0 },
+  vBp: { flex: 0, width: 52, minWidth: 0, textAlign: 'right', paddingRight: 4 },
+  vCheck: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, padding: 10, borderRadius: 14 },
   facNote: { flexDirection: 'row', alignItems: 'center', gap: 4, marginLeft: 6 },
   refWarn: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4, padding: 10, borderRadius: 14, backgroundColor: '#FDF1DC' },
   sw: { flexDirection: 'row', alignItems: 'center', minHeight: 44, gap: 10 },
