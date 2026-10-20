@@ -1091,23 +1091,31 @@
   "steps": [
    {
     "n": 1,
-    "title": "รายงานสรุปรายเดือน",
-    "detail": "ตั้งค่า → เครื่องมือของหมอ → รายงานสรุปรายเดือน ดูจำนวนครั้งที่รักษา ผู้ป่วยใหม่ โรคและสมุนไพรที่ใช้บ่อย เลื่อนดูเดือนก่อนได้ แตะ \"ส่งออก PDF\" ใช้รายงาน รพ.สต. หรือประกอบการต่ออายุหนังสือรับรอง",
+    "title": "รายงาน (dashboard)",
+    "detail": "ตั้งค่า → เครื่องมือของหมอ → รายงาน เลือกดูรายเดือน 3 เดือน หรือรายปี ตัวเลขหลักมีลูกศรเทียบกับช่วงก่อน มีกราฟจำนวนครั้งที่รักษา วงแหวนผลการรักษา เพศและอายุ โรคและสมุนไพรที่พบบ่อย แตะ \"ส่งออก PDF\" ใช้รายงาน รพ.สต. หรือประกอบการต่ออายุหนังสือรับรอง",
     "start": "media/tools-f1.webp",
     "actions": [
      {
       "kind": "point",
-      "x": 14.74,
-      "y": 28.72,
-      "w": 14.42,
+      "x": 66.1,
+      "y": 44.05,
+      "w": 13.3,
       "h": 2.06,
       "frame": "media/tools-f2.webp"
+     },
+     {
+      "kind": "tap",
+      "x": 53.06,
+      "y": 17.73,
+      "w": 12,
+      "h": 2.63,
+      "frame": "media/tools-f3.webp"
      },
      {
       "kind": "scroll",
       "x": 50,
       "y": 70,
-      "frame": "media/tools-f3.webp"
+      "frame": "media/tools-f4.webp"
      },
      {
       "kind": "point",
@@ -1115,7 +1123,7 @@
       "y": 93.25,
       "w": 21.64,
       "h": 2.86,
-      "frame": "media/tools-f4.webp"
+      "frame": "media/tools-f5.webp"
      }
     ]
    },
@@ -1123,7 +1131,7 @@
     "n": 2,
     "title": "คลังยาของหมอ",
     "detail": "บันทึกยาที่ปรุงไว้ จำนวนคงเหลือ และอายุยา แอปคำนวณวันหมดอายุ เตือนก่อนหมดอายุ 7 วัน และบอกเมื่อยาใกล้หมด ตอนบันทึกการรักษาแตะชื่อยาจากคลังใส่ได้เลย",
-    "start": "media/tools-f5.webp",
+    "start": "media/tools-f6.webp",
     "actions": [
      {
       "kind": "type",
@@ -1132,7 +1140,7 @@
       "w": 84.08,
       "h": 5.95,
       "text": "ยาเถาวัลย์เปรียง",
-      "frame": "media/tools-f6.webp"
+      "frame": "media/tools-f7.webp"
      },
      {
       "kind": "tap",
@@ -1140,13 +1148,13 @@
       "y": 32.95,
       "w": 8.5,
       "h": 2.4,
-      "frame": "media/tools-f7.webp"
+      "frame": "media/tools-f8.webp"
      },
      {
       "kind": "scroll",
       "x": 50,
       "y": 70,
-      "frame": "media/tools-f8.webp"
+      "frame": "media/tools-f9.webp"
      },
      {
       "kind": "tap",
@@ -1154,7 +1162,7 @@
       "y": 58.24,
       "w": 11.56,
       "h": 2.4,
-      "frame": "media/tools-f9.webp"
+      "frame": "media/tools-f10.webp"
      },
      {
       "kind": "point",
@@ -1162,7 +1170,7 @@
       "y": 93.25,
       "w": 11.05,
       "h": 2.86,
-      "frame": "media/tools-f10.webp"
+      "frame": "media/tools-f11.webp"
      }
     ]
    },
@@ -1170,7 +1178,7 @@
     "n": 3,
     "title": "แหล่งสมุนไพรในชุมชน",
     "detail": "แตะบนแผนที่ตรงจุดที่ต้นสมุนไพรขึ้น (หรือ \"ปักหมุดตรงที่ยืนอยู่\") ใส่ชื่อสมุนไพรและช่วงที่เก็บได้ แตะหมุดเพื่อนำทาง ปุ่มแชร์มุมขวาบนส่งรายการพร้อมลิงก์แผนที่ให้ลูกศิษย์",
-    "start": "media/tools-f11.webp",
+    "start": "media/tools-f12.webp",
     "actions": [
      {
       "kind": "tap",
@@ -1178,7 +1186,7 @@
       "y": 29.75,
       "w": 10.95,
       "h": 5.03,
-      "frame": "media/tools-f12.webp"
+      "frame": "media/tools-f13.webp"
      },
      {
       "kind": "type",
@@ -1187,7 +1195,7 @@
       "w": 84.08,
       "h": 5.72,
       "text": "ฟ้าทะลายโจร",
-      "frame": "media/tools-f13.webp"
+      "frame": "media/tools-f14.webp"
      },
      {
       "kind": "tap",
@@ -1195,7 +1203,7 @@
       "y": 77.92,
       "w": 9.71,
       "h": 2.4,
-      "frame": "media/tools-f14.webp"
+      "frame": "media/tools-f15.webp"
      },
      {
       "kind": "point",
@@ -1203,7 +1211,7 @@
       "y": 91.42,
       "w": 19.46,
       "h": 2.86,
-      "frame": "media/tools-f15.webp"
+      "frame": "media/tools-f16.webp"
      }
     ]
    }

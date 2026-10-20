@@ -190,7 +190,7 @@ export default function Settings() {
 
         {/* ── เครื่องมือของหมอ: รายงาน · คลังยา · แหล่งสมุนไพร ── */}
         <ListSection i={3} title="เครื่องมือของหมอ">
-          <ListRow icon={<CircleIcon name="chart.bar.doc.horizontal.fill" color="#14905C" />} title="รายงานสรุปรายเดือน" subtitle="สถิติการรักษา · ส่งออก PDF" onPress={() => router.push('/report')} chevron />
+          <ListRow icon={<CircleIcon name="chart.bar.doc.horizontal.fill" color="#14905C" />} title="รายงาน" subtitle="dashboard การรักษา · รายเดือน/ปี · ส่งออก PDF" onPress={() => router.push('/report')} chevron />
           <ListRow icon={<CircleIcon name="cross.vial.fill" color="#C27A12" />} title="คลังยาของหมอ" subtitle="ยาที่ปรุงไว้ · วันหมดอายุ · เหลือเท่าไร" onPress={() => router.push('/stock')} chevron />
           <ListRow icon={<CircleIcon name="mappin.and.ellipse" color="#3E8E2E" />} title="แหล่งสมุนไพรในชุมชน" subtitle="ปักหมุดต้นสมุนไพร · แชร์ให้ลูกศิษย์" onPress={() => router.push('/herb-spots')} chevron last />
         </ListSection>
