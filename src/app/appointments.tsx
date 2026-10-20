@@ -88,7 +88,7 @@ export default function Appointments() {
           <View style={[styles.empty, elevation.e1]}>
             <Sym name="calendar.badge.clock" size={32} color={palette.primary} />
             <T v="bodyStrong" center>{day ? 'ไม่มีนัดวันนี้' : 'ยังไม่มีนัดติดตามอาการ'}</T>
-            <T v="subhead" color={ios.secondary} center>นัดได้ตอนบันทึกการรักษา เลือกสถานะ "ติดตามอาการ" แล้วเลือกวันนัด</T>
+            <T v="subhead" color={ios.secondary} center>นัดได้ตอนบันทึกการรักษา เลือกสถานะ “ติดตามอาการ” แล้วเลือกวันนัด</T>
           </View>
         ) : null}
       </ScrollView>

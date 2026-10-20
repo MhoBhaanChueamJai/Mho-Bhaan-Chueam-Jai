@@ -1,6 +1,6 @@
 import { MenuView } from '../../components/Menu';
-import { Stack, router, useLocalSearchParams } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import { Stack, router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
 import { PractitionerGate } from '../../components/PractitionerGate';
 import { Linking, Platform, ScrollView, Share, StyleSheet, View } from 'react-native';
 import { Alert } from '../../lib/alert';
@@ -20,6 +20,7 @@ import { useDoctor } from '../../components/useDoctor';
 import { printReferral, thDate, thTime } from '../../lib/referral';
 import { thShort, todayIso } from '../../lib/reminders';
 import { VitalsTrend } from '../../components/VitalsTrend';
+import { draftWhen, loadDraft } from '../../lib/drafts';
 
 const DETAIL: { k: keyof MB5Visit; l: string; icon: string; color: string }[] = [
   { k: 'symptoms', l: 'อาการ', icon: 'waveform.path.ecg', color: '#C2564B' },
@@ -161,6 +162,13 @@ function PatientBody({ p }: { p: Patient }) {
     if (ask === '1') setTimeout(askCheckIn, 700);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ask]);
+  // ร่างบันทึกการรักษาที่กรอกค้างไว้ (เช็คทุกครั้งที่กลับมาหน้านี้)
+  const [draftAt, setDraftAt] = useState<number | null>(null);
+  useFocusEffect(
+    useCallback(() => {
+      loadDraft(`visit.${p.id}`).then((r) => setDraftAt(r?.at ?? null));
+    }, [p.id]),
+  );
   const due = p.followUpOn && p.status === 'ติดตามอาการ' ? p.followUpOn : undefined;
   const overdue = due ? Math.round((Date.parse(todayIso()) - Date.parse(due)) / 86400000) : 0;
   const call = () => {
@@ -321,6 +329,17 @@ function PatientBody({ p }: { p: Patient }) {
           </ListSection>
         ) : null}
 
+        {draftAt ? (
+          <PressableScale haptic="select" scaleTo={0.98} onPress={recordManual} style={[styles.draftCard, elevation.e1]} accessibilityLabel="ทำบันทึกการรักษาที่ค้างไว้ต่อ">
+            <Sym name="doc.badge.clock" size={22} color={palette.primary} />
+            <View style={{ flex: 1 }}>
+              <T v="bodyStrong">ร่างบันทึกการรักษาครั้งที่ {(p.visits[0]?.no ?? 0) + 1}</T>
+              <T v="caption" color={ios.secondary}>กรอกค้างไว้ {draftWhen(draftAt)} · แตะเพื่อทำต่อ</T>
+            </View>
+            <Sym name="chevron.right" size={13} color={ios.tertiary} />
+          </PressableScale>
+        ) : null}
+
         {/* ── ประวัติการรักษา (ไทม์ไลน์) ── */}
         <View style={styles.histHead}>
           <T v="h3">ประวัติการรักษา</T>
@@ -347,6 +366,7 @@ function PatientBody({ p }: { p: Patient }) {
 }
 
 const styles = StyleSheet.create({
+  draftCard: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, borderRadius: 20, backgroundColor: palette.primarySoft, marginTop: 24 },
   secTitle: { marginTop: 30, marginBottom: 12, marginLeft: 4 },
   countPill: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999, backgroundColor: palette.primarySoft },
   detailRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },

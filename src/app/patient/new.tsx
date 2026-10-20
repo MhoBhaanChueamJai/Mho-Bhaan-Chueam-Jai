@@ -4,13 +4,14 @@
  */
 import { Stack, router, useFocusEffect } from 'expo-router';
 import { Alert } from '../../lib/alert';
+import { clearDraft, draftWhen, loadDraft, saveDraft } from '../../lib/drafts';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { PractitionerGate } from '../../components/PractitionerGate';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View, type KeyboardTypeOptions } from 'react-native';
 import { TextInput } from '../../components/AppText';
 import Animated, { FadeIn, FadeInDown, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { Sym, ios } from '../../components/ios';
-import { Button, GlassDock, HeaderButton, T, useHaptic } from '../../components/ui';
+import { Button, GlassDock, HeaderButton, PressableScale, T, useHaptic } from '../../components/ui';
 import { takeIdScanResult, type IdCardData } from '../../lib/idScan';
 import { onIntakeResult, takeIntakeResult, type IntakeData } from '../../lib/intake';
 import { ageFrom, elementFromMonth, normalizeBirth, toISO } from '../../lib/birth';
@@ -131,6 +132,32 @@ function NewPatientInner() {
   // เลือกธาตุแล้วหรือยัง (จากวันเกิดอัตโนมัติ หรือหมอเลือกเอง)
   const [elPicked, setElPicked] = useState(false);
   const set = (k: keyof Form) => (v: string) => setF((x) => ({ ...x, [k]: v }));
+  // ── ดราฟต์: กรอกไว้แล้วกดกลับ/ปิดแอป → เก็บไว้ในเครื่อง เปิดหน้าเพิ่มผู้ป่วยอีกครั้งกรอกต่อได้ ──
+  const [restored, setRestored] = useState<number | null>(null);
+  const loaded = useRef(false);
+  const done = useRef(false);
+  useEffect(() => {
+    loadDraft<{ f: Form; elPicked: boolean }>('patient.new').then((r) => {
+      if (r && !done.current) {
+        setF({ ...EMPTY, ...r.data.f });
+        setElPicked(!!r.data.elPicked);
+        setRestored(r.at);
+      }
+      loaded.current = true;
+    });
+  }, []);
+  useEffect(() => {
+    if (!loaded.current || done.current) return;
+    const filled = (Object.keys(f) as (keyof Form)[]).some((k) => f[k] !== EMPTY[k]);
+    if (filled) saveDraft('patient.new', { f, elPicked });
+    else clearDraft('patient.new');
+  }, [f, elPicked]);
+  const startOver = () => {
+    clearDraft('patient.new');
+    setF(EMPTY);
+    setElPicked(false);
+    setRestored(null);
+  };
   // ค่าฟอร์มล่าสุด (ให้ callback ที่ลงทะเบียนไว้ก่อนอ่านค่าปัจจุบันได้)
   const fRef = useRef(f);
   fRef.current = f;
@@ -241,6 +268,8 @@ function NewPatientInner() {
       status: 'ติดตามอาการ',
       meds: [],
     });
+    done.current = true;
+    clearDraft('patient.new');
     h.success();
     router.replace(`/patient/${id}`);
     // ผู้ป่วยใหม่ → ชวนให้ลงชื่อใบยินยอมเก็บข้อมูล (PDPA) ตอนนี้
@@ -275,6 +304,15 @@ function NewPatientInner() {
         }}
       />
       <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.page} keyboardDismissMode="interactive" keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        {restored ? (
+          <Animated.View entering={FadeIn} style={styles.draft}>
+            <Sym name="doc.badge.clock" size={18} color={palette.primaryDeep} />
+            <T v="subhead" color={palette.primaryDeep} style={{ flex: 1 }}>กรอกต่อจากร่างที่เก็บไว้ {draftWhen(restored)}</T>
+            <PressableScale haptic="select" onPress={startOver} hitSlop={8} accessibilityLabel="ล้างร่างและเริ่มใหม่">
+              <T v="subhead" color={palette.primary} style={{ fontWeight: '700' }}>เริ่มใหม่</T>
+            </PressableScale>
+          </Animated.View>
+        ) : null}
         {/* สถานะ AI (แสดงเมื่อกำลังฟัง/ประมวลผล/มีผล) — ปุ่มพูดและสแกนบัตรอยู่ในแถบเครื่องมือด้านล่าง */}
         {recording || aiBusy ? (
           <Animated.View entering={FadeInDown.duration(420)} exiting={FadeOut.duration(180)} layout={SMOOTH} style={[styles.status, recording && styles.statusOn, elevation.e1]}>
@@ -358,6 +396,7 @@ function NewPatientInner() {
 }
 
 const styles = StyleSheet.create({
+  draft: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 12, borderRadius: 18, backgroundColor: palette.primarySoft },
   page: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 130, gap: 14 },
   note: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 8 },
   status: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: palette.surface, borderRadius: 22, borderCurve: 'continuous', padding: 16 },

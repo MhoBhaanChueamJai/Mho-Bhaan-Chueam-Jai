@@ -171,6 +171,7 @@ const MAP: Record<string, string> = {
   'lightbulb.fill': 'bulb',
   'printer.fill': 'print',
   'flag.fill': 'flag',
+  'doc.badge.clock': 'm:file-clock',
   'xmark.octagon.fill': 'close-circle',
   'pills.circle.fill': 'medkit',
   'arrowtriangle.up.fill': 'caret-up',

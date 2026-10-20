@@ -3,11 +3,9 @@
  * ช่องเรียงตามแบบ ม.บ.5: วันที่ · อาการ · ตรวจร่างกาย · วินิจฉัย · การรักษา · ผลการรักษา · การติดตามผล · หมายเหตุ
  * พิมพ์ชื่อสมุนไพรในช่องการรักษา → เตือนข้อควรระวังของสมุนไพรนั้นทันที (เทียบกับโรคประจำตัว/ยาที่ใช้)
  */
-import { usePreventRemove } from '@react-navigation/native';
-import { Stack, router, useLocalSearchParams, useNavigation } from 'expo-router';
-import React, { useMemo, useRef, useState } from 'react';
+import { Stack, router, useLocalSearchParams } from 'expo-router';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
-import { Alert } from '../../lib/alert';
 import { TextInput } from '../../components/AppText';
 import Animated, { FadeIn, LinearTransition } from 'react-native-reanimated';
 import { Switch } from '../../components/AppSwitch';
@@ -22,6 +20,7 @@ import { thDate } from '../../lib/referral';
 import { cancelReminder, isoIn, remindCheckIn, remindFollowUp, thShort } from '../../lib/reminders';
 import { stockState, useStock } from '../../lib/stock';
 import { LEVEL, SRC, assess, vitalsText, type Vitals } from '../../lib/vitals';
+import { clearDraft, draftWhen, loadDraft, saveDraft } from '../../lib/drafts';
 import { herbsMentioned } from '../../lib/brain';
 import { useApp } from '../../store/app';
 import { elevation, palette } from '../../theme';
@@ -131,19 +130,55 @@ function RecordInner() {
 
   // สมุนไพรที่พิมพ์ในช่องการรักษา → ข้อควรระวัง
   const herbsUsed = useMemo(() => herbsMentioned(treatment), [treatment]);
-  const navigation = useNavigation();
 
   const canSave = !!(symptoms.trim() || diagnosis.trim() || treatment.trim());
   const dirty = !!(canSave || exam.trim() || result.trim() || followUp.trim() || note.trim() || Object.values(vt).some(Boolean) || !!bpRaw);
-  // กรอกไว้แล้วกดย้อนกลับ/ปัดกลับ → ถามก่อน (กันข้อมูลหายโดยไม่ตั้งใจ)
-  usePreventRemove(dirty, ({ data }) => {
-    // บันทึกแล้ว → ออกได้เลย
-    if (saved.current) return navigation.dispatch(data.action);
-    Alert.alert('ยังไม่ได้บันทึก', 'ข้อมูลที่กรอกไว้จะหายไป', [
-      { text: 'กรอกต่อ', style: 'cancel' },
-      { text: 'ทิ้ง', style: 'destructive', onPress: () => navigation.dispatch(data.action) },
-    ]);
-  });
+  // ── ดราฟต์: กรอกไว้แล้วกดกลับ/ปิดแอป → เก็บไว้ในเครื่อง เปิดหน้านี้ของผู้ป่วยคนเดิมอีกครั้งกรอกต่อได้ ──
+  const dkey = `visit.${pid}`;
+  const [restored, setRestored] = useState<number | null>(null);
+  const loaded = useRef(false);
+  const snap = { date: date.getTime(), symptoms, duration, exam, vt, bpRaw, diagnosis, treatment, result, followUp, note, status, fid, referReason, urgent, fuDays };
+  type Snap = typeof snap;
+  const apply = (d: Partial<Snap>) => {
+    setDate(d.date ? new Date(d.date) : new Date());
+    setSymptoms(d.symptoms ?? '');
+    setDuration(d.duration ?? '');
+    setExam(d.exam ?? '');
+    setVt(d.vt ?? { sys: '', dia: '', pulse: '', sugar: '', weight: '' });
+    setBpRaw(d.bpRaw ?? '');
+    setDiagnosis(d.diagnosis ?? '');
+    setTreatment(d.treatment ?? '');
+    setResult(d.result ?? '');
+    setFollowUp(d.followUp ?? '');
+    setNote(d.note ?? '');
+    setStatus(d.status ?? 'ติดตามอาการ');
+    setFid(d.fid ?? FACILITIES[0].id);
+    setReferReason(d.referReason ?? '');
+    setUrgent(d.urgent ?? false);
+    setFuDays(d.fuDays ?? 7);
+  };
+  useEffect(() => {
+    loadDraft<Snap>(dkey).then((r) => {
+      if (r && !saved.current) {
+        apply(r.data);
+        setRestored(r.at);
+      }
+      loaded.current = true;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dkey]);
+  const snapKey = JSON.stringify(snap);
+  useEffect(() => {
+    if (!loaded.current || saved.current) return;
+    if (dirty) saveDraft(dkey, snap);
+    else clearDraft(dkey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [snapKey]);
+  const startOver = () => {
+    clearDraft(dkey);
+    apply({});
+    setRestored(null);
+  };
 
   if (!p) return <NotFound title="ไม่พบผู้ป่วย" />;
   const no = (p.visits[0]?.no ?? 0) + 1;
@@ -154,6 +189,7 @@ function RecordInner() {
   const save = () => {
     if (!canSave || saved.current) return;
     saved.current = true;
+    clearDraft(dkey);
     addVisit(p.id, {
       date: toBE(date),
       symptoms: [symptoms.trim(), duration.trim() ? `เป็นมา ${duration.trim()}` : ''].filter(Boolean).join(' · ') || '-',
@@ -183,6 +219,15 @@ function RecordInner() {
       {/* หน้าแบบเดียวกับเพิ่มผู้ป่วย: ปุ่มย้อนกลับมุมซ้าย · ปุ่มบันทึกลอยด้านล่าง */}
       <Stack.Screen options={{ title: `บันทึกการรักษาครั้งที่ ${no}` }} />
       <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.page} keyboardDismissMode="interactive" keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        {restored ? (
+          <Animated.View entering={FadeIn} style={styles.draft}>
+            <Sym name="doc.badge.clock" size={18} color={palette.primaryDeep} />
+            <T v="subhead" color={palette.primaryDeep} style={{ flex: 1 }}>กรอกต่อจากร่างที่เก็บไว้ {draftWhen(restored)}</T>
+            <PressableScale haptic="select" onPress={startOver} hitSlop={8} accessibilityLabel="ล้างร่างและเริ่มใหม่">
+              <T v="subhead" color={palette.primary} style={{ fontWeight: '700' }}>เริ่มใหม่</T>
+            </PressableScale>
+          </Animated.View>
+        ) : null}
         <Section title="อาการ" icon="stethoscope">
           {/* ปฏิทินแบบเดียวกับวันเกิดในหน้าเพิ่มผู้ป่วย (ปี พ.ศ.) */}
           <DateField label="วันที่รักษา" value={date} onChange={setDate} />
@@ -332,6 +377,7 @@ const styles = StyleSheet.create({
   inputMulti: { height: undefined, minHeight: 76, borderRadius: 22, paddingTop: 14, paddingBottom: 14, textAlignVertical: 'top' },
   inputFocus: { backgroundColor: palette.surface, borderColor: palette.primary },
   vRow: { flexDirection: 'row', gap: 10 },
+  draft: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 12, borderRadius: 18, backgroundColor: palette.primarySoft },
   vCheck: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, padding: 10, borderRadius: 14 },
   facNote: { flexDirection: 'row', alignItems: 'center', gap: 4, marginLeft: 6 },
   refWarn: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4, padding: 10, borderRadius: 14, backgroundColor: '#FDF1DC' },
