@@ -43,7 +43,7 @@ const SMOOTH = LinearTransition.duration(220);
 /** วันที่ → วว/ดด/ปปปป (พ.ศ.) ตามทะเบียน ม.บ.5 */
 const toBE = (t: Date) => `${String(t.getDate()).padStart(2, '0')}/${String(t.getMonth() + 1).padStart(2, '0')}/${t.getFullYear() + 543}`;
 
-function Field({ label, value, onChange, placeholder, multiline, inputRef, onNext, keyboard, flex }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; multiline?: boolean; inputRef?: React.Ref<TextInput>; onNext?: () => void; keyboard?: 'number-pad' | 'decimal-pad'; flex?: number }) {
+function Field({ label, value, onChange, placeholder, multiline, inputRef, onNext, keyboard, flex }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; multiline?: boolean; inputRef?: React.Ref<TextInput>; onNext?: () => void; keyboard?: 'number-pad' | 'decimal-pad' | 'numbers-and-punctuation'; flex?: number }) {
   const [focus, setFocus] = useState(false);
   return (
     <View style={flex ? { flex } : undefined}>
@@ -93,8 +93,21 @@ function RecordInner() {
   const [exam, setExam] = useState('');
   // ค่าสุขภาพ (ถ้าวัด) — ประเมินตามแนวทางเวชปฏิบัติทันทีที่กรอก
   const [vt, setVt] = useState<Record<keyof Vitals, string>>({ sys: '', dia: '', pulse: '', sugar: '', weight: '' });
+  const [bpRaw, setBpRaw] = useState('');
   const vitals: Vitals = Object.fromEntries(Object.entries(vt).map(([k, v]) => [k, Number(v) || undefined])) as Vitals;
   const checks = assess(vitals);
+  // ความดันช่องเดียว "120/80": พิมพ์ตัวเลขติดกันบนแป้นตัวเลขได้เลย
+  const onBp = (x: string) => {
+    // แป้นตัวเลขไม่มี "/" → ใส่ให้เอง: ตัวบนขึ้นต้นด้วย 1–2 = 3 หลัก (เช่น 120/80) · อื่นๆ = 2 หลัก (เช่น 90/60)
+    const digits = x.replace(/\D/g, '');
+    const n = /^[12]/.test(digits) ? 3 : 2;
+    let t = digits.length > n ? `${digits.slice(0, n)}/${digits.slice(n, n + 3)}` : digits;
+    // ลบถอยหลังจนเหลือ "120/" → ตัด / ทิ้งด้วย ไม่ให้ค้าง
+    if (x.endsWith('/') && x.length < bpRaw.length) t = digits;
+    const [s1 = '', d1 = ''] = t.split('/');
+    setBpRaw(t);
+    setVt((o) => ({ ...o, sys: s1.slice(0, 3), dia: d1.replace(/\//g, '').slice(0, 3) }));
+  };
   const [diagnosis, setDiagnosis] = useState('');
   const [treatment, setTreatment] = useState('');
   const [result, setResult] = useState('');
@@ -121,7 +134,7 @@ function RecordInner() {
   const navigation = useNavigation();
 
   const canSave = !!(symptoms.trim() || diagnosis.trim() || treatment.trim());
-  const dirty = !!(canSave || exam.trim() || result.trim() || followUp.trim() || note.trim() || Object.values(vt).some(Boolean));
+  const dirty = !!(canSave || exam.trim() || result.trim() || followUp.trim() || note.trim() || Object.values(vt).some(Boolean) || !!bpRaw);
   // กรอกไว้แล้วกดย้อนกลับ/ปัดกลับ → ถามก่อน (กันข้อมูลหายโดยไม่ตั้งใจ)
   usePreventRemove(dirty, ({ data }) => {
     // บันทึกแล้ว → ออกได้เลย
@@ -180,14 +193,13 @@ function RecordInner() {
         <Section title="ตรวจและวินิจฉัย" icon="hand.raised.fill">
           <View style={{ gap: 14 }}>
             <View style={styles.vRow}>
-              <Field flex={1} label="ความดันตัวบน" value={vt.sys} onChange={(x) => setVt((o) => ({ ...o, sys: x.replace(/\D/g, '').slice(0, 3) }))} placeholder="เช่น 120" keyboard="number-pad" />
-              <Field flex={1} label="ความดันตัวล่าง" value={vt.dia} onChange={(x) => setVt((o) => ({ ...o, dia: x.replace(/\D/g, '').slice(0, 3) }))} placeholder="เช่น 80" keyboard="number-pad" />
+              <Field flex={1} label="ความดัน (บน/ล่าง)" value={bpRaw} onChange={onBp} placeholder="เช่น 120/80" keyboard="number-pad" />
+              <Field flex={1} label="ชีพจร (ครั้ง/นาที)" value={vt.pulse} onChange={(x) => setVt((o) => ({ ...o, pulse: x.replace(/\D/g, '').slice(0, 3) }))} placeholder="เช่น 72" keyboard="number-pad" />
             </View>
             <View style={styles.vRow}>
-              <Field flex={1} label="ชีพจร (ครั้ง/นาที)" value={vt.pulse} onChange={(x) => setVt((o) => ({ ...o, pulse: x.replace(/\D/g, '').slice(0, 3) }))} placeholder="เช่น 72" keyboard="number-pad" />
               <Field flex={1} label="น้ำตาล (มก./ดล.)" value={vt.sugar} onChange={(x) => setVt((o) => ({ ...o, sugar: x.replace(/\D/g, '').slice(0, 3) }))} placeholder="เช่น 100" keyboard="number-pad" />
+              <Field flex={1} label="น้ำหนัก (กก.)" value={vt.weight} onChange={(x) => setVt((o) => ({ ...o, weight: x.replace(/[^\d.]/g, '').slice(0, 5) }))} placeholder={p.weight ? `ครั้งก่อน ${p.weight}` : 'เช่น 60'} keyboard="decimal-pad" />
             </View>
-            <Field label="น้ำหนัก (กก.)" value={vt.weight} onChange={(x) => setVt((o) => ({ ...o, weight: x.replace(/[^\d.]/g, '').slice(0, 5) }))} placeholder={p.weight ? `ครั้งก่อน ${p.weight}` : 'เช่น 60'} keyboard="decimal-pad" />
             {checks.length ? (
               <Animated.View entering={FadeIn.duration(200)} layout={SMOOTH} style={{ gap: 6 }}>
                 {checks.map((c) => (
