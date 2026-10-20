@@ -3,7 +3,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import type { ModelKey } from '../api/ai';
-import { DEMO_PATIENTS } from '../data/demoPatients';
+import { DEMO_APPTS, DEMO_PATIENTS } from '../data/demoPatients';
+import { isoIn } from '../lib/reminders';
 import { LIBRARY } from '../data/library';
 import { clearChats } from '../lib/chatStore';
 import { removeClips } from '../lib/wisdomAudio';
@@ -28,6 +29,8 @@ type Settings = {
   username: string;
   /** ใส่ผู้ป่วยตัวอย่างของโหมดทดลองในเครื่องนี้แล้ว */
   demoSeeded?: boolean;
+  /** ใส่นัดตัวอย่างให้บัญชีทดลองแล้ว (ใส่ครั้งเดียว) */
+  demoAppts?: boolean;
   /** ภาพโปรไฟล์ที่หมอเลือกเอง (ไฟล์ในเครื่อง) — ไม่มี = ภาพหมอเริ่มต้น */
   avatarUri?: string;
   /** อีเมล/ชื่อผู้ใช้ที่ใช้เข้าสู่ระบบครั้งล่าสุด (เติมให้ในช่องล็อกอิน) */
@@ -243,6 +246,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (!settings.demoSeeded) {
           setPatients((list) => (list.length ? list : DEMO_PATIENTS));
           setSettings((st) => ({ ...st, demoSeeded: true }));
+        }
+        // นัดตัวอย่าง (นับจากวันนี้): เลยนัด · วันนี้ · ในสัปดาห์ · สัปดาห์หน้า — ใส่ครั้งเดียว ไม่ทับนัดที่หมอตั้งเอง
+        if (!settings.demoAppts) {
+          setPatients((list) => list.map((p) => (DEMO_APPTS[p.id] != null && !p.followUpOn ? { ...p, status: 'ติดตามอาการ', followUpOn: isoIn(DEMO_APPTS[p.id]) } : p)));
+          setSettings((st) => ({ ...st, demoAppts: true }));
         }
         setOnline(false);
         setSync('local');
@@ -478,7 +486,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       clearLocal: () => {
         // ประวัติแชทครูปัญญาเป็นข้อมูลส่วนตัวของผู้ใช้คนนี้ → ล้างเมื่อออกจากระบบ
         clearChats().catch(() => {});
-        setSettings((st) => ({ ...st, avatarUri: undefined, demoSeeded: undefined }));
+        setSettings((st) => ({ ...st, avatarUri: undefined, demoSeeded: undefined, demoAppts: undefined }));
         setOnline(false);
         setDemo(false);
         setPatients([]);
