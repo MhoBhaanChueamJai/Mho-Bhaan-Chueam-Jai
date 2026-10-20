@@ -43,13 +43,14 @@ const SMOOTH = LinearTransition.duration(220);
 /** วันที่ → วว/ดด/ปปปป (พ.ศ.) ตามทะเบียน ม.บ.5 */
 const toBE = (t: Date) => `${String(t.getDate()).padStart(2, '0')}/${String(t.getMonth() + 1).padStart(2, '0')}/${t.getFullYear() + 543}`;
 
-function Field({ label, value, onChange, placeholder, multiline, inputRef, onNext }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; multiline?: boolean; inputRef?: React.Ref<TextInput>; onNext?: () => void }) {
+function Field({ label, value, onChange, placeholder, multiline, inputRef, onNext, keyboard, flex }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; multiline?: boolean; inputRef?: React.Ref<TextInput>; onNext?: () => void; keyboard?: 'number-pad' | 'decimal-pad'; flex?: number }) {
   const [focus, setFocus] = useState(false);
   return (
-    <View>
+    <View style={flex ? { flex } : undefined}>
       <T v="subhead" color={ios.secondary} style={styles.label}>{label}</T>
       <TextInput
         ref={inputRef}
+        keyboardType={keyboard}
         value={value}
         onChangeText={onChange}
         placeholder={placeholder ?? label}
@@ -177,34 +178,18 @@ function RecordInner() {
         </Section>
 
         <Section title="ตรวจและวินิจฉัย" icon="hand.raised.fill">
-          <View>
-            <T v="subhead" color={ios.secondary} style={styles.label}>ค่าสุขภาพ (ถ้าวัด)</T>
+          <View style={{ gap: 14 }}>
             <View style={styles.vRow}>
-              <View style={[styles.vBox, { flex: 1.6 }]}>
-                <T v="micro" color={ios.secondary}>ความดัน</T>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <TextInput value={vt.sys} onChangeText={(x) => setVt((o) => ({ ...o, sys: x.replace(/\D/g, '').slice(0, 3) }))} keyboardType="number-pad" placeholder="120" placeholderTextColor={ios.tertiary} style={[styles.vIn, styles.vBp]} accessibilityLabel="ความดันตัวบน" />
-                  <T v="body" color={ios.tertiary}>/</T>
-                  <TextInput value={vt.dia} onChangeText={(x) => setVt((o) => ({ ...o, dia: x.replace(/\D/g, '').slice(0, 3) }))} keyboardType="number-pad" placeholder="80" placeholderTextColor={ios.tertiary} style={[styles.vIn, styles.vBp, { textAlign: 'left', paddingLeft: 4 }]} accessibilityLabel="ความดันตัวล่าง" />
-                </View>
-              </View>
-              <View style={styles.vBox}>
-                <T v="micro" color={ios.secondary}>ชีพจร</T>
-                <TextInput value={vt.pulse} onChangeText={(x) => setVt((o) => ({ ...o, pulse: x.replace(/\D/g, '').slice(0, 3) }))} keyboardType="number-pad" placeholder="72" placeholderTextColor={ios.tertiary} style={styles.vIn} accessibilityLabel="ชีพจร" />
-              </View>
+              <Field flex={1} label="ความดันตัวบน" value={vt.sys} onChange={(x) => setVt((o) => ({ ...o, sys: x.replace(/\D/g, '').slice(0, 3) }))} placeholder="เช่น 120" keyboard="number-pad" />
+              <Field flex={1} label="ความดันตัวล่าง" value={vt.dia} onChange={(x) => setVt((o) => ({ ...o, dia: x.replace(/\D/g, '').slice(0, 3) }))} placeholder="เช่น 80" keyboard="number-pad" />
             </View>
-            <View style={[styles.vRow, { marginTop: 8 }]}>
-              <View style={styles.vBox}>
-                <T v="micro" color={ios.secondary}>น้ำตาล (มก./ดล.)</T>
-                <TextInput value={vt.sugar} onChangeText={(x) => setVt((o) => ({ ...o, sugar: x.replace(/\D/g, '').slice(0, 3) }))} keyboardType="number-pad" placeholder="100" placeholderTextColor={ios.tertiary} style={styles.vIn} accessibilityLabel="น้ำตาลในเลือด" />
-              </View>
-              <View style={styles.vBox}>
-                <T v="micro" color={ios.secondary}>น้ำหนัก (กก.)</T>
-                <TextInput value={vt.weight} onChangeText={(x) => setVt((o) => ({ ...o, weight: x.replace(/[^\d.]/g, '').slice(0, 5) }))} keyboardType="decimal-pad" placeholder={p.weight ? String(p.weight) : '60'} placeholderTextColor={ios.tertiary} style={styles.vIn} accessibilityLabel="น้ำหนัก" />
-              </View>
+            <View style={styles.vRow}>
+              <Field flex={1} label="ชีพจร (ครั้ง/นาที)" value={vt.pulse} onChange={(x) => setVt((o) => ({ ...o, pulse: x.replace(/\D/g, '').slice(0, 3) }))} placeholder="เช่น 72" keyboard="number-pad" />
+              <Field flex={1} label="น้ำตาล (มก./ดล.)" value={vt.sugar} onChange={(x) => setVt((o) => ({ ...o, sugar: x.replace(/\D/g, '').slice(0, 3) }))} placeholder="เช่น 100" keyboard="number-pad" />
             </View>
+            <Field label="น้ำหนัก (กก.)" value={vt.weight} onChange={(x) => setVt((o) => ({ ...o, weight: x.replace(/[^\d.]/g, '').slice(0, 5) }))} placeholder={p.weight ? `ครั้งก่อน ${p.weight}` : 'เช่น 60'} keyboard="decimal-pad" />
             {checks.length ? (
-              <Animated.View entering={FadeIn.duration(200)} layout={SMOOTH} style={{ gap: 6, marginTop: 10 }}>
+              <Animated.View entering={FadeIn.duration(200)} layout={SMOOTH} style={{ gap: 6 }}>
                 {checks.map((c) => (
                   <View key={c.k} style={[styles.vCheck, { backgroundColor: LEVEL[c.level].bg }]}>
                     <Sym name={LEVEL[c.level].icon} size={15} color={LEVEL[c.level].color} />
@@ -334,10 +319,7 @@ const styles = StyleSheet.create({
   input: { height: 52, borderRadius: 26, paddingHorizontal: 18, backgroundColor: palette.mint, fontSize: 17, color: palette.ink, borderWidth: 1.5, borderColor: 'transparent' },
   inputMulti: { height: undefined, minHeight: 76, borderRadius: 22, paddingTop: 14, paddingBottom: 14, textAlignVertical: 'top' },
   inputFocus: { backgroundColor: palette.surface, borderColor: palette.primary },
-  vRow: { flexDirection: 'row', gap: 8 },
-  vBox: { flex: 1, paddingHorizontal: 14, paddingTop: 8, paddingBottom: 4, borderRadius: 18, backgroundColor: palette.mint },
-  vIn: { flex: 1, minWidth: 40, height: 34, fontSize: 20, fontWeight: '600', color: palette.ink, padding: 0 },
-  vBp: { flex: 0, width: 52, minWidth: 0, textAlign: 'right', paddingRight: 4 },
+  vRow: { flexDirection: 'row', gap: 10 },
   vCheck: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, padding: 10, borderRadius: 14 },
   facNote: { flexDirection: 'row', alignItems: 'center', gap: 4, marginLeft: 6 },
   refWarn: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4, padding: 10, borderRadius: 14, backgroundColor: '#FDF1DC' },
