@@ -78,7 +78,6 @@ export default function Appointments() {
   useEffect(() => {
     const t = setTimeout(() => scroller.current?.scrollTo({ x: startIdx * (cardW + gap), animated: false }), 50);
     return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startIdx, cardW]);
   const go = (i: number, animated = true) => {
     scroller.current?.scrollTo({ x: i * (cardW + gap), animated });
