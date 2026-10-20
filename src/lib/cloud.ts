@@ -240,7 +240,7 @@ async function removePatientFile() {
   await supabase.storage.from(RECORDS_BUCKET).remove([await recordsPath()]);
 }
 
-/** ไฟล์ข้อมูลส่วนตัวของบัญชี (คลังยา แหล่งสมุนไพร ฯลฯ) — โฟลเดอร์ <uid>/data/ เจ้าของเท่านั้นที่อ่าน/เขียนได้ */
+/** ไฟล์ข้อมูลส่วนตัวของบัญชี (คลังยา ฯลฯ) — โฟลเดอร์ <uid>/data/ เจ้าของเท่านั้นที่อ่าน/เขียนได้ */
 const dataPath = async (name: string) => (await recordsPath()).replace(/patients\/records\.json$/, `data/${name}.json`);
 export async function loadUserJSON<T>(name: string): Promise<{ data: T; savedAt: number } | null> {
   const path = await dataPath(name);

@@ -308,13 +308,6 @@ module.exports = [
         path: 'stock-item',
         actions: [{ kind: 'type', label: 'ชื่อยา', type: 'ยาเถาวัลย์เปรียง' }, { text: 'ยาผง', exact: true, wait: 600 }, { kind: 'scroll', dy: 420 }, { text: '3 เดือน', exact: true, wait: 900 }, { kind: 'point', text: 'บันทึก', exact: true, last: true }],
       },
-      {
-        title: 'แหล่งสมุนไพรในชุมชน',
-        detail: 'แตะบนแผนที่ตรงจุดที่ต้นสมุนไพรขึ้น (หรือ "ปักหมุดตรงที่ยืนอยู่") ใส่ชื่อสมุนไพรและช่วงที่เก็บได้ แตะหมุดเพื่อนำทาง ปุ่มแชร์มุมขวาบนส่งรายการพร้อมลิงก์แผนที่ให้ลูกศิษย์',
-        path: 'herb-spots',
-        settle: 6000,
-        actions: [{ point: [200, 260], wait: 1200 }, { kind: 'type', label: 'ชื่อสมุนไพร', type: 'ฟ้าทะลายโจร' }, { text: 'ฤดูฝน', exact: true, wait: 800 }, { kind: 'point', text: 'บันทึกหมุด', exact: true }],
-      },
     ],
   },
   {
