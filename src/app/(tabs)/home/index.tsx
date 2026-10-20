@@ -12,6 +12,7 @@ import { noticesFrom } from '../../../lib/notices';
 import { useMyAvatar } from '../../../lib/myAvatar';
 import { TODAY, avatarFor, doctor, lastVisit, thaiDate } from '../../../data/mock';
 import { visitSortKey } from '../../../data/tones';
+import { useStock } from '../../../lib/stock';
 import { useApp } from '../../../store/app';
 import { todayPick } from '../../../lib/herbDaily';
 import { elevation, palette } from '../../../theme';
@@ -52,7 +53,8 @@ export default function Home() {
   const pick = todayPick();
   const name = settings.username && settings.username !== 'somchai' ? settings.username : doctor.short;
   const ann = useAnnouncements();
-  const notices = noticesFrom(patients, wisdoms, isPractitioner, ann);
+  const [stock] = useStock();
+  const notices = noticesFrom(patients, wisdoms, isPractitioner, ann, stock);
   const pendingW = wisdoms.filter((w) => !w.verified).length;
   const unread = notices.filter((n) => !settings.readNotices?.includes(n.id)).length;
   // เข้าหน้านี้ทุกครั้ง → นับรอบ (ให้กระดิ่งสั่นเมื่อมีที่ยังไม่อ่าน)

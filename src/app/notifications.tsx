@@ -9,6 +9,7 @@ import { Sym, ios } from '../components/ios';
 import { PressableScale, T, useHaptic } from '../components/ui';
 import { useAnnouncements } from '../lib/announcements';
 import { GROUPS, noticesFrom, type Notice, type NoticeGroup } from '../lib/notices';
+import { useStock } from '../lib/stock';
 import { useApp } from '../store/app';
 import { elevation, palette } from '../theme';
 
@@ -16,8 +17,9 @@ export default function Notifications() {
   const { patients, wisdoms, isPractitioner, settings, update } = useApp();
   const h = useHaptic();
   const ann = useAnnouncements();
+  const [stock] = useStock();
   const dismissed = settings.dismissedNotices ?? [];
-  const list = noticesFrom(patients, wisdoms, isPractitioner, ann).filter((n) => !dismissed.includes(n.id));
+  const list = noticesFrom(patients, wisdoms, isPractitioner, ann, stock).filter((n) => !dismissed.includes(n.id));
   // ยังไม่อ่าน = ยังไม่เคยกดเปิด (แสดงจุดเขียว) · กดการ์ด/ปัดล้าง/อ่านทั้งหมด → อ่านแล้ว
   const read = settings.readNotices ?? [];
   const isUnread = (n: Notice) => !read.includes(n.id);

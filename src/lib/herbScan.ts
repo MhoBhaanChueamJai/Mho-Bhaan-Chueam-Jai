@@ -5,6 +5,7 @@
  */
 import { SaveFormat, manipulateAsync } from 'expo-image-manipulator';
 import { ENDPOINTS, MODELS, type ModelKey } from '../api/ai';
+import { guarded } from '../api/guard';
 import { herbs, type Herb } from '../data/herbs';
 
 export type HerbGuess = {
@@ -31,7 +32,9 @@ const PROMPT = () => `คุณเป็นผู้เชี่ยวชาญ�
 ตอบ JSON เท่านั้น:
 {"isPlant":true,"candidates":[{"name":"ชื่อไทย","sci":"ชื่อวิทยาศาสตร์","confidence":0,"clues":"ลักษณะในภาพที่ใช้ตัดสิน"}],"top":{"uses":["สรรพคุณ"],"howto":"วิธีใช้","caution":"ข้อควรระวัง","part":"ส่วนที่ใช้","taste":"รสยา"},"tip":"คำแนะนำการถ่ายภาพให้แม่นขึ้น (ถ้ามี)"}`;
 
-async function askModel(model: ModelKey, b64: string): Promise<any> {
+// ผ่านด่านกันเซิร์ฟเวอร์ล่ม (คิวเดียวกับแชท: ไม่เกิน 2 คำขอพร้อมกันต่อโมเดล · เซิร์ฟเวอร์มีปัญหา → พักส่ง)
+const askModel = (model: ModelKey, b64: string) => guarded(model, () => askModelRaw(model, b64));
+async function askModelRaw(model: ModelKey, b64: string): Promise<any> {
   const ctl = new AbortController();
   const t = setTimeout(() => ctl.abort(), 45_000);
   try {

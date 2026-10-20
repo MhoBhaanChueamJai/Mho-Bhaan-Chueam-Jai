@@ -19,10 +19,19 @@ import { Button, GlassDock, PressableScale, T, useHaptic } from '../../component
 import { FACILITIES } from '../../data/facilities';
 import type { Patient } from '../../data/mock';
 import { thDate } from '../../lib/referral';
+import { cancelReminder, isoIn, remindCheckIn, remindFollowUp, thShort } from '../../lib/reminders';
+import { stockState, useStock } from '../../lib/stock';
 import { herbsMentioned } from '../../lib/brain';
 import { useApp } from '../../store/app';
 import { elevation, palette } from '../../theme';
 
+const FU = [
+  { d: 0, label: 'ไม่นัด' },
+  { d: 3, label: '3 วัน' },
+  { d: 7, label: '1 สัปดาห์' },
+  { d: 14, label: '2 สัปดาห์' },
+  { d: 30, label: '1 เดือน' },
+];
 const STATUS: { k: Patient['status']; label: string }[] = [
   { k: 'ติดตามอาการ', label: 'ติดตามอาการ' },
   { k: 'หายดี', label: 'หายดี' },
@@ -91,6 +100,11 @@ function RecordInner() {
   const [fid, setFid] = useState(FACILITIES[0].id);
   const [referReason, setReferReason] = useState('');
   const [urgent, setUrgent] = useState(false);
+  // ยาในคลังของหมอ (ยังไม่หมดอายุและยังเหลือ) → แตะเพื่อใส่ในช่องการรักษา
+  const [stock] = useStock();
+  const ready = stock.filter((x) => !['expired', 'out'].includes(stockState(x).k));
+  // นัดติดตามอาการ (วัน) — 0 = ไม่นัด · แจ้งเตือนเช้าวันนัด
+  const [fuDays, setFuDays] = useState(7);
   const referring = status === 'ส่งต่อ รพ.สต.';
   const saved = useRef(false);
   const durRef = useRef<TextInput>(null);
@@ -128,10 +142,16 @@ function RecordInner() {
       diagnosis: diagnosis.trim() || '-',
       treatment: treatment.trim() || '-',
       result: result.trim() || '-',
-      followUp: status === 'ติดตามอาการ' ? followUp.trim() || '-' : status === 'หายดี' ? 'หายดี ไม่ต้องติดตาม' : `ส่งต่อ ${fac.name}`,
+      followUp: status === 'ติดตามอาการ' ? [fuDays ? `นัดติดตาม ${thShort(isoIn(fuDays, date))}` : '', followUp.trim()].filter(Boolean).join(' · ') || '-' : status === 'หายดี' ? 'หายดี ไม่ต้องติดตาม' : `ส่งต่อ ${fac.name}`,
       note: note.trim() || undefined,
     });
-    if (status !== p.status) updatePatient(p.id, { status });
+    // นัดติดตาม + เตือนถามอาการหลังรักษา 3 วัน (เตือนในเครื่อง)
+    const fuOn = status === 'ติดตามอาการ' && fuDays ? isoIn(fuDays, date) : undefined;
+    updatePatient(p.id, { status, followUpOn: fuOn });
+    if (fuOn) remindFollowUp(p.id, p.name, fuOn, diagnosis.trim() || symptoms.trim()).catch(() => {});
+    else cancelReminder(`fu-${p.id}`).catch(() => {});
+    if (status !== 'หายดี') remindCheckIn(p.id, p.name).catch(() => {});
+    else cancelReminder(`ci-${p.id}`).catch(() => {});
     h.success();
     if (!referring) return router.back();
     const reason = referReason.trim() || (diagnosis.trim() ? `อาการ${diagnosis.trim()}ไม่ดีขึ้นหลังการรักษาแบบแผนไทย ควรได้รับการตรวจวินิจฉัยเพิ่มเติม` : 'ควรได้รับการตรวจวินิจฉัยเพิ่มเติม');
@@ -158,6 +178,18 @@ function RecordInner() {
 
         <Section title="การรักษา" icon="leaf.fill">
           <Field label="การรักษา / ยาที่ให้" value={treatment} onChange={setTreatment} placeholder="เช่น นวด ประคบสมุนไพร ยาประสะไพล ครั้งละ 1 กรัม" multiline />
+          {ready.length ? (
+            <View>
+              <T v="caption" color={ios.secondary} style={{ marginLeft: 4, marginBottom: 6, fontWeight: '600' }}>แตะเพื่อใส่ยาจากคลังของหมอ</T>
+              <View style={styles.chips}>
+                {ready.slice(0, 10).map((x) => (
+                  <PressableScale key={x.id} haptic="select" scaleTo={0.95} onPress={() => setTreatment((t) => (t.includes(x.name) ? t : `${t.trim()}${t.trim() ? ' · ' : ''}${x.name} `))} style={[styles.chip, { height: 34, paddingHorizontal: 12 }]} accessibilityLabel={`ใส่ ${x.name}`}>
+                    <T v="caption" color={palette.primaryDeep} style={{ fontWeight: '600' }}>+ {x.name}</T>
+                  </PressableScale>
+                ))}
+              </View>
+            </View>
+          ) : null}
           {herbsUsed.length ? (
             <Animated.View entering={FadeIn.duration(200)} layout={SMOOTH} style={styles.herbWarn}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -186,7 +218,25 @@ function RecordInner() {
           </View>
           {status === 'ติดตามอาการ' ? (
             <Animated.View key="follow" entering={FadeIn.duration(200)}>
-              <Field label="การติดตามผล" value={followUp} onChange={setFollowUp} placeholder="เช่น นัด 1 สัปดาห์ งดของแสลง" multiline />
+              <View style={{ gap: 14 }}>
+                <View>
+                  <T v="subhead" color={ios.secondary} style={styles.label}>นัดติดตามอาการ</T>
+                  <View style={styles.chips}>
+                    {FU.map((x) => {
+                      const on = fuDays === x.d;
+                      return (
+                        <PressableScale key={x.d} haptic="select" scaleTo={0.95} onPress={() => setFuDays(x.d)} style={[styles.chip, on && styles.chipOn]} accessibilityState={{ selected: on }} accessibilityLabel={`นัด ${x.label}`}>
+                          <T v="subhead" color={on ? '#FFFFFF' : palette.ink} style={{ fontWeight: '600' }}>{x.label}</T>
+                        </PressableScale>
+                      );
+                    })}
+                  </View>
+                  <T v="caption" color={ios.tertiary} style={{ marginTop: 6, marginLeft: 4 }}>
+                    {fuDays ? `นัด ${thShort(isoIn(fuDays, date))} · แอปเตือนเช้าวันนัด และเตือนถามอาการหลังรักษา 3 วัน` : 'ไม่นัด · แอปยังเตือนถามอาการหลังรักษา 3 วัน'}
+                  </T>
+                </View>
+                <Field label="การติดตามผล" value={followUp} onChange={setFollowUp} placeholder="เช่น งดของแสลง ประคบต่อที่บ้านวันละครั้ง" multiline />
+              </View>
             </Animated.View>
           ) : status === 'ส่งต่อ รพ.สต.' ? (
             <Animated.View key="refer" entering={FadeIn.duration(200)} style={{ gap: 14 }}>

@@ -56,7 +56,13 @@ export type Patient = {
   meds: string[];
   // ประวัติการส่งต่อ (กันส่งข้อมูลซ้ำ · พิมพ์ใบเดิมซ้ำได้)
   referrals?: ReferralRecord[];
+  // นัดติดตามอาการครั้งถัดไป (YYYY-MM-DD) — แจ้งเตือนเช้าวันนัด
+  followUpOn?: string;
+  // ใบยินยอมให้เก็บข้อมูล (PDPA)
+  consent?: PatientConsent;
 };
+
+export type PatientConsent = { at: number; signer: string; relation: string; sig: string; witness?: string };
 
 export type ReferralRecord = { no: string; to: string; at: number; visitNo?: number; urgent: boolean; reason: string; extra?: string };
 

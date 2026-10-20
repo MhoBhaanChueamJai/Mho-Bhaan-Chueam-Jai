@@ -16,6 +16,9 @@ import { createSpeech, listenOnce, type SpeechCtl } from '../components/speech';
 import { Glass, GlassCircle, PressableScale, T, useHaptic } from '../components/ui';
 import { askLaunch } from '../lib/askLaunch';
 import { citedSources, think, tidyReply } from '../lib/brain';
+import { findPatient, patientCtx } from '../lib/patientRef';
+import { guardReply } from '../lib/safety';
+import { useDoctor } from '../components/useDoctor';
 import { deleteThread, getThread, loadChats, newThreadId, onChatsChange, saveThread, whenLabel, type ChatSource, type ChatThread, type StoredMsg } from '../lib/chatStore';
 import { useApp } from '../store/app';
 import { control, palette } from '../theme';
@@ -31,8 +34,8 @@ const SUGGEST = [
 
 type Msg = StoredMsg;
 
-/** ประวัติการคุยที่ส่งให้ AI (ข้อความล่าสุด ~12 ข้อ ไม่รวมข้อความที่ล้มเหลว) */
-const historyFor = (msgs: Msg[]): ChatMsg[] => msgs.filter((m) => !m.failed).slice(-12).map(({ role, content }) => ({ role, content }));
+/** ประวัติการคุยที่ส่งให้ AI (ข้อความล่าสุด ~16 ข้อ ไม่รวมข้อความที่ล้มเหลว) */
+const historyFor = (msgs: Msg[]): ChatMsg[] => msgs.filter((m) => !m.failed).slice(-16).map(({ role, content }) => ({ role, content }));
 
 /** คำถามที่ใช้ค้นความรู้: คำถามล่าสุด + คำถามก่อนหน้า (คงบริบทเวลาถามต่อเนื่อง) */
 const queryFor = (msgs: Msg[]) =>
@@ -46,7 +49,15 @@ const queryFor = (msgs: Msg[]) =>
 export default function Assistant() {
   const { q, voice } = useLocalSearchParams<{ q?: string; voice?: string }>();
   const insets = useSafeAreaInsets();
-  const { settings, wisdoms } = useApp();
+  const { settings, wisdoms, patients } = useApp();
+  const dr = useDoctor();
+  // ความจำข้ามแชท: หัวข้อที่คุณหมอเคยถามในห้องแชทอื่นล่าสุด (เก็บในเครื่อง)
+  const [topics, setTopics] = useState<{ id: string; title: string }[]>([]);
+  useEffect(() => {
+    const load = () => loadChats().then((all) => setTopics([...all].sort((a, b) => b.updatedAt - a.updatedAt).filter((t) => t.title).slice(0, 9).map(({ id, title }) => ({ id, title }))));
+    load();
+    return onChatsChange(load);
+  }, []);
   const h = useHaptic();
   const tts = useSpeaker();
   const rec = useVoiceRecorder();
@@ -84,11 +95,14 @@ export default function Assistant() {
       const history = [...msgsRef.current, user];
       commit(history);
       try {
-        const brain = think(queryFor(history), { wisdoms, mode });
+        // ผู้ป่วยที่คุณหมอเอ่ยชื่อในแชทนี้ (ล่าสุดก่อน) → แนบข้อมูลและประวัติการรักษาให้ครูปัญญา
+        const who = findPatient(history.filter((m) => m.role === 'user').map((m) => m.content), patients);
+        const doctor = { name: dr.name, types: dr.types, topics: topics.filter((t) => t.id !== threadId).map((t) => t.title) };
+        const brain = think(queryFor(history), { wisdoms, mode, patient: who ? patientCtx(who) : null, latest: user.content, doctor });
         const messages: ChatMsg[] = [{ role: 'system', content: brain.system }, ...historyFor(history)];
         // แชท: 2 โมเดลช่วยกันคิดแล้วรวมคำตอบ (แม่นกว่า) · เสียง: โมเดลเดียวตอบเร็ว (คุยลื่นไม่เงียบนาน)
-        const raw = mode === 'voice' ? await chatQuick(messages, 420) : await chat(messages, settings.model, brain.sources.length ? 1100 : 800);
-        const reply = tidyReply(raw, mode);
+        const raw = mode === 'voice' ? await chatQuick(messages, 420) : await chat(messages, settings.model, brain.sources.length ? 1100 : 800, { deep: brain.deep });
+        const reply = guardReply(tidyReply(raw, mode), brain.flags, brain.conflicts, mode);
         const a: Msg = { id: `a${Date.now()}`, role: 'assistant', content: reply, sources: citedSources(reply, brain), voice: mode === 'voice' };
         commit([...msgsRef.current, a]);
         return a;
@@ -99,7 +113,7 @@ export default function Assistant() {
         return e;
       }
     },
-    [commit, settings.model, wisdoms],
+    [commit, settings.model, wisdoms, patients, dr.name, dr.types, topics, threadId],
   );
 
   const send = async (content: string) => {
@@ -183,6 +197,19 @@ export default function Assistant() {
     setHistoryOpen(false);
   };
 
+  /** ให้คะแนนคำตอบ (เก็บในห้องแชท) · ไม่ถูกใจ → ถามว่าจะแจ้งทีมพัฒนาไหม */
+  const rate = (m: Msg, r: 1 | -1) => {
+    const list = msgsRef.current;
+    const next = list.map((x) => (x.id === m.id ? { ...x, rating: x.rating === r ? undefined : r } : x));
+    commit(next);
+    if (r !== -1 || m.rating === -1) return;
+    const i = list.findIndex((x) => x.id === m.id);
+    const q = [...list.slice(0, i)].reverse().find((x) => x.role === 'user')?.content ?? '';
+    Alert.alert('ขอบคุณที่บอกครับ', 'อยากแจ้งให้ทีมพัฒนาดูคำตอบนี้ไหม จะได้ปรับครูปัญญาให้ตอบดีขึ้น', [
+      { text: 'ไม่เป็นไร', style: 'cancel' },
+      { text: 'แจ้งทีมพัฒนา', onPress: () => router.push({ pathname: '/feedback', params: { kind: 'bug', text: `คำตอบของครูปัญญาไม่ถูกต้อง/ไม่ตรงคำถาม\n(เล่าเพิ่มได้ว่าผิดตรงไหน)\n\nคำถาม: ${q}\n\nคำตอบ: ${m.content}` } }) },
+    ]);
+  };
   const openSource = (s: ChatSource) => router.push(s.kind === 'herb' ? `/herb/${s.id}` : `/wisdom/${s.id}`);
   const status = busy ? 'กำลังคิด…' : tts.speaking ? 'กำลังพูด…' : rec.isRecording ? 'กำลังฟัง…' : 'พร้อมช่วยคุณหมอ';
 
@@ -282,19 +309,28 @@ export default function Assistant() {
                 </View>
               ) : null}
               {!m.failed && (
-                <PressableScale
-                  haptic="select"
-                  hitSlop={control.hitSlop}
-                  onPress={() => {
-                    if (speakingId === m.id) return tts.stop();
-                    setSpeakingId(m.id);
-                    tts.speak(m.content);
-                  }}
-                  style={styles.listen}
-                >
-                  <Sym name={speakingId === m.id ? 'stop.fill' : 'speaker.wave.2.fill'} size={17} color={MINT} />
-                  <T v="caption" color={MINT} style={{ fontWeight: '600' }}>{speakingId === m.id ? 'หยุด' : 'ฟังคำตอบ'}</T>
-                </PressableScale>
+                <View style={styles.actRow}>
+                  <PressableScale
+                    haptic="select"
+                    hitSlop={control.hitSlop}
+                    onPress={() => {
+                      if (speakingId === m.id) return tts.stop();
+                      setSpeakingId(m.id);
+                      tts.speak(m.content);
+                    }}
+                    style={styles.listen}
+                  >
+                    <Sym name={speakingId === m.id ? 'stop.fill' : 'speaker.wave.2.fill'} size={17} color={MINT} />
+                    <T v="caption" color={MINT} style={{ fontWeight: '600' }}>{speakingId === m.id ? 'หยุด' : 'ฟังคำตอบ'}</T>
+                  </PressableScale>
+                  {/* คำตอบดีไหม: ไม่ถูกใจ → เสนอให้แจ้งทีมพัฒนา (แนบคำถามและคำตอบให้แล้ว) */}
+                  <PressableScale haptic="select" hitSlop={control.hitSlop} onPress={() => rate(m, 1)} style={styles.rate} accessibilityLabel="คำตอบนี้ดี" accessibilityState={{ selected: m.rating === 1 }}>
+                    <Sym name={m.rating === 1 ? 'hand.thumbsup.fill' : 'hand.thumbsup'} size={16} color={m.rating === 1 ? MINT : 'rgba(255,255,255,0.55)'} />
+                  </PressableScale>
+                  <PressableScale haptic="select" hitSlop={control.hitSlop} onPress={() => rate(m, -1)} style={styles.rate} accessibilityLabel="คำตอบนี้ไม่ดี" accessibilityState={{ selected: m.rating === -1 }}>
+                    <Sym name={m.rating === -1 ? 'hand.thumbsdown.fill' : 'hand.thumbsdown'} size={16} color={m.rating === -1 ? '#FF9F8A' : 'rgba(255,255,255,0.55)'} />
+                  </PressableScale>
+                </View>
               )}
             </Animated.View>
           ),
@@ -577,6 +613,8 @@ const styles = StyleSheet.create({
   suggest: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 60, paddingHorizontal: 14, paddingVertical: 12, borderRadius: 20, borderCurve: 'continuous', backgroundColor: 'rgba(255,255,255,0.07)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.14)' },
   suggestIcon: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(124,240,168,0.14)', alignItems: 'center', justifyContent: 'center' },
   voiceCta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, alignSelf: 'center', marginTop: 20, height: 50, paddingHorizontal: 26, borderRadius: 25, backgroundColor: MINT },
+  actRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  rate: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', marginTop: 4 },
   sources: { marginTop: 8, marginLeft: 4, gap: 6, maxWidth: '88%' },
   sourceRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   sourceChip: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, backgroundColor: 'rgba(124,240,168,0.14)', borderWidth: 1, borderColor: 'rgba(124,240,168,0.3)' },

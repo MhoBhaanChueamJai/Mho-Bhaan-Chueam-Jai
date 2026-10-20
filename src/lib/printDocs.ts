@@ -6,6 +6,7 @@ import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { Platform } from 'react-native';
 import { fullAddress, type MB5Visit, type Patient } from '../data/mock';
+import { signatureSvg } from '../components/SignaturePad';
 
 export type Doctor = { name: string; types: string; cert?: string | null; province?: string | null };
 
@@ -104,6 +105,34 @@ export function referralHtml(p: Patient, v: MB5Visit | undefined, r: Referral, d
     <div class="box" style="margin-top:26px;border-style:dashed"><b>ส่วนของหน่วยบริการที่รับ</b> (ตอบกลับผลการรักษา)<div style="height:70px"></div><div style="text-align:right">ลงชื่อผู้รับ ......................................... วันที่ ....................</div></div>
     <div class="foot">พิมพ์จากแอปหมอบ้านเชื่อมใจ</div>`;
   return page('หนังสือส่งต่อผู้ป่วย', body);
+}
+
+/** ข้อความใบยินยอม (ใช้ทั้งในแอปและใน PDF) */
+export const consentPoints = (p: Patient, dr: Doctor) => [
+  `ข้าพเจ้ายินยอมให้ ${dr.name} หมอพื้นบ้าน เก็บรวบรวม ใช้ และบันทึกข้อมูลส่วนบุคคลและข้อมูลสุขภาพของ ${p.name} ได้แก่ ชื่อ ที่อยู่ เบอร์โทร อายุ โรคประจำตัว ประวัติแพ้ยา และประวัติการรักษา`,
+  'เพื่อใช้ในการรักษา บันทึกทะเบียนการรักษา (แบบ ม.บ.5) ติดตามอาการ และส่งต่อไปยังสถานพยาบาลเมื่อจำเป็นต่อการรักษาเท่านั้น',
+  'ข้อมูลเก็บในแอปหมอบ้านเชื่อมใจ ในเครื่องของหมอและระบบคลาวด์ของแอปที่เฉพาะบัญชีของหมอเข้าถึงได้ จะไม่เปิดเผยแก่ผู้อื่นโดยไม่ได้รับความยินยอม เว้นแต่กฎหมายกำหนด',
+  'ข้าพเจ้ามีสิทธิ์ขอดู ขอแก้ไข ขอให้ลบข้อมูล หรือถอนความยินยอมเมื่อใดก็ได้ โดยแจ้งหมอผู้รักษา การถอนความยินยอมไม่กระทบการรักษาที่ทำไปแล้ว',
+];
+
+/** ใบยินยอมเก็บข้อมูล (PDPA) */
+export function consentHtml(p: Patient, dr: Doctor) {
+  const c = p.consent;
+  const d = c ? new Date(c.at) : new Date();
+  const date = `${d.getDate()} ${TH_MONTHS[d.getMonth()]} พ.ศ. ${d.getFullYear() + 543}`;
+  const body = `
+    <div style="text-align:right">วันที่ ${date}</div>
+    <h1 style="margin-top:8px">หนังสือให้ความยินยอมเก็บรวบรวม ใช้ และเปิดเผยข้อมูลส่วนบุคคล</h1>
+    <h2>ตามพระราชบัญญัติคุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562</h2>
+    <div class="box">${patientBlock(p)}</div>
+    <div class="box">${consentPoints(p, dr).map((t, i) => `<div style="margin:4px 0">${i + 1}. ${esc(t)}</div>`).join('')}</div>
+    ${c ? `<div style="margin-top:10px">ผู้ให้ความยินยอม: ${esc(c.signer)}${c.relation !== 'ผู้ป่วย' ? ` (${esc(c.relation)}ของผู้ป่วย)` : ''}</div>` : ''}
+    <div class="sign" style="justify-content:space-between">
+      <div>${c ? signatureSvg(c.sig) : '<div style="height:70px"></div>'}<br>ลงชื่อ ......................................................<br>(${esc(c?.signer ?? p.name)})<br>ผู้ให้ความยินยอม</div>
+      <div><div style="height:${c ? 92 : 70}px"></div>ลงชื่อ ......................................................<br>(${esc(dr.name)})<br>หมอพื้นบ้าน ผู้เก็บรักษาข้อมูล</div>
+    </div>
+    <div class="foot">พิมพ์จากแอปหมอบ้านเชื่อมใจ</div>`;
+  return page('ใบยินยอมเก็บข้อมูล', body);
 }
 
 /** สร้าง PDF แล้วเปิดหน้าแชร์ (เว็บ = หน้าพิมพ์ของเบราว์เซอร์) */

@@ -314,9 +314,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       Promise.all([...upP.map((x) => cloud.savePatient(x)), ...upV.map((x) => cloud.saveVisit(x.pid, x.v)), ...upW.map((x) => cloud.saveWisdom(x))]).catch(() => {});
       setSettings((st) => ({ ...st, lastSyncAt: Date.now() }));
       // ยังไม่ได้ยืนยันกับทะเบียน: คลาวด์ไม่มีข้อมูลผู้ป่วยให้ → ใช้ของในเครื่องต่อ (ไม่ทับ)
-      // ประวัติการส่งต่อไม่มีในตารางคลาวด์ → คงของในเครื่องไว้
-      const localRefs = new Map(patients.filter((x) => x.referrals?.length).map((x) => [x.id, x.referrals]));
-      if (practitioner) setPatients(d.patients.map((x) => (localRefs.has(x.id) ? { ...x, referrals: localRefs.get(x.id) } : x)));
+      // ข้อมูลที่ไม่มีช่องในตารางคลาวด์ (ประวัติส่งต่อ นัดติดตาม ใบยินยอม) → คงของในเครื่องไว้
+      const extras = new Map(patients.map((x) => [x.id, { referrals: x.referrals, followUpOn: x.followUpOn, consent: x.consent }]));
+      if (practitioner) setPatients(d.patients.map((x) => ({ ...x, ...Object.fromEntries(Object.entries(extras.get(x.id) ?? {}).filter(([, v]) => v !== undefined)) })));
       // ผู้ป่วย/ประวัติ/นัดหมายตัวอย่างรุ่นเก่าในคลาวด์ → ลบทิ้ง
       const legacyP = d.patients.filter((x) => LEGACY_SAMPLE_PATIENTS.includes(x.id)).map((x) => x.id);
       if (legacyP.length) cloud.deleteLegacySamples(legacyP).catch(() => {});

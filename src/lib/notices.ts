@@ -2,6 +2,7 @@
 import type { Patient, Wisdom } from '../data/mock';
 import { lastVisit } from '../data/mock';
 import type { Announcement } from './announcements';
+import { stockState, type StockItem } from './stock';
 
 /** ประเภท (ใช้กับ chip กรองในหน้าแจ้งเตือน) */
 export type NoticeGroup = 'patient' | 'wisdom' | 'update' | 'account';
@@ -64,7 +65,7 @@ const KIND: Record<Announcement['kind'], { icon: string; colors: readonly [strin
   content: { icon: 'sparkles', colors: ['#FFC25A', '#E0861A'], cat: 'เนื้อหาใหม่', go: '/home' },
 };
 
-export function noticesFrom(patients: Patient[], wisdoms: Wisdom[], isPractitioner: boolean, ann: Announcement[] = []): Notice[] {
+export function noticesFrom(patients: Patient[], wisdoms: Wisdom[], isPractitioner: boolean, ann: Announcement[] = [], stock: StockItem[] = []): Notice[] {
   const out: Notice[] = [];
   if (!isPractitioner)
     out.push({ id: 'verify', group: 'account', icon: 'person.badge.shield.checkmark.fill', colors: ['#FFC25A', '#E0861A'], cat: 'บัญชี', title: 'ยืนยันตัวตนหมอพื้นบ้าน', body: 'ยืนยันด้วยเลขที่หนังสือรับรอง เพื่อใช้งานการรักษาผู้ป่วย', at: Infinity, go: '/verify' });
@@ -72,8 +73,23 @@ export function noticesFrom(patients: Patient[], wisdoms: Wisdom[], isPractition
   patients.forEach((p) => {
     const v = lastVisit(p);
     const at = parseThai(v?.date);
-    if (p.status === 'ติดตามอาการ')
-      care.push({ id: `f-${p.id}-${v?.no ?? 0}`, group: 'patient', icon: 'stethoscope', colors: ['#3FD089', '#14905C'], cat: 'ติดตามอาการ', title: p.name, body: join(v?.diagnosis, v?.followUp) || 'รอติดตามอาการ', when: ago(at), at, go: `/patient/${p.id}` });
+    if (p.status === 'ติดตามอาการ') {
+      // ถึงวันนัด/เลยนัด → ขึ้นบนสุด
+      const due = p.followUpOn ? new Date(`${p.followUpOn}T08:00:00`).getTime() : 0;
+      const isDue = !!due && due <= Date.now() + 16 * 3600_000;
+      care.push({
+        id: `f-${p.id}-${v?.no ?? 0}${isDue ? '-due' : ''}`,
+        group: 'patient',
+        icon: isDue ? 'calendar.badge.clock' : 'stethoscope',
+        colors: isDue ? ['#FFC25A', '#E0861A'] : ['#3FD089', '#14905C'],
+        cat: isDue ? 'ถึงวันนัดติดตาม' : 'ติดตามอาการ',
+        title: p.name,
+        body: join(v?.diagnosis, v?.followUp) || 'รอติดตามอาการ',
+        when: isDue ? ago(due) : ago(at),
+        at: isDue ? Math.max(due, Date.now() - 60_000) : at,
+        go: `/patient/${p.id}`,
+      });
+    }
     else if (p.status === 'ส่งต่อ รพ.สต.')
       care.push({ id: `r-${p.id}-${v?.no ?? 0}`, group: 'patient', icon: 'cross.case.fill', colors: ['#FF8A7A', '#D2453A'], cat: 'ส่งต่อ รพ.สต.', title: p.name, body: join(v?.diagnosis, 'ติดตามผลการรักษาจาก รพ.สต.'), when: ago(at), at, go: `/patient/${p.id}` });
   });
@@ -83,6 +99,10 @@ export function noticesFrom(patients: Patient[], wisdoms: Wisdom[], isPractition
     care.push({ id: `a-${a.id}`, group: a.kind === 'wisdom' ? 'wisdom' : 'update', icon: k.icon, colors: k.colors, cat: k.cat, title: a.title, body: a.body, when: ago(at, true), at, go: a.go || k.go });
   });
   out.push(...care.sort((a, b) => b.at - a.at));
+  // คลังยา: หมดอายุ / ใกล้หมดอายุ / ใกล้หมด
+  const warn = stock.map((x) => ({ x, st: stockState(x) })).filter((y) => y.st.k !== 'ok');
+  if (warn.length)
+    out.push({ id: `stock-${warn.map((y) => `${y.x.id}${y.st.k}`).join('.')}`, group: 'patient', icon: 'cross.vial.fill', colors: ['#FFC25A', '#C27A12'], cat: 'คลังยา', title: warn.length === 1 ? `${warn[0].x.name} ${warn[0].st.label}` : `ยาในคลังต้องดูแล ${warn.length} รายการ`, body: warn.slice(0, 3).map((y) => `${y.x.name} (${y.st.label})`).join(' · '), at: 1, go: '/stock' });
   const pending = wisdoms.filter((w) => !w.verified);
   if (pending.length)
     out.push({ id: `wisdom-${pending.length}`, group: 'wisdom', icon: 'book.closed.fill', colors: ['#D2A36E', '#8A5E30'], cat: 'คลังภูมิปัญญา', title: `รอคุณหมอตรวจทาน ${pending.length} เรื่อง`, body: pending.slice(0, 2).map((w) => w.title).join(' · '), at: 0, go: pending.length === 1 ? `/wisdom/${pending[0].id}` : '/vault' });

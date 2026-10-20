@@ -3,6 +3,7 @@
  * บนสุด: การ์ดพูดแนะนำผู้ป่วย (AI กรอกให้) → ฟอร์มแบ่งการ์ด ป้ายอยู่เหนือช่องแคปซูล → ปุ่มบันทึกติดล่าง
  */
 import { Stack, router, useFocusEffect } from 'expo-router';
+import { Alert } from '../../lib/alert';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { PractitionerGate } from '../../components/PractitionerGate';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View, type KeyboardTypeOptions } from 'react-native';
@@ -242,6 +243,15 @@ function NewPatientInner() {
     });
     h.success();
     router.replace(`/patient/${id}`);
+    // ผู้ป่วยใหม่ → ชวนให้ลงชื่อใบยินยอมเก็บข้อมูล (PDPA) ตอนนี้
+    setTimeout(
+      () =>
+        Alert.alert('ใบยินยอมเก็บข้อมูล', 'ให้ผู้ป่วยลงชื่อยินยอมให้เก็บข้อมูลการรักษาตอนนี้ไหม (ทำภายหลังได้ที่หน้าผู้ป่วย)', [
+          { text: 'ภายหลัง', style: 'cancel' },
+          { text: 'ลงชื่อเลย', onPress: () => router.push({ pathname: '/patient/consent', params: { pid: id } }) },
+        ]),
+      600,
+    );
   };
   const save = () => canSave && saveForm(f);
 

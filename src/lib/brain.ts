@@ -3,14 +3,18 @@
  *  1) คลังภูมิ: ตำราในระบบ + ตำราที่หมอบันทึกเอง (ยิ่งบันทึกมาก ยิ่งรู้มาก)
  *  2) คลังสมุนไพร 100 ชนิด: รส ธาตุ ส่วนที่ใช้ สรรพคุณ วิธีใช้ ข้อควรระวัง
  *  3) ความรู้เภสัชกรรมไทย: หลักตั้งตำรับ พิกัดยา รสยา วิธีปรุง ตำรับในบัญชียาหลัก ความปลอดภัยในการผสมยา
+ *     + แนวทางเวชปฏิบัติแผนไทยระดับปฐมภูมิ 2568 (เบาหวาน ความดัน นอนไม่หลับ ปวดเรื้อรัง สะเก็ดเงิน หลังคลอด) และตำราอ้างอิง (ธาตุ สมุฏฐาน การตรวจ โรคตามคัมภีร์)
  *  4) ตรวจความปลอดภัยอัตโนมัติ: สมุนไพรที่ถูกเอ่ยถึง → ข้อควรระวังของแต่ละตัว + ข้อมูลผู้ป่วย (ถ้ามี)
  * ค้นแบบ trigram ในเครื่อง ไม่ต้องมีเซิร์ฟเวอร์ค้นหา
  */
 import { herbs, type Herb } from '../data/herbs';
 import type { Wisdom } from '../data/mock';
 import { PHARMACY, type PharmacyDoc } from '../data/pharmacy';
+import { THAIMED } from '../data/thaimed';
 import { dialectHint, dialectSpeakStyle } from './dialect';
 import { knowledgeFor } from './knowledge';
+import { allergyHits, herbConflicts, redFlags, riskGroups, safetyBlock, type Conflict } from './safety';
+import { expandQuery } from './synonyms';
 
 const norm = (s: string) =>
   s
@@ -99,7 +103,8 @@ type DocIdx = { d: PharmacyDoc; head: Set<string>; body: Set<string>; tags: stri
 let docIdx: DocIdx[] | null = null;
 function docIndex() {
   if (docIdx) return docIdx;
-  docIdx = PHARMACY.map((d) => ({ d, head: grams(`${d.title} ${d.tags.join(' ')}`), body: grams(d.text), tags: d.tags.map((t) => t.replace(/\s+/g, '')) }));
+  // เภสัชกรรมไทย + แนวทางเวชปฏิบัติแผนไทย 2568 + ตำราอ้างอิงการแพทย์แผนไทย
+  docIdx = [...PHARMACY, ...THAIMED].map((d) => ({ d, head: grams(`${d.title} ${d.tags.join(' ')}`), body: grams(d.text), tags: d.tags.map((t) => t.replace(/\s+/g, '')) }));
   return docIdx;
 }
 
@@ -131,7 +136,18 @@ export function pharmacyFor(query: string, k = 4): PharmacyDoc[] {
 }
 
 /* ── ผู้ป่วย (บริบทการรักษา) ───────────────────────────────── */
-export type PatientCtx = { name?: string; age?: number; sex?: string; element?: string; chronic?: string; allergies?: string; meds?: string[] };
+export type PatientCtx = {
+  name?: string;
+  age?: number;
+  sex?: string;
+  element?: string;
+  chronic?: string;
+  allergies?: string;
+  meds?: string[];
+  status?: string;
+  // ประวัติการรักษาล่าสุด (ใหม่ → เก่า) ให้ครูปัญญาตอบต่อจากที่เคยรักษา
+  visits?: { no: number; date: string; symptoms: string; diagnosis: string; treatment: string; result: string }[];
+};
 
 function patientBrief(p: PatientCtx) {
   return [
@@ -139,6 +155,13 @@ function patientBrief(p: PatientCtx) {
     p.chronic && p.chronic !== 'ไม่มี' ? `โรคประจำตัว: ${p.chronic}` : '',
     p.allergies && p.allergies !== 'ไม่มี' ? `แพ้ยา/อาหาร: ${p.allergies}` : '',
     p.meds?.length ? `ยาที่ใช้อยู่: ${p.meds.join(', ')}` : '',
+    p.status ? `สถานะ: ${p.status}` : '',
+    p.visits?.length
+      ? `ประวัติการรักษาล่าสุด:\n${p.visits
+          .slice(0, 3)
+          .map((v) => `• ครั้งที่ ${v.no} (${v.date}): อาการ ${v.symptoms} · วินิจฉัย ${v.diagnosis} · รักษา ${v.treatment} · ผล ${v.result}`)
+          .join('\n')}\nใช้ประวัตินี้ประกอบคำตอบ เช่น ถ้ารักษาแบบเดิมแล้วไม่ดีขึ้นให้เสนอทางอื่นหรือแนะนำส่งต่อ`
+      : '',
   ]
     .filter(Boolean)
     .join('\n');
@@ -153,6 +176,8 @@ const CORE = `คุณคือ "ครูปัญญา" ผู้ช่ว�
 2. ใช้ความรู้ที่แนบมาด้านล่างเป็นหลักเสมอ (คลังภูมิ คลังสมุนไพร เภสัชกรรมไทย) — ถ้าไม่มีในความรู้ที่แนบ ใช้ความรู้การแพทย์แผนไทยที่เป็นที่ยอมรับ และบอกตรงๆ เมื่อไม่แน่ใจ ห้ามแต่งตัวยา ขนาดยา หรือสรรพคุณขึ้นเอง
 3. ตรวจความปลอดภัยทุกครั้ง: ข้อห้ามของสมุนไพรแต่ละตัว หญิงตั้งครรภ์/ให้นมบุตร เด็ก ผู้สูงอายุ โรคตับ-ไต ยาที่ใช้อยู่ (เช่น ยาต้านการแข็งตัวของเลือด ยาเบาหวาน ยาความดัน) และอาการอันตรายที่ต้องส่งต่อโรงพยาบาล
 4. ตอบให้ตรงคำถาม ครบ แต่ไม่ยืดยาว
+5. ถามกลับเมื่อข้อมูลไม่พอ: ถ้าคุณหมอขอให้แนะนำยา/ตำรับ/ขนาดยาให้ผู้ป่วย แต่ยังไม่รู้เรื่องที่เปลี่ยนคำตอบได้ (อายุหรือเป็นเด็ก ตั้งครรภ์/ให้นมบุตร โรคประจำตัวและยาที่กินอยู่ อาการเป็นมานานแค่ไหน รุนแรงแค่ไหน) และไม่มีข้อมูลผู้ป่วยแนบมา → ตอบหลักการสั้นๆ 1–2 ประโยค แล้วถามกลับ 1–2 ข้อที่สำคัญที่สุดก่อนให้ขนาดยา · ถ้าเป็นคำถามความรู้ทั่วไป ตอบได้เลยไม่ต้องถาม
+6. อ้างที่มา: ถ้าใช้ความรู้ที่แนบมาซึ่งมีบรรทัด "(ที่มา: … หน้า …)" ให้ปิดท้ายคำตอบด้วยบรรทัด "ที่มา: ชื่อหนังสือ หน้า …" (ไม่เกิน 2 แหล่ง) ห้ามแต่งเลขหน้าเอง
 
 เมื่อถามเรื่องตั้งตำรับหรือผสมยา ให้ตอบตามหลักเภสัชกรรมไทย:
 • ตัวยาตรง (ตัวยาหลักที่แก้อาการ) • ตัวยาช่วย (เสริมฤทธิ์) • ตัวยาคุม (ควบคุม/ลดพิษ ปรับธาตุ) • ตัวยาแต่งกลิ่นรส (ถ้ามี)
@@ -172,20 +197,47 @@ const VOICE_STYLE = `กำลังคุยกันด้วยเสีย�
 - จบด้วยคำถามสั้นๆ ชวนคุยต่อเมื่อเหมาะสม (เช่น ถามอาการเพิ่ม ถามอายุผู้ป่วย)
 - ตัวเลขเขียนเป็นตัวเลขอารบิก หน่วยเขียนเต็ม เช่น "3 กรัม" "วันละ 2 ครั้ง"`;
 
-export type Brain = { system: string; sources: { id: string; title: string; kind: 'wisdom' | 'herb' }[]; herbsUsed: Herb[] };
+export type Brain = { system: string; sources: { id: string; title: string; kind: 'wisdom' | 'herb' }[]; herbsUsed: Herb[]; flags: string[]; conflicts: Conflict[]; deep: boolean };
+
+/** ความจำข้ามแชท: คุณหมอเป็นใคร ถนัดอะไร เคยถามเรื่องอะไร (เก็บในเครื่อง) */
+export type DoctorCtx = { name?: string; types?: string; topics?: string[] };
+
+/** คำถามที่ต้องคิดละเอียด (ใช้ 2 โมเดลช่วยกัน): เรื่องยา ขนาดยา การผสม ความปลอดภัย กลุ่มเสี่ยง */
+const DEEP_Q = /ยา|ผสม|ขนาด|ตีกัน|ระวัง|ห้าม|กินได้ไหม|ใช้ได้ไหม|ตั้งครรภ์|ให้นม|เด็ก|ผู้สูงอายุ|แพ้|รักษา|ตำรับ/;
 
 /**
  * สร้างคำสั่งระบบ + ความรู้ที่เกี่ยวข้อง สำหรับคำถามล่าสุด
  * query = คำถามล่าสุด (+ คำถามก่อนหน้า 1–2 ข้อ เพื่อคงบริบท)
  */
-export function think(query: string, opts: { wisdoms: Wisdom[]; mode: 'chat' | 'voice'; patient?: PatientCtx | null }): Brain {
-  const kn = knowledgeFor(query, opts.wisdoms, opts.mode === 'voice' ? 3 : 4, opts.mode === 'voice' ? 2200 : 3200);
-  const hs = herbsFor(query, opts.mode === 'voice' ? 4 : 5);
-  const docs = pharmacyFor(query, opts.mode === 'voice' ? 3 : 4);
+export function think(query: string, opts: { wisdoms: Wisdom[]; mode: 'chat' | 'voice'; patient?: PatientCtx | null; latest?: string; doctor?: DoctorCtx | null }): Brain {
+  // เข้าใจคำถาม: คำพื้นบ้าน/ภาษาถิ่นของอาการ → คำในตำรา (ใช้ค้นความรู้เท่านั้น)
+  const q = expandQuery(query);
+  const kn = knowledgeFor(q, opts.wisdoms, opts.mode === 'voice' ? 3 : 4, opts.mode === 'voice' ? 2200 : 3200);
+  const hs = herbsFor(q, opts.mode === 'voice' ? 4 : 5);
+  const docs = pharmacyFor(q, opts.mode === 'voice' ? 3 : 4);
   const named = herbsMentioned(query);
+  // ความปลอดภัย: สัญญาณอันตรายดูจากคำถามล่าสุด · กลุ่มเสี่ยงดูจากบทสนทนา + ข้อมูลผู้ป่วย
+  const flags = redFlags(opts.latest ?? query);
+  const groups = riskGroups(query, opts.patient);
+  const pool = [...new Map([...named, ...hs].map((h) => [h.id, h])).values()];
+  const conflicts = herbConflicts(pool, groups);
+  const allergic = allergyHits(pool, opts.patient?.allergies);
   const blocks: string[] = [CORE, opts.mode === 'voice' ? VOICE_STYLE : CHAT_STYLE, `- ${dialectHint()}`, `- ${dialectSpeakStyle()}`];
+  const d = opts.doctor;
+  if (d && (d.name || d.types || d.topics?.length))
+    blocks.push(
+      [
+        `เกี่ยวกับคุณหมอที่กำลังคุยด้วย${d.name ? `: ${d.name}` : ''}${d.types ? ` (หมอพื้นบ้านด้าน${d.types})` : ''}`,
+        d.topics?.length ? `เรื่องที่คุณหมอเคยถามครูปัญญาเมื่อไม่นานนี้: ${d.topics.slice(0, 6).join(' · ')}` : '',
+        'ใช้เพื่อปรับคำตอบให้ตรงความถนัดของคุณหมอ ไม่ต้องพูดถึงรายการนี้ ถ้าเกี่ยวกับเรื่องที่เคยคุยให้ต่อยอดได้',
+      ]
+        .filter(Boolean)
+        .join('\n'),
+    );
   if (opts.patient) blocks.push(patientBrief(opts.patient));
-  if (docs.length) blocks.push(`ความรู้เภสัชกรรมไทย (จากแหล่งทางการ ใช้อ้างอิงเรื่องหลักการ พิกัดยา ตำรับ วิธีปรุง ความปลอดภัย):\n${docs.map((d) => `【${d.title}】\n${d.text}`).join('\n\n')}`);
+  const safe = safetyBlock(flags, groups, conflicts, allergic);
+  if (safe) blocks.push(safe);
+  if (docs.length) blocks.push(`ความรู้การแพทย์และเภสัชกรรมแผนไทย (จากแหล่งทางการ ใช้อ้างอิงเรื่องหลักการ ทฤษฎีธาตุ การดูแลโรค ตำรับ วิธีปรุง ความปลอดภัย):\n${docs.map((d) => `【${d.title}】\n${d.text}`).join('\n\n')}`);
   if (hs.length) blocks.push(`ข้อมูลจากคลังสมุนไพรของแอป (เชื่อถือได้ ใช้ก่อนความรู้ทั่วไป):\n${hs.map(herbBrief).join('\n\n')}`);
   if (kn.text) blocks.push(kn.text);
   // ผสมสมุนไพรตั้งแต่ 2 ตัว → ย้ำให้ตรวจข้อห้ามรวมกัน
@@ -197,6 +249,9 @@ export function think(query: string, opts: { wisdoms: Wisdom[]; mode: 'chat' | '
       ...hs.map((h) => ({ id: h.id, title: h.name, kind: 'herb' as const })),
     ],
     herbsUsed: hs,
+    flags,
+    conflicts,
+    deep: !!(flags.length || groups.length || named.length || opts.patient || FORMULA_Q.test(query) || DEEP_Q.test(opts.latest ?? query)),
   };
 }
 

@@ -6,6 +6,7 @@
  *  - OCR      : pdf-ocr-mcp → Typhoon OCR (ภาพตำรา/สมุดข่อย → ข้อความ)
  */
 import { File, Paths } from 'expo-file-system';
+import { guarded } from './guard';
 
 export const ENDPOINTS = {
   qwen: 'https://vllm-qwen.bmscloud.in.th',
@@ -43,7 +44,7 @@ export const SYSTEM_PROMPT = `คุณคือ "ครูปัญญา" ผ�
 
 /** เรียกโมเดลเดียว */
 async function chatOne(messages: ChatMsg[], model: ModelKey, maxTokens: number, ms = 60_000): Promise<string> {
-  return withTimeout(async (signal) => {
+  return guarded(model, () => withTimeout(async (signal) => {
     const res = await fetch(`${ENDPOINTS[model]}/v1/chat/completions`, {
       method: 'POST',
       signal,
@@ -60,7 +61,7 @@ async function chatOne(messages: ChatMsg[], model: ModelKey, maxTokens: number, 
     const json = await res.json();
     const text: string = json.choices?.[0]?.message?.content ?? '';
     return text.replace(/<think>[\s\S]*?<\/think>/g, '').replace(/\*\*/g, '').trim();
-  }, ms);
+  }, ms));
 }
 
 /** ยิงทั้ง 2 โมเดลพร้อมกัน คืนผลที่สำเร็จ (ตัวที่ล่ม/ช้าเกิน ถูกข้าม) */
@@ -70,10 +71,19 @@ async function both<T>(fn: (m: ModelKey) => Promise<T>): Promise<{ gemma?: T; qw
 }
 
 /**
- * ครูปัญญาคิด 2 ทาง: Gemma + Qwen ตอบพร้อมกัน แล้วรวมเป็นคำตอบเดียวที่ถูกต้องที่สุด (ผู้ใช้ไม่ต้องเลือกโมเดล)
+ * ครูปัญญาตอบในแชท
+ * - คำถามทั่วไป (deep=false): โมเดลเดียว (Gemma ภาษาไทยลื่น) ล่ม/ช้า → Qwen = ส่ง 1 ครั้ง
+ * - เรื่องยา ความปลอดภัย ผู้ป่วย (deep=true): Gemma + Qwen ตอบพร้อมกัน แล้วรวมเป็นคำตอบเดียวที่ถูกต้องที่สุด = ส่ง 3 ครั้ง
  * ถ้าโมเดลใดล่มหรือช้า ใช้ผลของอีกตัวทันที
  */
-export async function chat(messages: ChatMsg[], _model?: ModelKey, maxTokens = 700): Promise<string> {
+export async function chat(messages: ChatMsg[], _model?: ModelKey, maxTokens = 700, opts?: { deep?: boolean }): Promise<string> {
+  if (opts?.deep === false) {
+    try {
+      return await chatOne(messages, 'gemma', maxTokens, 45_000);
+    } catch {
+      return chatOne(messages, 'qwen', maxTokens, 45_000);
+    }
+  }
   const r = await both((m) => chatOne(messages, m, maxTokens, 45_000));
   if (!r.gemma && !r.qwen) throw new Error('LLM unavailable');
   if (!r.gemma || !r.qwen) return (r.gemma ?? r.qwen)!;
@@ -174,7 +184,7 @@ export async function chatJSON<T>(messages: ChatMsg[], _model?: ModelKey, opts?:
 
 /** เสียง (WAV 16kHz) → ข้อความ */
 export async function transcribe(uri: string): Promise<string> {
-  return withTimeout(async (signal) => {
+  return guarded('asr', () => withTimeout(async (signal) => {
     const form = new FormData();
     form.append('file', { uri, name: 'voice.wav', type: 'audio/wav' } as any);
     form.append('model', 'Qwen/Qwen3-ASR-1.7B');
@@ -185,7 +195,7 @@ export async function transcribe(uri: string): Promise<string> {
     return String(json.text ?? '')
       .replace(/^.*<asr_text>/s, '')
       .trim();
-  }, 60_000);
+  }, 60_000));
 }
 
 /**
@@ -230,7 +240,7 @@ export async function synthesize(text: string, voice = KRU_VOICE): Promise<strin
     return file.uri;
   };
   try {
-    return await withTimeout(async (signal) => {
+    return await guarded('tts', () => withTimeout(async (signal) => {
       const res = await fetch(`${ENDPOINTS.tts}/v1/audio/elevenlabs`, {
         method: 'POST',
         signal,
@@ -239,10 +249,10 @@ export async function synthesize(text: string, voice = KRU_VOICE): Promise<strin
       });
       if (!res.ok) throw new Error(`EL ${res.status}`);
       return save(new Uint8Array(await res.arrayBuffer()), 'mp3');
-    }, 45_000);
+    }, 45_000));
   } catch {}
   const call = (input: string) =>
-    withTimeout(async (signal) => {
+    guarded('tts', () => withTimeout(async (signal) => {
       const res = await fetch(`${ENDPOINTS.tts}/v1/audio/speech`, {
         method: 'POST',
         signal,
@@ -251,7 +261,7 @@ export async function synthesize(text: string, voice = KRU_VOICE): Promise<strin
       });
       if (!res.ok) throw new Error(`TTS ${res.status}`);
       return save(new Uint8Array(await res.arrayBuffer()), 'wav');
-    }, 90_000);
+    }, 90_000));
   try {
     return await call(speakable(text));
   } catch {
@@ -261,14 +271,14 @@ export async function synthesize(text: string, voice = KRU_VOICE): Promise<strin
 
 /** ภาพตำรา/สมุดข่อย → ข้อความ */
 export async function ocrImage(uri: string, mime = 'image/jpeg'): Promise<string> {
-  return withTimeout(async (signal) => {
+  return guarded('ocr', () => withTimeout(async (signal) => {
     const form = new FormData();
     form.append('file', { uri, name: 'page.jpg', type: mime } as any);
     const res = await fetch(`${ENDPOINTS.ocr}/ocr_image/upload`, { method: 'POST', body: form, signal });
     if (!res.ok) throw new Error(`OCR ${res.status}`);
     const json = await res.json();
     return String(json.text ?? '').trim();
-  }, 120_000);
+  }, 120_000));
 }
 
 export type ServiceKey = 'llm' | 'asr' | 'tts' | 'ocr';

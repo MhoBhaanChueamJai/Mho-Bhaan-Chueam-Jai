@@ -7,7 +7,7 @@ import * as Device from 'expo-device';
 import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'expo-image';
 import * as MailComposer from 'expo-mail-composer';
-import { Stack, router } from 'expo-router';
+import { Stack, router, useLocalSearchParams } from 'expo-router';
 import React, { useState } from 'react';
 import { KeyboardAvoidingView, Linking, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn, LinearTransition } from 'react-native-reanimated';
@@ -29,8 +29,10 @@ const KINDS = [
 export default function Feedback() {
   const { profile, settings } = useApp();
   const h = useHaptic();
-  const [kind, setKind] = useState<(typeof KINDS)[number]['k']>('bug');
-  const [text, setText] = useState('');
+  // เปิดจากปุ่มไม่ถูกใจคำตอบครูปัญญา → ใส่คำถาม/คำตอบไว้ให้แล้ว
+  const q = useLocalSearchParams<{ kind?: string; text?: string }>();
+  const [kind, setKind] = useState<(typeof KINDS)[number]['k']>(KINDS.some((x) => x.k === q.kind) ? (q.kind as (typeof KINDS)[number]['k']) : 'bug');
+  const [text, setText] = useState(q.text ?? '');
   const [shots, setShots] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
 

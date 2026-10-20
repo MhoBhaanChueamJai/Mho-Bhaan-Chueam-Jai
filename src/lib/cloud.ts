@@ -239,3 +239,24 @@ export async function savePatientFile(patients: Patient[]) {
 async function removePatientFile() {
   await supabase.storage.from(RECORDS_BUCKET).remove([await recordsPath()]);
 }
+
+/** ไฟล์ข้อมูลส่วนตัวของบัญชี (คลังยา แหล่งสมุนไพร ฯลฯ) — โฟลเดอร์ <uid>/data/ เจ้าของเท่านั้นที่อ่าน/เขียนได้ */
+const dataPath = async (name: string) => (await recordsPath()).replace(/patients\/records\.json$/, `data/${name}.json`);
+export async function loadUserJSON<T>(name: string): Promise<{ data: T; savedAt: number } | null> {
+  const path = await dataPath(name);
+  const b = supabase.storage.from(RECORDS_BUCKET);
+  const { data: list, error: le } = await b.list(path.replace(/\/[^/]+$/, ''), { search: `${name}.json` });
+  if (le) throw le;
+  if (!list?.some((x) => x.name === `${name}.json`)) return null;
+  const { data, error } = await b.createSignedUrl(path, 60);
+  if (error) throw error;
+  const r = await fetch(data.signedUrl, { cache: 'no-store' });
+  if (!r.ok) throw new Error(`${name} ${r.status}`);
+  const j = await r.json();
+  return { data: j.data as T, savedAt: Number(j.savedAt) || 0 };
+}
+export async function saveUserJSON(name: string, data: unknown) {
+  const body = new TextEncoder().encode(JSON.stringify({ v: 1, savedAt: Date.now(), data }));
+  const { error } = await supabase.storage.from(RECORDS_BUCKET).upload(await dataPath(name), body, { contentType: 'application/json', upsert: true });
+  if (error) throw error;
+}

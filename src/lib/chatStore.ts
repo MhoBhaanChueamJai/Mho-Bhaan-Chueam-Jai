@@ -5,7 +5,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export type ChatSource = { id: string; title: string; kind?: 'wisdom' | 'herb' };
-export type StoredMsg = { id: string; role: 'user' | 'assistant'; content: string; failed?: boolean; sources?: ChatSource[]; voice?: boolean };
+export type StoredMsg = { id: string; role: 'user' | 'assistant'; content: string; failed?: boolean; sources?: ChatSource[]; voice?: boolean; rating?: 1 | -1 };
 export type ChatThread = { id: string; title: string; updatedAt: number; msgs: StoredMsg[] };
 
 const KEY = 'kru.chats.v1';

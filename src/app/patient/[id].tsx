@@ -2,7 +2,7 @@ import { MenuView } from '../../components/Menu';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { PractitionerGate } from '../../components/PractitionerGate';
-import { Linking, ScrollView, StyleSheet, View } from 'react-native';
+import { Linking, Platform, ScrollView, Share, StyleSheet, View } from 'react-native';
 import { Alert } from '../../lib/alert';
 import { NotFound } from '../../components/NotFound';
 import Animated, { FadeIn, LinearTransition } from 'react-native-reanimated';
@@ -18,6 +18,7 @@ import { headerInset } from '../../components/nav/headerScroll';
 import { mb5Html, outputPdf } from '../../lib/printDocs';
 import { useDoctor } from '../../components/useDoctor';
 import { printReferral, thDate, thTime } from '../../lib/referral';
+import { thShort, todayIso } from '../../lib/reminders';
 
 const DETAIL: { k: keyof MB5Visit; l: string; icon: string; color: string }[] = [
   { k: 'symptoms', l: 'อาการ', icon: 'waveform.path.ecg', color: '#C2564B' },
@@ -140,6 +141,27 @@ function PatientBody({ p }: { p: Patient }) {
   // ส่งออก = แบบ ม.บ.5 ของผู้ป่วยรายนี้ (PDF)
   const exportMb5 = () => outputPdf(mb5Html([p], dr), `ม.บ.5 ${p.name}`).catch(() => Alert.alert('สร้างเอกสารไม่สำเร็จ', 'ลองใหม่อีกครั้ง'));
   const tel = (p.phone ?? '').replace(/[^0-9]/g, '');
+  const { ask } = useLocalSearchParams<{ ask?: string }>();
+  // ส่งข้อความถามอาการหลังรักษา: SMS (มีเบอร์) หรือ LINE/แอปอื่นผ่านหน้าแชร์ของเครื่อง
+  const askCheckIn = () => {
+    const v = p.visits[0];
+    const first = p.name.replace(/^(นาย|นางสาว|นาง|เด็กชาย|เด็กหญิง)/, '').trim().split(/\s+/)[0];
+    const what = v && v.diagnosis && v.diagnosis !== '-' ? v.diagnosis : v && v.symptoms !== '-' ? v.symptoms : '';
+    const msg = `สวัสดี คุณ${first} ${dr.name} ขอถามอาการ${what ? ` ${what}` : ''}หลังมารักษา${v?.date ? `เมื่อ ${v.date}` : ''} ตอนนี้เป็นอย่างไรบ้าง ดีขึ้น ทรงตัว หรือแย่ลง ตอบกลับข้อความนี้ได้เลย หากอาการแย่ลงหรือมีอาการผิดปกติ ให้รีบไปโรงพยาบาล`;
+    const share = () => Share.share({ message: msg }).catch(() => {});
+    if (!tel || Platform.OS === 'web') return share();
+    Alert.alert(`ถามอาการ ${first}`, 'ส่งข้อความทางไหน', [
+      { text: 'SMS', onPress: () => Linking.openURL(`sms:${tel}${Platform.OS === 'ios' ? '&' : '?'}body=${encodeURIComponent(msg)}`).catch(share) },
+      { text: 'LINE / แอปอื่น', onPress: share },
+      { text: 'ยกเลิก', style: 'cancel' },
+    ]);
+  };
+  useEffect(() => {
+    if (ask === '1') setTimeout(askCheckIn, 700);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ask]);
+  const due = p.followUpOn && p.status === 'ติดตามอาการ' ? p.followUpOn : undefined;
+  const overdue = due ? Math.round((Date.parse(todayIso()) - Date.parse(due)) / 86400000) : 0;
   const call = () => {
     if (!tel) return Alert.alert('ไม่มีเบอร์โทร', 'ยังไม่ได้บันทึกเบอร์โทรของผู้ป่วยรายนี้');
     Linking.openURL(`tel:${tel}`).catch(() => {});
@@ -257,9 +279,28 @@ function PatientBody({ p }: { p: Patient }) {
           />
         </ListSection>
 
+        {/* ── ดูแลต่อเนื่อง: นัดติดตาม · ถามอาการ · ใบยินยอม ── */}
+        <ListSection i={3} title="ดูแลต่อเนื่อง">
+          <ListRow
+            icon={<CircleIcon name="calendar.badge.clock" color={overdue > 0 ? '#D2453A' : '#14905C'} />}
+            overline="นัดติดตามอาการ"
+            title={due ? `${thShort(due)}${overdue > 0 ? ` · เลยนัดมา ${overdue} วัน` : overdue === 0 ? ' · วันนี้' : ''}` : 'ยังไม่ได้นัด'}
+            subtitle={due ? undefined : 'นัดได้ตอนบันทึกการรักษา (สถานะติดตามอาการ)'}
+          />
+          <ListRow icon={<CircleIcon name="message.fill" color="#2F7BE0" />} title="ส่งข้อความถามอาการ" subtitle="ทาง SMS หรือ LINE" onPress={askCheckIn} chevron />
+          <ListRow
+            icon={<CircleIcon name="signature" color={p.consent ? '#14905C' : '#E0861A'} />}
+            overline="ใบยินยอมเก็บข้อมูล (PDPA)"
+            title={p.consent ? `ลงชื่อแล้ว ${thDate(p.consent.at)}` : 'ยังไม่ได้ลงชื่อ'}
+            onPress={() => router.push({ pathname: '/patient/consent', params: { pid: p.id } })}
+            chevron
+            last
+          />
+        </ListSection>
+
         {/* ── ประวัติการส่งต่อ: แตะเพื่อพิมพ์หนังสือส่งต่อใบเดิม ── */}
         {p.referrals?.length ? (
-          <ListSection i={3} title="ประวัติการส่งต่อ" footer="แตะรายการเพื่อพิมพ์หนังสือส่งต่อใบเดิมอีกครั้ง">
+          <ListSection i={4} title="ประวัติการส่งต่อ" footer="แตะรายการเพื่อพิมพ์หนังสือส่งต่อใบเดิมอีกครั้ง">
             {p.referrals.map((r, i) => (
               <ListRow
                 key={r.no}

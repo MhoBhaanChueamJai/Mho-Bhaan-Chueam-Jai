@@ -15,6 +15,7 @@ import Animated, { FadeInDown, FadeInUp, FadeOut, runOnJS, useAnimatedReaction, 
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AudioClips } from '../../components/AudioClips';
+import { WisdomMediaStrip } from '../../components/WisdomMediaStrip';
 import { NotFound } from '../../components/NotFound';
 import { useSpeaker } from '../../components/audio';
 import { BookCover, COVERS } from '../../components/BookCover';
@@ -338,6 +339,8 @@ export function WisdomView({ w, preview }: { w: Wisdom; preview?: WisdomPreview 
           ) : null}
           {/* เสียงเล่าต้นฉบับ (โหมดเล่า) */}
           {!preview && w.audio?.length ? <AudioClips clips={w.audio} by={w.sharedBy ?? myName} /> : null}
+          {/* รูปและวิดีโอประกอบ (ท่านวด วิธีปรุงยา) */}
+          {!preview && !w.builtin ? <WisdomMediaStrip wid={w.id} canEdit={!isShared} /> : null}
           {body || om ? (
             <Section reading={reading === 'summary'} onY={(v) => (posY.current['summary'] = v)} i={0} icon={kf.summary.big ? (w.kind === 'คาถา/พิธี' ? 'sparkles' : 'text.book.closed.fill') : 'book.fill'} color={palette.primary} title={L.summary}>
               <T v="body" numberOfLines={preview ? 10 : undefined} style={[styles.para, w.kind === 'คาถา/พิธี' && styles.chant]}>{body}</T>
