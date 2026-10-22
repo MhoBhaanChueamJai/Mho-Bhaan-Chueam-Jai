@@ -89,3 +89,10 @@ export const ageLabel = (p: { age?: number | null; birthDate?: string | null }) 
   const a = knownAge(p);
   return a == null ? 'ไม่ระบุอายุ' : `${a} ปี`;
 };
+
+/** เพศ · อายุ แบบสั้นในรายการ: "หญิง 68 ปี" · ไม่ทราบเพศ → "ไม่ระบุเพศ 68 ปี" · ไม่ทราบทั้งคู่ → "ไม่ระบุเพศ/อายุ" */
+export const sexAgeLabel = (p: { sex?: string | null; age?: number | null; birthDate?: string | null }) => {
+  const a = knownAge(p);
+  if (!p.sex && a == null) return 'ไม่ระบุเพศ/อายุ';
+  return `${p.sex || 'ไม่ระบุเพศ'} ${a == null ? 'ไม่ระบุอายุ' : `${a} ปี`}`;
+};

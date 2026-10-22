@@ -216,8 +216,8 @@ export function PatientCard({ p, avatar, onCall }: { p: Patient; avatar: number;
               <View style={styles.stats}>
                 <View style={styles.stat}>
                   <T v="micro" color="rgba(255,255,255,0.55)">เพศ · อายุ</T>
-                  {/* ช่องแคบ: ไม่ทราบอายุแสดง "-" แบบเดียวกับ BMI */}
-                  <T v="title" color="#FFFFFF">{p.sex} {ageKnown == null ? '-' : `${ageKnown} ปี`}</T>
+                  {/* ช่องแคบ: แสดงเฉพาะที่ทราบ (ไม่ทราบทั้งเพศและอายุ = "-" แบบเดียวกับ BMI) */}
+                  <T v="title" color="#FFFFFF">{[p.sex, ageKnown == null ? '' : `${ageKnown} ปี`].filter(Boolean).join(' ') || '-'}</T>
                 </View>
                 <View style={styles.statSep} />
                 <View style={styles.stat}>

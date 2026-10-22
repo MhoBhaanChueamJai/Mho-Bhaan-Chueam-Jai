@@ -112,7 +112,7 @@ export async function loadAll(): Promise<CloudData> {
   const patients: Patient[] = prow.map((r) => ({
     id: r.id,
     name: r.name,
-    sex: r.sex,
+    sex: r.sex ?? '',
     age: r.age ?? 0,
     birthDate: r.birth_date ?? undefined,
     address: r.address ?? {},

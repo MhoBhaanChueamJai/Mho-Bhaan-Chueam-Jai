@@ -39,7 +39,7 @@ export type Patient = {
   id: string;
   // ข้อมูลทั่วไป
   name: string;
-  sex: 'ชาย' | 'หญิง';
+  sex: 'ชาย' | 'หญิง' | ''; // '' = ไม่ระบุ (ไม่ได้เลือกคำนำหน้า/อ่านจากบัตรไม่ได้)
   age: number;
   birthDate?: string; // วันเกิด ค.ศ. YYYY-MM-DD
   address: Address;
@@ -190,7 +190,9 @@ export function avatarFor(p: Pick<Patient, 'id' | 'sex' | 'age'> & { birthDate?:
   // ไม่ทราบอายุ (ไม่ได้กรอก → บันทึกเป็น 0) ใช้อวาตาร์ผู้ใหญ่ ไม่ใช่เด็ก
   const age = p.age > 0 || p.birthDate ? p.age : 40;
   const band = age < 13 ? 'child' : age < 30 ? 'young' : age < 55 ? 'adult' : 'senior';
-  return GENERIC[band][p.sex === 'ชาย' ? 'ชาย' : 'หญิง'];
+  // ไม่ระบุเพศ → เลือกตามรหัสผู้ป่วย (คงที่ต่อคน ไม่เอียงไปเพศเดียว)
+  const sex = p.sex || ([...p.id].reduce((n, c) => n + c.charCodeAt(0), 0) % 2 ? 'ชาย' : 'หญิง');
+  return GENERIC[band][sex];
 }
 
 /** วันนี้ (เที่ยงคืน ตามเวลาเครื่อง) */

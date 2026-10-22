@@ -28,7 +28,7 @@ const SMOOTH = LinearTransition.duration(280);
 type Form = {
   prefix: string;
   name: string;
-  sex: 'ชาย' | 'หญิง';
+  sex: 'ชาย' | 'หญิง' | '';
   age: string;
   bDay: string;
   bMonth: string;
@@ -51,7 +51,7 @@ type Form = {
 const EMPTY: Form = {
   prefix: '',
   name: '',
-  sex: 'หญิง',
+  sex: '', // ไม่ระบุ จนกว่าจะเลือกคำนำหน้า/อ่านจากบัตร
   age: '',
   bDay: '',
   bMonth: '',

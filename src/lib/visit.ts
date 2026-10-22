@@ -9,7 +9,7 @@ import { safetyNotes } from './brain';
 import { knowledgeFor } from './knowledge';
 import type { Turn } from './intake';
 import { roleBrief, userNoun } from './roles';
-import { ageLabel } from './birth';
+import { sexAgeLabel } from './birth';
 
 export type VisitData = {
   symptoms?: string;
@@ -122,7 +122,7 @@ export async function visitTurn(p: Patient, known: VisitData, history: Turn[], a
         role: 'user',
         content: `คุณคือ "ครูปัญญา" ผู้ช่วยด้านสุขภาพแผนไทย (${roleBrief()}) ผู้ชายวัย 45 อบอุ่น ฉลาด มีไหวพริบ พูดภาษาพูดเป็นธรรมชาติ ลงท้าย "ครับ"
 กำลังช่วยหมอบันทึกการรักษาครั้งนี้ด้วยเสียง
-ผู้ป่วย: ${p.name} ${p.sex} ${ageLabel(p)} ธาตุ${p.element} โรคประจำตัว: ${p.chronic} แพ้ยา/อาหาร: ${p.allergies}
+ผู้ป่วย: ${p.name} ${sexAgeLabel(p)} ธาตุ${p.element} โรคประจำตัว: ${p.chronic} แพ้ยา/อาหาร: ${p.allergies}
 ประวัติการรักษา:
 ${historyText(p)}
 ข้อมูลครั้งนี้ที่รู้แล้ว: ${JSON.stringify(known)}
@@ -176,7 +176,7 @@ export async function visitScribe(p: Patient, transcript: string, kb: Wisdom[] =
       content: `บทสนทนาระหว่างผู้ดูแล (${userNoun()}) กับผู้ป่วย (ถอดจากเสียงอัตโนมัติ อาจสะกดเพี้ยน และไม่ได้ระบุว่าใครพูด):
 ${transcript}
 
-ผู้ป่วย: ${p.name} ${p.sex} ${ageLabel(p)} ธาตุ${p.element} โรคประจำตัว ${p.chronic} แพ้ ${p.allergies}
+ผู้ป่วย: ${p.name} ${sexAgeLabel(p)} ธาตุ${p.element} โรคประจำตัว ${p.chronic} แพ้ ${p.allergies}
 ประวัติการรักษา:
 ${historyText(p)}
 ${kn.text}

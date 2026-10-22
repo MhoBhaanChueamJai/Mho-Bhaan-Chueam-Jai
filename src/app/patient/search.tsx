@@ -18,7 +18,7 @@ import { aiSuggestions, ruleSuggestions, type Suggestion } from '../../lib/searc
 import { useApp } from '../../store/app';
 import { control, elevation, palette } from '../../theme';
 import { column, useLayout } from '../../components/layout';
-import { ageLabel } from '../../lib/birth';
+import { sexAgeLabel } from '../../lib/birth';
 
 
 const SUG_ICON: Record<Suggestion['icon'], any> = { clock: 'clock.arrow.circlepath', person: 'person.fill', calendar: 'calendar', sparkles: 'sparkles', stethoscope: 'stethoscope' };
@@ -183,7 +183,7 @@ function PatientSearchInner() {
                         <Hi text={v ? v.diagnosis : 'ยังไม่มีการรักษา'} q={q.trim()} v="subhead" color={ios.secondary} />
                         <View style={styles.meta}>
                           <T v="caption" color={st.fg} style={{ fontWeight: '600' }}>{p.status}</T>
-                          <T v="caption" color={ios.tertiary}>· {p.sex} {ageLabel(p)} · ธาตุ{p.element}</T>
+                          <T v="caption" color={ios.tertiary}>· {sexAgeLabel(p)} · ธาตุ{p.element}</T>
                         </View>
                       </View>
                       <Sym name="chevron.right" size={13} color={ios.tertiary} weight="semibold" />

@@ -17,7 +17,7 @@ import { VisitSession } from './visit';
 import { visitSortKey } from '../../data/tones';
 import { useApp } from '../../store/app';
 import { column } from '../../components/layout';
-import { ageLabel } from '../../lib/birth';
+import { sexAgeLabel } from '../../lib/birth';
 
 const MINT = '#7CF0A8';
 
@@ -91,7 +91,7 @@ function TellInner() {
                 <Avatar name={p.name} src={avatarFor(p)} size={42} />
                 <View style={{ flex: 1, gap: 2 }}>
                   <T v="bodyStrong" color="#FFFFFF" numberOfLines={1}>{p.name}</T>
-                  <T v="caption" color="rgba(255,255,255,0.55)" numberOfLines={1}>{v ? `ครั้งล่าสุด ${v.date} · ${v.diagnosis}` : `${p.sex} ${ageLabel(p)} · ยังไม่มีการรักษา`}</T>
+                  <T v="caption" color="rgba(255,255,255,0.55)" numberOfLines={1}>{v ? `ครั้งล่าสุด ${v.date} · ${v.diagnosis}` : `${sexAgeLabel(p)} · ยังไม่มีการรักษา`}</T>
                 </View>
                 <Sym name="waveform" size={16} color={MINT} />
               </PressableScale>
