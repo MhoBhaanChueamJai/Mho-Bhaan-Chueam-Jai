@@ -79,9 +79,16 @@ const PREFIXES: { label: string; sex: 'ชาย' | 'หญิง' }[] = [
   { label: 'ด.ช.', sex: 'ชาย' },
   { label: 'ด.ญ.', sex: 'หญิง' },
 ];
-/** แยกคำนำหน้าออกจากชื่อเต็ม (เช่น "นาย ณัฐนนท์ ภูมิศรีแก้ว", "นางสาวสมศรี") */
+/** แยกคำนำหน้าออกจากชื่อเต็ม (เช่น "นาย ณัฐนนท์ ภูมิศรีแก้ว", "นางสาวสมศรี")
+ * บัตรประชาชนพิมพ์แบบย่อ "น.ส." / "ด.ช." / "ด.ญ." (บางครั้ง OCR ได้จุดหาย/มีวรรค) → แปลงเป็นคำนำหน้าในรายการก่อน */
 function splitPrefix(full: string): { prefix: string; name: string } {
-  const t = full.trim().replace(/^เด็กชาย/, 'ด.ช.').replace(/^เด็กหญิง/, 'ด.ญ.');
+  const t = full
+    .trim()
+    .replace(/^เด็กชาย/, 'ด.ช.')
+    .replace(/^เด็กหญิง/, 'ด.ญ.')
+    .replace(/^น\.\s*ส\.?\s*/, 'นางสาว ')
+    .replace(/^ด\.\s*ช\.?\s*/, 'ด.ช. ')
+    .replace(/^ด\.\s*ญ\.?\s*/, 'ด.ญ. ');
   const p = [...PREFIXES].sort((a, b) => b.label.length - a.label.length).find((x) => t.startsWith(x.label));
   return p ? { prefix: p.label, name: t.slice(p.label.length).trim() } : { prefix: '', name: t };
 }
