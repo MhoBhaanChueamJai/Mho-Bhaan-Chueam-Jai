@@ -31,7 +31,9 @@ async function find(p, t) {
     const steps = [];
     let fi = 0;
     for (const [si, st] of ch.steps.entries()) {
-      const ctx = await b.newContext({ viewport: { width: W, height: H }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, storageState: D + '/../web/state.json', permissions: ['microphone', 'camera'] });
+      const ctx = await b.newContext({ viewport: { width: W, height: H }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, storageState: process.env.STATE || D + '/../web/state.json', permissions: ['microphone', 'camera'] });
+      // บัญชีทดลองใช้ร่วมกัน: ห้ามเขียนข้อมูลขึ้นคลาวด์ระหว่างอัดคู่มือ (อ่านได้อย่างเดียว)
+      await ctx.route(/supabase\.co/, (r) => (['GET', 'HEAD', 'OPTIONS'].includes(r.request().method()) ? r.continue() : r.abort('blockedbyclient')));
       const p = await ctx.newPage();
       p.on('pageerror', (e) => console.log('  pageerror', e.message.slice(0, 120)));
       const cdp = await ctx.newCDPSession(p);
