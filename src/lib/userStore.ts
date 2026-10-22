@@ -1,12 +1,12 @@
 /**
  * รายการข้อมูลของหมอที่ไม่ใช่ผู้ป่วย (คลังยา รายการสื่อในตำรา) — เก็บในเครื่อง + สำรองเป็นไฟล์ส่วนตัวบนคลาวด์
  * โหลด: ใช้ของในเครื่องก่อน แล้วดึงจากคลาวด์ถ้าคลาวด์ใหม่กว่า · แก้ไข: บันทึกในเครื่องทันที แล้วอัปโหลด (รวบหลายครั้งเป็นครั้งเดียว)
- * บัญชีทดลอง (หลายคนใช้ร่วมกัน) และยังไม่เข้าสู่ระบบ → เก็บในเครื่องอย่างเดียว
+ * ยังไม่เข้าสู่ระบบ → เก็บในเครื่องอย่างเดียว
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
 import { loadUserJSON, saveUserJSON } from './cloud';
-import { demoAccountOf, supabase } from './supabase';
+import { supabase } from './supabase';
 
 type Box<T> = { items: T[]; savedAt: number; loaded: boolean; listeners: Set<() => void>; timer?: ReturnType<typeof setTimeout> };
 const boxes = new Map<string, Box<any>>();
@@ -14,7 +14,7 @@ const boxes = new Map<string, Box<any>>();
 async function cloudOk() {
   const { data } = await supabase.auth.getSession();
   const email = data.session?.user.email?.toLowerCase();
-  return !!email && !demoAccountOf(email);
+  return !!email;
 }
 
 function box<T>(name: string): Box<T> {

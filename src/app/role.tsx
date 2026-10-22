@@ -73,7 +73,7 @@ export default function RolePicker() {
       <Stack.Screen options={tryDemo ? { title: 'ทดลองใช้งาน' } : onboard ? { title: ROLE_PICKER ? 'คุณใช้แอปในบทบาทไหน' : 'คุณใช้แอปแบบไหน', headerBackVisible: false, headerLeft: () => null, gestureEnabled: false } : { title: ROLE_PICKER ? 'บทบาทของคุณ' : 'การใช้งาน' }} />
       <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={[styles.page, column.read]}>
         <T v="callout" color={ios.secondary} style={{ marginBottom: 18, paddingHorizontal: 4 }}>
-          {tryDemo ? 'เลือกแบบที่อยากลองใช้ ไม่ต้องสมัคร · ข้อมูลที่ทดลองเก็บในเครื่องนี้เท่านั้น' : ROLE_PICKER ? (onboard ? 'เลือกบทบาทเพื่อให้ครูปัญญาแนะนำได้เหมาะกับคุณ · เปลี่ยนได้ทุกเมื่อในตั้งค่า' : 'ครูปัญญาจะปรับคำแนะนำให้เหมาะกับบทบาทของคุณ · เปลี่ยนได้ทุกเมื่อในตั้งค่า') : 'หมอและบุคลากรสุขภาพจะมีเมนูผู้ป่วย บันทึกการรักษา และนัดหมายเพิ่ม · เปลี่ยนได้ทุกเมื่อในตั้งค่า'}
+          {tryDemo ? 'เลือกแบบที่อยากลองใช้ ไม่ต้องสมัคร · บัญชีทดลองใช้ร่วมกัน ข้อมูลขึ้นคลาวด์ เห็นเหมือนกันทุกเครื่อง' : ROLE_PICKER ? (onboard ? 'เลือกบทบาทเพื่อให้ครูปัญญาแนะนำได้เหมาะกับคุณ · เปลี่ยนได้ทุกเมื่อในตั้งค่า' : 'ครูปัญญาจะปรับคำแนะนำให้เหมาะกับบทบาทของคุณ · เปลี่ยนได้ทุกเมื่อในตั้งค่า') : 'หมอและบุคลากรสุขภาพจะมีเมนูผู้ป่วย บันทึกการรักษา และนัดหมายเพิ่ม · เปลี่ยนได้ทุกเมื่อในตั้งค่า'}
         </T>
         {list.map((r, i) => {
           const on = !tryDemo && current === r.k;

@@ -32,15 +32,13 @@ const enter = (i: number) => FadeInDown.delay(40 + i * 50).duration(420);
 
 export default function Settings() {
   const lt = useLargeTitleScroll();
-  const { settings, update, patients, wisdoms, clearLocal, setUnlocked, profile, sync, pendingCount, syncNow, demo } = useApp();
+  const { settings, update, patients, wisdoms, clearLocal, setUnlocked, profile, sync, pendingCount, syncNow } = useApp();
   const [syncing, setSyncing] = useState(false);
   const myAvatar = useMyAvatar();
   // สถานะซิงก์: ให้หมอรู้ว่าข้อมูลขึ้นคลาวด์ครบแล้วหรือยัง
   const syncAt = settings.lastSyncAt ? new Date(settings.lastSyncAt) : null;
   const syncAtLabel = syncAt ? `${syncAt.getDate()}/${syncAt.getMonth() + 1} ${String(syncAt.getHours()).padStart(2, '0')}:${String(syncAt.getMinutes()).padStart(2, '0')}` : '';
-  const syncLabel = demo
-    ? 'ข้อมูลเก็บในเครื่องนี้'
-    : syncing || sync === 'syncing'
+  const syncLabel = syncing || sync === 'syncing'
       ? 'กำลังซิงก์…'
       : pendingCount
         ? `รอส่งขึ้นคลาวด์ ${pendingCount} รายการ · แตะเพื่อส่งใหม่`
@@ -110,8 +108,7 @@ export default function Settings() {
   const logout = () =>
     Alert.alert(
       'ออกจากระบบ?',
-      // บัญชีทดลองใช้เก็บข้อมูลในเครื่องเท่านั้น → ออกแล้วข้อมูลที่เพิ่มเองหาย
-      demo ? 'บัญชีทดลองใช้เก็บข้อมูลในเครื่องนี้เท่านั้น ออกจากระบบแล้วข้อมูลที่เพิ่มเองจะหาย (ข้อมูลตัวอย่างจะกลับมาเมื่อกดทดลองใช้อีกครั้ง)' : 'ข้อมูลทั้งหมดยังเก็บไว้บนระบบคลาวด์ เข้าสู่ระบบอีกครั้งเพื่อใช้งานต่อได้ทันที',
+      'ข้อมูลทั้งหมดยังเก็บไว้บนระบบคลาวด์ เข้าสู่ระบบอีกครั้งเพื่อใช้งานต่อได้ทันที',
       [
       { text: 'ยกเลิก', style: 'cancel' },
       {

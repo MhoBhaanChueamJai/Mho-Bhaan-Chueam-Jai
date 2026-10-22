@@ -129,7 +129,7 @@ type Ctx = {
   /** สถานะการเชื่อมต่อฐานข้อมูล */
   sync: 'local' | 'syncing' | 'cloud' | 'error';
   syncError: string;
-  /** โหมดทดลอง: ข้อมูลอยู่ในเครื่องนี้เท่านั้น */
+  /** บัญชีทดลองใช้ (ใช้ร่วมกัน · แก้/ลบบัญชีไม่ได้) */
   demo: boolean;
   /** จำนวนรายการที่ส่งขึ้นคลาวด์ไม่สำเร็จ รอส่งใหม่ */
   pendingCount: number;
@@ -141,11 +141,22 @@ type Ctx = {
   profile: Profile | null;
   /** บทบาทที่ผู้ใช้เลือก (ยังไม่เลือก = undefined) */
   userRole?: UserRole;
-  /** ข้อมูลผู้ป่วยเก็บในเครื่องนี้อย่างเดียว (บัญชีทดลองใช้ / ยังไม่ได้ยืนยันกับทะเบียน) — ลบแอปหรือเปลี่ยนเครื่องแล้วหาย */
+  /** ข้อมูลผู้ป่วยเก็บในเครื่องนี้อย่างเดียว — ลบแอปหรือเปลี่ยนเครื่องแล้วหาย */
   patientsLocalOnly: boolean;
 };
 
 const AppCtx = createContext<Ctx>(null as any);
+
+/** บัญชีทดลองฝั่งแพทย์: คลาวด์ยังว่าง → ใส่ผู้ป่วยตัวอย่าง (พร้อมนัดติดตามนับจากวันนี้) ขึ้นคลาวด์ครั้งเดียว */
+async function seedDemo() {
+  const { count, error } = await supabase.from('patients').select('id', { count: 'exact', head: true });
+  if (error || (count ?? 0) > 0) return;
+  const list = DEMO_PATIENTS.map((p) => (DEMO_APPTS[p.id] != null && !p.followUpOn ? { ...p, status: 'ติดตามอาการ' as const, followUpOn: isoIn(DEMO_APPTS[p.id]) } : p));
+  for (const p of list) {
+    await cloud.savePatient(p);
+    for (const v of p.visits) await cloud.saveVisit(p.id, v);
+  }
+}
 
 /** ตำราซ้ำ (id เดียวกัน หรือสำเนาที่รับจากเพื่อนเล่มเดียวกัน) → เก็บเล่มแรกเล่มเดียว */
 function dedupeWisdoms(list: Wisdom[]): Wisdom[] {
@@ -252,40 +263,27 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const prof = (pr.data as Profile | null) ?? null;
       setProfile(prof);
       if (prof?.role) setSettings((s) => ({ ...s, role: prof.role }));
-      // โหมดทดลอง (บัญชีสาธิตที่หลายคนใช้ร่วมกัน): ข้อมูลอยู่ในเครื่องนี้เท่านั้น ไม่โหลด/ไม่ส่งขึ้นคลาวด์
-      // — กันไม่ให้ผู้ทดลองเห็นข้อมูลผู้ป่วยที่คนอื่นบันทึกไว้ในบัญชีเดียวกัน
+      // บัญชีทดลองใช้ (หลายคนใช้ร่วมกัน): ซิงก์คลาวด์เหมือนบัญชีจริง · ประเภทผู้ใช้ตายตัว · แก้/ลบบัญชีไม่ได้
       const demoAcct = demoAccountOf(data.session.user.email);
       const isDemo = !!demoAcct;
       setDemo(isDemo);
       // บัญชีทดลองใช้: ประเภทผู้ใช้ตายตัวตามบัญชี (พ่อหมอสมบัติ = แพทย์ · สมศรี = ประชาชน) ไม่ต้องถาม
       if (demoAcct) setSettings((st) => ({ ...st, userKind: demoAcct.kind }));
       // บทบาทผู้ใช้ (คอลัมน์ใหม่ใน migration 009) — มีคอลัมน์นี้ = ฐานข้อมูลเปิดให้ทุกบัญชีบันทึกผู้ป่วยแล้ว
-      // บัญชีทดลองใช้ร่วมกันหลายคน → บทบาทอยู่ในเครื่องเท่านั้น (ไม่อ่าน/ไม่เขียนคลาวด์)
-      const ur = isDemo ? { data: null, error: true } : await supabase.from('profiles').select('user_role').eq('id', data.session.user.id).maybeSingle();
+      const ur = await supabase.from('profiles').select('user_role').eq('id', data.session.user.id).maybeSingle();
       const opened = !ur.error;
       const cloudRole = (ur.data as { user_role?: string } | null)?.user_role;
       // คอลัมน์ user_role เก็บบทบาท (ถ้าเปิดการเลือกบทบาท) หรือประเภทผู้ใช้ public/clinician (ตอนนี้)
       const local = ROLE_PICKER ? settings.userRole : settings.userKind;
-      if (opened && !cloudRole && local) {
+      // บัญชีทดลองใช้: ประเภทตายตัวตามบัญชี (ตั้งไว้ด้านบนแล้ว) ไม่อ่าน/เขียนบทบาทบนคลาวด์
+      if (isDemo) {
+        // ซิงก์ขึ้นคลาวด์เหมือนบัญชีจริง → ทุกเครื่อง (เว็บ/มือถือ) เห็นข้อมูลชุดเดียวกัน ใช้นำเสนอได้
+        // แพทย์ (พ่อหมอสมบัติ): คลาวด์ยังไม่มีผู้ป่วยเลย → ใส่ผู้ป่วยตัวอย่าง 5 คน + นัดตัวอย่าง (นับจากวันนี้) ครั้งเดียว
+        if (demoAcct?.kind === 'clinician') await seedDemo().catch(() => {});
+      } else if (opened && !cloudRole && local) {
         // เลือกไว้ในเครื่องก่อนฐานข้อมูลพร้อม → ส่งขึ้นคลาวด์
         supabase.from('profiles').update({ user_role: local }).eq('id', data.session.user.id).then(() => {});
       } else if (cloudRole) setSettings((st) => (ROLE_PICKER ? { ...st, userRole: roleOf(cloudRole) } : kindOf(cloudRole) ? { ...st, userKind: kindOf(cloudRole) } : st));
-      if (isDemo) {
-        // ใส่ผู้ป่วยตัวอย่างให้ลองใช้ (ครั้งแรกที่เข้าโหมดนี้ในเครื่อง — ลบแล้วไม่ใส่ซ้ำ)
-        if (demoAcct?.kind === 'clinician' && !settings.demoSeeded) {
-          setPatients((list) => (list.length ? list : DEMO_PATIENTS));
-          setSettings((st) => ({ ...st, demoSeeded: true }));
-        }
-        // นัดตัวอย่าง (นับจากวันนี้): เลยนัด · วันนี้ · ในสัปดาห์ · สัปดาห์หน้า — ใส่ครั้งเดียว ไม่ทับนัดที่หมอตั้งเอง
-        if (demoAcct?.kind === 'clinician' && !settings.demoAppts) {
-          setPatients((list) => list.map((p) => (DEMO_APPTS[p.id] != null && !p.followUpOn ? { ...p, status: 'ติดตามอาการ', followUpOn: isoIn(DEMO_APPTS[p.id]) } : p)));
-          setSettings((st) => ({ ...st, demoAppts: true }));
-        }
-        setOnline(false);
-        setSync('local');
-        setSyncError('');
-        return;
-      }
       // บัญชีที่เคยยืนยันตัวตนแล้ว ใช้ตารางคลาวด์มาตลอด · บัญชีอื่นเคยเก็บผู้ป่วยในไฟล์สำรองส่วนตัว
       const wasLocal = !(prof?.role === 'practitioner' || prof?.role === 'admin');
       // ฐานข้อมูลเปิดแล้ว (migration 009) → ทุกบัญชีใช้ตาราง · ยังไม่เปิด → แบบเดิม
@@ -424,7 +422,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // บัญชีที่ยังไม่ได้ยืนยัน: ผู้ป่วยเปลี่ยน → อัปโหลดไฟล์สำรองขึ้นคลาวด์ (รวบหลายการแก้ไขเป็นครั้งเดียว)
   const fileTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
-    if (!online || demo || !patientsLocal.current) return;
+    if (!online || !patientsLocal.current) return;
     if (fileTimer.current) clearTimeout(fileTimer.current);
     const snapshot = patients;
     fileTimer.current = setTimeout(() => {
@@ -434,7 +432,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }, 'patients-file');
     }, 1200);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [patients, online, demo]);
+  }, [patients, online]);
 
   const value = useMemo<Ctx>(
     () => ({
@@ -520,7 +518,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       reloadCloud,
       profile,
       userRole: settings.userRole,
-      patientsLocalOnly: demo,
+      patientsLocalOnly: false,
       clearLocal: () => {
         // ประวัติแชทครูปัญญาเป็นข้อมูลส่วนตัวของผู้ใช้คนนี้ → ล้างเมื่อออกจากระบบ
         clearChats().catch(() => {});

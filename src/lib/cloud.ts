@@ -24,6 +24,10 @@ const patientToRow = (p: Patient) => ({
   element: p.element,
   status: p.status,
   meds: p.meds,
+  // นัดติดตาม · ใบยินยอม (PDPA) · ประวัติส่งต่อ (migration 011)
+  follow_up_on: p.followUpOn ?? null,
+  consent: p.consent ?? null,
+  referrals: p.referrals?.length ? p.referrals : null,
 });
 const visitToRow = (pid: string, v: MB5Visit) => ({
   patient_id: pid,
@@ -120,6 +124,9 @@ export async function loadAll(): Promise<CloudData> {
     element: r.element ?? 'ดิน',
     status: r.status ?? 'ติดตามอาการ',
     meds: r.meds ?? [],
+    followUpOn: r.follow_up_on ?? undefined,
+    consent: r.consent ?? undefined,
+    referrals: Array.isArray(r.referrals) && r.referrals.length ? r.referrals : undefined,
     visits: vrow
       .filter((x) => x.patient_id === r.id)
       .map(rowToVisit)
