@@ -13,18 +13,18 @@ export function audioCtx(): AudioContext {
   return ctx;
 }
 
+// iOS Safari ปลดล็อกเสียงเฉพาะตอนปล่อยนิ้ว (touchend/click) ไม่ใช่ตอนเริ่มแตะ — และ context กลับไป
+// suspended/interrupted ได้เมื่อสลับแอป/ล็อกจอ → ลองใหม่ทุกครั้งที่ผู้ใช้แตะจนกว่าจะทำงาน
 if (typeof document !== 'undefined') {
   const unlock = () => {
     const ac = audioCtx();
+    if (ac.state === 'running') return;
     ac.resume().catch(() => {});
-    // iOS: เล่นบัฟเฟอร์เงียบ 1 ครั้งระหว่างแตะ เพื่อเปิดเส้นทางเสียง
+    // เล่นบัฟเฟอร์เงียบ 1 ครั้งระหว่างแตะ เพื่อเปิดเส้นทางเสียง
     const b = ac.createBufferSource();
     b.buffer = ac.createBuffer(1, 1, 22050);
     b.connect(ac.destination);
     b.start();
-    document.removeEventListener('pointerdown', unlock, true);
-    document.removeEventListener('touchend', unlock, true);
   };
-  document.addEventListener('pointerdown', unlock, true);
-  document.addEventListener('touchend', unlock, true);
+  for (const ev of ['touchend', 'click', 'pointerup', 'keydown']) document.addEventListener(ev, unlock, true);
 }

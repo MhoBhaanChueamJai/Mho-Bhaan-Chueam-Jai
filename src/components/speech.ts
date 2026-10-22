@@ -103,9 +103,12 @@ export function createSpeech(level: SharedValue<number>, onState?: (speaking: bo
       if (my !== gen) return resolve();
       (async () => {
         const ac = audioCtx();
-        await ac.resume().catch(() => {});
+        // Safari: resume() ที่ไม่ได้มาจากการแตะจะค้างไม่จบ → รอแค่ครู่เดียว
+        await Promise.race([ac.resume().catch(() => {}), wait(500)]);
         const buf = await ac.decodeAudioData(await (await fetch(uri)).arrayBuffer());
         if (my !== gen) return resolve();
+        // ยังไม่ได้ปลดล็อกเสียง (ผู้ใช้ยังไม่เคยแตะ) → ข้ามช่วงนี้ ไม่ค้างทั้งบทสนทนา (ข้อความยังขึ้นบนจอ)
+        if (ac.state !== 'running') return resolve();
         const src = ac.createBufferSource();
         src.buffer = buf;
         const an = ac.createAnalyser();
@@ -118,6 +121,7 @@ export function createSpeech(level: SharedValue<number>, onState?: (speaking: bo
           if (done) return;
           done = true;
           clearInterval(meter);
+          clearTimeout(guard);
           try {
             src.stop();
           } catch {}
@@ -134,6 +138,8 @@ export function createSpeech(level: SharedValue<number>, onState?: (speaking: bo
           level.value = withTiming(Math.min(1, Math.sqrt(sum / frame.length) * 5.8), { duration: 80 });
         }, 80);
         src.onended = end;
+        // กันค้าง: context ถูกพักกลางทาง (สลับแอป/สายเข้า) แล้ว onended ไม่มาถึง
+        const guard = setTimeout(end, buf.duration * 1000 + 2000);
         src.start();
       })().catch(() => resolve());
     });
