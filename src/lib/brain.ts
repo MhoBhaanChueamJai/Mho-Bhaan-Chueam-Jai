@@ -271,7 +271,7 @@ export function think(query: string, opts: { wisdoms: Wisdom[]; mode: 'chat' | '
   const pool = [...new Map([...named, ...hs].map((h) => [h.id, h])).values()];
   const conflicts = herbConflicts(pool, groups);
   const allergic = allergyHits(pool, opts.patient?.allergies);
-  const blocks: string[] = [CORE, `ผู้ใช้: ${roleBrief()}`, opts.mode === 'voice' ? VOICE_STYLE : CHAT_STYLE, `- ${dialectHint()}`, `- ${dialectSpeakStyle()}`];
+  const blocks: string[] = [CORE, `ผู้ใช้: ${roleBrief()}`, opts.mode === 'voice' ? VOICE_STYLE : CHAT_STYLE, `- ${dialectHint()}`, `- ${dialectSpeakStyle(query)}`];
   const d = opts.doctor;
   if (d && (d.name || d.types || d.topics?.length))
     blocks.push(

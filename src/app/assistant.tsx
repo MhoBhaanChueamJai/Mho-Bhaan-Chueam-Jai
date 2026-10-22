@@ -21,6 +21,7 @@ import { citedSources, herbsMentioned, think, tidyReply, isSymptomQ } from '../l
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { suggestFor, suggestWhy } from '../lib/suggest';
+import { dialectLine, toDialect } from '../lib/dialect';
 import { herbs as HERBS, type Herb } from '../data/herbs';
 import { findPatient, patientCtx } from '../lib/patientRef';
 import { guardReply } from '../lib/safety';
@@ -489,7 +490,7 @@ export default function Assistant() {
         </View>
         {msgs.length === 0 && (
           <Animated.View entering={FadeIn.duration(300)}>
-            <T v="h2" color="#FFFFFF" center style={{ marginTop: 8 }}>ถามอะไรก็ได้ครับ</T>
+            <T v="h2" color="#FFFFFF" center style={{ marginTop: 8 }}>{dialectLine('askTitle')}</T>
             <T v="callout" center color="rgba(255,255,255,0.6)" style={{ marginTop: 6, alignSelf: 'center', maxWidth: 310 }}>
               ปรึกษาอาการ สมุนไพร การตั้งตำรับ-ผสมยา หรือความปลอดภัยของยา
             </T>
@@ -783,9 +784,8 @@ function VoiceMode({ greet, last, ask, onClose }: { greet: boolean; last: Msg[];
     Keyboard.dismiss();
     const loop = async () => {
       setPhase('greeting');
-      // เรียก "คุณหมอ" เฉพาะผู้ใช้ที่เป็นหมอ (คนทั่วไปไม่เรียกว่าหมอ)
-      const you = doc ? 'คุณหมอ' : '';
-      await speech.current!.speak(greet ? `สวัสดีครับ${you} วันนี้มีอะไรให้ครูปัญญาช่วยครับ` : `ว่ามาได้เลยครับ${you}`);
+      // ทักทายตามภาษาพูดที่ตั้งไว้ · เรียก "คุณหมอ" เฉพาะผู้ใช้ที่เป็นหมอ
+      await speech.current!.speak(dialectLine(greet ? 'hello' : 'again', doc));
       let misses = 0;
       while (alive.current) {
         submit.current = false;
@@ -807,7 +807,7 @@ function VoiceMode({ greet, last, ask, onClose }: { greet: boolean; last: Msg[];
           if (r.heard) {
             // ได้ยินแต่ถอดไม่ออก → ขอให้พูดใหม่ (ไม่นับเป็นความเงียบ)
             setPhase('speaking');
-            await speech.current!.speak('ขอโทษครับ ไม่ค่อยได้ยิน พูดอีกครั้งได้ไหมครับ');
+            await speech.current!.speak(dialectLine('notHeard'));
             continue;
           }
           if (misses >= 2) {
@@ -826,9 +826,12 @@ function VoiceMode({ greet, last, ask, onClose }: { greet: boolean; last: Msg[];
         setPhase('thinking');
         const a = await ask(r.text);
         if (!alive.current) return;
-        setReplyText(a.content);
+        // ภาษาถิ่น: เกลาคำตอบให้เป็นภาษาถิ่นแท้ทั้งประโยคก่อนพูด (ภาษากลาง = ข้ามขั้นนี้)
+        const said = a.failed ? a.content : await toDialect(a.content);
+        if (!alive.current) return;
+        setReplyText(said);
         setPhase('speaking');
-        await speech.current!.speak(a.content);
+        await speech.current!.speak(said);
       }
     };
     loop();

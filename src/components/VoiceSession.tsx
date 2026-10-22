@@ -24,6 +24,7 @@ import type { Turn } from '../lib/intake';
 import { palette } from '../theme';
 import { AiDownBanner } from './AiDownBanner';
 import { COLUMN, column, useLayout } from './layout';
+import { dialectLine, getDialect, toDialect } from '../lib/dialect';
 
 type Phase = 'speaking' | 'listening' | 'thinking' | 'done';
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -220,6 +221,12 @@ export function VoiceSession({ scribe, initialOptions, title, opening, topics, h
       const live = () => alive.current && my === loopGen.current;
       alive.current = true;
       manualStop.current = false;
+      // ประโยคเปิด/คำถามแรก (เขียนเป็นภาษากลาง) → พูดเป็นภาษาถิ่นที่ตั้งไว้
+      if (getDialect() !== 'central') {
+        setPhase('thinking');
+        first = await toDialect(first);
+        if (!live()) return;
+      }
       hist.current.push({ role: 'ai', text: first });
       setAiText(first);
       setUserText('');
@@ -243,7 +250,7 @@ export function VoiceSession({ scribe, initialOptions, title, opening, topics, h
             misses = 0;
             continue;
           }
-          const again = 'ขอโทษครับ ไม่ได้ยินชัด ช่วยพูดอีกครั้งนะครับ';
+          const again = dialectLine('notHeard');
           setAiText(again);
           setPhase('speaking');
           await speak(again);
