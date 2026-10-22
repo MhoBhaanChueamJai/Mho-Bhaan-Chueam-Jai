@@ -1,8 +1,8 @@
 /**
  * ใบยินยอมเก็บข้อมูล (PDPA) — อ่านข้อความให้ผู้ป่วยฟัง → ผู้ป่วย/ญาติเซ็นชื่อบนจอ → เก็บกับข้อมูลผู้ป่วย → ส่งออก PDF ได้
- * ลงชื่อแล้ว: ดูลายเซ็น ส่งออก PDF หรือบันทึกการถอนความยินยอม
+ * ลงชื่อเสร็จแล้วปิดหน้ากลับไปหน้าผู้ป่วย · เปิดอีกครั้ง: ดูลายเซ็น ส่งออก PDF หรือบันทึกการถอนความยินยอม
  */
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { Stack, router, useLocalSearchParams } from 'expo-router';
 import React, { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
@@ -41,6 +41,8 @@ export default function Consent() {
     if (!canSave) return;
     updatePatient(p.id, { consent: { at: Date.now(), signer: who === 'ผู้ป่วย' ? p.name : signer.trim(), relation: who === 'ผู้ป่วย' ? 'ผู้ป่วย' : relation.trim(), sig } });
     h.success();
+    // ลงชื่อเสร็จ → กลับหน้าผู้ป่วย (เปิดใบยินยอมอีกครั้งเพื่อดูลายเซ็น/ส่งออก PDF ได้)
+    if (router.canGoBack()) router.back();
   };
   const pdf = () => outputPdf(consentHtml(p, dr), `ใบยินยอม ${p.name}`).catch(() => Alert.alert('สร้างเอกสารไม่สำเร็จ', 'ลองใหม่อีกครั้ง'));
   const withdraw = () =>
