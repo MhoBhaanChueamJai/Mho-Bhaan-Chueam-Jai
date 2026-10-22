@@ -9,7 +9,7 @@
  * - ถ่ายแล้วครอปเฉพาะส่วนในกรอบ ส่งกลับไปให้ AI อ่าน
  */
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import { CAMERA_HTTPS_MSG, cameraBlocked } from '../lib/cameraWeb';
+import { CAMERA_HTTPS_MSG, cameraBlocked, withRealSize } from '../lib/cameraWeb';
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import { BlurView } from '../components/Blur';
@@ -169,7 +169,8 @@ export default function IdScan() {
     h.heavy();
     setBusy(true);
     try {
-      const p = await cam.current.takePictureAsync({ quality: 0.92 });
+      const raw = await cam.current.takePictureAsync({ quality: 0.92 });
+      const p = raw && (await withRealSize(raw));
       if (!p) {
         busyRef.current = false;
         return setBusy(false);

@@ -9,7 +9,7 @@
 import { Asset } from 'expo-asset';
 import { BlurView } from '../components/Blur';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import { CAMERA_HTTPS_MSG, cameraBlocked } from '../lib/cameraWeb';
+import { CAMERA_HTTPS_MSG, cameraBlocked, withRealSize } from '../lib/cameraWeb';
 import { Image } from 'expo-image';
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
@@ -189,7 +189,8 @@ export default function Scan() {
     h.heavy();
     setBusy(true);
     try {
-      const p = await cam.current.takePictureAsync({ quality: 0.92 });
+      const raw = await cam.current.takePictureAsync({ quality: 0.92 });
+      const p = raw && (await withRealSize(raw));
       if (!p) return setBusy(false);
       const scale = Math.max(W / p.width, H / p.height);
       const ox = (p.width * scale - W) / 2;
