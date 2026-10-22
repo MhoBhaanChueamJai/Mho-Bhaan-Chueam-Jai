@@ -5,7 +5,7 @@
  * - วันที่เลือก = วงกลมเขียวอ่อน ตัวเขียวหนา · วันนี้ = ตัวเขียว · เกินวันสูงสุด = จาง กดไม่ได้
  */
 import React, { useEffect, useRef, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Modal, Platform, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { Sym } from './ios';
 import { Glass, PressableScale, T, useHaptic } from './ui';
@@ -73,7 +73,7 @@ export function DatePopover({ anchor, value, onChange, onClose, max, min }: { an
             )}
           </View>
           {wheel ? (
-            <Wheels view={view} onPick={(y, m) => setView({ y, m })} min={min?.getFullYear() ?? 1900} max={max?.getFullYear() ?? today.getFullYear() + 10} />
+            <Wheels view={view} onPick={(y, m) => setView({ y, m })} onDone={() => setWheel(false)} min={min?.getFullYear() ?? 1900} max={max?.getFullYear() ?? today.getFullYear() + 10} />
           ) : (
             <>
               <View style={styles.row}>
@@ -115,7 +115,7 @@ export function DatePopover({ anchor, value, onChange, onClose, max, min }: { an
 }
 
 /** วงล้อเลือกเดือน + ปี (แบบ UIPickerView): เลื่อนแล้วล็อกแถว แถบเน้นตรงกลาง */
-function Wheels({ view, onPick, min, max }: { view: { y: number; m: number }; onPick: (y: number, m: number) => void; min: number; max: number }) {
+function Wheels({ view, onPick, onDone, min, max }: { view: { y: number; m: number }; onPick: (y: number, m: number) => void; onDone: () => void; min: number; max: number }) {
   const years = Array.from({ length: max - min + 1 }, (_, i) => min + i);
   const mRef = useRef<ScrollView>(null);
   const yRef = useRef<ScrollView>(null);
@@ -126,30 +126,62 @@ function Wheels({ view, onPick, min, max }: { view: { y: number; m: number }; on
     }, 0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const col = (ref: React.RefObject<ScrollView | null>, items: string[], sel: number, pick: (i: number) => void, flex: number) => (
-    <ScrollView
-      ref={ref}
-      style={{ flex }}
-      showsVerticalScrollIndicator={false}
-      snapToInterval={WHEEL}
-      decelerationRate="fast"
-      contentContainerStyle={{ paddingVertical: WHEEL * 2 }}
-      onMomentumScrollEnd={(e) => pick(Math.round(e.nativeEvent.contentOffset.y / WHEEL))}
-      onScrollEndDrag={(e) => pick(Math.round(e.nativeEvent.contentOffset.y / WHEEL))}
-    >
-      {items.map((t, i) => (
-        <View key={t} style={styles.wheelRow}>
-          <T v="body" color={i === sel ? '#111813' : 'rgba(60,60,67,0.4)'} style={{ fontSize: 21, lineHeight: 27 }}>{t}</T>
-        </View>
-      ))}
-    </ScrollView>
-  );
+  // เว็บ: เลื่อนด้วยเมาส์/แทร็กแพดไม่มี onMomentumScrollEnd / onScrollEndDrag → เลือกเมื่อหยุดเลื่อน 120ms แล้วจัดแถวให้ตรงแถบ
+  const idle = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  useEffect(() => () => Object.values(idle.current).forEach(clearTimeout), []);
+  const col = (key: string, ref: React.RefObject<ScrollView | null>, items: string[], sel: number, pick: (i: number) => void, flex: number) => {
+    const pickIdx = (i: number) => pick(Math.max(0, Math.min(items.length - 1, i)));
+    const settle = (y: number) => {
+      const i = Math.max(0, Math.min(items.length - 1, Math.round(y / WHEEL)));
+      if (Platform.OS === 'web') ref.current?.scrollTo({ y: i * WHEEL, animated: true });
+      pick(i);
+    };
+    return (
+      <ScrollView
+        ref={ref}
+        style={{ flex }}
+        showsVerticalScrollIndicator={false}
+        snapToInterval={WHEEL}
+        decelerationRate="fast"
+        contentContainerStyle={{ paddingVertical: WHEEL * 2 }}
+        scrollEventThrottle={16}
+        onScroll={(e) => {
+          if (Platform.OS !== 'web') return;
+          const y = e.nativeEvent.contentOffset.y;
+          clearTimeout(idle.current[key]);
+          idle.current[key] = setTimeout(() => settle(y), 120);
+        }}
+        onMomentumScrollEnd={(e) => settle(e.nativeEvent.contentOffset.y)}
+        onScrollEndDrag={(e) => settle(e.nativeEvent.contentOffset.y)}
+      >
+        {items.map((t, i) => (
+          // แตะแถว = เลือกแล้วกลับไปหน้าปฏิทินเลือกวันทันที
+          <Pressable
+            key={t}
+            style={styles.wheelRow}
+            onPress={() => {
+              clearTimeout(idle.current[key]);
+              pickIdx(i);
+              onDone();
+            }} accessibilityRole="button" accessibilityLabel={t}>
+            <T v="body" color={i === sel ? '#111813' : 'rgba(60,60,67,0.4)'} style={{ fontSize: 21, lineHeight: 27 }}>{t}</T>
+          </Pressable>
+        ))}
+      </ScrollView>
+    );
+  };
   return (
-    <View style={styles.wheels}>
-      <View pointerEvents="none" style={styles.band} />
-      {col(mRef, TH_MONTHS, view.m, (i) => onPick(view.y, Math.max(0, Math.min(11, i))), 1.4)}
-      {col(yRef, years.map((y) => String(y + 543)), view.y - min, (i) => onPick(years[Math.max(0, Math.min(years.length - 1, i))], view.m), 1)}
-    </View>
+    <>
+      <View style={styles.wheels}>
+        <View pointerEvents="none" style={styles.band} />
+        {col('m', mRef, TH_MONTHS, view.m, (i) => onPick(view.y, Math.max(0, Math.min(11, i))), 1.4)}
+        {col('y', yRef, years.map((y) => String(y + 543)), view.y - min, (i) => onPick(years[Math.max(0, Math.min(years.length - 1, i))], view.m), 1)}
+      </View>
+      {/* เลื่อนวงล้อแล้ว → กดตกลงเพื่อไปเลือกวัน */}
+      <PressableScale haptic="select" scaleTo={0.94} onPress={onDone} style={styles.done} accessibilityRole="button" accessibilityLabel="ตกลง ไปเลือกวัน">
+        <T v="callout" color={palette.primary} style={{ fontWeight: '600' }}>ตกลง</T>
+      </PressableScale>
+    </>
   );
 }
 
@@ -162,7 +194,8 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row' },
   cell: { width: (W - 24) / 7, height: CELL, alignItems: 'center', justifyContent: 'center' },
   day: { width: 40, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-  wheels: { height: WHEEL * 5, flexDirection: 'row', marginTop: 30, overflow: 'hidden' },
+  wheels: { height: WHEEL * 5, flexDirection: 'row', marginTop: 14, overflow: 'hidden' },
+  done: { alignSelf: 'flex-end', height: 44, paddingHorizontal: 14, justifyContent: 'center', marginTop: 6 },
   band: { position: 'absolute', left: 4, right: 4, top: WHEEL * 2, height: WHEEL, borderRadius: 9, backgroundColor: 'rgba(120,120,128,0.12)' },
   wheelRow: { height: WHEEL, alignItems: 'center', justifyContent: 'center' },
 });
