@@ -5,6 +5,7 @@
  */
 import type { MB5Visit, Patient } from '../data/mock';
 import { herbsMentioned } from './brain';
+import { knownAge } from './birth';
 
 const TH_MONTHS = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
 const TH_MON = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
@@ -114,9 +115,10 @@ export function buildReport(patients: Patient[], y: number, m: number, span: Spa
     male: ps.filter((p) => p.sex === 'ชาย').length,
     female: ps.filter((p) => p.sex === 'หญิง').length,
     ages: [
-      { label: 'เด็ก (<15)', n: ps.filter((p) => p.age < 15).length },
-      { label: 'วัยทำงาน', n: ps.filter((p) => p.age >= 15 && p.age < 60).length },
-      { label: 'ผู้สูงอายุ (60+)', n: ps.filter((p) => p.age >= 60).length },
+      // ไม่ทราบอายุ ไม่นับเข้ากลุ่มไหน (เดิมนับเป็นเด็กเพราะอายุ 0)
+      { label: 'เด็ก (<15)', n: ps.filter((p) => (knownAge(p) ?? -1) >= 0 && knownAge(p)! < 15).length },
+      { label: 'วัยทำงาน', n: ps.filter((p) => (knownAge(p) ?? -1) >= 15 && knownAge(p)! < 60).length },
+      { label: 'ผู้สูงอายุ (60+)', n: ps.filter((p) => (knownAge(p) ?? -1) >= 60).length },
     ],
     diagnoses: top(cur.rows.map((r) => clean(r.v.diagnosis) || clean(r.v.symptoms)).filter(Boolean).map((x) => x.split(/[·,(]/)[0].trim()), 6),
     herbs: top(cur.rows.flatMap((r) => herbsMentioned(r.v.treatment).map((h) => h.name)), 6),

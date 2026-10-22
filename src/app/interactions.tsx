@@ -23,6 +23,7 @@ import { interactionAdvice, type InteractionAdvice, type RiskLevel } from '../li
 import { useApp } from '../store/app';
 import { elevation, palette } from '../theme';
 import { column } from '../components/layout';
+import { ageLabel } from '../lib/birth';
 
 const CONDS = [
   { label: 'ตั้งครรภ์/ให้นมบุตร', key: 'ตั้งครรภ์' },
@@ -136,7 +137,7 @@ export default function Interactions() {
             <Dropdown label="ผู้ป่วย (ถ้ามี จะดึงโรคประจำตัว ยา และประวัติแพ้ยามาตรวจด้วย)" value={who} options={[NONE, ...patients.map((x) => x.name)]} onChange={setWho} />
             {p ? (
               <T v="caption" color={ios.secondary} style={{ marginLeft: 4 }}>
-                {p.age} ปี · โรคประจำตัว: {p.chronic || '-'} · ยา: {p.meds.length ? p.meds.join(', ') : '-'} · แพ้: {p.allergies || '-'}
+                {ageLabel(p)} · โรคประจำตัว: {p.chronic || '-'} · ยา: {p.meds.length ? p.meds.join(', ') : '-'} · แพ้: {p.allergies || '-'}
               </T>
             ) : null}
             <View style={styles.chips}>

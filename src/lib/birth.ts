@@ -78,3 +78,14 @@ export function normalizeBirth(d: { bDay?: string; bMonth?: string; bYear?: stri
   if (!year) year = yearBE(nums.find((x) => x.length === 4));
   return { bDay: day ? String(Number(day)) : '', bMonth: month, bYear: year };
 }
+
+/**
+ * อายุที่ทราบ (ปี) — ไม่ได้กรอกอายุและวันเกิด แอปบันทึกอายุเป็น 0 → ถือว่า "ไม่ทราบ" (undefined) ไม่ใช่ 0 ขวบ
+ * (มีวันเกิด = ทราบอายุจริง แม้เป็นเด็กอายุ 0 ปี)
+ */
+export const knownAge = (p: { age?: number | null; birthDate?: string | null }): number | undefined => ((p.age ?? 0) > 0 || p.birthDate ? (p.age ?? 0) : undefined);
+/** "68 ปี" · ไม่ทราบ → "ไม่ระบุอายุ" */
+export const ageLabel = (p: { age?: number | null; birthDate?: string | null }) => {
+  const a = knownAge(p);
+  return a == null ? 'ไม่ระบุอายุ' : `${a} ปี`;
+};

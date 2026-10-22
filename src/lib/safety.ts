@@ -6,6 +6,7 @@
  */
 import type { Herb } from '../data/herbs';
 import { DRUG_MATCH, HERB_DRUG, type DrugClass, type HerbDrug } from '../data/interactions';
+import { knownAge } from './birth';
 
 /* ── 1) สัญญาณอันตราย ─────────────────────────────────────── */
 const RED_FLAGS: { re: RegExp; why: string }[] = [
@@ -46,13 +47,15 @@ const GROUPS: Group[] = [
   { k: 'fever', label: 'กำลังมีไข้', ask: /มีไข้|เป็นไข้|ตัวร้อน|ไข้ขึ้น/, caution: /ขณะมีไข้|มีไข้ไม่ควร|ผู้มีไข้/ },
 ];
 
-export type RiskCtx = { age?: number; sex?: string; chronic?: string; allergies?: string; meds?: string[] };
+export type RiskCtx = { age?: number; birthDate?: string; sex?: string; chronic?: string; allergies?: string; meds?: string[] };
 
 /** กลุ่มเสี่ยงจากคำถาม + ข้อมูลผู้ป่วย (อายุ โรคประจำตัว ยาที่ใช้) */
 export function riskGroups(text: string, p?: RiskCtx | null): Group[] {
   const src = `${text} ${p?.chronic ?? ''} ${(p?.meds ?? []).join(' ')}`.replace(/\s+/g, '');
   const out = GROUPS.filter((g) => g.ask.test(src));
-  if (p?.age != null && p.age < 12 && !out.some((g) => g.k === 'child')) out.push(GROUPS.find((g) => g.k === 'child')!);
+  // ไม่ทราบอายุ (บันทึกเป็น 0) ห้ามถือเป็นเด็ก
+  const age = p ? knownAge(p) : undefined;
+  if (age != null && age < 12 && !out.some((g) => g.k === 'child')) out.push(GROUPS.find((g) => g.k === 'child')!);
   return out;
 }
 

@@ -185,9 +185,11 @@ const GENERIC = {
 } as const;
 
 /** รูปผู้ป่วย: มีรูปเฉพาะคนใช้รูปนั้น ไม่มีก็ใช้อวาตาร์ตามเพศ/อายุ */
-export function avatarFor(p: Pick<Patient, 'id' | 'sex' | 'age'>): number {
+export function avatarFor(p: Pick<Patient, 'id' | 'sex' | 'age'> & { birthDate?: string }): number {
   if (avatars[p.id]) return avatars[p.id];
-  const band = p.age < 13 ? 'child' : p.age < 30 ? 'young' : p.age < 55 ? 'adult' : 'senior';
+  // ไม่ทราบอายุ (ไม่ได้กรอก → บันทึกเป็น 0) ใช้อวาตาร์ผู้ใหญ่ ไม่ใช่เด็ก
+  const age = p.age > 0 || p.birthDate ? p.age : 40;
+  const band = age < 13 ? 'child' : age < 30 ? 'young' : age < 55 ? 'adult' : 'senior';
   return GENERIC[band][p.sex === 'ชาย' ? 'ชาย' : 'หญิง'];
 }
 

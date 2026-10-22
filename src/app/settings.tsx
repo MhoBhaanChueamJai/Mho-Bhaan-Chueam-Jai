@@ -27,6 +27,7 @@ import { LargeTitle, useLargeTitleScroll } from '../components/nav/LargeTitle';
 import { openManual } from '../lib/manual';
 import { column } from '../components/layout';
 import { clearChats } from '../lib/chatStore';
+import { ageLabel } from '../lib/birth';
 
 const enter = (i: number) => FadeInDown.delay(40 + i * 50).duration(420);
 
@@ -73,7 +74,7 @@ export default function Settings() {
 
   const exportAll = () => {
     const text = patients
-      .map((p) => `${p.name} (${p.sex} ${p.age} ปี) โทร ${p.phone}\nที่อยู่ ${fullAddress(p.address)}\nการรักษา ${p.visits.length} ครั้ง ล่าสุด: ${p.visits[0]?.diagnosis ?? '-'}`)
+      .map((p) => `${p.name} (${p.sex} ${ageLabel(p)}) โทร ${p.phone}\nที่อยู่ ${fullAddress(p.address)}\nการรักษา ${p.visits.length} ครั้ง ล่าสุด: ${p.visits[0]?.diagnosis ?? '-'}`)
       .join('\n\n');
     Share.share({ title: 'ข้อมูลผู้ป่วย', message: `ข้อมูลผู้ป่วย ${patients.length} ราย\n\n${text}` });
   };

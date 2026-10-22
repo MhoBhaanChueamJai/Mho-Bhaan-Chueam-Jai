@@ -10,6 +10,7 @@ import { clip, dedupe, dedupeText, herbBrief, strip, type PlanItem } from './pla
 import { roleBrief, userNoun } from './roles';
 import type { DrugHit } from './safety';
 import { citeLabel, docById, herbDocId, ixDocId, type KDoc } from './sources';
+import { ageLabel } from './birth';
 
 export type RiskLevel = 'avoid' | 'caution' | 'ok';
 export type HerbAdvice = { herb: string; level: RiskLevel; text: string; refs: PlanItem['refs'] };
@@ -67,7 +68,7 @@ export async function interactionAdvice(c: InteractionCase): Promise<Interaction
         role: 'user',
         content: `${roleBrief()}
 สมุนไพรที่จะใช้: ${names}
-${p ? `ผู้ป่วย: ${p.name} ${p.sex ?? ''} ${p.age ?? ''} ปี · โรคประจำตัว ${p.chronic || '-'} · แพ้ ${p.allergies || '-'} · ยาที่ใช้อยู่ ${p.meds?.join(', ') || '-'}` : 'ไม่ได้เลือกผู้ป่วย'}
+${p ? `ผู้ป่วย: ${p.name} ${p.sex ?? ''} ${ageLabel(p)} · โรคประจำตัว ${p.chronic || '-'} · แพ้ ${p.allergies || '-'} · ยาที่ใช้อยู่ ${p.meds?.join(', ') || '-'}` : 'ไม่ได้เลือกผู้ป่วย'}
 ภาวะที่เลือก: ${c.conditions.join(', ') || '-'}
 ยาที่กินอยู่ (พิมพ์เพิ่ม): ${c.medsText.trim() || '-'}
 

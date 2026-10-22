@@ -8,6 +8,7 @@ import { Directory, File, Paths } from 'expo-file-system';
 import { Platform } from 'react-native';
 import { fullAddress, type MB5Visit, type Patient } from '../data/mock';
 import { signatureSvg } from '../components/SignaturePad';
+import { knownAge } from './birth';
 
 export type Doctor = { name: string; types: string; cert?: string | null; province?: string | null };
 
@@ -50,7 +51,7 @@ const page = (title: string, body: string, landscape = false) =>
 
 /** หัวข้อมูลผู้ป่วย (ใช้ทั้ง ม.บ.5 และใบส่งต่อ) */
 const patientBlock = (p: Patient) => `
-  <div class="row"><span class="f"><b>ชื่อ-สกุล</b><span class="line">${esc(p.name)}</span></span><span class="f"><b>เพศ</b><span class="line">${esc(p.sex)}</span></span><span class="f"><b>อายุ</b><span class="line">${esc(p.age)} ปี</span></span><span class="f"><b>โทรศัพท์</b><span class="line">${dash(p.phone)}</span></span></div>
+  <div class="row"><span class="f"><b>ชื่อ-สกุล</b><span class="line">${esc(p.name)}</span></span><span class="f"><b>เพศ</b><span class="line">${esc(p.sex)}</span></span><span class="f"><b>อายุ</b><span class="line">${knownAge(p) == null ? '&nbsp;' : `${knownAge(p)} ปี`}</span></span><span class="f"><b>โทรศัพท์</b><span class="line">${dash(p.phone)}</span></span></div>
   <div class="row"><span class="f"><b>ที่อยู่</b><span class="line">${dash(fullAddress(p.address))}</span></span></div>
   <div class="row"><span class="f"><b>โรคประจำตัว</b><span class="line">${dash(p.chronic)}</span></span><span class="f"><b>ประวัติแพ้ยา/อาหาร</b><span class="line">${dash(p.allergies)}</span></span></div>
   <div class="row"><span class="f"><b>ยาที่ใช้อยู่</b><span class="line">${dash(p.meds?.join(', '))}</span></span><span class="f"><b>น้ำหนัก</b><span class="line">${p.weight ? esc(p.weight) + ' กก.' : '-'}</span></span><span class="f"><b>ส่วนสูง</b><span class="line">${p.height ? esc(p.height) + ' ซม.' : '-'}</span></span>${bmi(p) ? `<span class="f"><b>BMI</b><span class="line">${bmi(p)}</span></span>` : ''}<span class="f"><b>ธาตุเจ้าเรือน</b><span class="line">${dash(p.element)}</span></span></div>`;

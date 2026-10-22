@@ -15,6 +15,7 @@ import { useApp } from '../../../store/app';
 import { elevation, palette } from '../../../theme';
 import { LargeTitle, useLargeTitleScroll } from '../../../components/nav/LargeTitle';
 import { column, useGrid, useLayout } from '../../../components/layout';
+import { ageLabel } from '../../../lib/birth';
 
 type Filter = 'all' | Patient['status'];
 /** สถานะบนการ์ดเข้ม: สีสว่าง + ลำดับในแถบสัดส่วน */
@@ -119,7 +120,7 @@ function PatientRow({ p }: { p: Patient }) {
         <T v="subhead" color={ios.secondary} numberOfLines={1}>{what}</T>
         <View style={styles.meta}>
           <T v="caption" color={st.fg} style={{ fontWeight: '600' }}>{statusLabel(p.status)}</T>
-          <T v="caption" color={ios.tertiary}>{v ? `· มาล่าสุด ${v.date}` : `· ${p.sex} ${p.age} ปี`}</T>
+          <T v="caption" color={ios.tertiary}>{v ? `· มาล่าสุด ${v.date}` : `· ${p.sex} ${ageLabel(p)}`}</T>
         </View>
       </View>
       <Sym name="chevron.right" size={13} color={ios.tertiary} weight="semibold" />

@@ -17,6 +17,7 @@ import { Sym } from './ios';
 import { Avatar, PressableScale, T } from './ui';
 import type { Patient } from '../data/mock';
 import { statusLabel } from '../data/tones';
+import { ageLabel, knownAge } from '../lib/birth';
 import { ELEMENT_PROFILE, ageSamutthan, seasonNow } from '../lib/elements';
 import { elementColor } from '../theme';
 
@@ -87,7 +88,9 @@ export function PatientCard({ p, avatar, onCall }: { p: Patient; avatar: number;
   const el = elementColor[p.element];
   const bmi = p.weight && p.height ? (p.weight / (p.height / 100) ** 2).toFixed(1) : '-';
   const prof = ELEMENT_PROFILE[p.element];
-  const ag = ageSamutthan(p.age);
+  // ไม่ทราบอายุ → ไม่บอกวัย (ไม่เดาเป็นปฐมวัย)
+  const ageKnown = knownAge(p);
+  const ag = ageKnown == null ? null : ageSamutthan(ageKnown);
   const ss = seasonNow();
   const allergic = p.allergies && p.allergies !== 'ไม่มี';
   // เบอร์โทรบนบัตร (แบบ 081-234-5678)
@@ -213,7 +216,7 @@ export function PatientCard({ p, avatar, onCall }: { p: Patient; avatar: number;
               <View style={styles.stats}>
                 <View style={styles.stat}>
                   <T v="micro" color="rgba(255,255,255,0.55)">เพศ · อายุ</T>
-                  <T v="title" color="#FFFFFF">{p.sex} {p.age} ปี</T>
+                  <T v="title" color="#FFFFFF">{p.sex} {ageLabel(p)}</T>
                 </View>
                 <View style={styles.statSep} />
                 <View style={styles.stat}>
@@ -262,7 +265,7 @@ export function PatientCard({ p, avatar, onCall }: { p: Patient; avatar: number;
                   </View>
                   <View>
                     <T v="micro" color={GOLD}>วัย · ฤดู</T>
-                    <T v="caption" color="#FFFFFF" numberOfLines={1}>{ag.stage} ({ag.dosha.split(' ')[0]}) · {ss.name.split(' ')[0]}</T>
+                    <T v="caption" color="#FFFFFF" numberOfLines={1}>{ag ? `${ag.stage} (${ag.dosha.split(' ')[0]}) · ` : ''}{ss.name.split(' ')[0]}</T>
                   </View>
                   {allergic || chronic ? (
                     <View style={styles.alertRow}>
