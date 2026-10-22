@@ -144,9 +144,11 @@ function NewPatientInner() {
   const [restored, setRestored] = useState<number | null>(null);
   const loaded = useRef(false);
   const done = useRef(false);
+  // ข้อมูลจากบัตร/เสียงเข้าฟอร์มก่อนดราฟต์โหลดเสร็จ (เปิดหน้านี้ใหม่หลังสแกนบัตร) → ห้ามให้ดราฟต์เก่าทับ
+  const filledByScan = useRef(false);
   useEffect(() => {
     loadDraft<{ f: Form; elPicked: boolean }>('patient.new').then((r) => {
-      if (r && !done.current) {
+      if (r && !done.current && !filledByScan.current) {
         setF({ ...EMPTY, ...r.data.f });
         setElPicked(!!r.data.elPicked);
         setRestored(r.at);
@@ -180,6 +182,7 @@ function NewPatientInner() {
 
   /** ใส่ข้อมูลจากครูปัญญาซักประวัติ (โหมดเสียง) ลงฟอร์ม */
   const applyIntake = (d: IntakeData & { save?: boolean }) => {
+    filledByScan.current = true;
     const next = { ...fRef.current };
     (['age', 'phone', 'address', 'chronic', 'allergies', 'weight', 'height'] as const).forEach((k) => {
       const v = String(d[k] ?? '').trim();
@@ -212,6 +215,7 @@ function NewPatientInner() {
 
   /** ใส่ข้อมูลที่อ่านจากบัตร (หน้ากล้องอ่านให้แล้ว) ลงฟอร์ม */
   const applyCard = (r: IdCardData) => {
+    filledByScan.current = true;
     setF((x) => {
       const next = { ...x };
       const b = normalizeBirth(r);
