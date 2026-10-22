@@ -3,7 +3,7 @@
  * - กรอบสัดส่วนบัตรจริง (85.6 × 54 มม.) พร้อมมุมกรอบ ให้วางบัตรพอดีกรอบ = ระยะที่เหมาะ
  * - โฟกัสอัตโนมัติต่อเนื่อง (แตะเพื่อโฟกัสจุดนั้นได้), เปิดไฟฉายได้
  * - ถ่ายอัตโนมัติ: ถ่ายภาพเล็กเงียบๆ ทุก ~0.4 วิ ให้ Apple Vision หาบัตร (modules/card-detect)
- *   ถ้ากรอบบัตรตรงกับกรอบบนจอ 2 ครั้งติด → ถ่ายจริงเอง
+ *   เจอบัตรในกรอบ ขนาดพอดี และมือนิ่ง 2 รอบติด → ถ่ายจริงเอง (ไม่ต้องพอดีกรอบเป๊ะ: Vision ตัดขอบ/ดัดตรงให้)
  * - ถ่ายแล้ว: ภาพเต็มกลายเป็นพื้นหลังเบลอ, บัตรคมชัดตรงกรอบ (โฟกัสบัตร) เคลือบแสงรุ้ง + ขอบ AI หมุน
  *   แบบเดียวกับครูปัญญา → อ่านเสร็จปิดหน้าแล้วเติมข้อมูลลงฟอร์ม
  * - ถ่ายแล้วครอปเฉพาะส่วนในกรอบ ส่งกลับไปให้ AI อ่าน
@@ -54,7 +54,7 @@ export default function IdScan() {
   const [bg, setBg] = useState<string | null>(null);
   const [stage, setStage] = useState<'reading' | 'done' | 'error'>('reading');
   const [step, setStep] = useState(0);
-  const [hint, setHint] = useState<'search' | 'adjust' | 'hold'>('search');
+  const [hint, setHint] = useState<'search' | 'closer' | 'farther' | 'hold'>('search');
   const busyRef = useRef(false);
 
   // กรอบบัตร: กว้างเต็มจอเว้น 24, อยู่กึ่งกลางค่อนบน
@@ -186,12 +186,13 @@ export default function IdScan() {
         const start = { x: ex.x * p.width * scale - ox, y: ex.y * p.height * scale - oy, w: ex.boxWidth * p.width * scale, h: ex.boxHeight * p.height * scale };
         return done({ card: ex.uri, full: p.uri, start });
       }
-      // หาขอบไม่เจอ → ครอปตามกรอบแทน
+      // หาขอบไม่เจอ (หรือไม่มีตัวตรวจจับ เช่น Android) → ครอปตามกรอบ เผื่อขอบรอบละ 12% ให้บัตรที่วางเหลื่อมกรอบไม่โดนตัด
+      const mx = fw * 0.12, my = fh * 0.12;
       const crop = {
-        originX: Math.max(0, (fx + ox) / scale),
-        originY: Math.max(0, (fy + oy) / scale),
-        width: Math.min(p.width, fw / scale),
-        height: Math.min(p.height, fh / scale),
+        originX: Math.max(0, (fx - mx + ox) / scale),
+        originY: Math.max(0, (fy - my + oy) / scale),
+        width: Math.min(p.width, (fw + mx * 2) / scale),
+        height: Math.min(p.height, (fh + my * 2) / scale),
       };
       crop.width = Math.min(crop.width, p.width - crop.originX);
       crop.height = Math.min(crop.height, p.height - crop.originY);
@@ -208,6 +209,7 @@ export default function IdScan() {
     if (!ready || !cardDetectAvailable) return;
     let alive = true;
     let stable = 0;
+    let last: { x: number; y: number } | null = null;
     const loop = async () => {
       while (alive) {
         await new Promise((r) => setTimeout(r, 350));
@@ -218,6 +220,7 @@ export default function IdScan() {
           const rc = await detectCard(snap.uri);
           if (!rc) {
             stable = 0;
+            last = null;
             setHint('search');
             continue;
           }
@@ -227,17 +230,29 @@ export default function IdScan() {
           const ox = (iw * sc - W) / 2, oy = (ih * sc - H) / 2;
           const nx = (fx + ox) / sc / iw, ny = (fy + oy) / sc / ih;
           const nw = fw / sc / iw, nh = fh / sc / ih;
-          const ok = Math.abs(rc.x - nx) < nw * 0.12 && Math.abs(rc.y - ny) < nh * 0.15 && rc.width / nw > 0.82 && rc.width / nw < 1.15;
-          if (ok) {
-            stable += 1;
+          // ไม่ต้องพอดีกรอบเป๊ะ (ตอนถ่ายจริง Apple Vision ตัดขอบบัตรและดัดให้ตรงเอง):
+          // กลางบัตรอยู่ในกรอบ (เผื่อขอบ 15%) + ขนาด 60–130% ของกรอบ + มือนิ่ง (กลางบัตรขยับไม่เกิน 4% จากรอบก่อน)
+          const mx = rc.x + rc.width / 2, my = rc.y + rc.height / 2;
+          const inFrame = mx > nx - nw * 0.15 && mx < nx + nw * 1.15 && my > ny - nh * 0.15 && my < ny + nh * 1.15;
+          const size = rc.width / nw;
+          const still = !!last && Math.abs(mx - last.x) < 0.04 && Math.abs(my - last.y) < 0.04;
+          last = { x: mx, y: my };
+          if (!inFrame) {
+            stable = 0;
+            setHint('search');
+          } else if (size < 0.6) {
+            stable = 0;
+            setHint('closer');
+          } else if (size > 1.3) {
+            stable = 0;
+            setHint('farther');
+          } else {
+            stable = still ? stable + 1 : 0;
             setHint('hold');
-            if (stable >= 2) {
+            if (stable >= 1) {
               alive = false;
               shoot();
             }
-          } else {
-            stable = 0;
-            setHint('adjust');
           }
         } catch {}
       }
@@ -301,14 +316,14 @@ export default function IdScan() {
         <View style={[styles.guide, { top: fy - 64 }]}>
           <View style={[styles.pill, hint === 'hold' && { backgroundColor: '#34C759' }]}>
             <T v="title" color="#FFFFFF" center>
-              {busy ? 'กำลังถ่าย…' : hint === 'hold' ? 'ถือนิ่งๆ กำลังถ่ายให้อัตโนมัติ' : hint === 'adjust' ? 'ขยับบัตรให้พอดีกรอบ' : 'วางบัตรประชาชนให้พอดีกรอบ'}
+              {busy ? 'กำลังถ่าย…' : hint === 'hold' ? 'ถือนิ่งๆ กำลังถ่ายให้อัตโนมัติ' : hint === 'closer' ? 'ขยับบัตรเข้าใกล้อีกนิด' : hint === 'farther' ? 'ถอยบัตรออกอีกนิด' : 'ถือบัตรประชาชนให้อยู่ในกรอบ'}
             </T>
           </View>
         </View>
         <View style={[styles.guide, { top: fy + fh + 18 }]}>
-          <T v="subhead" color="rgba(255,255,255,0.85)" center>ด้านหน้าบัตร · ขอบบัตรชิดมุมกรอบ (ห่างประมาณ 15–20 ซม.)</T>
+          <T v="subhead" color="rgba(255,255,255,0.85)" center>ด้านหน้าบัตร · ไม่ต้องพอดีกรอบเป๊ะ (ห่างประมาณ 15–20 ซม.)</T>
           <T v="caption" color="rgba(255,255,255,0.85)" center style={{ marginTop: 4 }}>มีแสงสะท้อน: เอียงบัตรเล็กน้อย หรือหันหลังให้ไฟเพดาน · ไม่ต้องเปิดไฟฉาย</T>
-          <T v="caption" color="rgba(255,255,255,0.65)" center style={{ marginTop: 4 }}>{cardDetectAvailable ? 'ถ่ายให้อัตโนมัติเมื่อบัตรพอดีกรอบ · ' : ''}แตะที่ภาพเพื่อโฟกัส · ไม่เก็บเลขบัตรประชาชน</T>
+          <T v="caption" color="rgba(255,255,255,0.65)" center style={{ marginTop: 4 }}>{cardDetectAvailable ? 'ถ่ายให้อัตโนมัติเมื่อเห็นบัตรชัด · ' : 'กดปุ่มถ่ายได้เลย · '}แตะที่ภาพเพื่อโฟกัส · ไม่เก็บเลขบัตรประชาชน</T>
         </View>
 
         <Animated.View style={[styles.ring, { left: ringAt.x - 36, top: ringAt.y - 36 }, ringSt]} />
