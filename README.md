@@ -17,7 +17,7 @@
 
 | บริการ | Endpoint | ใช้ทำ |
 |---|---|---|
-| LLM | `vllm-gemma` / `vllm-qwen` → `/v1/chat/completions` (model `gemma4`, `qwen3.6`) | วิเคราะห์, เรียบเรียง, แชท (สลับโมเดลได้ในแอป) |
+| LLM | `vllm-gemma` → `/v1/chat/completions` (model `gemma4` = Gemma 4 31B, ดูภาพได้) | วิเคราะห์, เรียบเรียง, แชท, สแกนสมุนไพรจากภาพ |
 | ASR | `asr2` → `/v1/audio/transcriptions` (Qwen3‑ASR‑1.7B) | เสียง → ข้อความ (อัด WAV 16kHz mono, m4a ใช้ไม่ได้) |
 | TTS | `vox-cpm` → `/v1/audio/speech` (voxcpm‑thai) | ข้อความ → เสียงพูดไทย |
 | OCR | `pdf-ocr-mcp/api` → `/ocr_image/upload` (Typhoon OCR 1.5) | ภาพตำรา → ข้อความ |
@@ -51,7 +51,7 @@ onboarding        แนะนำ → เลือกประเภทหมอ
  ├ patients       ผู้ป่วย: สรุปสถานะ + ตัวกรอง
  └ vault          คลังภูมิ: สมุดข่อยดิจิทัล
 capture           เล่าด้วยเสียง (อาการผู้ป่วย / ถ่ายทอดภูมิปัญญา)
-assistant         แชทครูปัญญา (พิมพ์/พูด, ฟังคำตอบ, สลับ Qwen/Gemma)
+assistant         แชทครูปัญญา (พิมพ์/พูด, ฟังคำตอบ)
 scan              สแกนตำรา (กล้อง/อัลบั้ม/ตัวอย่าง)
 herb/[id] · patient/[id] · wisdom/[id] · settings
 ```

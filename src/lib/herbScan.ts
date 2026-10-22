@@ -1,11 +1,10 @@
 /**
- * สแกนหาสมุนไพรจากภาพ — ส่งภาพให้ครูปัญญา (Gemma + Qwen ดูภาพได้ทั้งคู่) ทายพร้อมกัน แล้วรวมคะแนน
+ * สแกนหาสมุนไพรจากภาพ — ส่งภาพให้ครูปัญญา (Gemma 4 ดูภาพได้) ทาย แล้วจัดอันดับตามคะแนน
  * คืนผล 3 อันดับ (พืชตระกูลขิง ข่า ไพล ขมิ้น ใบคล้ายกันมาก จึงให้ผู้ใช้กดสลับดูอันดับใกล้เคียงได้)
  * ถ้าตรงกับสมุนไพรในคลัง → ใช้ข้อมูลในคลัง (เชื่อถือได้) · ไม่ตรง → ใช้ข้อมูลที่ครูปัญญาให้ พร้อมคำเตือน
  */
 import { SaveFormat, manipulateAsync } from 'expo-image-manipulator';
-import { ENDPOINTS, MODELS, type ModelKey } from '../api/ai';
-import { guarded } from '../api/guard';
+import { llm } from '../api/ai';
 import { herbs, type Herb } from '../data/herbs';
 
 export type HerbGuess = {
@@ -32,31 +31,13 @@ const PROMPT = () => `คุณเป็นผู้เชี่ยวชาญ�
 ตอบ JSON เท่านั้น:
 {"isPlant":true,"candidates":[{"name":"ชื่อไทย","sci":"ชื่อวิทยาศาสตร์","confidence":0,"clues":"ลักษณะในภาพที่ใช้ตัดสิน"}],"top":{"uses":["สรรพคุณ"],"howto":"วิธีใช้","caution":"ข้อควรระวัง","part":"ส่วนที่ใช้","taste":"รสยา"},"tip":"คำแนะนำการถ่ายภาพให้แม่นขึ้น (ถ้ามี)"}`;
 
-// ผ่านด่านกันเซิร์ฟเวอร์ล่ม (คิวเดียวกับแชท: ไม่เกิน 2 คำขอพร้อมกันต่อโมเดล · เซิร์ฟเวอร์มีปัญหา → พักส่ง)
-const askModel = (model: ModelKey, b64: string) => guarded(model, () => askModelRaw(model, b64));
-async function askModelRaw(model: ModelKey, b64: string): Promise<any> {
-  const ctl = new AbortController();
-  const t = setTimeout(() => ctl.abort(), 45_000);
-  try {
-    const res = await fetch(`${ENDPOINTS[model]}/v1/chat/completions`, {
-      method: 'POST',
-      signal: ctl.signal,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: MODELS[model].id,
-        max_tokens: 700,
-        temperature: 0.1,
-        chat_template_kwargs: { enable_thinking: false },
-        messages: [{ role: 'user', content: [{ type: 'text', text: PROMPT() }, { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${b64}` } }] }],
-      }),
-    });
-    if (!res.ok) throw new Error(`LLM ${res.status}`);
-    const text: string = (await res.json()).choices?.[0]?.message?.content ?? '';
-    const m = text.match(/\{[\s\S]*\}/);
-    return m ? JSON.parse(m[0]) : null;
-  } finally {
-    clearTimeout(t);
-  }
+async function askModel(b64: string): Promise<any> {
+  const text = await llm(
+    [{ role: 'user', content: [{ type: 'text', text: PROMPT() }, { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${b64}` } }] }],
+    { maxTokens: 700, timeoutMs: 45_000, temperature: 0.1 },
+  );
+  const m = text.match(/\{[\s\S]*\}/);
+  return m ? JSON.parse(m[0]) : null;
 }
 
 const norm = (s: string) => s.replace(/\s+/g, '').replace(/^ต้น/, '');
@@ -76,11 +57,11 @@ export async function identifyHerb(uri: string): Promise<ScanResult> {
   // ย่อภาพก่อนส่ง (เร็วขึ้น ประหยัดเน็ต)
   const img = await manipulateAsync(uri, [{ resize: { width: 900 } }], { compress: 0.72, format: SaveFormat.JPEG, base64: true });
   const b64 = img.base64 ?? '';
-  const [g, q] = await Promise.allSettled([askModel('gemma', b64), askModel('qwen', b64)]);
-  const outs = [g, q].filter((r): r is PromiseFulfilledResult<any> => r.status === 'fulfilled' && !!r.value).map((r) => r.value);
-  if (!outs.length) throw new Error('scan failed');
+  const out = await askModel(b64);
+  if (!out) throw new Error('scan failed');
+  const outs = [out];
 
-  // รวมคะแนน: ชื่อเดียวกันจากทั้งสองโมเดล → บวกกัน (สองโมเดลเห็นตรงกัน = มั่นใจขึ้น)
+  // คะแนนต่ออันดับ: ชื่อเดียวกันรวมกัน (ชื่อต่างกันแต่ตรงกับสมุนไพรตัวเดียวในคลัง)
   const score = new Map<string, { name: string; sci: string; clues: string; sum: number; n: number }>();
   outs.forEach((o) =>
     (Array.isArray(o.candidates) ? o.candidates : []).slice(0, 3).forEach((c: any, rank: number) => {

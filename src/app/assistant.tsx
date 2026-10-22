@@ -201,7 +201,7 @@ export default function Assistant() {
         const doctor = { name: dr.name, types: dr.types, topics: topics.filter((t) => t.id !== threadId).map((t) => t.title) };
         const brain = think(queryFor(history), { wisdoms, mode, patient: who ? patientCtx(who) : null, latest: user.content, doctor });
         const messages: ChatMsg[] = [{ role: 'system', content: brain.system }, ...historyFor(history)];
-        // แชท: 2 โมเดลช่วยกันคิดแล้วรวมคำตอบ (แม่นกว่า) · เสียง: โมเดลเดียวตอบเร็ว (คุยลื่นไม่เงียบนาน)
+        // แชท: ให้เวลาคิดนานกว่า · เสียง: คำตอบสั้น ตอบเร็ว (คุยลื่นไม่เงียบนาน)
         const raw = mode === 'voice' ? await chatQuick(messages, 420) : await chat(messages, settings.model, brain.sources.length ? 1100 : 800, { deep: brain.deep });
         const reply = guardReply(tidyReply(raw, mode), brain.flags, brain.conflicts, mode);
         const a: Msg = { id: `a${Date.now()}`, role: 'assistant', content: reply, sources: citedSources(reply, brain), voice: mode === 'voice', ...(mode === 'chat' && isSymptomQ(user.content) ? { consult: user.content } : {}) };
