@@ -3,7 +3,7 @@ import ReanimatedSwipeable, { type SwipeableMethods } from 'react-native-gesture
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Keyboard, KeyboardAvoidingView, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Alert } from '../lib/alert';
 import { TextInput } from '../components/AppText';
@@ -20,6 +20,7 @@ import { askLaunch } from '../lib/askLaunch';
 import { citedSources, herbsMentioned, think, tidyReply, isSymptomQ } from '../lib/brain';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
+import { suggestFor, suggestWhy } from '../lib/suggest';
 import { herbs as HERBS, type Herb } from '../data/herbs';
 import { findPatient, patientCtx } from '../lib/patientRef';
 import { guardReply } from '../lib/safety';
@@ -57,12 +58,6 @@ const planText = (p: TreatmentPlan) =>
     .filter(Boolean)
     .join('\n');
 
-const SUGGEST = [
-  { q: 'ผู้สูงอายุปวดเข่า ใช้สมุนไพรอะไรดี', sym: 'figure.walk' },
-  { q: 'ตั้งตำรับยาแก้ท้องอืดจากขิง ข่า ตะไคร้ ผสมอย่างไร', sym: 'flask' },
-  { q: 'ฟ้าทะลายโจร ห้ามใช้กับใคร', sym: 'exclamationmark.shield' },
-  { q: 'ยาสมุนไพรกินคู่กับยาความดันได้ไหม', sym: 'pills' },
-] as const;
 
 type Msg = StoredMsg;
 
@@ -146,6 +141,9 @@ export default function Assistant() {
   // จอกว้าง: แถบพิมพ์กว้างเท่าคอลัมน์อ่าน อยู่กึ่งกลาง
   const dockSide = useLayout().side(COLUMN.read - 48, 24);
   const { settings, wisdoms, patients, update } = useApp();
+  const suggests = useMemo(() => suggestFor(settings.userKind, settings.me), [settings.userKind, settings.me]);
+  const why = suggestWhy(settings.userKind, settings.me);
+  const hasMine = !!(settings.me && (settings.me.birth || settings.me.age || settings.me.element || settings.me.weight));
   const dr = useDoctor();
   // ความจำข้ามแชท: หัวข้อที่คุณหมอเคยถามในห้องแชทอื่นล่าสุด (เก็บในเครื่อง)
   const [topics, setTopics] = useState<{ id: string; title: string }[]>([]);
@@ -540,9 +538,13 @@ export default function Assistant() {
                 <T v="caption" color="rgba(255,255,255,0.55)">10 ข้อ พร้อมเฉลย</T>
               </PressableScale>
             </View>
-            <T v="subhead" color="rgba(255,255,255,0.5)" style={{ marginTop: 26, marginBottom: 10, marginLeft: 4 }}>คำถามแนะนำ</T>
+            {/* คำถามแนะนำปรับตามตัวผู้ใช้: คนทั่วไป = ธาตุ วัย น้ำหนัก เพศ ฤดู · หมอ = โรคตามฤดู งานดูแลผู้ป่วย */}
+            <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8, marginTop: 26, marginBottom: 10, marginLeft: 4 }}>
+              <T v="subhead" color="rgba(255,255,255,0.5)">คำถามแนะนำ</T>
+              {why ? <T v="caption" color={MINT} style={{ flexShrink: 1 }} numberOfLines={1}>{why}</T> : null}
+            </View>
             <View style={{ gap: 10 }}>
-              {SUGGEST.map((s) => (
+              {suggests.map((s) => (
                 <PressableScale key={s.q} haptic="select" scaleTo={0.98} onPress={() => send(s.q)} style={styles.suggest} accessibilityLabel={s.q}>
                   <View style={styles.suggestIcon}>
                     <Sym name={s.sym} size={17} color={MINT} />
@@ -551,6 +553,19 @@ export default function Assistant() {
                   <Sym name="arrow.up.right" size={13} color="rgba(255,255,255,0.4)" weight="semibold" />
                 </PressableScale>
               ))}
+              {/* คนทั่วไปที่ยังไม่มีข้อมูลสุขภาพ → ชวนกรอก ให้คำแนะนำตรงตัวขึ้น */}
+              {settings.userKind === 'public' && !hasMine ? (
+                <PressableScale haptic="select" scaleTo={0.98} onPress={() => router.push('/account/health')} style={[styles.suggest, styles.suggestAdd]} accessibilityLabel="เพิ่มข้อมูลสุขภาพ ให้คำถามแนะนำตรงกับคุณ">
+                  <View style={styles.suggestIcon}>
+                    <Sym name="person.badge.plus" size={17} color={MINT} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <T v="bodyStrong" color="#FFFFFF">เพิ่มข้อมูลสุขภาพของคุณ</T>
+                    <T v="caption" color="rgba(255,255,255,0.55)">วันเกิด เพศ น้ำหนัก ส่วนสูง ครูปัญญาจะแนะนำตรงตัวคุณขึ้น</T>
+                  </View>
+                  <Sym name="chevron.right" size={13} color="rgba(255,255,255,0.4)" weight="semibold" />
+                </PressableScale>
+              ) : null}
             </View>
           </Animated.View>
         )}
@@ -1091,6 +1106,7 @@ const styles = StyleSheet.create({
   bubble: { maxWidth: '82%', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 20, borderCurve: 'continuous', gap: 4 },
   user: { backgroundColor: palette.primary, borderBottomRightRadius: 6 },
   ai: { backgroundColor: 'rgba(255,255,255,0.1)', borderBottomLeftRadius: 6 },
+  suggestAdd: { borderStyle: 'dashed', borderColor: 'rgba(124,240,168,0.45)', backgroundColor: 'rgba(124,240,168,0.06)' },
   suggest: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 60, paddingHorizontal: 14, paddingVertical: 12, borderRadius: 20, borderCurve: 'continuous', backgroundColor: 'rgba(255,255,255,0.07)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.14)' },
   suggestIcon: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(124,240,168,0.14)', alignItems: 'center', justifyContent: 'center' },
   herbStrip: { marginTop: 10, alignSelf: 'stretch', overflow: 'visible' },

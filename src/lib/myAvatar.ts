@@ -7,7 +7,8 @@ import { Directory, File, Paths } from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
 import { Linking } from 'react-native';
 import { Alert } from './alert';
-import { avatars } from '../data/mock';
+import { avatarFor, avatars } from '../data/mock';
+import { myAge } from './me';
 import { kindOf } from './roles';
 import { useApp } from '../store/app';
 
@@ -30,7 +31,11 @@ export function useMyAvatar(): number | { uri: string } {
   const { settings } = useApp();
   if (settings.avatarUri) return { uri: settings.avatarUri };
   if (settings.avatarPreset && AVATAR_PRESETS[settings.avatarPreset]) return AVATAR_PRESETS[settings.avatarPreset];
-  return kindOf(settings.userKind) === 'public' ? AVATAR_PRESETS[PUBLIC_DEFAULT] : avatars.doctor;
+  if (kindOf(settings.userKind) !== 'public') return avatars.doctor;
+  // คนทั่วไป: ตัวการ์ตูนตามเพศและช่วงวัยในข้อมูลสุขภาพ (ยังไม่ระบุเพศ → ภาพเริ่มต้น)
+  const me = settings.me;
+  if (me?.sex) return avatarFor({ id: '', sex: me.sex, age: myAge(me) ?? 40 });
+  return AVATAR_PRESETS[PUBLIC_DEFAULT];
 }
 
 async function pick(from: 'camera' | 'library'): Promise<string | null> {

@@ -61,7 +61,10 @@ export default function MyHealthSheet() {
   const bmi = myBmi(next);
 
   const save = () => {
-    update({ me: next });
+    // ตัวการ์ตูนที่เลือกไว้คนละเพศ → กลับไปใช้ภาพตามเพศ/วัย (ภาพถ่ายของจริงไม่แตะ)
+    const p = settings.avatarPreset;
+    const mismatch = !!p && !!sex && ((sex === 'หญิง' && p.endsWith('_m')) || (sex === 'ชาย' && p.endsWith('_f')));
+    update({ me: next, ...(mismatch ? { avatarPreset: undefined } : {}) });
     h.success();
     router.back();
   };
