@@ -1,6 +1,6 @@
 /**
  * สถานะเซิร์ฟเวอร์ AI (ครูปัญญา) — เช็คก่อนใช้ เพื่อบอกผู้ใช้ทันทีว่าใช้ไม่ได้ชั่วคราว แทนการรอแล้วค่อยขึ้น error
- * ใช้ได้ = อย่างน้อยหนึ่งโมเดล (Gemma / Qwen) ตอบ · เก็บผลไว้ 45 วินาที
+ * ใช้ได้ = เซิร์ฟเวอร์ LLM (vllm-gemma) ตอบ · เก็บผลไว้ 45 วินาที
  */
 import { useEffect, useState } from 'react';
 import { AppState } from 'react-native';
@@ -26,9 +26,8 @@ const ping = async (base: string) => {
 export function checkAi(force = false): Promise<boolean> {
   if (!force && cache && Date.now() - cache.at < 45_000) return Promise.resolve(cache.ok);
   if (inflight) return inflight;
-  inflight = Promise.all([ping(ENDPOINTS.gemma), ping(ENDPOINTS.qwen)])
-    .then(([g, q]) => {
-      const ok = g || q;
+  inflight = ping(ENDPOINTS.llm)
+    .then((ok) => {
       cache = { ok, at: Date.now() };
       subs.forEach((f) => f(ok));
       return ok;
