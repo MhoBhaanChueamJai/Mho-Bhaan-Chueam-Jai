@@ -17,7 +17,7 @@ import { Sym } from './ios';
 import { Avatar, PressableScale, T } from './ui';
 import type { Patient } from '../data/mock';
 import { statusLabel } from '../data/tones';
-import { ageLabel, knownAge } from '../lib/birth';
+import { knownAge } from '../lib/birth';
 import { ELEMENT_PROFILE, ageSamutthan, seasonNow } from '../lib/elements';
 import { elementColor } from '../theme';
 
@@ -216,7 +216,8 @@ export function PatientCard({ p, avatar, onCall }: { p: Patient; avatar: number;
               <View style={styles.stats}>
                 <View style={styles.stat}>
                   <T v="micro" color="rgba(255,255,255,0.55)">เพศ · อายุ</T>
-                  <T v="title" color="#FFFFFF">{p.sex} {ageLabel(p)}</T>
+                  {/* ช่องแคบ: ไม่ทราบอายุแสดง "-" แบบเดียวกับ BMI */}
+                  <T v="title" color="#FFFFFF">{p.sex} {ageKnown == null ? '-' : `${ageKnown} ปี`}</T>
                 </View>
                 <View style={styles.statSep} />
                 <View style={styles.stat}>
