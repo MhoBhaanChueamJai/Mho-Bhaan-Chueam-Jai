@@ -18,6 +18,7 @@ import { consentHtml, consentPoints, outputPdf } from '../../lib/printDocs';
 import { thDate } from '../../lib/referral';
 import { useApp } from '../../store/app';
 import { elevation, palette } from '../../theme';
+import { column } from '../../components/layout';
 
 const WHO = ['ผู้ป่วย', 'ญาติ/ผู้ดูแล'] as const;
 
@@ -51,7 +52,7 @@ export default function Consent() {
   return (
     <>
       <Stack.Screen options={{ title: 'ใบยินยอมเก็บข้อมูล' }} />
-      <ScrollView scrollEnabled={!signing} contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={styles.page} keyboardDismissMode="interactive">
+      <ScrollView scrollEnabled={!signing} contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={[styles.page, column.read]} keyboardDismissMode="interactive">
         <T v="subhead" color={ios.secondary} style={{ marginHorizontal: 4 }}>
           อ่านให้{p.name}ฟัง แล้วให้ลงชื่อบนจอ ตามพระราชบัญญัติคุ้มครองข้อมูลส่วนบุคคล (PDPA)
         </T>

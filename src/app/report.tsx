@@ -20,6 +20,7 @@ import { buildReport, reportHtml, type Span } from '../lib/monthReport';
 import { outputPdf } from '../lib/printDocs';
 import { useApp } from '../store/app';
 import { elevation, palette } from '../theme';
+import { column, useLayout } from '../components/layout';
 
 const SPANS: { key: '1' | '3' | '12'; label: string }[] = [
   { key: '1', label: 'เดือน' },
@@ -49,9 +50,9 @@ function Kpi({ label, value, unit, delta, color, icon, pct }: { label: string; v
   );
 }
 
-function Card({ title, icon, color = palette.primary, children, i }: { title: string; icon: string; color?: string; children: React.ReactNode; i: number }) {
+function Card({ title, icon, color = palette.primary, children, i, w }: { title: string; icon: string; color?: string; children: React.ReactNode; i: number; w?: number }) {
   return (
-    <Animated.View entering={FadeInDown.delay(80 + i * 50).duration(360)} style={[styles.card, elevation.e1]}>
+    <Animated.View entering={FadeInDown.delay(80 + i * 50).duration(360)} style={[styles.card, elevation.e1, w ? { width: w } : null]}>
       <View style={styles.head}>
         <Sym name={icon as any} size={15} color={color} />
         <T v="bodyStrong">{title}</T>
@@ -119,6 +120,9 @@ function HBars({ items, color }: { items: { name: string; n: number }[]; color: 
 
 export default function Report() {
   const { patients } = useApp();
+  const { wide, gridW } = useLayout();
+  // จอกว้าง: การ์ดกราฟกว้างครึ่งคอลัมน์ (ขอบ 16 · ช่องไฟ 12)
+  const cardW = wide ? Math.floor((gridW - 32 - 12) / 2) : undefined;
   const dr = useDoctor();
   const now = new Date();
   const [span, setSpan] = useState<Span>(1);
@@ -142,7 +146,7 @@ export default function Report() {
               themeVariant="light"
               title={`รายงาน ${r.label}`}
               actions={[
-                { id: 'pdf', title: 'ส่งออก PDF', image: 'square.and.arrow.up', imageColor: palette.ink },
+                { id: 'pdf', title: 'ส่งออกเป็นเอกสาร', image: 'square.and.arrow.up', imageColor: palette.ink },
                 { id: 'print', title: 'พิมพ์', image: 'printer.fill', imageColor: palette.ink },
               ]}
               onPressAction={({ nativeEvent }) => (nativeEvent.event === 'print' ? Print.printAsync({ html: reportHtml(r, dr) }).catch(() => {}) : pdf())}
@@ -154,7 +158,7 @@ export default function Report() {
           ),
         }}
       />
-      <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={styles.page}>
+      <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={[styles.page, column.grid]}>
         {/* แท็บแบบ iOS (UISegmentedControl · Android/เว็บวาดให้เหมือน) */}
         <SegmentedControl
           values={SPANS.map((x) => x.label)}
@@ -176,20 +180,26 @@ export default function Report() {
         </View>
 
         <Animated.View key={`${r.label}`} entering={FadeIn.duration(240)} style={{ gap: 12 }}>
-          <View style={styles.grid}>
+          {/* KPI: มือถือ 2×2 · จอกว้างแถวเดียว 4 ช่อง */}
+          <View style={wide ? styles.grid : { gap: 12 }}>
+          <View style={[styles.grid, wide && { flex: 1 }]}>
             <Kpi label="ครั้งที่รักษา" icon="stethoscope" color={palette.primary} value={String(r.visits)} unit="ครั้ง" delta={r.delta.visits} />
             <Kpi label="ผู้ป่วย" icon="person.2.fill" color="#2F7BE0" value={String(r.patients)} unit="ราย" delta={r.delta.patients} />
           </View>
-          <View style={styles.grid}>
+          <View style={[styles.grid, wide && { flex: 1 }]}>
             <Kpi label="ผู้ป่วยใหม่" icon="person.badge.plus" color="#7A4FD0" value={String(r.newPatients)} unit="ราย" delta={r.delta.newPatients} />
             <Kpi label="หาย/ดีขึ้น" icon="heart.fill" color="#E0861A" value={r.better != null ? String(r.better) : '–'} unit={r.better != null ? '%' : undefined} delta={r.delta.better} pct />
           </View>
+          </View>
 
-          <Card i={0} title={`จำนวนครั้งที่รักษา${span === 1 ? 'รายสัปดาห์' : 'รายเดือน'}`} icon="chart.bar.fill">
+          {/* กราฟ: มือถือเรียงลงมา · จอกว้าง 2 คอลัมน์ */}
+          <View style={wide ? styles.cards : { gap: 12 }}>
+
+          <Card i={0} title={`จำนวนครั้งที่รักษา${span === 1 ? 'รายสัปดาห์' : 'รายเดือน'}`} icon="chart.bar.fill" w={cardW}>
             <Bars bars={r.bars} />
           </Card>
 
-          <Card i={1} title="ผลการรักษา" icon="checkmark.circle.fill">
+          <Card i={1} title="ผลการรักษา" icon="checkmark.circle.fill" w={cardW}>
             {totalOut ? (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
                 <View>
@@ -215,7 +225,7 @@ export default function Report() {
             )}
           </Card>
 
-          <Card i={2} title="เพศและช่วงอายุ" icon="person.2.fill" color="#2F7BE0">
+          <Card i={2} title="เพศและช่วงอายุ" icon="person.2.fill" color="#2F7BE0" w={cardW}>
             <View style={styles.split}>
               <View style={{ flex: r.male || 0.001, backgroundColor: '#2F7BE0' }} />
               <View style={{ flex: r.female || 0.001, backgroundColor: '#E46A9A' }} />
@@ -234,13 +244,14 @@ export default function Report() {
             </View>
           </Card>
 
-          <Card i={3} title="โรค/อาการที่พบบ่อย" icon="stethoscope">
+          <Card i={3} title="โรค/อาการที่พบบ่อย" icon="stethoscope" w={cardW}>
             <HBars items={r.diagnoses} color={palette.primary} />
           </Card>
-          <Card i={4} title="สมุนไพรที่ใช้บ่อย" icon="leaf.fill" color="#3E8E2E">
+          <Card i={4} title="สมุนไพรที่ใช้บ่อย" icon="leaf.fill" color="#3E8E2E" w={cardW}>
             <HBars items={r.herbs} color="#6FBF4A" />
           </Card>
-          <T v="caption" color={ios.tertiary} style={{ marginHorizontal: 4 }}>นับจากบันทึกการรักษาตามแบบ ม.บ.5 · ผลการรักษาจัดกลุ่มจากคำที่หมอพิมพ์ · ส่งออก PDF หรือพิมพ์ได้จากปุ่มมุมขวาบน (มีรายการรักษาทุกครั้งและช่องลงชื่อ)</T>
+          </View>
+          <T v="caption" color={ios.tertiary} style={{ marginHorizontal: 4 }}>นับจากบันทึกการรักษาตามแบบ ม.บ.5 · ผลการรักษาจัดกลุ่มจากคำที่หมอพิมพ์ · ส่งออกเป็นเอกสารหรือพิมพ์ได้จากปุ่มมุมขวาบน (มีรายการรักษาทุกครั้งและช่องลงชื่อ)</T>
         </Animated.View>
       </ScrollView>
     </>
@@ -252,6 +263,7 @@ const styles = StyleSheet.create({
   period: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   arrow: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: palette.surface },
   grid: { flexDirection: 'row', gap: 12 },
+  cards: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, alignItems: 'flex-start' },
   kpi: { flex: 1, padding: 14, borderRadius: 20, backgroundColor: palette.surface, gap: 2 },
   kpiHead: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   card: { padding: 16, borderRadius: 22, backgroundColor: palette.surface },

@@ -10,6 +10,7 @@ import { Platform, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { COLUMN } from '../layout';
 import { T } from '../ui';
 import { palette } from '../../theme';
 
@@ -20,7 +21,9 @@ export const sheetTop = (insetTop: number) => (Platform.OS === 'web' ? Math.max(
 export function SheetFrame({ children, title, bg = palette.bg }: { children: React.ReactNode; title?: string; bg?: string }) {
   const nav = useNavigation();
   const insets = useSafeAreaInsets();
-  const { height: SH } = useWindowDimensions();
+  const { width: SW, height: SH } = useWindowDimensions();
+  // จอกว้าง: ชีทกว้างเท่าคอลัมน์อ่าน อยู่กึ่งกลาง (แบบ formSheet ของ iPad)
+  const side = Math.max(0, (SW - COLUMN.read) / 2);
   const y = useSharedValue(SH);
   const closing = useRef(false);
 
@@ -53,7 +56,7 @@ export function SheetFrame({ children, title, bg = palette.bg }: { children: Rea
   return (
     <View style={StyleSheet.absoluteFill}>
       <Animated.View style={[StyleSheet.absoluteFill, styles.dim, dimSt]} />
-      <Animated.View style={[styles.sheet, { top: sheetTop(insets.top), backgroundColor: bg }, sheetSt]}>
+      <Animated.View style={[styles.sheet, { top: sheetTop(insets.top), left: side, right: side, backgroundColor: bg }, sheetSt]}>
         <GestureDetector gesture={pan}>
           <View style={title ? styles.grab : styles.grabThin}>
             {title ? (

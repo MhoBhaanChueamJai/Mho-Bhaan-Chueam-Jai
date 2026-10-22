@@ -66,7 +66,6 @@ function Root() {
         <Stack.Screen name="patient/voice" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
         <Stack.Screen name="patient/visit" options={{ presentation: 'fullScreenModal', animation: 'fade' }} />
         <Stack.Screen name="assistant" />
-        <Stack.Screen name="verify" options={sheet({ presentation: 'modal', headerShown: true, title: 'ยืนยันตัวตน', headerShadowVisible: false, headerStyle: { backgroundColor: '#FFFFFF' } })} />
         <Stack.Screen name="privacy" options={sheet({ presentation: 'modal', headerShown: true, title: 'นโยบายความเป็นส่วนตัว', headerShadowVisible: false, headerStyle: { backgroundColor: '#FFFFFF' } })} />
         <Stack.Screen name="pin-setup" options={{ animation: 'fade', gestureEnabled: false }} />
         <Stack.Screen name="patient/search" options={{ animation: 'fade', animationDuration: 120, gestureEnabled: false }} />
@@ -91,6 +90,10 @@ function Root() {
         <Stack.Screen name="reset-password" options={{ animation: 'fade', gestureEnabled: false }} />
         <Stack.Screen name="feedback" options={{ headerShown: true, headerBackButtonDisplayMode: 'minimal', headerTintColor: palette.ink, headerShadowVisible: false, headerStyle: { backgroundColor: palette.bg } }} />
         <Stack.Screen name="help" options={{ headerShown: true, headerBackButtonDisplayMode: 'minimal', headerTintColor: palette.ink, headerShadowVisible: false, headerStyle: { backgroundColor: palette.bg } }} />
+        <Stack.Screen name="knowledge" options={{ headerShown: true, headerBackButtonDisplayMode: 'minimal', headerTintColor: palette.ink, headerShadowVisible: false, headerStyle: { backgroundColor: palette.bg } }} />
+        {/* แหล่งอ้างอิง: แผ่นเต็มจอแบบเดียวกับแก้ไขข้อมูลบัญชี (ปัดลงหรือ ✕ เพื่อปิด) */}
+        <Stack.Screen name="source" options={sheet({ presentation: 'formSheet', sheetAllowedDetents: [1.0], sheetGrabberVisible: false, contentStyle: { backgroundColor: palette.bg } })} />
+        <Stack.Screen name="role" options={{ headerShown: true, title: 'บทบาทของคุณ', headerBackButtonDisplayMode: 'minimal', headerTintColor: palette.ink, headerShadowVisible: false, headerStyle: { backgroundColor: palette.bg } }} />
         <Stack.Screen name="about" options={{ headerShown: true, headerBackButtonDisplayMode: 'minimal', headerTintColor: palette.ink, headerShadowVisible: false, headerStyle: { backgroundColor: palette.bg } }} />
         <Stack.Screen name="profile" options={{ headerShown: true, title: 'ข้อมูลส่วนตัว', headerBackButtonDisplayMode: 'minimal', headerTintColor: palette.ink, headerShadowVisible: false, headerStyle: { backgroundColor: palette.bg } }} />
         <Stack.Screen name="notifications" options={{ headerShown: true, title: 'แจ้งเตือน', headerBackButtonDisplayMode: 'minimal', headerTintColor: palette.ink, headerShadowVisible: false, headerStyle: { backgroundColor: palette.bg } }} />

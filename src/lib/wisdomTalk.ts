@@ -12,6 +12,7 @@ import { KIND_FORM } from './wisdomKinds';
 import type { Wisdom, WisdomAudio } from '../data/mock';
 import type { Organized } from './wisdomOrganize';
 import type { Turn } from './intake';
+import { roleBrief, userNoun } from './roles';
 
 type Kind = Wisdom['kind'];
 export type WisdomData = {
@@ -135,7 +136,7 @@ export async function wisdomTurn(kind: Kind, known: WisdomData, history: Turn[],
     const r = await chatJSON<{ fields?: Record<string, unknown>; reply?: string; done?: boolean; options?: string[] }>([
       {
         role: 'user',
-        content: `คุณคือ "ครูปัญญา" ผู้ช่วยหมอพื้นบ้าน ผู้ชายวัย 45 อบอุ่น ให้เกียรติภูมิปัญญาของหมอ พูดภาษาพูดเป็นธรรมชาติ ลงท้าย "ครับ"
+        content: `คุณคือ "ครูปัญญา" ผู้ช่วยบันทึกภูมิปัญญาแพทย์แผนไทย (${roleBrief()}) ผู้ชายวัย 45 อบอุ่น ให้เกียรติภูมิปัญญาของหมอ พูดภาษาพูดเป็นธรรมชาติ ลงท้าย "ครับ"
 กำลังช่วยหมอบันทึกภูมิปัญญาประเภท "${kind}" ด้วยเสียง เพื่อเก็บไว้สืบทอด
 ข้อมูลที่รู้แล้ว: ${JSON.stringify(known)}
 บทสนทนาล่าสุด:
@@ -180,7 +181,7 @@ export async function wisdomScribe(kind: Kind, transcript: string): Promise<Wisd
   const r = await chatJSON<Record<string, unknown>>([
     {
       role: 'user',
-      content: `หมอพื้นบ้านเล่าภูมิปัญญาประเภท "${kind}" (ถอดจากเสียงอัตโนมัติ อาจสะกดเพี้ยน):
+      content: `${userNoun()}เล่าภูมิปัญญาประเภท "${kind}" (ถอดจากเสียงอัตโนมัติ อาจสะกดเพี้ยน):
 ${transcript}
 ${dialectHint()}
 

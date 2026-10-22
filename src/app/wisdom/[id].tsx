@@ -29,6 +29,8 @@ import { herbs } from '../../data/herbs';
 import { doctor, type Wisdom } from '../../data/mock';
 import { useApp } from '../../store/app';
 import { elevation, palette } from '../../theme';
+import { column } from '../../components/layout';
+import { wisdomPdf } from '../../lib/knowledgePdf';
 
 /** ไล่จางลงสีพื้นหน้าแบบโค้งนุ่ม (smoothstep หลายจุด → ไม่เห็นรอยต่อ) */
 const FADE_EXTRA = 150;
@@ -237,12 +239,14 @@ export function WisdomView({ w, preview }: { w: Wisdom; preview?: WisdomPreview 
   // เมนู native ของ iOS (compact) — ต้องใส่ imageColor เอง ไม่งั้นไลบรารีส่งสีโปร่งใส ทำให้ไอคอนหาย
   const menu = [
     { id: 'share', title: 'แชร์ให้เพื่อน', image: 'qrcode', imageColor: palette.ink },
+    { id: 'pdf', title: 'ดาวน์โหลดเป็นเอกสาร', image: 'arrow.down.doc', imageColor: palette.ink },
     // ตำราเริ่มต้นในระบบ: อ่าน/แชร์ได้อย่างเดียว
     ...(isShared || w.builtin ? [] : [{ id: 'edit', title: 'แก้ไข', image: 'pencil', imageColor: palette.ink }]),
     ...(w.builtin ? [] : [{ id: 'delete', title: isShared ? 'ลบออกจากคลังของฉัน' : 'ลบ', image: 'trash', imageColor: '#E5484D', attributes: { destructive: true } }]),
   ];
   const onMenu = (id: string) => {
     if (id === 'share') share();
+    else if (id === 'pdf') wisdomPdf(w, w.builtin ? undefined : w.sharedBy ?? myName).catch(() => {});
     else if (id === 'edit') router.push({ pathname: '/wisdom/new', params: { id: w.id } });
     else if (id === 'delete') confirmDelete();
   };
@@ -545,7 +549,8 @@ const styles = StyleSheet.create({
   head: { alignItems: 'center', paddingHorizontal: 24 },
   kindPill: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999, backgroundColor: palette.primarySoft },
   meta: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6, flexWrap: 'wrap', justifyContent: 'center' },
-  body: { paddingHorizontal: 16, marginTop: 22, gap: 14 },
+  // จอกว้าง: ภาพหัวเต็มจอ · การ์ดเนื้อหาอยู่ในคอลัมน์อ่านกลางจอ
+  body: { ...column.read, paddingHorizontal: 16, marginTop: 22, gap: 14 },
   card: { backgroundColor: palette.surface, borderRadius: 22, borderCurve: 'continuous', padding: 18 },
   cardHead: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
   para: { lineHeight: 26 },

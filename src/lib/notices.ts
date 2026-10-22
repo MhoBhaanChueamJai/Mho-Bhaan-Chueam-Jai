@@ -65,10 +65,10 @@ const KIND: Record<Announcement['kind'], { icon: string; colors: readonly [strin
   content: { icon: 'sparkles', colors: ['#FFC25A', '#E0861A'], cat: 'เนื้อหาใหม่', go: '/home' },
 };
 
-export function noticesFrom(patients: Patient[], wisdoms: Wisdom[], isPractitioner: boolean, ann: Announcement[] = [], stock: StockItem[] = []): Notice[] {
+export function noticesFrom(patients: Patient[], wisdoms: Wisdom[], hasRole: boolean, ann: Announcement[] = [], stock: StockItem[] = []): Notice[] {
   const out: Notice[] = [];
-  if (!isPractitioner)
-    out.push({ id: 'verify', group: 'account', icon: 'person.badge.shield.checkmark.fill', colors: ['#FFC25A', '#E0861A'], cat: 'บัญชี', title: 'ยืนยันตัวตนหมอพื้นบ้าน', body: 'ยืนยันด้วยเลขที่หนังสือรับรอง เพื่อใช้งานการรักษาผู้ป่วย', at: Infinity, go: '/verify' });
+  if (!hasRole)
+    out.push({ id: 'role', group: 'account', icon: 'person.crop.circle.badge.questionmark', colors: ['#B48BF5', '#7A4FD0'], cat: 'บัญชี', title: 'เลือกบทบาทของคุณ', body: 'แพทย์แผนไทย · แพทย์แผนปัจจุบัน · ประชาชนทั่วไป · หมอพื้นบ้าน — ครูปัญญาจะแนะนำได้เหมาะกับคุณ', at: Infinity, go: '/role' });
   const care: Notice[] = [];
   patients.forEach((p) => {
     const v = lastVisit(p);

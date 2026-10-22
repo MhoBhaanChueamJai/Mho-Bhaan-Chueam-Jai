@@ -11,6 +11,7 @@ import { Sym, ios } from '../components/ios';
 import { Button, T, useHaptic } from '../components/ui';
 import { supabase } from '../lib/supabase';
 import { elevation, palette } from '../theme';
+import { column } from '../components/layout';
 
 /** หน้าตั้งรหัสผ่านใหม่บนเว็บ (ต้องอยู่ใน Redirect URLs ของ Supabase) */
 export const RESET_URL = 'https://mhobhaanchueamjai.github.io/Mho-Bhaan-Chueam-Jai/reset-password';
@@ -43,7 +44,7 @@ export default function Forgot() {
     <>
       <Stack.Screen options={{ title: 'ลืมรหัสผ่าน' }} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: palette.bg }}>
-        <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled">
+        <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={[styles.page, column.read]} keyboardShouldPersistTaps="handled">
           <View style={styles.badge}>
             <Sym name={sent ? 'envelope.fill' : 'key.fill'} size={30} color={palette.primary} />
           </View>

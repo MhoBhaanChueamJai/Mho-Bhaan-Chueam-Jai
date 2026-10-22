@@ -1,5 +1,5 @@
 /**
- * แก้ไขข้อมูลส่วนตัว — ชื่อ นามสกุล (อีเมลแสดงอย่างเดียว · ข้อมูลการรับรองหมอพื้นบ้านแก้ไม่ได้)
+ * แก้ไขข้อมูลส่วนตัว — ชื่อ นามสกุล (อีเมลแสดงอย่างเดียว)
  */
 import { router } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
@@ -78,9 +78,6 @@ export default function EditAccount() {
         <Field label="นามสกุล" value={last} onChange={(v) => ((touched.current = true), setLast(v))} editable={!demo} />
         <Field label="อีเมล" value={profile?.email ?? '-'} editable={false} />
       </View>
-      <T v="caption" color={ios.secondary} style={{ marginHorizontal: 6 }}>
-        ข้อมูลการรับรองหมอพื้นบ้าน (ประเภท เลขที่หนังสือรับรอง) มาจากทะเบียนของกรมการแพทย์แผนไทยฯ แก้ไขในแอปไม่ได้
-      </T>
     </FormSheet>
   );
 }

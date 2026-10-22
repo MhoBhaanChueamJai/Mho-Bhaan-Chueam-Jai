@@ -67,7 +67,7 @@ export async function aiSuggestions(patients: Patient[], searchLog: SearchLog, o
   const r = await chatJSON<{ suggestions: Suggestion[] }>([
     {
       role: 'system',
-      content: 'คุณคือผู้ช่วยในแอปหมอพื้นบ้าน วิเคราะห์พฤติกรรมการใช้งานแล้วเดาว่าหมอกำลังจะค้นหาผู้ป่วยหรืออาการอะไรต่อ ตอบเป็น JSON เท่านั้น',
+      content: 'คุณคือผู้ช่วยในแอปสุขภาพแผนไทย วิเคราะห์พฤติกรรมการใช้งานแล้วเดาว่าผู้ใช้กำลังจะค้นหาผู้ป่วยหรืออาการอะไรต่อ ตอบเป็น JSON เท่านั้น',
     },
     {
       role: 'user',

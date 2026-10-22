@@ -106,9 +106,10 @@ export default function Login() {
     h.success();
     update({ loggedIn: true, username: name, ...(loginId ? { loginId } : {}) });
     setUnlocked(true);
-    // ยังไม่ได้ตั้ง PIN → ชวนตั้ง PIN / Face ID ไว้ใช้ครั้งถัดไป
-    if (!settings.pinEnabled && !settings.faceIdEnabled) router.replace({ pathname: '/pin-setup', params: { mode: 'onboard' } });
-    else router.replace('/home');
+    // ประเภทผู้ใช้ก่อน → ยังไม่ได้ตั้ง PIN ชวนตั้ง PIN / Face ID → หน้าหลัก
+    const next = !settings.pinEnabled && !settings.faceIdEnabled ? 'pin' : 'home';
+    // ถามประเภทผู้ใช้ / บทบาทครั้งเดียว (เคยเลือกแล้วหน้านั้นข้ามไปเอง)
+    router.replace({ pathname: '/role', params: { mode: 'onboard', next } });
   };
 
 
@@ -331,7 +332,7 @@ export default function Login() {
           </View>
         ) : (
           <T v="caption" color={ios.tertiary} center style={styles.note}>
-            สมาชิกใช้งานได้ทุกส่วน ยกเว้นการรักษาผู้ป่วย ซึ่งต้องยืนยันตัวตนหมอพื้นบ้านก่อน
+            ใช้งานได้ทุกส่วนทันที สำหรับแพทย์แผนไทย แพทย์แผนปัจจุบัน หมอพื้นบ้าน และประชาชนทั่วไป
           </T>
         )}
 
@@ -382,12 +383,12 @@ export default function Login() {
             showsVerticalScrollIndicator={false}
             bounces={false}
           >
-            {body}
+            <View style={styles.form}>{body}</View>
           </ScrollView>
         ) : (
           // แตะพื้นที่ว่างบนแผ่น → ปิดคีย์บอร์ด
           <Pressable onPress={Keyboard.dismiss} accessible={false}>
-            {body}
+            <View style={styles.form}>{body}</View>
           </Pressable>
         )}
       </Animated.View>
@@ -397,6 +398,8 @@ export default function Login() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#F1F8F4', overflow: 'hidden' },
+  // จอกว้าง (iPad / เว็บ): แผ่นขาวเต็มกว้าง · ช่องกรอกกว้างไม่เกิน 480 อยู่กึ่งกลาง
+  form: { flexGrow: 1, width: '100%', maxWidth: 480, alignSelf: 'center' },
   sheet: { position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: '#FFFFFF', borderTopLeftRadius: 32, borderTopRightRadius: 32, borderCurve: 'continuous', paddingHorizontal: 24, paddingTop: 28 },
   group: { marginTop: 20, gap: 12 },
   field: { flexDirection: 'row', alignItems: 'center', gap: 10, height: 54, borderRadius: 27, paddingLeft: 18, paddingRight: 6, backgroundColor: palette.mint, borderWidth: 1.5, borderColor: 'transparent' },

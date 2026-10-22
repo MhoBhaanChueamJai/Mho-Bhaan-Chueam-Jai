@@ -4,6 +4,7 @@ import React from 'react';
 import { useTabMemory } from '../../components/nav/useTabMemory';
 import { useApp } from '../../store/app';
 import { palette } from '../../theme';
+import { showPatients } from '../../lib/roles';
 
 /**
  * แท็บบาร์ native ของ iOS 26 (Liquid Glass ของ Apple)
@@ -22,7 +23,8 @@ export default function TabsLayout() {
         <Icon src={{ default: require('../../../assets/tabs/house-chimney-off.png'), selected: require('../../../assets/tabs/house-chimney-on.png') }} />
         <Label>หน้าหลัก</Label>
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="patients">
+      {/* ประชาชนทั่วไปไม่มีเมนูผู้ป่วย (หมอ/บุคลากรสุขภาพเท่านั้น) */}
+      <NativeTabs.Trigger name="patients" hidden={!showPatients(settings.userKind)}>
         <Icon src={{ default: require('../../../assets/tabs/users-off.png'), selected: require('../../../assets/tabs/users-on.png') }} />
         <Label>ผู้ป่วย</Label>
       </NativeTabs.Trigger>

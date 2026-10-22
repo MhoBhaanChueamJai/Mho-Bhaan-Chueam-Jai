@@ -12,6 +12,7 @@ import { Button, GlassDock, PressableScale, T, useHaptic } from '../../component
 import { cleanCode, fetchShare, prettyCode, type ReceivedShare } from '../../lib/wisdomShare';
 import { useApp } from '../../store/app';
 import { elevation, palette } from '../../theme';
+import { column } from '../../components/layout';
 
 export default function ReceiveWisdom() {
   const { code: initial } = useLocalSearchParams<{ code?: string }>();
@@ -74,7 +75,7 @@ export default function ReceiveWisdom() {
   const w = got?.wisdom;
   return (
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: palette.bg }}>
-      <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.page} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+      <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={[styles.page, column.read]} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         {/* กรอกรหัส */}
         <Animated.View layout={LinearTransition.duration(280)} style={[styles.card, elevation.e1, { alignItems: 'center' }]}>
           <CircleIcon name="tray.and.arrow.down.fill" size={56} />

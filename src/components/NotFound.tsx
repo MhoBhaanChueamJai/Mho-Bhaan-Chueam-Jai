@@ -14,7 +14,7 @@ export function NotFound({ title = 'ไม่พบข้อมูล', detail =
       <Sym name="questionmark.folder" size={44} color={ios.tertiary} />
       <T v="h2" center style={{ marginTop: 14 }}>{title}</T>
       <T v="callout" color={ios.secondary} center style={{ marginTop: 6 }}>{detail}</T>
-      <Button label="กลับ" onPress={() => (router.canGoBack() ? router.back() : router.replace('/home'))} style={{ alignSelf: 'stretch', height: 52, marginTop: 28 }} />
+      <Button label="กลับ" onPress={() => (router.canGoBack() ? router.back() : router.replace('/home'))} style={{ alignSelf: 'stretch', height: 52, marginTop: 28, maxWidth: 420, width: '100%', marginHorizontal: 'auto' }} />
     </View>
   );
 }

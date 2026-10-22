@@ -23,6 +23,8 @@ import { dialectHint } from '../../lib/dialect';
 import { clock, keepClip, removeClips } from '../../lib/wisdomAudio';
 import { organizeWisdom } from '../../lib/wisdomOrganize';
 import { KINDS, setWisdomResult } from '../../lib/wisdomTalk';
+import { column } from '../../components/layout';
+import { userNoun } from '../../lib/roles';
 
 const MINT = '#7CF0A8';
 const CHUNK_MS = 40_000;
@@ -187,7 +189,7 @@ export function TellView({ from, morphFrom }: { from?: string; morphFrom?: OrbFr
         [
           {
             role: 'user',
-            content: `หมอพื้นบ้านเล่าภูมิปัญญาด้วยเสียง (ถอดอัตโนมัติ อาจสะกดเพี้ยน) ${dialectHint()}
+            content: `${userNoun()}เล่าภูมิปัญญาด้วยเสียง (ถอดอัตโนมัติ อาจสะกดเพี้ยน) ${dialectHint()}
 """
 ${text.slice(0, 12000)}
 """
@@ -322,7 +324,7 @@ ${KINDS.map((k) => `${k}: ${TOPICS[k].join(', ')}`).join('\n')}
       </View>
 
       {/* เนื้อหากลางจอ: วิธีเล่า (ก่อนเริ่ม) · คำบรรยายสด · เรื่องที่ยังขาด */}
-      <ScrollView ref={scroll} style={{ flex: 1 }} contentContainerStyle={{ padding: 20, paddingBottom: 30, gap: 12 }} showsVerticalScrollIndicator={false}>
+      <ScrollView ref={scroll} style={{ flex: 1 }} contentContainerStyle={[{ padding: 20, paddingBottom: 30, gap: 12 }, column.read]} showsVerticalScrollIndicator={false}>
         {phase === 'ready' && !pieces.length ? (
           <Animated.View entering={FadeInDown.duration(380)} style={{ gap: 12 }}>
             <T v="h2" color="#FFFFFF" center>เล่าเหมือนเล่าให้ลูกหลานฟัง</T>

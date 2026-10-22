@@ -5,8 +5,7 @@
  */
 import { router } from 'expo-router';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { PractitionerGate } from '../../components/PractitionerGate';
-import { ActivityIndicator, Keyboard, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Keyboard, ScrollView, StyleSheet, View } from 'react-native';
 import { TextInput } from '../../components/AppText';
 import Animated, { Easing, FadeIn, FadeInDown, interpolate, runOnJS, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -18,6 +17,7 @@ import { SuggestCard } from '../../components/SearchShell';
 import { aiSuggestions, ruleSuggestions, type Suggestion } from '../../lib/searchSuggest';
 import { useApp } from '../../store/app';
 import { control, elevation, palette } from '../../theme';
+import { column, useLayout } from '../../components/layout';
 
 
 const SUG_ICON: Record<Suggestion['icon'], any> = { clock: 'clock.arrow.circlepath', person: 'person.fill', calendar: 'calendar', sparkles: 'sparkles', stethoscope: 'stethoscope' };
@@ -38,7 +38,8 @@ function Hi({ text, q, v = 'body', color = ios.label, bold }: { text: string; q:
 
 function PatientSearchInner() {
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
+  // จอกว้าง: ช่องค้นหากว้างเท่าคอลัมน์อ่าน (720)
+  const width = useLayout().readW;
   const { patients, searchLog, openLog, logSearch, agenda } = useApp();
   const [sugs, setSugs] = useState<Suggestion[]>(() => ruleSuggestions(patients, searchLog, openLog, agenda));
   const [aiState, setAiState] = useState<'loading' | 'ai' | 'rule'>('loading');
@@ -133,7 +134,7 @@ function PatientSearchInner() {
       </View>
 
       <Animated.View style={[{ flex: 1 }, bodySt]}>
-        <ScrollView keyboardDismissMode="on-drag" keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 40 }} showsVerticalScrollIndicator={false}>
+        <ScrollView keyboardDismissMode="on-drag" keyboardShouldPersistTaps="handled" contentContainerStyle={[{ paddingHorizontal: 16, paddingBottom: insets.bottom + 40 }, column.read]} showsVerticalScrollIndicator={false}>
 
           {!searching ? (
             <SuggestCard
@@ -207,7 +208,7 @@ function PatientSearchInner() {
 
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: palette.bg },
-  bar: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', paddingHorizontal: 16, height: 52 },
+  bar: { ...column.read, flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', paddingHorizontal: 16, height: 52 },
   field: { height: control.icon, borderRadius: control.icon / 2, backgroundColor: '#FFFFFF', flexDirection: 'row', alignItems: 'center', paddingLeft: 13.5, paddingRight: 6, gap: 8, overflow: 'hidden' },
   input: { fontSize: 17, color: palette.ink, height: control.icon, outlineStyle: 'none' } as any,
   clear: { width: 30, height: 30, alignItems: 'center', justifyContent: 'center' },
@@ -223,9 +224,5 @@ const styles = StyleSheet.create({
 });
 
 export default function PatientSearch() {
-  return (
-    <PractitionerGate>
-      <PatientSearchInner />
-    </PractitionerGate>
-  );
+  return <PatientSearchInner />;
 }

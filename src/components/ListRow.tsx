@@ -89,7 +89,8 @@ export function ListRow({
     </View>
   );
   return onPress ? (
-    <PressableScale onPress={onPress} scaleTo={0.99} haptic="select">
+    // คำอ่านของ VoiceOver: ข้อความในแถว (ไม่รวมชื่อไอคอน)
+    <PressableScale onPress={onPress} scaleTo={0.99} haptic="select" accessibilityRole="button" accessibilityLabel={[overline, title, subtitle, value].filter(Boolean).join(', ')}>
       {body}
     </PressableScale>
   ) : (

@@ -14,7 +14,6 @@ import { TextInput } from '../../components/AppText';
 import Animated, { FadeIn, FadeInDown, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { AISphere } from '../../components/AISphere';
 import { BookCover } from '../../components/BookCover';
-import { PractitionerGate } from '../../components/PractitionerGate';
 import { KindIcon } from '../../components/KindIcon';
 import { Sym, ios } from '../../components/ios';
 import { Button, GlassDock, HeaderButton, PressableScale, T, useHaptic } from '../../components/ui';
@@ -26,6 +25,7 @@ import { uploadClips } from '../../lib/wisdomAudio';
 import { MenuView } from '../../components/Menu';
 import { useApp } from '../../store/app';
 import { elevation, palette } from '../../theme';
+import { column } from '../../components/layout';
 
 const SMOOTH = LinearTransition.duration(280);
 const WRITE_HINT: Record<Wisdom['kind'], string> = {
@@ -275,7 +275,7 @@ function NewWisdomInner() {
     return (
       <View style={{ flex: 1, backgroundColor: palette.bg }}>
         {header}
-        <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
+        <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={[styles.page, column.read]} showsVerticalScrollIndicator={false}>
           <Animated.View entering={FadeIn.duration(250)} style={styles.note}>
             <Sym name="sparkles" size={14} color={palette.primary} />
             <T v="caption" color={palette.primary} style={{ flex: 1 }}>ครูปัญญาจัดหน้าและเรียบเรียงให้แล้ว ตรวจทานก่อนบันทึกนะครับ</T>
@@ -365,7 +365,7 @@ function NewWisdomInner() {
   return (
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: palette.bg }}>
       {header}
-      <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.page} keyboardDismissMode="interactive" keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+      <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={[styles.page, column.read]} keyboardDismissMode="interactive" keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         {aiNote ? (
           <Animated.View entering={FadeIn.duration(250)} exiting={FadeOut.duration(150)} layout={SMOOTH} style={styles.note}>
             <Sym name="sparkles" size={14} color={palette.primary} />
@@ -464,9 +464,5 @@ const styles = StyleSheet.create({
 });
 
 export default function NewWisdom() {
-  return (
-    <PractitionerGate>
-      <NewWisdomInner />
-    </PractitionerGate>
-  );
+  return <NewWisdomInner />;
 }

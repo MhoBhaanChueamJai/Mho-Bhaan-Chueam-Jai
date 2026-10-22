@@ -18,6 +18,7 @@ import { Alert } from '../lib/alert';
 import { useApp } from '../store/app';
 import { elevation, palette } from '../theme';
 import { APP_BUILD, APP_VERSION } from './about';
+import { column } from '../components/layout';
 
 export const FEEDBACK_EMAIL = 'mhobhaan@gmail.com';
 const KINDS = [
@@ -80,7 +81,7 @@ export default function Feedback() {
     <>
       <Stack.Screen options={{ title: 'แจ้งปัญหา / เสนอแนะ' }} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: palette.bg }}>
-        <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.page} keyboardDismissMode="interactive">
+        <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={[styles.page, column.read]} keyboardDismissMode="interactive">
           <T v="subhead" color={ios.secondary} style={{ marginHorizontal: 4 }}>
             เล่าสิ่งที่เจอ หรือสิ่งที่อยากให้มีในแอป ข้อความจะส่งถึงทีมพัฒนาทางอีเมล
           </T>

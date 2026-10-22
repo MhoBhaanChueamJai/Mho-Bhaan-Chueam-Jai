@@ -4,7 +4,6 @@
  */
 import { router, useLocalSearchParams } from 'expo-router';
 import React from 'react';
-import { PractitionerGate } from '../../components/PractitionerGate';
 import { VoiceSession } from '../../components/VoiceSession';
 import { VISIT_TOPICS, optionsFor, visitHas, visitScribe, visitOpening, visitTurn, type VisitData } from '../../lib/visit';
 import { NotFound } from '../../components/NotFound';
@@ -63,9 +62,5 @@ export function VisitSession({ p, morphFrom }: { p: Patient; morphFrom?: { x: nu
 }
 
 export default function VisitVoice() {
-  return (
-    <PractitionerGate>
-      <VisitInner />
-    </PractitionerGate>
-  );
+  return <VisitInner />;
 }

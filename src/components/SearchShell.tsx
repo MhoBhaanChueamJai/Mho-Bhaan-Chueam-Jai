@@ -5,13 +5,14 @@
  */
 import { router } from 'expo-router';
 import React, { useEffect, useRef } from 'react';
-import { Keyboard, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Keyboard, ScrollView, StyleSheet, View } from 'react-native';
 import { TextInput } from './AppText';
 import Animated, { Easing, FadeInDown, interpolate, runOnJS, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Sym, ios } from './ios';
 import { Glass, PressableScale, T } from './ui';
 import { control, elevation, palette } from '../theme';
+import { column, useLayout } from './layout';
 
 /** ไฮไลต์คำที่ค้นในข้อความ */
 export function Hi({ text, q, v = 'body', color = ios.label, bold }: { text: string; q: string; v?: 'body' | 'subhead' | 'caption'; color?: string; bold?: boolean }) {
@@ -69,7 +70,8 @@ export function SearchShell({
   children: React.ReactNode;
 }) {
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
+  // จอกว้าง: ช่องค้นหากว้างเท่าคอลัมน์อ่าน (720)
+  const width = useLayout().readW;
   const input = useRef<TextInput>(null);
   // 0 = ปุ่มวงกลม, 1 = ช่องค้นหาเต็มแถว
   const open = useSharedValue(0);
@@ -130,7 +132,7 @@ export function SearchShell({
       </View>
 
       <Animated.View style={[{ flex: 1 }, bodySt]}>
-        <ScrollView keyboardDismissMode="on-drag" keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 40 }} showsVerticalScrollIndicator={false}>
+        <ScrollView keyboardDismissMode="on-drag" keyboardShouldPersistTaps="handled" contentContainerStyle={[{ paddingHorizontal: 16, paddingBottom: insets.bottom + 40 }, column.read]} showsVerticalScrollIndicator={false}>
           {children}
         </ScrollView>
       </Animated.View>
@@ -155,7 +157,7 @@ export const searchStyles = StyleSheet.create({
 
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: palette.bg },
-  bar: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', paddingHorizontal: 16, height: 52 },
+  bar: { ...column.read, flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', paddingHorizontal: 16, height: 52 },
   field: { height: control.icon, borderRadius: control.icon / 2, backgroundColor: '#FFFFFF', flexDirection: 'row', alignItems: 'center', paddingLeft: 13.5, paddingRight: 6, gap: 8 },
   input: { fontSize: 17, color: palette.ink, height: control.icon, outlineStyle: 'none' } as any,
   clear: { width: 30, height: 30, alignItems: 'center', justifyContent: 'center' },

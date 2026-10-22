@@ -8,6 +8,7 @@ import { dialectHint, dialectSpeakStyle } from './dialect';
 import { safetyNotes } from './brain';
 import { knowledgeFor } from './knowledge';
 import type { Turn } from './intake';
+import { roleBrief, userNoun } from './roles';
 
 export type VisitData = {
   symptoms?: string;
@@ -118,7 +119,7 @@ export async function visitTurn(p: Patient, known: VisitData, history: Turn[], a
     const r = await chatJSON<{ fields?: VisitData; reply?: string; done?: boolean; options?: string[] }>([
       {
         role: 'user',
-        content: `คุณคือ "ครูปัญญา" ผู้ช่วยหมอพื้นบ้าน ผู้ชายวัย 45 อบอุ่น ฉลาด มีไหวพริบ พูดภาษาพูดเป็นธรรมชาติ ลงท้าย "ครับ"
+        content: `คุณคือ "ครูปัญญา" ผู้ช่วยด้านสุขภาพแผนไทย (${roleBrief()}) ผู้ชายวัย 45 อบอุ่น ฉลาด มีไหวพริบ พูดภาษาพูดเป็นธรรมชาติ ลงท้าย "ครับ"
 กำลังช่วยหมอบันทึกการรักษาครั้งนี้ด้วยเสียง
 ผู้ป่วย: ${p.name} ${p.sex} ${p.age} ปี ธาตุ${p.element} โรคประจำตัว: ${p.chronic} แพ้ยา/อาหาร: ${p.allergies}
 ประวัติการรักษา:
@@ -171,7 +172,7 @@ export async function visitScribe(p: Patient, transcript: string, kb: Wisdom[] =
   const r = await chatJSON<VisitData>([
     {
       role: 'user',
-      content: `บทสนทนาระหว่างหมอพื้นบ้านกับผู้ป่วย (ถอดจากเสียงอัตโนมัติ อาจสะกดเพี้ยน และไม่ได้ระบุว่าใครพูด):
+      content: `บทสนทนาระหว่างผู้ดูแล (${userNoun()}) กับผู้ป่วย (ถอดจากเสียงอัตโนมัติ อาจสะกดเพี้ยน และไม่ได้ระบุว่าใครพูด):
 ${transcript}
 
 ผู้ป่วย: ${p.name} ${p.sex} ${p.age} ปี ธาตุ${p.element} โรคประจำตัว ${p.chronic} แพ้ ${p.allergies}

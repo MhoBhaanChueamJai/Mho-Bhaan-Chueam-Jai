@@ -29,6 +29,14 @@ export async function updateName(first: string, last: string) {
   await supabase.auth.updateUser({ data: { first_name: first, last_name: last, display_name: display } }).catch(() => {});
 }
 
+/** บันทึกบทบาทผู้ใช้ขึ้นคลาวด์ (ถ้าฐานข้อมูลยังไม่มีคอลัมน์ → เก็บในเครื่องอย่างเดียว ซิงก์ทีหลัง) */
+export async function saveUserRole(role: string) {
+  const { data } = await supabase.auth.getUser();
+  const uid = data.user?.id;
+  if (!uid) return;
+  await supabase.from('profiles').update({ user_role: role }).eq('id', uid);
+}
+
 /** เปลี่ยนรหัสผ่าน: ตรวจรหัสเดิมก่อน */
 export async function changePassword(current: string, next: string): Promise<'ok' | 'wrong' | 'same' | 'error'> {
   if (current === next) return 'same';

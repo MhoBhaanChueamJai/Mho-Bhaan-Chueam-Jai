@@ -8,6 +8,7 @@ import { HeaderButton, PressableScale, T, useHaptic } from '../components/ui';
 import { thShort } from '../lib/reminders';
 import { stockState, useStock, type StockItem } from '../lib/stock';
 import { elevation, palette } from '../theme';
+import { column } from '../components/layout';
 
 const TONE = { expired: '#D2453A', out: '#D2453A', expiring: '#C27A12', low: '#C27A12', ok: '#14905C' } as const;
 
@@ -28,7 +29,7 @@ export default function Stock() {
   return (
     <>
       <Stack.Screen options={{ title: 'คลังยาของหมอ', headerRight: () => (<HeaderButton onPress={() => router.push('/stock-item')} label="เพิ่มยา"><Sym name="plus" size={20} color={palette.ink} weight="semibold" /></HeaderButton>) }} />
-      <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={styles.page}>
+      <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={[styles.page, column.read]}>
         {items.length ? (
           <T v="subhead" color={ios.secondary} style={{ marginHorizontal: 4 }}>
             ยา {items.length} รายการ{warn ? ` · ต้องดูแล ${warn} รายการ` : ' · พร้อมใช้ทั้งหมด'} · แอปเตือนก่อนหมดอายุ 7 วัน

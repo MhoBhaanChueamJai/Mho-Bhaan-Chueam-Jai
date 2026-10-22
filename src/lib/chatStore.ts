@@ -3,9 +3,22 @@
  * แต่ละห้อง: ชื่อเรื่อง (จากคำถามแรก) · ข้อความ · เวลาแก้ไขล่าสุด · คุยด้วยเสียงหรือพิมพ์
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import type { TreatmentPlan } from './plan';
 
-export type ChatSource = { id: string; title: string; kind?: 'wisdom' | 'herb' };
-export type StoredMsg = { id: string; role: 'user' | 'assistant'; content: string; failed?: boolean; sources?: ChatSource[]; voice?: boolean; rating?: 1 | -1 };
+export type ChatSource = { id: string; title: string; kind?: 'wisdom' | 'herb' | 'doc' };
+export type StoredMsg = { id: string; role: 'user' | 'assistant'; content: string; failed?: boolean; sources?: ChatSource[]; voice?: boolean; rating?: 1 | -1; /** คำถามเรื่องอาการ → เสนอปุ่มให้ครูปัญญาซักประวัติต่อในแชทนี้ */ consult?: string;
+  /** ปรึกษาอาการในแชท: ตัวเลือกคำตอบ · สัญญาณอันตราย · แนวทางรักษา */
+  options?: string[];
+  urgent?: string[];
+  plan?: TreatmentPlan;
+  /** ครูปัญญาถามกลับ (ตัวเลือกให้แตะ) · คำถามต่อที่แนะนำ */
+  askOpts?: string[];
+  follow?: string[];
+  /** ถาม-ตอบในแชท: รายการคำถามที่พบบ่อย · ตัวเลือกแบบทดสอบ · จบแบบทดสอบ */
+  faq?: boolean;
+  quiz?: string[];
+  quizEnd?: boolean;
+};
 export type ChatThread = { id: string; title: string; updatedAt: number; msgs: StoredMsg[] };
 
 const KEY = 'kru.chats.v1';
@@ -26,7 +39,7 @@ export async function loadChats(): Promise<ChatThread[]> {
   try {
     const raw = await AsyncStorage.getItem(KEY);
     const list = raw ? (JSON.parse(raw) as ChatThread[]) : [];
-    cache = Array.isArray(list) ? list.filter((t) => t && Array.isArray(t.msgs)) : [];
+    cache = Array.isArray(list) ? list.filter((t) => t && Array.isArray(t.msgs)).map((t) => (t.title === 'แชทใหม่' ? { ...t, title: threadTitle(t.msgs) } : t)) : [];
   } catch {
     cache = [];
   }
@@ -47,16 +60,25 @@ export function titleFrom(text: string) {
   return t.length > 42 ? `${t.slice(0, 40)}…` : t || 'แชทใหม่';
 }
 
+/** ชื่อห้อง: คำถามแรก · แบบทดสอบ / ปรึกษาอาการ ตั้งชื่อตามประเภท (ห้องที่เริ่มจากปุ่มเคยได้ชื่อ "แชทใหม่" ค้าง) */
+function threadTitle(msgs: StoredMsg[]) {
+  const real = msgs.filter((m) => !m.failed);
+  const first = real.find((m) => m.role === 'user');
+  if (real.some((m) => m.quiz)) return 'แบบทดสอบความรู้';
+  if (real[0]?.options && first) return `ปรึกษาอาการ: ${titleFrom(first.content)}`;
+  if (real[0]?.faq && !first) return 'คำถามที่พบบ่อย';
+  return titleFrom(first?.content ?? '');
+}
+
 /** บันทึกห้องแชท (สร้างใหม่ถ้ายังไม่มี) — ห้องที่ยังไม่มีข้อความไม่ถูกเก็บ */
 export async function saveThread(id: string, msgs: StoredMsg[]) {
   const list = await loadChats();
   const real = msgs.filter((m) => !m.failed);
   if (!real.length) return;
-  const first = real.find((m) => m.role === 'user');
   const cur = list.find((t) => t.id === id);
   const next: ChatThread = {
     id,
-    title: cur?.title || titleFrom(first?.content ?? ''),
+    title: cur?.title && cur.title !== 'แชทใหม่' ? cur.title : threadTitle(real),
     updatedAt: Date.now(),
     msgs: msgs.slice(-MAX_MSGS),
   };

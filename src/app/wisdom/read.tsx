@@ -148,7 +148,9 @@ export default function ReadBook() {
 
 function ReadBookInner({ w }: { w: Wisdom }) {
   const insets = useSafeAreaInsets();
-  const { width: W, height: SH } = useWindowDimensions();
+  const { width: SW, height: SH } = useWindowDimensions();
+  // จอกว้าง (iPad แนวนอน / เว็บ): หนังสือเป็นหน้ากระดาษสัดส่วน ~2:3 อยู่กึ่งกลาง · มือถือเต็มจอเหมือนเดิม
+  const W = Math.min(SW, Math.round(SH * 0.72));
   const [fontsOk] = useFonts({ NotoSerifThai_400Regular, NotoSerifThai_700Bold });
   const F = fontsOk ? { r: { fontFamily: 'NotoSerifThai_400Regular' }, b: { fontFamily: 'NotoSerifThai_700Bold', fontWeight: 'normal' as const } } : { r: {}, b: {} };
   const [page, setPage] = useState(0);
@@ -562,6 +564,7 @@ function ReadBookInner({ w }: { w: Wisdom }) {
     <View style={styles.page}>
       <StatusBar style={page === 0 ? 'light' : 'dark'} />
       <LinearGradient colors={['#2B2117', '#1A140E']} style={StyleSheet.absoluteFill} />
+      <View style={[styles.book, { width: W }]}>
       <GestureDetector gesture={gesture}>
         <View style={{ flex: 1 }}>
           {/* หน้าจริง (RN): หน้าปัจจุบันอยู่บนสุด หน้าข้างเคียงซ้อนด้านหลังไว้ถ่ายภาพ */}
@@ -591,12 +594,14 @@ function ReadBookInner({ w }: { w: Wisdom }) {
         <T v="subhead" color={page === 0 ? 'rgba(255,255,255,0.85)' : 'rgba(58,44,28,0.6)'} numberOfLines={1} style={{ flex: 1, textAlign: 'center', marginHorizontal: 12 }}>{page === 0 ? '' : w.title}</T>
         <T v="caption" color={page === 0 ? 'rgba(255,255,255,0.75)' : 'rgba(58,44,28,0.55)'} style={{ minWidth: 44, textAlign: 'right' }}>{page === 0 ? '' : `${page}/${pages.length - 1}`}</T>
       </View>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: '#1A140E' },
+  book: { flex: 1, alignSelf: 'center', overflow: 'hidden' },
   paper: { flex: 1, backgroundColor: PAPER, overflow: 'hidden' },
   coverPage: { flex: 1, backgroundColor: '#1A140E', overflow: 'hidden' },
   spine: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 34 },

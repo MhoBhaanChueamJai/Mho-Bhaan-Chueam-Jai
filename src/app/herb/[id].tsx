@@ -9,7 +9,6 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect } from 'react';
-import { StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown, FadeInUp, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSpeaker } from '../../components/audio';
@@ -21,7 +20,12 @@ import { Sym, ios } from '../../components/ios';
 import { Button, GlassCircle, GlassDock, HeaderBack, HeaderButton, PressableScale, T } from '../../components/ui';
 import { herbs, tasteTone, type Herb } from '../../data/herbs';
 import { useApp } from '../../store/app';
+import { THP } from '../../data/thp';
+import { HERB_DRUG } from '../../data/interactions';
+import { ixDocId } from '../../lib/sources';
+import { Linking, StyleSheet, View } from 'react-native';
 import { elementColor, elevation, palette } from '../../theme';
+import { column } from '../../components/layout';
 
 const FADE_EXTRA = 150;
 const FADE = (() => {
@@ -76,6 +80,8 @@ export function HerbView({ herb, preview }: { herb: Herb; preview?: HerbScanPrev
   const tts = useSpeaker();
   const el = elementColor[herb.element] ?? { fg: palette.primary, bg: palette.primarySoft, label: herb.element ? `ธาตุ${herb.element}` : '' };
   const tone = tasteTone[herb.taste] ?? { fg: palette.inkSoft, bg: 'rgba(118,118,128,0.12)' };
+  const thp = THP[herb.id];
+  const ixs = HERB_DRUG.filter((x) => x.herb === herb.id);
   const read = `${herb.name} รส${herb.taste} สรรพคุณ ${herb.uses.join(' ')} วิธีใช้ ${herb.howto} ข้อควรระวัง ${herb.caution}`;
   useEffect(() => () => tts.stop(), []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -183,6 +189,12 @@ export function HerbView({ herb, preview }: { herb: Herb; preview?: HerbScanPrev
               <T v="caption" color="#9A5A0C" style={{ flex: 1 }}>{preview.note}</T>
             </View>
           ) : null}
+          {THP[herb.id] ? (
+            <View style={[styles.national, { backgroundColor: '#E0F2F3' }]}>
+              <Sym name="checkmark.seal.fill" size={13} color="#0E7C86" />
+              <T v="caption" color="#0E7C86" style={{ fontWeight: '600' }}>มีมอโนกราฟในตำรามาตรฐานยาสมุนไพรไทย</T>
+            </View>
+          ) : null}
           {herb.nationalList ? (
             <View style={styles.national}>
               <Sym name="checkmark.seal.fill" size={13} color={palette.primary} />
@@ -225,6 +237,43 @@ export function HerbView({ herb, preview }: { herb: Herb; preview?: HerbScanPrev
           {herb.caution ? (
             <Section i={3} icon="exclamationmark.triangle.fill" color={palette.coral} title="ข้อควรระวัง">
               <T v="body" style={styles.para}>{herb.caution}</T>
+            </Section>
+          ) : null}
+
+          {/* ยาแผนปัจจุบันที่ตีกัน (บัญชียาหลักแห่งชาติด้านสมุนไพร 2566) */}
+          {ixs.length ? (
+            <Section i={3} icon="pills.fill" color="#D9534A" title="ใช้ร่วมกับยาแผนปัจจุบัน">
+              {ixs.map((x, i) => (
+                <PressableScale key={x.drug} haptic="select" scaleTo={0.98} onPress={() => go({ pathname: '/source', params: { id: ixDocId(x) } })} style={[styles.ixRow, i > 0 && styles.sepTop]} accessibilityLabel={`ระวังร่วมกับ${x.label}`}>
+                  <View style={{ flex: 1, gap: 2 }}>
+                    <T v="body" style={{ fontWeight: '600' }}>{x.label}</T>
+                    <T v="caption" color={palette.inkSoft}>{x.formula ? `ในตำรับ${x.products.join(', ')}: ` : ''}{x.statement}</T>
+                  </View>
+                  <Sym name="chevron.right" size={12} color={ios.tertiary} weight="semibold" />
+                </PressableScale>
+              ))}
+              <T v="micro" color={ios.tertiary} style={{ marginTop: 6 }}>ที่มา: บัญชียาหลักแห่งชาติด้านสมุนไพร พ.ศ. 2566 (หัวข้ออันตรกิริยา)</T>
+            </Section>
+          ) : null}
+
+          {/* แหล่งอ้างอิง: ตำรามาตรฐานยาสมุนไพรไทย + แหล่งข้อมูลของคลังสมุนไพร */}
+          {thp || herb.refs?.length ? (
+            <Section i={4} icon="checkmark.seal.fill" color="#0E7C86" title="แหล่งอ้างอิง">
+              {thp?.monographs.map((m, i) => (
+                <PressableScale key={m.url} haptic="select" scaleTo={0.98} onPress={() => Linking.openURL(m.url)} style={[styles.ixRow, i > 0 && styles.sepTop]} accessibilityLabel={`เปิดมอโนกราฟ ${m.title}`}>
+                  <View style={{ flex: 1, gap: 2 }}>
+                    <T v="body" style={{ fontWeight: '600' }}>ตำรามาตรฐานยาสมุนไพรไทย: {m.title}</T>
+                    <T v="caption" color={ios.secondary}>{m.en} · {m.edition}</T>
+                  </View>
+                  <Sym name="arrow.up.right" size={12} color={ios.tertiary} weight="semibold" />
+                </PressableScale>
+              ))}
+              {(herb.refs ?? []).map((u, i) => (
+                <PressableScale key={u} haptic="select" scaleTo={0.98} onPress={() => Linking.openURL(u)} style={[styles.ixRow, (i > 0 || thp) && styles.sepTop]} accessibilityLabel="เปิดแหล่งข้อมูล">
+                  <T v="caption" color={palette.primary} numberOfLines={1} style={{ flex: 1 }}>{u.replace(/^https?:\/\//, '')}</T>
+                  <Sym name="arrow.up.right" size={12} color={ios.tertiary} weight="semibold" />
+                </PressableScale>
+              ))}
             </Section>
           ) : null}
 
@@ -287,12 +336,14 @@ const styles = StyleSheet.create({
   pills: { flexDirection: 'row', gap: 6 },
   pill: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 999 },
   national: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 10, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, backgroundColor: palette.primarySoft },
-  body: { paddingHorizontal: 16, marginTop: 22, gap: 14 },
+  // จอกว้าง: ภาพหัวเต็มจอ · การ์ดเนื้อหาอยู่ในคอลัมน์อ่านกลางจอ
+  body: { ...column.read, paddingHorizontal: 16, marginTop: 22, gap: 14 },
   card: { backgroundColor: palette.surface, borderRadius: 22, borderCurve: 'continuous', padding: 18 },
   cardHead: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 6 },
   para: { lineHeight: 26 },
   fact: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 11 },
   use: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 11 },
+  ixRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10 },
   book: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10 },
   sepTop: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: ios.separator },
 });

@@ -4,6 +4,7 @@
  */
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
+import { Directory, File, Paths } from 'expo-file-system';
 import { Platform } from 'react-native';
 import { fullAddress, type MB5Visit, type Patient } from '../data/mock';
 import { signatureSvg } from '../components/SignaturePad';
@@ -68,13 +69,13 @@ export function mb5Html(patients: Patient[], dr: Doctor) {
     return `<section style="${i ? 'page-break-before:always' : ''}">
       <div style="text-align:right;font-weight:600">แบบ ม.บ.5</div>
       <h1>ทะเบียนการรักษา ประวัติการรักษา และผลการรักษาผู้ป่วย</h1>
-      <h2>ของหมอพื้นบ้าน ${esc(dr.name)}${dr.types ? ` (${esc(dr.types)})` : ''}${dr.cert ? ` · เลขที่หนังสือรับรอง ${esc(dr.cert)}` : ''}</h2>
+      <h2>ของ ${esc(dr.name)}${dr.types ? ` (${esc(dr.types)})` : ''}${dr.cert ? ` · เลขที่หนังสือรับรอง ${esc(dr.cert)}` : ''}</h2>
       <div class="box">${patientBlock(p)}</div>
       <table>
         <tr><th style="width:5%">ครั้งที่</th><th style="width:8%">ว/ด/ป</th><th style="width:14%">อาการเจ็บป่วย</th><th style="width:12%">ตรวจร่างกาย</th><th style="width:11%">วินิจฉัยโรค</th><th style="width:17%">การรักษา</th><th style="width:9%">ผลการรักษา</th><th style="width:14%">การติดตามผล</th><th style="width:10%">หมายเหตุ</th></tr>
         ${rows}
       </table>
-      <div class="sign"><div>ลงชื่อ ......................................................<br>(${esc(dr.name)})<br>หมอพื้นบ้าน</div></div>
+      <div class="sign"><div>ลงชื่อ ......................................................<br>(${esc(dr.name)})<br>${esc(dr.types || 'ผู้บันทึก')}</div></div>
       <div class="foot">พิมพ์จากแอปหมอบ้านเชื่อมใจ · ${today()}</div>
     </section>`;
   });
@@ -90,7 +91,7 @@ export function referralHtml(p: Patient, v: MB5Visit | undefined, r: Referral, d
     <h1 style="margin-top:8px">หนังสือส่งต่อผู้ป่วย</h1>
     ${r.urgent ? '<div style="text-align:center;margin-top:4px"><span style="border:1.5px solid #c00;color:#c00;padding:2px 12px;border-radius:4px;font-weight:700">ด่วน</span></div>' : ''}
     <div style="margin-top:14px"><b>เรียน</b> ผู้อำนวยการ${esc(r.to || '..............................................')}</div>
-    <div style="margin-top:8px;text-indent:32px">ข้าพเจ้า ${esc(dr.name)} หมอพื้นบ้าน${dr.types ? `ประเภท${esc(dr.types)}` : ''}${dr.cert ? ` เลขที่หนังสือรับรอง ${esc(dr.cert)}` : ''} ขอส่งตัวผู้ป่วยเพื่อรับการตรวจรักษาต่อ รายละเอียดดังนี้</div>
+    <div style="margin-top:8px;text-indent:32px">ข้าพเจ้า ${esc(dr.name)}${dr.types ? ` ${esc(dr.types)}` : ''}${dr.cert ? ` เลขที่หนังสือรับรอง ${esc(dr.cert)}` : ''} ขอส่งตัวผู้ป่วยเพื่อรับการตรวจรักษาต่อ รายละเอียดดังนี้</div>
     <div class="box">${patientBlock(p)}</div>
     <div class="box">
       <div><b>อาการสำคัญ</b> ${dash(v?.symptoms)}</div>
@@ -101,7 +102,7 @@ export function referralHtml(p: Patient, v: MB5Visit | undefined, r: Referral, d
     </div>
     <div class="box"><b>เหตุผลที่ส่งต่อ</b><div style="margin-top:4px">${dash(r.reason)}</div>${r.extra ? `<div style="margin-top:6px"><b>หมายเหตุ</b> ${esc(r.extra)}</div>` : ''}</div>
     <div style="margin-top:12px;text-indent:32px">จึงเรียนมาเพื่อโปรดพิจารณาให้การดูแลรักษาต่อ และขอความกรุณาแจ้งผลการรักษากลับเพื่อการติดตามอาการต่อไป</div>
-    <div class="sign"><div>ลงชื่อ ......................................................<br>(${esc(dr.name)})<br>หมอพื้นบ้าน</div></div>
+    <div class="sign"><div>ลงชื่อ ......................................................<br>(${esc(dr.name)})<br>${esc(dr.types || 'ผู้บันทึก')}</div></div>
     <div class="box" style="margin-top:26px;border-style:dashed"><b>ส่วนของหน่วยบริการที่รับ</b> (ตอบกลับผลการรักษา)<div style="height:70px"></div><div style="text-align:right">ลงชื่อผู้รับ ......................................... วันที่ ....................</div></div>
     <div class="foot">พิมพ์จากแอปหมอบ้านเชื่อมใจ</div>`;
   return page('หนังสือส่งต่อผู้ป่วย', body);
@@ -109,7 +110,7 @@ export function referralHtml(p: Patient, v: MB5Visit | undefined, r: Referral, d
 
 /** ข้อความใบยินยอม (ใช้ทั้งในแอปและใน PDF) */
 export const consentPoints = (p: Patient, dr: Doctor) => [
-  `ข้าพเจ้ายินยอมให้ ${dr.name} หมอพื้นบ้าน เก็บรวบรวม ใช้ และบันทึกข้อมูลส่วนบุคคลและข้อมูลสุขภาพของ ${p.name} ได้แก่ ชื่อ ที่อยู่ เบอร์โทร อายุ โรคประจำตัว ประวัติแพ้ยา และประวัติการรักษา`,
+  `ข้าพเจ้ายินยอมให้ ${dr.name}${dr.types ? ` (${dr.types})` : ''} เก็บรวบรวม ใช้ และบันทึกข้อมูลส่วนบุคคลและข้อมูลสุขภาพของ ${p.name} ได้แก่ ชื่อ ที่อยู่ เบอร์โทร อายุ โรคประจำตัว ประวัติแพ้ยา และประวัติการรักษา`,
   'เพื่อใช้ในการรักษา บันทึกทะเบียนการรักษา (แบบ ม.บ.5) ติดตามอาการ และส่งต่อไปยังสถานพยาบาลเมื่อจำเป็นต่อการรักษาเท่านั้น',
   'ข้อมูลเก็บในแอปหมอบ้านเชื่อมใจ ในเครื่องของหมอและระบบคลาวด์ของแอปที่เฉพาะบัญชีของหมอเข้าถึงได้ จะไม่เปิดเผยแก่ผู้อื่นโดยไม่ได้รับความยินยอม เว้นแต่กฎหมายกำหนด',
   'ข้าพเจ้ามีสิทธิ์ขอดู ขอแก้ไข ขอให้ลบข้อมูล หรือถอนความยินยอมเมื่อใดก็ได้ โดยแจ้งหมอผู้รักษา การถอนความยินยอมไม่กระทบการรักษาที่ทำไปแล้ว',
@@ -129,19 +130,39 @@ export function consentHtml(p: Patient, dr: Doctor) {
     ${c ? `<div style="margin-top:10px">ผู้ให้ความยินยอม: ${esc(c.signer)}${c.relation !== 'ผู้ป่วย' ? ` (${esc(c.relation)}ของผู้ป่วย)` : ''}</div>` : ''}
     <div class="sign" style="justify-content:space-between">
       <div>${c ? signatureSvg(c.sig) : '<div style="height:70px"></div>'}<br>ลงชื่อ ......................................................<br>(${esc(c?.signer ?? p.name)})<br>ผู้ให้ความยินยอม</div>
-      <div><div style="height:${c ? 92 : 70}px"></div>ลงชื่อ ......................................................<br>(${esc(dr.name)})<br>หมอพื้นบ้าน ผู้เก็บรักษาข้อมูล</div>
+      <div><div style="height:${c ? 92 : 70}px"></div>ลงชื่อ ......................................................<br>(${esc(dr.name)})<br>${esc(dr.types || 'ผู้บันทึก')} ผู้เก็บรักษาข้อมูล</div>
     </div>
     <div class="foot">พิมพ์จากแอปหมอบ้านเชื่อมใจ</div>`;
   return page('ใบยินยอมเก็บข้อมูล', body);
 }
 
 /** สร้าง PDF แล้วเปิดหน้าแชร์ (เว็บ = หน้าพิมพ์ของเบราว์เซอร์) */
-export async function outputPdf(html: string, fileTitle: string) {
+/** report: กระดาษ A4 พร้อมขอบ (iOS/Android ไม่อ่าน @page ใน CSS → กำหนดในคำสั่งพิมพ์เอง) */
+export async function outputPdf(html: string, fileTitle: string, opts?: { report?: boolean; landscape?: boolean }) {
   if (Platform.OS === 'web') {
     await Print.printAsync({ html });
     return;
   }
-  const { uri } = await Print.printToFileAsync({ html, margins: { left: 0, right: 0, top: 0, bottom: 0 } });
+  // iOS ไม่อ่าน @page ใน CSS → กำหนดขนาดกระดาษและขอบที่นี่ (เดิมแบบฟอร์มไม่มีขอบ ตัวหนังสือติดขอบกระดาษ)
+  // A4 = 595 × 842 pt · รายงาน: ขอบ ~18 มม. ซ้าย-ขวา / 20 มม. บน / 22 มม. ล่าง · แบบฟอร์ม: ขอบ ~12 มม. / 14 มม.
+  const FORM = { left: 34, right: 34, top: 40, bottom: 40 };
+  const page = opts?.report
+    ? { width: 595, height: 842, margins: { left: 51, right: 51, top: 57, bottom: 62 } }
+    : opts?.landscape
+      ? { width: 842, height: 595, margins: FORM } // แนวนอน (ม.บ.5 ตาราง 9 ช่อง)
+      : { width: 595, height: 842, margins: FORM };
+  const { uri: tmp } = await Print.printToFileAsync({ html, ...page });
+  // ตั้งชื่อไฟล์ตามเอกสาร (เดิมเป็นรหัสสุ่ม) — ผู้รับใน LINE / ไฟล์ เห็นชื่อที่อ่านรู้เรื่อง
+  let uri = tmp;
+  try {
+    const dir = new Directory(Paths.cache, 'pdf');
+    if (!dir.exists) dir.create();
+    const name = `${fileTitle.replace(/[\\/:*?"<>|\n]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80) || 'เอกสาร'}.pdf`;
+    const dest = new File(dir, name);
+    if (dest.exists) dest.delete();
+    new File(tmp).move(dest);
+    uri = dest.uri;
+  } catch {}
   if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(uri, { mimeType: 'application/pdf', UTI: 'com.adobe.pdf', dialogTitle: fileTitle });
   else await Print.printAsync({ uri });
 }

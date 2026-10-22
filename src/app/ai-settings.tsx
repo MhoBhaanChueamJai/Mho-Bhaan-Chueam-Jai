@@ -16,6 +16,7 @@ import { DIALECTS, type Dialect } from '../lib/dialect';
 import { clearChats } from '../lib/chatStore';
 import { useApp } from '../store/app';
 import { elevation, palette } from '../theme';
+import { column } from '../components/layout';
 
 /** คำทักทายตัวอย่างตามภาษาพูด */
 const GREETING: Record<Dialect, string> = {
@@ -34,12 +35,12 @@ export default function AISettings() {
   const preview = () => (tts.speaking ? tts.stop() : tts.speak(GREETING[dialect]));
 
   return (
-    <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingTop: 8, paddingBottom: 56 }}>
+    <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={[{ paddingHorizontal: PAGE_PAD, paddingTop: 8, paddingBottom: 56 }, column.read]}>
       {/* ก้อนแสงครูปัญญา */}
       <Animated.View entering={FadeInDown.duration(420)} style={[styles.hero, elevation.e2]}>
         <AISphere size={170} active={tts.speaking} level={tts.level} />
         <T v="h2" color="#FFFFFF" style={{ marginTop: 6 }}>ครูปัญญา</T>
-        <T v="subhead" color="rgba(255,255,255,0.65)" center>ผู้ช่วย AI ของหมอพื้นบ้าน · รู้จักสมุนไพร 100 ชนิด ตำรา และหลักการตั้งตำรับยา</T>
+        <T v="subhead" color="rgba(255,255,255,0.65)" center>ผู้ช่วย AI ด้านการแพทย์แผนไทย · รู้จักสมุนไพร 100 ชนิด ตำรา และหลักการตั้งตำรับยา</T>
         <PressableScale haptic="press" onPress={preview} style={[styles.listen, tts.speaking && styles.listenOn]} accessibilityLabel={tts.speaking ? 'หยุดเสียง' : 'ทดลองฟังเสียง'}>
           <Sym name={tts.speaking ? 'stop.fill' : 'play.fill'} size={15} color={tts.speaking ? '#04150E' : '#FFFFFF'} />
           <T v="bodyStrong" color={tts.speaking ? '#04150E' : '#FFFFFF'}>{tts.speaking ? 'หยุด' : 'ทดลองฟังเสียง'}</T>
@@ -77,11 +78,11 @@ export default function AISettings() {
         />
         <ListRow
           icon={<CircleIcon name="trash.fill" color="#D9534A" />}
-          title="ล้างประวัติแชททั้งหมด"
+          title="ลบประวัติแชททั้งหมด"
           onPress={() =>
-            Alert.alert('ล้างประวัติแชท?', 'แชทกับครูปัญญาทั้งหมดในเครื่องนี้จะถูกลบ', [
+            Alert.alert('ลบประวัติแชททั้งหมด?', 'แชทกับครูปัญญาทั้งหมดในเครื่องนี้จะถูกลบ และกู้คืนไม่ได้', [
               { text: 'ยกเลิก', style: 'cancel' },
-              { text: 'ล้าง', style: 'destructive', onPress: () => clearChats() },
+              { text: 'ลบทั้งหมด', style: 'destructive', onPress: () => clearChats() },
             ])
           }
           last

@@ -131,7 +131,7 @@ export function reportHtml(r: Report, dr: { name: string; types: string; cert?: 
   const max = Math.max(1, ...r.bars.map((b) => b.n));
   const css = `@page{size:A4;margin:14mm 12mm}body{font-family:-apple-system,'Thonburi','Noto Sans Thai',sans-serif;color:#111;font-size:12.5px;line-height:1.5}h1{font-size:18px;text-align:center;margin:0}h2{font-size:13.5px;text-align:center;margin:2px 0 12px;font-weight:600}.muted{color:#888}.grid{display:flex;gap:10px;margin:10px 0}.k{flex:1;border:1px solid #333;border-radius:6px;padding:8px;text-align:center}.k b{display:block;font-size:20px}.two{display:flex;gap:16px}.two>div{flex:1}h3{font-size:13px;margin:12px 0 4px}table{width:100%;border-collapse:collapse;margin-top:6px}th,td{border:1px solid #333;padding:4px 5px;font-size:11.5px;vertical-align:top}th{background:#eef3ef}ol{margin:2px 0 0 18px;padding:0}.bars{display:flex;align-items:flex-end;gap:8px;height:110px;border-bottom:1px solid #333;margin-top:6px}.bar{flex:1;text-align:center;font-size:10.5px}.bar div{background:#2E7D57;border-radius:3px 3px 0 0;margin:0 auto;width:70%}.sign{margin-top:28px;text-align:right}`;
   const body = `
-    <h1>รายงานสรุปการให้บริการของหมอพื้นบ้าน</h1>
+    <h1>รายงานสรุปการให้บริการ</h1>
     <h2>${esc(r.label)} · ${esc(dr.name)}${dr.types ? ` (${esc(dr.types)})` : ''}${dr.cert ? ` · เลขที่หนังสือรับรอง ${esc(dr.cert)}` : ''}</h2>
     <div class="grid">
       <div class="k"><b>${r.visits}</b>ครั้งที่ให้การรักษา</div>
@@ -150,6 +150,6 @@ export function reportHtml(r: Report, dr: { name: string; types: string; cert?: 
     <table><tr><th>ว/ด/ป</th><th>ผู้ป่วย</th><th>อาการ/วินิจฉัย</th><th>การรักษา</th><th>ผล</th></tr>
     ${r.rows.map(({ p, v }) => `<tr><td>${esc(v.date)}</td><td>${esc(p.name)}</td><td>${esc(clean(v.diagnosis) || clean(v.symptoms) || '-')}</td><td>${esc(clean(v.treatment) || '-')}</td><td>${esc(clean(v.result) || '-')}</td></tr>`).join('') || '<tr><td colspan="5" class="muted" style="text-align:center">ไม่มีการรักษาในช่วงนี้</td></tr>'}
     </table>
-    <div class="sign">ลงชื่อ ......................................................<br>(${esc(dr.name)})<br>หมอพื้นบ้าน</div>`;
+    <div class="sign">ลงชื่อ ......................................................<br>(${esc(dr.name)})<br>${esc(dr.types || 'ผู้บันทึก')}</div>`;
   return `<!doctype html><html lang="th"><head><meta charset="utf-8"><title>รายงาน ${esc(r.label)}</title><style>${css}</style></head><body>${body}</body></html>`;
 }

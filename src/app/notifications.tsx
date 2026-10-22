@@ -12,14 +12,16 @@ import { GROUPS, noticesFrom, type Notice, type NoticeGroup } from '../lib/notic
 import { useStock } from '../lib/stock';
 import { useApp } from '../store/app';
 import { elevation, palette } from '../theme';
+import { column } from '../components/layout';
+import { ROLE_PICKER, showPatients } from '../lib/roles';
 
 export default function Notifications() {
-  const { patients, wisdoms, isPractitioner, settings, update } = useApp();
+  const { patients, wisdoms, settings, update } = useApp();
   const h = useHaptic();
   const ann = useAnnouncements();
   const [stock] = useStock();
   const dismissed = settings.dismissedNotices ?? [];
-  const list = noticesFrom(patients, wisdoms, isPractitioner, ann, stock).filter((n) => !dismissed.includes(n.id));
+  const list = noticesFrom(showPatients(settings.userKind) ? patients : [], wisdoms, !ROLE_PICKER || !!settings.userRole, ann, stock).filter((n) => !dismissed.includes(n.id));
   // ยังไม่อ่าน = ยังไม่เคยกดเปิด (แสดงจุดเขียว) · กดการ์ด/ปัดล้าง/อ่านทั้งหมด → อ่านแล้ว
   const read = settings.readNotices ?? [];
   const isUnread = (n: Notice) => !read.includes(n.id);
@@ -59,7 +61,7 @@ export default function Notifications() {
             : undefined,
         }}
       />
-      <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingTop: 4, paddingBottom: 60 }}>
+      <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={[{ paddingHorizontal: PAGE_PAD, paddingTop: 4, paddingBottom: 60 }, column.read]}>
         {list.length ? (
           <>
             {groups.length > 1 ? (
@@ -97,12 +99,8 @@ function Group({ title, items, unread, onOpen, onClear, start }: { title: string
   return (
     <Animated.View layout={LinearTransition.duration(260)} style={{ marginTop: 14 }}>
       <View style={styles.groupHead}>
+        {/* ไม่มีปุ่มล้างทั้งกลุ่ม — ปัดการ์ดไปทางซ้ายเพื่อล้างทีละเรื่อง */}
         <T v="h3">{title}</T>
-        <PressableScale haptic="select" scaleTo={0.9} onPress={() => onClear(items.map((n) => n.id))} accessibilityLabel={`ล้าง${title}`} hitSlop={8}>
-          <View style={styles.clearAll}>
-            <T v="caption" color={ios.secondary} style={{ fontWeight: '600' }}>ล้าง</T>
-          </View>
-        </PressableScale>
       </View>
       <View style={{ gap: 8 }}>
         {items.map((n, i) => (
@@ -171,7 +169,6 @@ const styles = StyleSheet.create({
   chips: { gap: 8, paddingHorizontal: PAGE_PAD, paddingTop: 6, paddingBottom: 4 },
   chip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, height: 36, borderRadius: 18, backgroundColor: palette.surface, borderWidth: 1, borderColor: ios.separator },
   groupHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 4, marginBottom: 8 },
-  clearAll: { paddingHorizontal: 12, height: 26, borderRadius: 13, backgroundColor: 'rgba(120,120,128,0.14)', alignItems: 'center', justifyContent: 'center' },
   card: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, padding: 14, borderRadius: 22, borderCurve: 'continuous', backgroundColor: palette.surface },
   icon: { marginTop: 2 },
   top: { flexDirection: 'row', alignItems: 'center', gap: 8 },

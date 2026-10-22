@@ -47,15 +47,16 @@ export default function WisdomSearch() {
               style={[searchStyles.card, elevation.card, { padding: 12 }]}
               accessibilityLabel={w.title}
             >
-              <View style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: w.source === 'สแกนตำรา' ? '#FBEFD9' : palette.primarySoft, alignItems: 'center', justifyContent: 'center' }}>
-                <Sym name={w.source === 'สแกนตำรา' ? 'doc.text' : 'mic.fill'} size={22} color={w.source === 'สแกนตำรา' ? palette.orange : palette.primary} />
+              <View style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: w.source === 'สแกนตำรา' ? '#FBEFD9' : w.source === 'ตำราอ้างอิง' ? '#F3EBDD' : palette.primarySoft, alignItems: 'center', justifyContent: 'center' }}>
+                {/* ไอคอนตามที่มา: สแกน = เอกสาร · ตำราในระบบ = หนังสือ · อื่นๆ (เล่า/พิมพ์/แชร์) = ไมค์ */}
+                <Sym name={w.source === 'สแกนตำรา' ? 'doc.text' : w.source === 'ตำราอ้างอิง' ? 'book.closed.fill' : 'mic.fill'} size={22} color={w.source === 'สแกนตำรา' ? palette.orange : w.source === 'ตำราอ้างอิง' ? '#8A6A2E' : palette.primary} />
               </View>
               <View style={{ flex: 1, gap: 3 }}>
                 <Hi text={w.title} q={q.trim()} bold />
                 <Hi text={w.summary} q={q.trim()} v="subhead" color={ios.secondary} />
                 <T v="micro" color={ios.tertiary}>
-                  {w.kind} · {w.source} · {w.date}
-                  {w.verified ? '' : ' · รอตรวจทาน'}
+                  {/* ตำราในระบบไม่มีวันที่ → ไม่ให้มี " · " ค้างท้าย */}
+                  {[w.kind, w.source, w.date, w.verified ? '' : 'รอตรวจทาน'].filter(Boolean).join(' · ')}
                 </T>
               </View>
               <Sym name="chevron.right" size={13} color={ios.tertiary} weight="semibold" />

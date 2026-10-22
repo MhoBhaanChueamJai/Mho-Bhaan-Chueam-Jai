@@ -6,7 +6,6 @@ import { Stack, router, useFocusEffect } from 'expo-router';
 import { Alert } from '../../lib/alert';
 import { clearDraft, draftWhen, loadDraft, saveDraft } from '../../lib/drafts';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { PractitionerGate } from '../../components/PractitionerGate';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View, type KeyboardTypeOptions } from 'react-native';
 import { TextInput } from '../../components/AppText';
 import Animated, { FadeIn, FadeInDown, FadeOut, LinearTransition } from 'react-native-reanimated';
@@ -21,6 +20,7 @@ import { formatAddress, parseAddress } from '../../lib/address';
 import type { Patient } from '../../data/mock';
 import { useApp } from '../../store/app';
 import { elevation, palette } from '../../theme';
+import { column } from '../../components/layout';
 
 /** แอนิเมชันเลย์เอาต์มาตรฐาน: ส่วนที่ขยาย/หด และส่วนข้างเคียงเลื่อนตามแบบสปริงนุ่ม */
 const SMOOTH = LinearTransition.duration(280);
@@ -303,7 +303,7 @@ function NewPatientInner() {
           ),
         }}
       />
-      <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.page} keyboardDismissMode="interactive" keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+      <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={[styles.page, column.read]} keyboardDismissMode="interactive" keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         {restored ? (
           <Animated.View entering={FadeIn} style={styles.draft}>
             <Sym name="doc.badge.clock" size={18} color={palette.primaryDeep} />
@@ -346,7 +346,7 @@ function NewPatientInner() {
                 onChange={(d) => setF((x) => ({ ...x, bDay: String(d.getDate()), bMonth: String(d.getMonth() + 1), bYear: String(d.getFullYear() + 543) }))}
                 flex={2.3}
               />
-              <Field label="อายุ (ปี)" value={f.age} onChange={set('age')} placeholder="0" keyboard="number-pad" flex={1.1} />
+              <Field label="อายุ (ปี)" value={f.age} onChange={set('age')} placeholder="เช่น 45" keyboard="number-pad" flex={1.1} />
             </View>
           </View>
 
@@ -380,8 +380,8 @@ function NewPatientInner() {
           <Field label="โรคประจำตัว" value={f.chronic} onChange={set('chronic')} placeholder="ไม่มี" />
           <Field label="แพ้ยา / อาหาร" value={f.allergies} onChange={set('allergies')} placeholder="ไม่มี" />
           <View style={styles.row2}>
-            <Field label="น้ำหนัก (กก.)" value={f.weight} onChange={set('weight')} placeholder="0" keyboard="decimal-pad" flex={1} />
-            <Field label="ส่วนสูง (ซม.)" value={f.height} onChange={set('height')} placeholder="0" keyboard="decimal-pad" flex={1} />
+            <Field label="น้ำหนัก (กก.)" value={f.weight} onChange={set('weight')} placeholder="เช่น 60" keyboard="decimal-pad" flex={1} />
+            <Field label="ส่วนสูง (ซม.)" value={f.height} onChange={set('height')} placeholder="เช่น 160" keyboard="decimal-pad" flex={1} />
           </View>
         </Section>
       </ScrollView>
@@ -417,9 +417,5 @@ const styles = StyleSheet.create({
 });
 
 export default function NewPatient() {
-  return (
-    <PractitionerGate>
-      <NewPatientInner />
-    </PractitionerGate>
-  );
+  return <NewPatientInner />;
 }

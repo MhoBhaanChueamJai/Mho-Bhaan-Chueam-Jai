@@ -16,6 +16,7 @@ import { type ReferralRecord } from '../../data/mock';
 import { printReferral, thTime } from '../../lib/referral';
 import { useApp } from '../../store/app';
 import { elevation, palette } from '../../theme';
+import { column } from '../../components/layout';
 
 const SEND_STEPS = ['เตรียมข้อมูลผู้ป่วยและการรักษา', 'ส่งข้อมูลไปยังสถานพยาบาลปลายทาง', 'ปลายทางได้รับข้อมูลแล้ว'];
 
@@ -70,7 +71,7 @@ export default function Referral() {
   return (
     <>
       <Stack.Screen options={{ title: 'ส่งต่อผู้ป่วย', gestureEnabled: !!sent }} />
-      <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={styles.page}>
+      <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={[styles.page, column.read]}>
         {sent ? (
           <>
             <Animated.View entering={ZoomIn.springify().damping(14)} style={styles.done}>

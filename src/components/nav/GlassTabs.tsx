@@ -15,6 +15,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { tabMinimized } from './headerScroll';
 import { Glass, PressableScale, useHaptic } from '../ui';
 import { palette } from '../../theme';
+import { showPatients } from '../../lib/roles';
+import { useApp } from '../../store/app';
 
 const ICONS: Record<string, { on: number; off: number; label: string }> = {
   home: { on: require('../../../assets/tabs/house-chimney-on.png'), off: require('../../../assets/tabs/house-chimney-off.png'), label: 'หน้าหลัก' },
@@ -37,12 +39,16 @@ function TabBar({ state, navigation }: BottomTabBarProps) {
     const b = Keyboard.addListener('keyboardDidHide', () => setKb(false));
     return () => (a.remove(), b.remove());
   }, []);
-  const routes = state.routes.filter((r) => r.name !== 'ask');
+  const { settings } = useApp();
+  // ประชาชนทั่วไปไม่มีแท็บผู้ป่วย
+  const routes = state.routes.filter((r) => r.name !== 'ask' && (r.name !== 'patients' || showPatients(settings.userKind)));
   const ask = state.routes.find((r) => r.name === 'ask');
   const cur = state.routes[state.index]?.name;
   const sel = Math.max(0, routes.findIndex((r) => r.name === cur));
   const capW = Math.min(width, 520) - LEFT - RIGHT - H - GAP;
   const tabW = (capW - PAD * 2) / routes.length;
+  // จอกว้าง: แถบกว้างไม่เกิน 520 อยู่กึ่งกลางจอ (แบบแถบแท็บของ iPad)
+  const off = Math.max(0, (width - 520) / 2);
   const bottom = Math.max(22, insets.bottom - 12);
 
   const m = useDerivedValue(() => withSpring(tabMinimized.value, SPRING));
@@ -63,7 +69,7 @@ function TabBar({ state, navigation }: BottomTabBarProps) {
   const curIcon = ICONS[routes[sel]?.name ?? 'home'];
 
   return (
-    <Animated.View style={[styles.wrap, { bottom, left: LEFT, right: RIGHT }, wrapSt]} pointerEvents={kb ? 'none' : 'box-none'}>
+    <Animated.View style={[styles.wrap, { bottom, left: LEFT + off, right: RIGHT + off }, wrapSt]} pointerEvents={kb ? 'none' : 'box-none'}>
       <Animated.View style={[styles.shadow, capSt]}>
         <Glass interactive tint="rgba(255,255,255,0.78)" style={StyleSheet.absoluteFill} />
         {/* แคปซูลไฮไลต์แท็บที่เลือก */}

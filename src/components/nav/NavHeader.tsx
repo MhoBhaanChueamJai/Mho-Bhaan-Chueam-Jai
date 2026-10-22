@@ -13,8 +13,12 @@ import Animated, { Extrapolation, interpolate, useAnimatedStyle } from 'react-na
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BAR_H, LARGE_H, headerScrollY, topOf } from './headerScroll';
 import { Sym } from '../ios';
+import { COLUMN } from '../layout';
 import { Glass, PressableScale, T } from '../ui';
 import { palette } from '../../theme';
+
+/** หน้าที่เนื้อหากว้างแบบกริด (แท็บ · รายงาน) — หน้าอื่นใช้คอลัมน์อ่าน */
+const GRID_ROUTES = new Set(['index', 'report']);
 
 const isLight = (c?: string) => !!c && /^(#fff|#ffffff|white|rgba?\(\s*255\s*,\s*255\s*,\s*255)/i.test(c.trim());
 
@@ -61,7 +65,7 @@ export function NavHeader({ options, back, navigation, route }: NativeStackHeade
           <LinearGradient colors={[palette.bg, 'rgba(247,251,249,0.86)', 'rgba(247,251,249,0)']} locations={[0, 0.62, 1]} style={StyleSheet.absoluteFill} />
         </Animated.View>
       ) : null}
-      <View style={styles.bar} pointerEvents="box-none">
+      <View style={[styles.bar, { maxWidth: GRID_ROUTES.has(route.name) ? COLUMN.grid : COLUMN.read }]} pointerEvents="box-none">
         <View style={styles.side} pointerEvents="box-none">
           {left ? (
             <BarGlass dark={dark} clear={hero}>{left}</BarGlass>
@@ -91,7 +95,8 @@ export function NavHeader({ options, back, navigation, route }: NativeStackHeade
 
 const styles = StyleSheet.create({
   abs: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 },
-  bar: { height: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16 },
+  // จอกว้าง: ปุ่มบนแถบอยู่ในแนวเดียวกับคอลัมน์เนื้อหา (ไม่ชิดขอบจอ)
+  bar: { height: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, width: '100%', alignSelf: 'center' },
   side: { minWidth: 44, zIndex: 2 },
   itemShadow: { borderRadius: 22, boxShadow: '0px 4px 16px rgba(20,40,30,0.10), 0px 1px 3px rgba(20,40,30,0.06)' },
   itemShadowSoft: { borderRadius: 22, boxShadow: '0px 2px 10px rgba(0,0,0,0.08)' },

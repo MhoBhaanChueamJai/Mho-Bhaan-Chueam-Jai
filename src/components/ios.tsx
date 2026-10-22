@@ -26,12 +26,17 @@ export function Sym({ name, size = 22, color = palette.primary, weight = 'medium
   const s = iconTier(size);
   // Android / เว็บ: ไอคอนแทนที่หน้าตาใกล้ SF Symbols ที่สุด (SF Symbols ใช้ได้เฉพาะอุปกรณ์ Apple)
   if (Platform.OS !== 'ios') return <WebSymbol name={name} size={s} color={color} />;
-  return <SymbolView name={name} size={s} tintColor={color} weight={weight} type={type} style={{ width: s, height: s }} />;
+  // ไอคอนเป็นของตกแต่ง: ไม่ให้ VoiceOver อ่านชื่อสัญลักษณ์ (เช่น "cross.case.fill") — ปุ่มที่มีแต่ไอคอนใส่ accessibilityLabel ที่ปุ่มเอง
+  return (
+    <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={{ width: s, height: s }}>
+      <SymbolView name={name} size={s} tintColor={color} weight={weight} type={type} style={{ width: s, height: s }} />
+    </View>
+  );
 }
 
 export function AppIcon({ name, bg, size = 29, glyph }: { name: SFSymbol; bg: string; size?: number; glyph?: number }) {
   return (
-    <View style={{ width: size, height: size, borderRadius: size * 0.26, borderCurve: 'continuous', backgroundColor: bg, alignItems: 'center', justifyContent: 'center' }}>
+    <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={{ width: size, height: size, borderRadius: size * 0.26, borderCurve: 'continuous', backgroundColor: bg, alignItems: 'center', justifyContent: 'center' }}>
       {Platform.OS !== 'ios' ? <WebSymbol name={name} size={glyph ?? (size <= 32 ? 17 : 22)} color="#FFFFFF" /> : <SymbolView name={name} size={glyph ?? (size <= 32 ? 17 : 22)} tintColor="#FFFFFF" weight="semibold" style={{ width: glyph ?? (size <= 32 ? 17 : 22), height: glyph ?? (size <= 32 ? 17 : 22) }} />}
     </View>
   );

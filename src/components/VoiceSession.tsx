@@ -23,6 +23,7 @@ import { Button, GlassCircle, PressableScale, T, useHaptic } from './ui';
 import type { Turn } from '../lib/intake';
 import { palette } from '../theme';
 import { AiDownBanner } from './AiDownBanner';
+import { COLUMN, column, useLayout } from './layout';
 
 type Phase = 'speaking' | 'listening' | 'thinking' | 'done';
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -78,6 +79,8 @@ export function VoiceSession({ scribe, initialOptions, title, opening, topics, h
     });
   };
   const insets = useSafeAreaInsets();
+  // จอกว้าง: แถบพิมพ์ แถบแจ้ง และป้ายแจ้งเตือน กว้างเท่าคอลัมน์อ่าน อยู่กึ่งกลาง
+  const side = useLayout().side(COLUMN.read - 48, 24);
   const h = useHaptic();
   const rec = useVoiceRecorder();
   const [phase, setPhase] = useState<Phase>('speaking');
@@ -454,7 +457,7 @@ export function VoiceSession({ scribe, initialOptions, title, opening, topics, h
       <StatusBar style="light" />
       <LinearGradient colors={['#000000', '#050B08', '#000000']} style={StyleSheet.absoluteFill} />
       <AIGlow active={phase === 'listening' || phase === 'speaking'} />
-      <AiDownBanner dark style={{ position: 'absolute', top: insets.top + 64, left: 16, right: 16, zIndex: 5 }} />
+      <AiDownBanner dark style={{ position: 'absolute', top: insets.top + 64, left: side, right: side, zIndex: 5 }} />
       {/* แตะพื้นที่ว่างเพื่อปิดคีย์บอร์ด */}
       <Pressable style={StyleSheet.absoluteFill} onPress={Keyboard.dismiss} accessible={false} />
 
@@ -480,7 +483,7 @@ export function VoiceSession({ scribe, initialOptions, title, opening, topics, h
 
       {/* Snackbar สถานะข้อมูล */}
       {snack ? (
-        <Animated.View key={snack.id} entering={FadeInUp.duration(260)} exiting={FadeOutUp.duration(220)} style={[styles.snack, { top: insets.top + 64 }]} pointerEvents="none">
+        <Animated.View key={snack.id} entering={FadeInUp.duration(260)} exiting={FadeOutUp.duration(220)} style={[styles.snack, { top: insets.top + 64, left: side, right: side }]} pointerEvents="none">
           <Sym name={snack.icon as any} size={17} color="#7CF0A8" />
           <T v="subhead" color="#FFFFFF" numberOfLines={2} style={{ flex: 1 }}>{snack.text}</T>
         </Animated.View>
@@ -508,7 +511,7 @@ export function VoiceSession({ scribe, initialOptions, title, opening, topics, h
         </View>
       ) : mode === 'review' ? (
         /* ── ตรวจทาน: แก้ เพิ่ม ลบ แต่ละหัวข้อ ก่อนบันทึก ── */
-        <ScrollView style={{ flex: 1 }} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive" contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 120, gap: 12 }}>
+        <ScrollView style={{ flex: 1 }} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive" contentContainerStyle={[{ padding: 20, paddingBottom: insets.bottom + 120, gap: 12 }, column.read]}>
           <T v="subhead" color="rgba(255,255,255,0.6)">{scribeErr || 'ตรวจทานข้อมูล แก้ เพิ่ม หรือลบได้ก่อนบันทึก'}</T>
           {topics.map((t, i) => {
             const v = String(data[t.key] ?? '');
@@ -599,7 +602,7 @@ export function VoiceSession({ scribe, initialOptions, title, opening, topics, h
       {/* แถบลอยยกขึ้นตามคีย์บอร์ด (ส่วนอื่นของหน้าอยู่ที่เดิม) */}
       <Animated.View pointerEvents="box-none" style={[StyleSheet.absoluteFill, dockLift]}>
       {/* แถบมืด (กระจกสว่างบนพื้นดำทำให้ช่องพิมพ์มองไม่เห็น) */}
-      <View style={[styles.darkDock, { bottom: insets.bottom ? 24 : 16 }]}>
+      <View style={[styles.darkDock, { bottom: insets.bottom ? 24 : 16, left: side, right: side }]}>
         {mode === 'scribe' ? (
           <View style={styles.scribeCtrls}>
             <PressableScale
@@ -687,7 +690,7 @@ const styles = StyleSheet.create({
   typeRow: { flexDirection: 'row', alignItems: 'center', gap: 8, height: 50, paddingLeft: 16, paddingRight: 6, borderRadius: 25, backgroundColor: '#FFFFFF' },
   typeInput: { flex: 1, fontSize: 17, color: '#1F2A24', height: '100%' },
   send: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
-  top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16 },
+  top: { ...column.read, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: 190 },
   statusPill: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14, paddingHorizontal: 14, paddingVertical: 6, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.1)' },
   liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#FF5A5A' },

@@ -22,6 +22,7 @@ import Animated, { Easing, useAnimatedKeyboard, useAnimatedProps, useAnimatedSty
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { useApp } from '../store/app';
+import { COLUMN, useLayout } from './layout';
 import { Image } from 'expo-image';
 import { clayCard, control, elevation, motion, palette, radius, space, type, type TypeVariant } from '../theme';
 
@@ -155,6 +156,8 @@ export function GlassCircle({ children, onPress, size = control.icon, label, tin
 export function GlassDock({ children, style }: { children: React.ReactNode; style?: StyleProp<ViewStyle> }) {
   const insets = useSafeAreaInsets();
   const bottom = insets.bottom ? 24 : 16;
+  // จอกว้าง: แถบปุ่มกว้างไม่เกินคอลัมน์อ่าน (720) อยู่กึ่งกลาง
+  const side = useLayout().side(COLUMN.read - 48, 24);
   const kb = useAnimatedKeyboard();
   const hide = useAnimatedStyle(() => {
     const open = kb.height.value > 40;
@@ -162,7 +165,7 @@ export function GlassDock({ children, style }: { children: React.ReactNode; styl
   });
   return (
     // เว้นจากขอบจอ 24 ทั้งซ้าย ขวา ล่าง — แบบแถบลอยของ iOS 26
-    <Animated.View style={[{ position: 'absolute', left: 24, right: 24, bottom }, hide]} pointerEvents="box-none">
+    <Animated.View style={[{ position: 'absolute', left: side, right: side, bottom }, hide]} pointerEvents="box-none">
       {/* ขอบนอกเป็น Liquid Glass ใส (ไม่ทาสีขาวทับ) ให้เห็นเนื้อหาด้านหลังแบบกระจกจริง */}
       <Glass interactive tint="rgba(255,255,255,0.12)" style={[styles.dock, elevation.e3, style]}>{children}</Glass>
     </Animated.View>
@@ -220,6 +223,9 @@ export function Button({
     <PressableScale
       haptic="press"
       onPress={disabled ? undefined : onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled: !!disabled }}
       style={[styles.btn, { backgroundColor: map.bg, opacity: disabled ? 0.45 : 1 }, kind === 'primary' && !disabled && elevation.glow, kind === 'secondary' && elevation.e1, style]}
     >
       {icon}
@@ -255,7 +261,7 @@ export function Segmented<K extends string>({ items, value, onChange }: { items:
   return (
     <Glass interactive style={styles.seg}>
       {items.map((it) => (
-        <PressableScale key={it.key} haptic="select" hitSlop={control.hitSlop} onPress={() => onChange(it.key)} style={[styles.segItem, value === it.key && { backgroundColor: palette.black }]}>
+        <PressableScale key={it.key} haptic="select" hitSlop={control.hitSlop} onPress={() => onChange(it.key)} accessibilityRole="tab" accessibilityLabel={it.label} accessibilityState={{ selected: value === it.key }} style={[styles.segItem, value === it.key && { backgroundColor: palette.black }]}>
           <T v="callout" color={value === it.key ? palette.white : palette.inkSoft}>
             {it.label}
           </T>

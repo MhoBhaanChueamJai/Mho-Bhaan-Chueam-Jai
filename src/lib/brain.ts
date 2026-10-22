@@ -8,13 +8,16 @@
  * ค้นแบบ trigram ในเครื่อง ไม่ต้องมีเซิร์ฟเวอร์ค้นหา
  */
 import { herbs, type Herb } from '../data/herbs';
+import { roleBrief } from './roles';
 import type { Wisdom } from '../data/mock';
 import { PHARMACY, type PharmacyDoc } from '../data/pharmacy';
 import { THAIMED } from '../data/thaimed';
+import { HOUSEHOLD, type HouseholdMed } from '../data/household';
 import { dialectHint, dialectSpeakStyle } from './dialect';
 import { knowledgeFor } from './knowledge';
 import { allergyHits, herbConflicts, redFlags, riskGroups, safetyBlock, type Conflict } from './safety';
 import { expandQuery } from './synonyms';
+import { citeLabel, docById } from './sources';
 
 const norm = (s: string) =>
   s
@@ -52,9 +55,22 @@ function herbIndex() {
 }
 
 /** สมุนไพรที่ถูกเอ่ยชื่อในข้อความ (ชื่อหลัก/ชื่อท้องถิ่น) — ใช้ตรวจความปลอดภัย */
+/** ชื่อสั้นที่เป็นส่วนหนึ่งของคำอื่นได้บ่อย (ยอ→ยอด ข่า→ข่าว ยม→นิยม แหน→แหนม) → ต้องเป็นคำเดี่ยวจริง */
+const AMBIGUOUS = new Set(['ยอ', 'ยม', 'ข่า', 'แหน', 'มอน', 'กุก']);
+const THAI_CONT = /^[ก-ฮะ-ฺ็-๎]/; // ตัวอักษร/สระ/วรรณยุกต์ที่ต่อคำได้ (ไม่รวมสระหน้า เ แ โ ใ ไ ซึ่งขึ้นคำใหม่)
+function standalone(text: string, name: string) {
+  for (let i = text.indexOf(name); i >= 0; i = text.indexOf(name, i + 1)) {
+    const after = text.slice(i + name.length, i + name.length + 1);
+    const before = text.slice(Math.max(0, i - 1), i);
+    // ถัดไปเป็นพยัญชนะ/สระหลัง/วรรณยุกต์ = คำยังไม่จบ (ยอด ข่าว แหนม) · ก่อนหน้าเป็นสระบน-ล่าง = กลางคำ (นิยม)
+    if (!THAI_CONT.test(after) && !/[ัิ-ฺ]$/.test(before)) return true;
+  }
+  return false;
+}
+
 export function herbsMentioned(text: string): Herb[] {
   const t = text.replace(/\s+/g, '');
-  const found = herbIndex().filter((x) => x.names.some((n) => n.length >= 2 && t.includes(n.replace(/\s+/g, ''))));
+  const found = herbIndex().filter((x) => x.names.some((n) => n.length >= 2 && t.includes(n.replace(/\s+/g, '')) && (!AMBIGUOUS.has(n) || standalone(text, n))));
   // ชื่อสั้นที่เป็นส่วนหนึ่งของชื่อยาวกว่าที่เจอแล้ว (เช่น ขิง ใน ขิงแห้ง ที่ไม่มีในคลัง) ยังเก็บไว้ — แต่ตัดตัวซ้ำ
   return [...new Map(found.map((x) => [x.h.id, x.h])).values()];
 }
@@ -135,6 +151,33 @@ export function pharmacyFor(query: string, k = 4): PharmacyDoc[] {
     .map((x) => x.d);
 }
 
+/* ── ยาสามัญประจำบ้าน (ประกาศกระทรวงสาธารณสุข) ───────────────── */
+type MedIdx = { m: HouseholdMed; head: Set<string>; body: Set<string> };
+let medIdx: MedIdx[] | null = null;
+
+/** ยาสามัญประจำบ้านที่ข้อบ่งใช้ตรงกับอาการ (kind: เฉพาะแผนปัจจุบัน / แผนโบราณ) */
+export function householdFor(query: string, k = 6, kind?: HouseholdMed['kind']): HouseholdMed[] {
+  medIdx ??= HOUSEHOLD.map((m) => ({ m, head: grams(`${m.name} ${m.group ?? ''}`), body: grams(m.use) }));
+  const q = grams(query.replace(STOP, ' '));
+  if (!q.size) return [];
+  const scored = medIdx
+    .filter((x) => !kind || x.m.kind === kind)
+    .map((x) => {
+      let s = 0;
+      q.forEach((g) => {
+        if (x.body.has(g)) s += 3;
+        if (x.head.has(g)) s += 1.5;
+      });
+      return { m: x.m, s: s / Math.sqrt(q.size) };
+    });
+  const top = Math.max(0, ...scored.map((x) => x.s));
+  return scored
+    .filter((x) => x.s >= 2.4 && x.s >= top * 0.4)
+    .sort((a, b) => b.s - a.s)
+    .slice(0, k)
+    .map((x) => x.m);
+}
+
 /* ── ผู้ป่วย (บริบทการรักษา) ───────────────────────────────── */
 export type PatientCtx = {
   name?: string;
@@ -168,8 +211,8 @@ function patientBrief(p: PatientCtx) {
 }
 
 /* ── คำสั่งหลัก ────────────────────────────────────────────── */
-const CORE = `คุณคือ "ครูปัญญา" ผู้ช่วย AI ผู้เชี่ยวชาญการแพทย์แผนไทยและเภสัชกรรมไทย ของแอป "หมอบ้านเชื่อมใจ" คู่คิดของหมอพื้นบ้านไทยอายุ 40–80 ปี
-บุคลิก: อบอุ่น สุภาพ ให้เกียรติภูมิปัญญาของหมอ เรียกผู้ใช้ว่า "คุณหมอ" ใช้ภาษาง่าย ประโยคสั้น ลงท้าย "ครับ" แค่ครั้งเดียวต่อช่วง (ห้าม "ครับครับ")
+const CORE = `คุณคือ "ครูปัญญา" ผู้ช่วย AI ผู้เชี่ยวชาญการแพทย์แผนไทยและเภสัชกรรมไทย ของแอป "หมอบ้านเชื่อมใจ" คู่คิดด้านสุขภาพของแพทย์แผนไทย แพทย์แผนปัจจุบัน หมอพื้นบ้าน และประชาชนทั่วไป
+บุคลิก: อบอุ่น สุภาพ ให้เกียรติภูมิปัญญาไทย เรียกผู้ใช้ตามบทบาท (ดูหัวข้อ "ผู้ใช้" · คำว่า "คุณหมอ" ในกติกาด้านล่างหมายถึงผู้ใช้) ใช้ภาษาง่าย ประโยคสั้น ลงท้าย "ครับ" แค่ครั้งเดียวต่อช่วง (ห้าม "ครับครับ")
 
 วิธีคิดก่อนตอบ (คิดในใจ ไม่ต้องเขียนขั้นตอนออกมา):
 1. คุณหมอถามเรื่องอะไร: สมุนไพรตัวเดียว / การตั้งตำรับ-ผสมยา / อาการ-การดูแลผู้ป่วย / ความปลอดภัย-ยาตีกัน / ทฤษฎีธาตุ-รสยา / เรื่องทั่วไป
@@ -197,12 +240,16 @@ const VOICE_STYLE = `กำลังคุยกันด้วยเสีย�
 - จบด้วยคำถามสั้นๆ ชวนคุยต่อเมื่อเหมาะสม (เช่น ถามอาการเพิ่ม ถามอายุผู้ป่วย)
 - ตัวเลขเขียนเป็นตัวเลขอารบิก หน่วยเขียนเต็ม เช่น "3 กรัม" "วันละ 2 ครั้ง"`;
 
-export type Brain = { system: string; sources: { id: string; title: string; kind: 'wisdom' | 'herb' }[]; herbsUsed: Herb[]; flags: string[]; conflicts: Conflict[]; deep: boolean };
+export type Brain = { system: string; sources: { id: string; title: string; kind: 'wisdom' | 'herb' | 'doc'; tags?: string[] }[]; herbsUsed: Herb[]; flags: string[]; conflicts: Conflict[]; deep: boolean };
 
 /** ความจำข้ามแชท: คุณหมอเป็นใคร ถนัดอะไร เคยถามเรื่องอะไร (เก็บในเครื่อง) */
 export type DoctorCtx = { name?: string; types?: string; topics?: string[] };
 
 /** คำถามที่ต้องคิดละเอียด (ใช้ 2 โมเดลช่วยกัน): เรื่องยา ขนาดยา การผสม ความปลอดภัย กลุ่มเสี่ยง */
+/** ถามวิธีรักษา/บรรเทาอาการ → ตอบแยกแผนไทย · แผนปัจจุบัน (ยาสามัญประจำบ้าน) */
+const SYMPTOM_Q = /(ปวด|ไข้|ไอ|เจ็บคอ|ท้องอืด|ท้องเฟ้อ|ท้องเสีย|ท้องผูก|ท้องร่วง|คลื่นไส้|อาเจียน|วิงเวียน|เวียนหัว|นอนไม่หลับ|ผื่น|คัน|น้ำมูก|คัดจมูก|เสมหะ|แผล|ฟกช้ำ|เคล็ด|อักเสบ|ประจำเดือน|ร้อนใน|เป็นหวัด|หวัด|อาการ).*(รักษา|แก้|บรรเทา|ทำยังไง|ทำอย่างไร|กินอะไร|ใช้อะไร|ยาอะไร|หาย|ดีไหม|ได้ไหม|ช่วย)|(รักษา|แก้|บรรเทา).*(ปวด|ไข้|ไอ|ท้อง|หวัด|ผื่น|คัน|แผล|อาการ)/;
+export const isSymptomQ = (q: string) => SYMPTOM_Q.test(q.replace(/\s+/g, ''));
+
 const DEEP_Q = /ยา|ผสม|ขนาด|ตีกัน|ระวัง|ห้าม|กินได้ไหม|ใช้ได้ไหม|ตั้งครรภ์|ให้นม|เด็ก|ผู้สูงอายุ|แพ้|รักษา|ตำรับ/;
 
 /**
@@ -222,14 +269,14 @@ export function think(query: string, opts: { wisdoms: Wisdom[]; mode: 'chat' | '
   const pool = [...new Map([...named, ...hs].map((h) => [h.id, h])).values()];
   const conflicts = herbConflicts(pool, groups);
   const allergic = allergyHits(pool, opts.patient?.allergies);
-  const blocks: string[] = [CORE, opts.mode === 'voice' ? VOICE_STYLE : CHAT_STYLE, `- ${dialectHint()}`, `- ${dialectSpeakStyle()}`];
+  const blocks: string[] = [CORE, `ผู้ใช้: ${roleBrief()}`, opts.mode === 'voice' ? VOICE_STYLE : CHAT_STYLE, `- ${dialectHint()}`, `- ${dialectSpeakStyle()}`];
   const d = opts.doctor;
   if (d && (d.name || d.types || d.topics?.length))
     blocks.push(
       [
-        `เกี่ยวกับคุณหมอที่กำลังคุยด้วย${d.name ? `: ${d.name}` : ''}${d.types ? ` (หมอพื้นบ้านด้าน${d.types})` : ''}`,
-        d.topics?.length ? `เรื่องที่คุณหมอเคยถามครูปัญญาเมื่อไม่นานนี้: ${d.topics.slice(0, 6).join(' · ')}` : '',
-        'ใช้เพื่อปรับคำตอบให้ตรงความถนัดของคุณหมอ ไม่ต้องพูดถึงรายการนี้ ถ้าเกี่ยวกับเรื่องที่เคยคุยให้ต่อยอดได้',
+        `เกี่ยวกับผู้ใช้ที่กำลังคุยด้วย${d.name ? `: ${d.name}` : ''}${d.types ? ` (${d.types})` : ''}`,
+        d.topics?.length ? `เรื่องที่ผู้ใช้เคยถามครูปัญญาเมื่อไม่นานนี้: ${d.topics.slice(0, 6).join(' · ')}` : '',
+        'ใช้เพื่อปรับคำตอบให้ตรงความสนใจของผู้ใช้ ไม่ต้องพูดถึงรายการนี้ ถ้าเกี่ยวกับเรื่องที่เคยคุยให้ต่อยอดได้',
       ]
         .filter(Boolean)
         .join('\n'),
@@ -237,21 +284,36 @@ export function think(query: string, opts: { wisdoms: Wisdom[]; mode: 'chat' | '
   if (opts.patient) blocks.push(patientBrief(opts.patient));
   const safe = safetyBlock(flags, groups, conflicts, allergic);
   if (safe) blocks.push(safe);
-  if (docs.length) blocks.push(`ความรู้การแพทย์และเภสัชกรรมแผนไทย (จากแหล่งทางการ ใช้อ้างอิงเรื่องหลักการ ทฤษฎีธาตุ การดูแลโรค ตำรับ วิธีปรุง ความปลอดภัย):\n${docs.map((d) => `【${d.title}】\n${d.text}`).join('\n\n')}`);
+  if (docs.length) blocks.push(`ความรู้การแพทย์และเภสัชกรรมแผนไทย (จากแหล่งทางการ ใช้อ้างอิงเรื่องหลักการ ทฤษฎีธาตุ การดูแลโรค ตำรับ วิธีปรุง ความปลอดภัย — เมื่อใช้ข้อมูลส่วนนี้ให้บอกชื่อแหล่งสั้นๆ เช่น "ตามแนวทางเวชกรรมไทย 2568"):\n${docs.map((d) => { const k = docById(d.id); return `【${d.title}】${k ? ` (ที่มา: ${citeLabel(k)})` : ''}\n${d.text}`; }).join('\n\n')}`);
   if (hs.length) blocks.push(`ข้อมูลจากคลังสมุนไพรของแอป (เชื่อถือได้ ใช้ก่อนความรู้ทั่วไป):\n${hs.map(herbBrief).join('\n\n')}`);
   if (kn.text) blocks.push(kn.text);
   // ผสมสมุนไพรตั้งแต่ 2 ตัว → ย้ำให้ตรวจข้อห้ามรวมกัน
+  // ถามวิธีรักษาอาการ → แนบยาสามัญประจำบ้านที่ตรงกับอาการ และให้ตอบแยก 2 ทาง
+  const symptomQ = opts.mode === 'chat' && isSymptomQ(opts.latest ?? query);
+  const meds = symptomQ ? householdFor(q, 4, 'modern') : [];
+  if (symptomQ)
+    blocks.push(
+      `ผู้ใช้ถามวิธีรักษา/บรรเทาอาการ: ตอบแยก 2 หัวข้อ "แผนไทย" (สมุนไพร/ตำรับจากคลังด้านบน) และ "แผนปัจจุบัน" (แนะนำได้เฉพาะยาสามัญประจำบ้านในรายการนี้ ห้ามแนะนำยาที่ต้องสั่งโดยแพทย์) แล้วปิดด้วย "ควรพบแพทย์เมื่อ" · ถ้าข้อมูลอาการยังไม่พอ (อายุ ระยะเวลา โรคประจำตัว ยาที่กิน) ให้ถามเพิ่ม 1-2 ข้อท้ายคำตอบ\nยาสามัญประจำบ้าน (ประกาศกระทรวงสาธารณสุข):\n${meds.length ? meds.map((m) => `【${m.name}】 ข้อบ่งใช้: ${m.use}${m.how ? ` · วิธีใช้: ${m.how.slice(0, 220)}` : ''}${m.caution ? ` · คำเตือน: ${m.caution.slice(0, 200)}` : ''}`).join('\n') : '(ไม่มีรายการที่ตรงกับอาการนี้ — บอกว่าควรปรึกษาเภสัชกรหรือแพทย์)'}`,
+    );
   if (named.length >= 2) blocks.push(`คุณหมอเอ่ยถึงสมุนไพร ${named.length} ชนิด (${named.map((h) => h.name).join(', ')}) — ตรวจข้อควรระวังของทุกตัวรวมกัน รสยาที่ขัดกัน และผลต่อกลุ่มเสี่ยง ก่อนแนะนำให้ผสม`);
   return {
     system: blocks.join('\n\n'),
     sources: [
       ...kn.used.map((w) => ({ id: w.id, title: w.title, kind: 'wisdom' as const })),
       ...hs.map((h) => ({ id: h.id, title: h.name, kind: 'herb' as const })),
+      ...docs.map((d) => {
+        const k = docById(d.id);
+        return { id: d.id, title: k ? citeLabel(k) : d.title, kind: 'doc' as const, tags: d.tags };
+      }),
+      ...meds.map((m) => {
+        const k = docById(`med:${m.id}`);
+        return { id: `med:${m.id}`, title: k ? citeLabel(k) : m.name, kind: 'doc' as const, tags: [m.name] };
+      }),
     ],
     herbsUsed: hs,
     flags,
     conflicts,
-    deep: !!(flags.length || groups.length || named.length || opts.patient || FORMULA_Q.test(query) || DEEP_Q.test(opts.latest ?? query)),
+    deep: !!(symptomQ || flags.length || groups.length || named.length || opts.patient || FORMULA_Q.test(query) || DEEP_Q.test(opts.latest ?? query)),
   };
 }
 
@@ -271,7 +333,10 @@ export function tidyReply(text: string, mode: 'chat' | 'voice' = 'chat') {
 
 /** ที่มาที่ควรแสดง: ตำรา/สมุนไพรที่ถูกเอ่ยชื่อในคำตอบ (ไม่เอ่ยเลย → ตำราที่ตรงที่สุด 1 เล่ม) */
 export function citedSources(reply: string, b: Brain) {
-  const named = b.sources.filter((s) => reply.includes(s.title.replace(/\s*\(.*\)$/, '')));
+  const flat = reply.replace(/\s+/g, '');
+  // ตำราทางการ: คำตอบพูดถึงเรื่องในหัวข้อนั้น (แท็กตรงกัน) หรือเอ่ยชื่อแหล่ง
+  const docs = b.sources.filter((s) => s.kind === 'doc' && (s.tags?.some((t) => t.length >= 3 && flat.includes(t.replace(/\s+/g, ''))) || flat.includes(s.title.split(' หน้า')[0].replace(/\s+/g, '')))).slice(0, 2);
+  const named = [...b.sources.filter((s) => s.kind !== 'doc' && reply.includes(s.title.replace(/\s*\(.*\)$/, ''))), ...docs].map(({ tags: _t, ...s }) => s);
   if (named.length) return named.slice(0, 5);
   const firstW = b.sources.find((s) => s.kind === 'wisdom');
   return firstW ? [firstW] : [];

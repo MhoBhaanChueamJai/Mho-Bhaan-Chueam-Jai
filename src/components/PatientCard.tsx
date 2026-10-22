@@ -24,7 +24,8 @@ const MAX_TILT = 9; // องศา
 
 export function PatientCard({ p, avatar, onCall }: { p: Patient; avatar: number; onCall?: () => void }) {
   const { width: W } = useWindowDimensions();
-  const cw = W - 40;
+  // จอกว้าง: บัตรไม่ใหญ่เกิน 560 (สัดส่วนบัตรจริง) อยู่กึ่งกลาง
+  const cw = Math.min(W - 40, 560);
   const ch = Math.round(cw / 1.42);
   const [flipped, setFlipped] = useState(false);
 

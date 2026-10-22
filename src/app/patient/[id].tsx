@@ -1,7 +1,6 @@
 import { MenuView } from '../../components/Menu';
 import { Stack, router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
-import { PractitionerGate } from '../../components/PractitionerGate';
 import { Linking, Platform, ScrollView, Share, StyleSheet, View } from 'react-native';
 import { Alert } from '../../lib/alert';
 import { NotFound } from '../../components/NotFound';
@@ -21,6 +20,7 @@ import { printReferral, thDate, thTime } from '../../lib/referral';
 import { thShort, todayIso } from '../../lib/reminders';
 import { VitalsTrend } from '../../components/VitalsTrend';
 import { draftWhen, loadDraft } from '../../lib/drafts';
+import { column } from '../../components/layout';
 
 const DETAIL: { k: keyof MB5Visit; l: string; icon: string; color: string }[] = [
   { k: 'symptoms', l: 'อาการ', icon: 'waveform.path.ecg', color: '#C2564B' },
@@ -141,7 +141,7 @@ function PatientBody({ p }: { p: Patient }) {
   const dr = useDoctor();
   const [openNo, setOpenNo] = useState<number | null>(p.visits[0]?.no ?? null);
   // ส่งออก = แบบ ม.บ.5 ของผู้ป่วยรายนี้ (PDF)
-  const exportMb5 = () => outputPdf(mb5Html([p], dr), `ม.บ.5 ${p.name}`).catch(() => Alert.alert('สร้างเอกสารไม่สำเร็จ', 'ลองใหม่อีกครั้ง'));
+  const exportMb5 = () => outputPdf(mb5Html([p], dr), `ม.บ.5 ${p.name}`, { landscape: true }).catch(() => Alert.alert('สร้างเอกสารไม่สำเร็จ', 'ลองใหม่อีกครั้ง'));
   const tel = (p.phone ?? '').replace(/[^0-9]/g, '');
   const { ask } = useLocalSearchParams<{ ask?: string }>();
   // ส่งข้อความถามอาการหลังรักษา: SMS (มีเบอร์) หรือ LINE/แอปอื่นผ่านหน้าแชร์ของเครื่อง
@@ -233,11 +233,11 @@ function PatientBody({ p }: { p: Patient }) {
                 shouldOpenOnLongPress={false}
                 themeVariant="light"
                 actions={[
-                  { id: 'interact', title: 'ตรวจยาตีกัน', image: 'pills.circle.fill', imageColor: palette.ink },
+                  { id: 'interact', title: 'ถามครูปัญญาเรื่องยาตีกัน', image: 'sparkles', imageColor: palette.ink },
                   { id: 'share', title: 'ส่งออก ม.บ.5', image: 'square.and.arrow.up', imageColor: palette.ink },
                   { id: 'delete', title: 'ลบผู้ป่วย', image: 'trash', imageColor: '#E5484D', attributes: { destructive: true } },
                 ]}
-                onPressAction={({ nativeEvent: e }) => (e.event === 'interact' ? router.push({ pathname: '/interactions', params: { pid: p.id } }) : e.event === 'share' ? exportMb5() : e.event === 'delete' ? remove() : undefined)}
+                onPressAction={({ nativeEvent: e }) => (e.event === 'interact' ? router.push({ pathname: '/assistant', params: { q: `${p.name}${p.meds.length ? ` กินยา ${p.meds.join(', ')}` : ''}${p.chronic && p.chronic !== 'ไม่มี' ? ` มีโรคประจำตัว ${p.chronic}` : ''} ใช้สมุนไพรอะไรได้บ้าง ต้องระวังยาตีกันกับสมุนไพรตัวไหน` } }) : e.event === 'share' ? exportMb5() : e.event === 'delete' ? remove() : undefined)}
               >
                 <View style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }} accessibilityRole="button" accessibilityLabel="เพิ่มเติม">
                   <Sym name="ellipsis" size={19} color={palette.ink} weight="semibold" />
@@ -247,7 +247,7 @@ function PatientBody({ p }: { p: Patient }) {
           ),
         }}
       />
-      <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingTop: headerInset(insets.top), paddingBottom: insets.bottom + 120 }} showsVerticalScrollIndicator={false}>
+      <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={[{ paddingHorizontal: PAGE_PAD, paddingTop: headerInset(insets.top), paddingBottom: insets.bottom + 120 }, column.read]} showsVerticalScrollIndicator={false}>
         {/* ── บัตรผู้ป่วย 3 มิติ (แตะเพื่อพลิกดูธาตุ · เอียงมือถือแสงเปลี่ยน) ── */}
         <Animated.View entering={FadeIn.duration(350)} style={{ marginTop: 8 }}>
           <PatientCard p={p} avatar={avatarFor(p)} onCall={call} />
@@ -386,9 +386,5 @@ const styles = StyleSheet.create({
 });
 
 export default function PatientDetail() {
-  return (
-    <PractitionerGate>
-      <PatientDetailInner />
-    </PractitionerGate>
-  );
+  return <PatientDetailInner />;
 }

@@ -9,6 +9,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { chat } from '../api/ai';
 import { herbs, type Herb, type Taste } from '../data/herbs';
+import { userNoun } from './roles';
 
 export type Season = { key: 'hot' | 'rain' | 'cold'; name: string; pali: string; tastes: Taste[]; advice: string };
 const SEASONS: Record<Season['key'], Season> = {
@@ -55,7 +56,7 @@ export async function dailyTip(p: DailyPick): Promise<string> {
     [
       {
         role: 'user',
-        content: `เขียน "เคล็ดลับวันนี้" เรื่อง${h.name} สำหรับหมอพื้นบ้าน 1-2 ประโยคสั้น ภาษาง่าย อบอุ่น ไม่ต้องทักทาย ไม่ใส่หัวข้อ ไม่ใส่สัญลักษณ์
+        content: `เขียน "เคล็ดลับวันนี้" เรื่อง${h.name} สำหรับ${userNoun()} 1-2 ประโยคสั้น ภาษาง่าย อบอุ่น ไม่ต้องทักทาย ไม่ใส่หัวข้อ ไม่ใส่สัญลักษณ์
 ใช้เฉพาะข้อมูลนี้ ห้ามเพิ่มสรรพคุณหรือขนาดยาที่ไม่มีในข้อมูล:
 รส${h.taste} ${h.element ? `ธาตุ${h.element}` : ''} · ส่วนที่ใช้: ${h.part}
 สรรพคุณ: ${h.uses.join(', ')}

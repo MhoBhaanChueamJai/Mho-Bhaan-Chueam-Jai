@@ -11,7 +11,6 @@ import Animated, { FadeIn, LinearTransition } from 'react-native-reanimated';
 import { Switch } from '../../components/AppSwitch';
 import { DateField, Dropdown } from '../../components/FormPickers';
 import { NotFound } from '../../components/NotFound';
-import { PractitionerGate } from '../../components/PractitionerGate';
 import { Sym, ios } from '../../components/ios';
 import { Button, GlassDock, PressableScale, T, useHaptic } from '../../components/ui';
 import { FACILITIES } from '../../data/facilities';
@@ -22,8 +21,11 @@ import { stockState, useStock } from '../../lib/stock';
 import { LEVEL, SRC, assess, vitalsText, type Vitals } from '../../lib/vitals';
 import { clearDraft, draftWhen, loadDraft, saveDraft } from '../../lib/drafts';
 import { herbsMentioned } from '../../lib/brain';
+import { planToTreatment } from '../../lib/plan';
+import { PlanCard } from '../../components/PlanCard';
 import { useApp } from '../../store/app';
 import { elevation, palette } from '../../theme';
+import { column } from '../../components/layout';
 
 const FU = [
   { d: 0, label: 'ไม่นัด' },
@@ -218,7 +220,7 @@ function RecordInner() {
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: palette.bg }}>
       {/* หน้าแบบเดียวกับเพิ่มผู้ป่วย: ปุ่มย้อนกลับมุมซ้าย · ปุ่มบันทึกลอยด้านล่าง */}
       <Stack.Screen options={{ title: `บันทึกการรักษาครั้งที่ ${no}` }} />
-      <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.page} keyboardDismissMode="interactive" keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+      <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={[styles.page, column.read]} keyboardDismissMode="interactive" keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         {restored ? (
           <Animated.View entering={FadeIn} style={styles.draft}>
             <Sym name="doc.badge.clock" size={18} color={palette.primaryDeep} />
@@ -265,6 +267,20 @@ function RecordInner() {
         </Section>
 
         <Section title="การรักษา" icon="leaf.fill">
+          {/* ครูปัญญาเสนอแนวทาง: แผนไทย / แผนปัจจุบัน (ยาสามัญประจำบ้าน + ส่งต่อ) พร้อมแหล่งอ้างอิง */}
+          <PlanCard
+            patient={p}
+            input={{ symptoms, duration, exam, vitals: vitalsText(vitals), diagnosis }}
+            onUse={(plan, track) => {
+              const add = planToTreatment(plan, track);
+              setTreatment((t) => (t.trim() ? `${t.trim()} · ${add}` : add));
+              const dx = track === 'thai' ? plan.thaiDx : plan.modernDx;
+              if (!diagnosis.trim() && dx) setDiagnosis(dx);
+              if (!followUp.trim() && plan.followUp) setFollowUp(plan.followUp);
+              if (plan.refer.level === 'now' && !referReason.trim()) setReferReason(plan.refer.reason);
+              h.success();
+            }}
+          />
           <Field label="การรักษา / ยาที่ให้" value={treatment} onChange={setTreatment} placeholder="เช่น นวด ประคบสมุนไพร ยาประสะไพล ครั้งละ 1 กรัม" multiline />
           {ready.length ? (
             <View>
@@ -360,11 +376,7 @@ function RecordInner() {
 }
 
 export default function RecordVisit() {
-  return (
-    <PractitionerGate>
-      <RecordInner />
-    </PractitionerGate>
-  );
+  return <RecordInner />;
 }
 
 const styles = StyleSheet.create({

@@ -1,4 +1,5 @@
 import { setDialect, type Dialect } from '../lib/dialect';
+import { ROLE_PICKER, kindOf, roleOf, setCurrentRole, type UserKind, type UserRole } from '../lib/roles';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState } from 'react-native';
@@ -41,6 +42,14 @@ type Settings = {
   faceIdEnabled: boolean;
   /** สิทธิ์ล่าสุดที่รู้ (จำไว้ใช้ตอนออฟไลน์) */
   role: 'member' | 'practitioner' | 'admin';
+  /** บทบาทที่ผู้ใช้เลือก (ยังไม่เลือก = ถามบนหน้าหลัก, AI ใช้แบบประชาชนทั่วไป) */
+  userRole?: UserRole;
+  /** ประเภทผู้ใช้: ประชาชนทั่วไป / หมอ-บุคลากรสุขภาพ (ยังไม่เลือก = undefined → ถามหลังเข้าสู่ระบบ) */
+  userKind?: UserKind;
+  /** เห็นคำแนะนำฟีเจอร์ใหม่ในหน้าครูปัญญาแล้ว */
+  assistantTip?: boolean;
+  /** ย้ายผู้ป่วยจากไฟล์สำรองส่วนตัวขึ้นตารางคลาวด์แล้ว (หลังเลิกระบบยืนยันตัวตนหมอ) */
+  patientFileMigrated?: boolean;
   /** แจ้งเตือนที่เปิดอ่านแล้ว (id) */
   readNotices: string[];
   /** แจ้งเตือนที่ปัดล้างแล้ว (id) */
@@ -124,10 +133,8 @@ type Ctx = {
   reloadCloud: () => Promise<void>;
   /** โปรไฟล์สมาชิก (null = ยังไม่เข้าสู่ระบบ/ออฟไลน์) */
   profile: Profile | null;
-  /** ยืนยันตัวตนหมอพื้นบ้านแล้ว → ใช้งานการรักษาผู้ป่วยได้ */
-  isPractitioner: boolean;
-  /** ยืนยันกับทะเบียนกรมการแพทย์แผนไทยฯ แล้วจริง (ใช้แสดงป้าย "ได้รับการรับรอง") */
-  certified: boolean;
+  /** บทบาทที่ผู้ใช้เลือก (ยังไม่เลือก = undefined) */
+  userRole?: UserRole;
   /** ข้อมูลผู้ป่วยเก็บในเครื่องนี้อย่างเดียว (บัญชีทดลองใช้ / ยังไม่ได้ยืนยันกับทะเบียน) — ลบแอปหรือเปลี่ยนเครื่องแล้วหาย */
   patientsLocalOnly: boolean;
 };
@@ -150,6 +157,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [settings, setSettings] = useState<Settings>(defaults);
   // ให้ส่วน AI (นอก React) รู้ภาษาถิ่นที่ตั้งไว้
   useEffect(() => setDialect(settings.dialect ?? 'central'), [settings.dialect]);
+  useEffect(() => setCurrentRole(settings.userRole), [settings.userRole]);
   // mine = ตำราของผู้ใช้ (บันทึกเครื่อง/คลาวด์) · wisdoms = ของผู้ใช้ + ตำราเริ่มต้นในระบบ
   const [mine, setMineRaw] = useState<Wisdom[]>(seedWisdoms);
   const setWisdoms = (v: Wisdom[] | ((l: Wisdom[]) => Wisdom[])) =>
@@ -241,6 +249,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       // — กันไม่ให้ผู้ทดลองเห็นข้อมูลผู้ป่วยที่คนอื่นบันทึกไว้ในบัญชีเดียวกัน
       const isDemo = (data.session.user.email ?? '').toLowerCase() === usernameToEmail('somchai').toLowerCase();
       setDemo(isDemo);
+      // บทบาทผู้ใช้ (คอลัมน์ใหม่ใน migration 009) — มีคอลัมน์นี้ = ฐานข้อมูลเปิดให้ทุกบัญชีบันทึกผู้ป่วยแล้ว
+      // บัญชีทดลองใช้ร่วมกันหลายคน → บทบาทอยู่ในเครื่องเท่านั้น (ไม่อ่าน/ไม่เขียนคลาวด์)
+      const ur = isDemo ? { data: null, error: true } : await supabase.from('profiles').select('user_role').eq('id', data.session.user.id).maybeSingle();
+      const opened = !ur.error;
+      const cloudRole = (ur.data as { user_role?: string } | null)?.user_role;
+      // คอลัมน์ user_role เก็บบทบาท (ถ้าเปิดการเลือกบทบาท) หรือประเภทผู้ใช้ public/clinician (ตอนนี้)
+      const local = ROLE_PICKER ? settings.userRole : settings.userKind;
+      if (opened && !cloudRole && local) {
+        // เลือกไว้ในเครื่องก่อนฐานข้อมูลพร้อม → ส่งขึ้นคลาวด์
+        supabase.from('profiles').update({ user_role: local }).eq('id', data.session.user.id).then(() => {});
+      } else if (cloudRole) setSettings((st) => (ROLE_PICKER ? { ...st, userRole: roleOf(cloudRole) } : kindOf(cloudRole) ? { ...st, userKind: kindOf(cloudRole) } : st));
       if (isDemo) {
         // ใส่ผู้ป่วยตัวอย่างให้ลองใช้ (ครั้งแรกที่เข้าโหมดนี้ในเครื่อง — ลบแล้วไม่ใส่ซ้ำ)
         if (!settings.demoSeeded) {
@@ -257,16 +276,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setSyncError('');
         return;
       }
-      const practitioner = prof?.role === 'practitioner' || prof?.role === 'admin';
+      // บัญชีที่เคยยืนยันตัวตนแล้ว ใช้ตารางคลาวด์มาตลอด · บัญชีอื่นเคยเก็บผู้ป่วยในไฟล์สำรองส่วนตัว
+      const wasLocal = !(prof?.role === 'practitioner' || prof?.role === 'admin');
+      // ฐานข้อมูลเปิดแล้ว (migration 009) → ทุกบัญชีใช้ตาราง · ยังไม่เปิด → แบบเดิม
+      const practitioner = !wasLocal || opened;
+      // ย้ายผู้ป่วยจากไฟล์สำรองขึ้นตารางครั้งเดียว
+      const migrating = opened && wasLocal && !settings.patientFileMigrated;
+      let fileMerged: Patient[] | null = null;
       patientsLocal.current = !practitioner;
-      // ข้อมูลผู้ป่วยตัวอย่างใส่ให้เฉพาะหมอพื้นบ้านที่ยืนยันแล้ว (สมาชิกทั่วไปไม่มีสิทธิ์ข้อมูลผู้ป่วย)
+      // ข้อมูลผู้ป่วยตัวอย่าง: ใส่ให้บัญชีที่ใช้ตารางคลาวด์ (ไม่มีข้อมูลเลย)
       if (practitioner) await cloud.seedIfEmpty();
       const d = await cloud.loadAll();
       // ── รวมข้อมูล (ไม่ทับ): ของที่บันทึกในเครื่องหลังซิงก์ครั้งล่าสุดแต่ยังไม่ขึ้นคลาวด์ → เก็บไว้และอัปโหลด ──
       const since = settings.lastSyncAt ?? 0;
       const idTime = (id: string) => Number(id.replace(/^[a-z]+/, '')) || 0;
       // ยังไม่ได้ยืนยันกับทะเบียน: ผู้ป่วยอยู่ในไฟล์ส่วนตัวบนคลาวด์ → รวมกับของในเครื่อง
-      if (!practitioner) {
+      if (wasLocal) {
         const f = await cloud.loadPatientFile();
         if (f) {
           const cloudNewer = f.savedAt > since; // มีเครื่องอื่นบันทึกหลังซิงก์ครั้งล่าสุดของเครื่องนี้
@@ -285,16 +310,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             merged.push({ ...base, visits: [...byNo.values()].sort((a, b) => b.no - a.no) });
           }
           for (const lp of patients) if (!cloudIds.has(lp.id) && (!cloudNewer || idTime(lp.id) > since)) merged.push(lp);
-          setPatients(merged);
+          fileMerged = merged;
+          if (!practitioner) setPatients(merged);
         }
       }
       const cloudP = new Map(d.patients.map((x) => [x.id, x]));
       const upP: Patient[] = [];
       const upV: { pid: string; v: MB5Visit }[] = [];
-      for (const lp of practitioner ? patients : []) {
+      for (const lp of practitioner ? (fileMerged ?? patients) : []) {
         const cp = cloudP.get(lp.id);
         if (!cp) {
-          if (idTime(lp.id) > since) {
+          if (migrating || idTime(lp.id) > since) {
             d.patients.unshift(lp);
             upP.push(lp);
           }
@@ -319,11 +345,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const byPath = new Map((w.audio ?? []).map((c) => [c.path, c]));
         return { ...w, audio: la.map((c) => ({ ...c, path: c.path ?? undefined, ...(c.path && byPath.get(c.path) ? { sec: byPath.get(c.path)!.sec } : {}) })) };
       });
-      Promise.all([...upP.map((x) => cloud.savePatient(x)), ...upV.map((x) => cloud.saveVisit(x.pid, x.v)), ...upW.map((x) => cloud.saveWisdom(x))]).catch(() => {});
+      // ผู้ป่วยใหม่จากไฟล์สำรอง: ส่งประวัติการรักษาทุกครั้งขึ้นด้วย
+      if (migrating) upP.forEach((x) => x.visits.forEach((v) => upV.push({ pid: x.id, v })));
+      Promise.all([...upP.map((x) => cloud.savePatient(x)), ...upV.map((x) => cloud.saveVisit(x.pid, x.v)), ...upW.map((x) => cloud.saveWisdom(x))])
+        .then(() => { if (migrating) setSettings((st) => ({ ...st, patientFileMigrated: true })); })
+        .catch(() => {});
       setSettings((st) => ({ ...st, lastSyncAt: Date.now() }));
       // ยังไม่ได้ยืนยันกับทะเบียน: คลาวด์ไม่มีข้อมูลผู้ป่วยให้ → ใช้ของในเครื่องต่อ (ไม่ทับ)
       // ข้อมูลที่ไม่มีช่องในตารางคลาวด์ (ประวัติส่งต่อ นัดติดตาม ใบยินยอม) → คงของในเครื่องไว้
-      const extras = new Map(patients.map((x) => [x.id, { referrals: x.referrals, followUpOn: x.followUpOn, consent: x.consent }]));
+      const extras = new Map((fileMerged ?? patients).map((x) => [x.id, { referrals: x.referrals, followUpOn: x.followUpOn, consent: x.consent }]));
       if (practitioner) setPatients(d.patients.map((x) => ({ ...x, ...Object.fromEntries(Object.entries(extras.get(x.id) ?? {}).filter(([, v]) => v !== undefined)) })));
       // ผู้ป่วย/ประวัติ/นัดหมายตัวอย่างรุ่นเก่าในคลาวด์ → ลบทิ้ง
       const legacyP = d.patients.filter((x) => LEGACY_SAMPLE_PATIENTS.includes(x.id)).map((x) => x.id);
@@ -479,14 +509,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       },
       reloadCloud,
       profile,
-      // ช่วงทดสอบ: ทุกบัญชีใช้งานการรักษาผู้ป่วยได้ ไม่ต้องยืนยันตัวตนหมอพื้นบ้าน
-      isPractitioner: true,
-      certified: (profile?.role ?? settings.role) !== 'member',
+      userRole: settings.userRole,
       patientsLocalOnly: demo,
       clearLocal: () => {
         // ประวัติแชทครูปัญญาเป็นข้อมูลส่วนตัวของผู้ใช้คนนี้ → ล้างเมื่อออกจากระบบ
         clearChats().catch(() => {});
-        setSettings((st) => ({ ...st, avatarUri: undefined, demoSeeded: undefined, demoAppts: undefined }));
+        setSettings((st) => ({ ...st, avatarUri: undefined, demoSeeded: undefined, demoAppts: undefined, userRole: undefined, userKind: undefined, patientFileMigrated: undefined }));
         setOnline(false);
         setDemo(false);
         setPatients([]);

@@ -1,12 +1,12 @@
 /**
  * แท็บคลังสมุนไพร — โครงเดียวกับคลังภูมิ (DESIGN_SYSTEM.md)
- * การ์ดฟีเจอร์ใหม่ "สแกนหาสมุนไพร" (เปิดกล้อง) → แนะนำวันนี้ตามสภาพอากาศ (การ์ดซ้อน 3 ใบ) → กรองตามรสยา → การ์ดภาพเต็มใบ 2 คอลัมน์
+ * การ์ดฟีเจอร์ใหม่ "สแกนหาสมุนไพร" (เปิดกล้อง) → แนะนำวันนี้ตามสภาพอากาศ (การ์ดซ้อน 3 ใบ) → กรองตามรสยา → การ์ดภาพเต็มใบ 2 คอลัมน์ (จอกว้างเพิ่มคอลัมน์)
  */
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, router, useFocusEffect } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { AppState, Linking, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, AppState, Linking, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useIsFocused } from '@react-navigation/native';
 import { Sym, ios } from '../../../components/ios';
@@ -17,6 +17,7 @@ import { SKY_COLOR, WeatherIcon } from '../../../components/WeatherIcon';
 import { WeatherError, getWeather, quickRecs, recommendForWeather, type Weather, type WeatherRecs } from '../../../lib/weatherHerbs';
 import { elementColor, elevation, palette } from '../../../theme';
 import { LargeTitle, useLargeTitleScroll } from '../../../components/nav/LargeTitle';
+import { column, useGrid } from '../../../components/layout';
 
 const TH_DAY = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์'];
 const TH_MON = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
@@ -54,8 +55,9 @@ const HerbCard = React.memo(function HerbCard({ h, i, w }: { h: Herb; i: number;
 
 export default function Herbs() {
   const lt = useLargeTitleScroll();
-  const { width: SW } = useWindowDimensions();
-  const cardW = Math.floor((SW - 32 - 12) / 2);
+  // มือถือ 2 คอลัมน์ · iPad mini 3 · จอกว้าง 4
+  const { cols, cell } = useGrid({ min: 200, gap: 12, pad: 16, least: 2, most: 5 });
+  const cardW = Math.floor(cell);
   // ── แนะนำสมุนไพรตามสภาพอากาศวันนี้ (ตำแหน่ง → อากาศ → ครูปัญญาเลือก 3 ตัว) ──
   const [wx, setWx] = useState<WeatherRecs | null>(null);
   const focused = useIsFocused();
@@ -111,11 +113,12 @@ export default function Herbs() {
         {...lt}
         data={list}
         keyExtractor={(h) => h.id}
-        numColumns={2}
+        key={cols}
+        numColumns={cols}
         columnWrapperStyle={{ gap: 12 }}
         contentInsetAdjustmentBehavior="automatic"
         style={{ backgroundColor: palette.bg }}
-        contentContainerStyle={[styles.page, { gap: 12 }]}
+        contentContainerStyle={[styles.page, column.grid, { gap: 12 }]}
         showsVerticalScrollIndicator={false}
         initialNumToRender={6}
         maxToRenderPerBatch={6}
@@ -187,6 +190,11 @@ export default function Herbs() {
               <View style={[styles.skel, { width: '40%' }]} />
               <View style={[styles.skel, { width: '70%', height: 16 }]} />
               <View style={[styles.skel, { width: '90%' }]} />
+              {/* บอกว่ากำลังทำอะไร (เดิมเป็นกล่องว่างเฉยๆ ดูเหมือนค้าง) */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 }}>
+                <ActivityIndicator size="small" color={palette.primary} />
+                <T v="subhead" color={ios.secondary} style={{ flexShrink: 1 }}>กำลังดูอากาศวันนี้ เพื่อเลือกสมุนไพรให้…</T>
+              </View>
             </View>
           </View>
         )}

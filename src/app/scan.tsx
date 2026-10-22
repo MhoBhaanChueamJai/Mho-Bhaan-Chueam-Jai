@@ -30,6 +30,7 @@ import { manuscriptImage } from '../data/herbs';
 import { setWisdomResult } from '../lib/wisdomTalk';
 import { useApp } from '../store/app';
 import { elevation, palette } from '../theme';
+import { column } from '../components/layout';
 
 type Reading = { title: string; modern: string; ingredients: string[]; kind: string; note: string };
 type Rect = { x: number; y: number; w: number; h: number };
@@ -386,7 +387,7 @@ export default function Scan() {
             <View style={{ width: 48 }} />
           </View>
           <Animated.View entering={SlideInDown.duration(420).easing(Easing.out(Easing.cubic))} style={[styles.sheet, { top: insets.top + 72 }]}>
-            <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 130, gap: 14 }} showsVerticalScrollIndicator={false}>
+            <ScrollView contentContainerStyle={[{ padding: 20, paddingBottom: insets.bottom + 130, gap: 14 }, column.read]} showsVerticalScrollIndicator={false}>
               <View style={styles.head}>
                 {doc ? <Image source={{ uri: doc }} style={styles.thumb} contentFit="cover" /> : null}
                 <View style={{ flex: 1, gap: 6 }}>

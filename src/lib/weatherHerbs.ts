@@ -9,6 +9,7 @@ import * as Location from 'expo-location';
 import { chatJSON } from '../api/ai';
 import { herbs, type Herb } from '../data/herbs';
 import { seasonOf, thaiToday } from './herbDaily';
+import { userNoun } from './roles';
 
 /** ลักษณะท้องฟ้า (ใช้เลือกไอคอน สี และแอนิเมชัน) */
 export type SkyKind = 'sun' | 'hot' | 'partly' | 'cloudy' | 'fog' | 'drizzle' | 'rain' | 'heavy' | 'thunder' | 'cold' | 'dust' | 'sunrise' | 'sunset' | 'night';
@@ -207,7 +208,7 @@ export async function recommendForWeather(w: Weather | null): Promise<WeatherRec
 ลักษณะอากาศ: ${w.flags.join(', ') || w.label} · ฤดู: ${season.name} (${season.advice})
 คลังสมุนไพร (id: ชื่อ รส ธาตุ — สรรพคุณ):
 ${herbs.map((h) => `${h.id}: ${h.name} รส${h.taste} ธาตุ${h.element} — ${h.uses.join(', ')}`).join('\n')}
-กติกา: เลือกเฉพาะ id ในคลัง · ใช้สรรพคุณตามข้อมูลคลัง · วิธีใช้บอกแบบทั่วไปตามภูมิปัญญาไทย ห้ามระบุขนาดยาเป็นตัวเลข · ภาษาง่าย สั้น สำหรับหมอพื้นบ้าน
+กติกา: เลือกเฉพาะ id ในคลัง · ใช้สรรพคุณตามข้อมูลคลัง · วิธีใช้บอกแบบทั่วไปตามภูมิปัญญาไทย ห้ามระบุขนาดยาเป็นตัวเลข · ภาษาง่าย สั้น สำหรับ${userNoun()}
 ตอบ JSON เท่านั้น:
 {"advice":"คำแนะนำดูแลสุขภาพวันนี้ 1 ประโยค","picks":[{"id":"","risk":"โรค/อาการที่ต้องระวังกับอากาศนี้ (สั้น ไม่เกิน 6 คำ)","reason":"ทำไมสมุนไพรนี้ช่วยได้ 1 ประโยค","tip":"วิธีใช้เพื่อป้องกัน/บรรเทา 1 ประโยค"}]}`,
       },

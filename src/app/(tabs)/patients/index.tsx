@@ -4,7 +4,6 @@ import { BlurView } from '../../../components/Blur';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useMemo, useState } from 'react';
-import { PractitionerGate } from '../../../components/PractitionerGate';
 import { StyleSheet, View } from 'react-native';
 import Animated, { Easing, FadeIn, FadeInDown, useAnimatedProps, useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated';
 import Svg, { Circle, Defs, LinearGradient as SvgGradient, Stop } from 'react-native-svg';
@@ -15,6 +14,7 @@ import { statusLabel, statusTone, visitSortKey } from '../../../data/tones';
 import { useApp } from '../../../store/app';
 import { elevation, palette } from '../../../theme';
 import { LargeTitle, useLargeTitleScroll } from '../../../components/nav/LargeTitle';
+import { column, useGrid, useLayout } from '../../../components/layout';
 
 type Filter = 'all' | Patient['status'];
 /** สถานะบนการ์ดเข้ม: สีสว่าง + ลำดับในแถบสัดส่วน */
@@ -103,8 +103,34 @@ function StatusRing({ segs, total }: { segs: { n: number; c: string; g: [string,
  * แท็บผู้ป่วย — การ์ดสรุปสีเข้ม (จำนวน · แถบสัดส่วนสถานะ · แตะสถานะเพื่อกรอง) + รายชื่อเรียงตามที่มารักษาล่าสุด
  * (หมอพื้นบ้านไม่ใช้ระบบนัดแบบคลินิก)
  */
+/** แถวผู้ป่วย: รูป + จุดสถานะ · ชื่อ · อาการล่าสุด · สถานะ + วันที่มา */
+function PatientRow({ p }: { p: Patient }) {
+  const st = statusTone[p.status];
+  const v = lastVisit(p);
+  const what = v ? [v.diagnosis, v.symptoms].find(filled) ?? 'ยังไม่ได้ระบุอาการ' : 'ยังไม่มีการรักษา';
+  return (
+    <PressableScale scaleTo={0.98} haptic="select" onPress={() => router.push(`/patient/${p.id}`)} style={styles.row} accessibilityLabel={`${p.name} ${statusLabel(p.status)}`}>
+      <View>
+        <Avatar name={p.name} src={avatarFor(p)} size={52} />
+        <View style={[styles.dot, { backgroundColor: st.fg }]} />
+      </View>
+      <View style={{ flex: 1, gap: 1 }}>
+        <T v="title" numberOfLines={1}>{p.name}</T>
+        <T v="subhead" color={ios.secondary} numberOfLines={1}>{what}</T>
+        <View style={styles.meta}>
+          <T v="caption" color={st.fg} style={{ fontWeight: '600' }}>{statusLabel(p.status)}</T>
+          <T v="caption" color={ios.tertiary}>{v ? `· มาล่าสุด ${v.date}` : `· ${p.sex} ${p.age} ปี`}</T>
+        </View>
+      </View>
+      <Sym name="chevron.right" size={13} color={ios.tertiary} weight="semibold" />
+    </PressableScale>
+  );
+}
+
 function PatientsInner() {
   const lt = useLargeTitleScroll();
+  const { wide } = useLayout();
+  const grid = useGrid({ min: 340, gap: 10, pad: 16, most: 2 });
   const { patients } = useApp();
   const [filter, setFilter] = useState<Filter>('all');
   const sorted = useMemo(() => [...patients].sort((a, b) => visitSortKey(lastVisit(b)?.date) - visitSortKey(lastVisit(a)?.date)), [patients]);
@@ -146,7 +172,7 @@ function PatientsInner() {
           ),
         }}
       />
-      <Animated.ScrollView {...lt} contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
+      <Animated.ScrollView {...lt} contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={[styles.page, column.grid]} showsVerticalScrollIndicator={false}>
         <LargeTitle title="ผู้ป่วย" bleed={16} />
         {/* ── การ์ดสรุปสีเข้ม: วงแหวนสถานะ (แบบแอป Fitness) + รายการสถานะแตะกรองได้ ── */}
         <Animated.View entering={FadeInDown.duration(380)} style={[styles.hero, elevation.e2]}>
@@ -186,33 +212,25 @@ function PatientsInner() {
 
         {/* ── รายชื่อ (แบบเดิม) ── */}
         {list.length ? (
-          <View style={[styles.list, elevation.e1]}>
-            {list.map((p, i) => {
-              const st = statusTone[p.status];
-              const v = lastVisit(p);
-              const what = v ? [v.diagnosis, v.symptoms].find(filled) ?? 'ยังไม่ได้ระบุอาการ' : 'ยังไม่มีการรักษา';
-              return (
+          wide ? (
+            // จอกว้าง: การ์ดผู้ป่วยเรียงเป็นกริด (อ่านซ้าย → ขวา ตามลำดับเดิม)
+            <View style={styles.grid}>
+              {list.map((p, i) => (
+                <Animated.View key={p.id} entering={i < 12 ? FadeIn.delay(i * 40).duration(200) : undefined} style={[styles.list, elevation.e1, { width: grid.cell }]}>
+                  <PatientRow p={p} />
+                </Animated.View>
+              ))}
+            </View>
+          ) : (
+            <View style={[styles.list, elevation.e1]}>
+              {list.map((p, i) => (
                 <Animated.View key={p.id} entering={i < 12 ? FadeIn.delay(i * 40).duration(200) : undefined}>
                   {i ? <View style={styles.sep} /> : null}
-                  <PressableScale scaleTo={0.98} haptic="select" onPress={() => router.push(`/patient/${p.id}`)} style={styles.row} accessibilityLabel={`${p.name} ${statusLabel(p.status)}`}>
-                    <View>
-                      <Avatar name={p.name} src={avatarFor(p)} size={52} />
-                      <View style={[styles.dot, { backgroundColor: st.fg }]} />
-                    </View>
-                    <View style={{ flex: 1, gap: 1 }}>
-                      <T v="title" numberOfLines={1}>{p.name}</T>
-                      <T v="subhead" color={ios.secondary} numberOfLines={1}>{what}</T>
-                      <View style={styles.meta}>
-                        <T v="caption" color={st.fg} style={{ fontWeight: '600' }}>{statusLabel(p.status)}</T>
-                        <T v="caption" color={ios.tertiary}>{v ? `· มาล่าสุด ${v.date}` : `· ${p.sex} ${p.age} ปี`}</T>
-                      </View>
-                    </View>
-                    <Sym name="chevron.right" size={13} color={ios.tertiary} weight="semibold" />
-                  </PressableScale>
+                  <PatientRow p={p} />
                 </Animated.View>
-              );
-            })}
-          </View>
+              ))}
+            </View>
+          )
         ) : (
           <IOSCard style={{ alignItems: 'center', paddingVertical: 28, gap: 6 }}>
             <Sym name="person.2" size={28} color={ios.tertiary} />
@@ -235,6 +253,7 @@ const styles = StyleSheet.create({
   legDot: { width: 10, height: 10, borderRadius: 5 },
   listHead: { flexDirection: 'row', alignItems: 'center', marginTop: 18, marginBottom: 8, marginHorizontal: 4 },
   list: { backgroundColor: palette.surface, borderRadius: 20, borderCurve: 'continuous' },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 12, paddingLeft: 14, paddingRight: 16, minHeight: 76 },
   sep: { height: StyleSheet.hairlineWidth, backgroundColor: ios.separator, marginLeft: 80 },
   dot: { position: 'absolute', right: 0, bottom: 1, width: 14, height: 14, borderRadius: 7, borderWidth: 2.5, borderColor: palette.surface },
@@ -242,9 +261,5 @@ const styles = StyleSheet.create({
 });
 
 export default function Patients() {
-  return (
-    <PractitionerGate>
-      <PatientsInner />
-    </PractitionerGate>
-  );
+  return <PatientsInner />;
 }

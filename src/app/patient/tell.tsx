@@ -11,12 +11,12 @@ import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AISphere } from '../../components/AISphere';
 import { Sym } from '../../components/ios';
-import { PractitionerGate } from '../../components/PractitionerGate';
 import { Avatar, GlassCircle, PressableScale, T, useHaptic } from '../../components/ui';
 import { avatarFor, lastVisit, type Patient } from '../../data/mock';
 import { VisitSession } from './visit';
 import { visitSortKey } from '../../data/tones';
 import { useApp } from '../../store/app';
+import { column } from '../../components/layout';
 
 const MINT = '#7CF0A8';
 
@@ -55,7 +55,7 @@ function TellInner() {
         <T v="title" color="#FFFFFF">เล่าอาการ</T>
         <View style={{ width: 44 }} />
       </View>
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 40, gap: 12 }} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[{ padding: 20, paddingBottom: insets.bottom + 40, gap: 12 }, column.read]} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" showsVerticalScrollIndicator={false}>
         <Animated.View entering={FadeIn.duration(450)} style={{ alignItems: 'center' }}>
           <View ref={orbRef} collapsable={false}>
             <AISphere size={130} active />
@@ -104,11 +104,7 @@ function TellInner() {
 }
 
 export default function PatientTell() {
-  return (
-    <PractitionerGate>
-      <TellInner />
-    </PractitionerGate>
-  );
+  return <TellInner />;
 }
 
 const styles = StyleSheet.create({

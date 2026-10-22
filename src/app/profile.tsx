@@ -1,6 +1,6 @@
 /**
  * ข้อมูลส่วนตัว — เปิดจากการ์ดโปรไฟล์ในหน้าตั้งค่า
- * บัญชี · การรับรองหมอพื้นบ้าน (ข้อมูลจากทะเบียนกรมการแพทย์แผนไทยฯ เมื่อยืนยันตัวตนแล้ว)
+ * บัญชี · บทบาทผู้ใช้
  * จัดการบัญชี: เมนู ••• บนแถบเครื่องมือ (แก้ไขข้อมูลบัญชี · เปลี่ยนรหัสผ่าน · ลบบัญชี)
  */
 import { MenuView } from '../components/Menu';
@@ -12,26 +12,20 @@ import { CircleIcon, ListRow, ListSection, PAGE_PAD } from '../components/ListRo
 import { Sym } from '../components/ios';
 import { Avatar, PressableScale, T } from '../components/ui';
 import { doctor } from '../data/mock';
-import { TYPE_LABEL } from './verify';
+import { ROLE_PICKER, ROLES, roleOf } from '../lib/roles';
 import { useApp } from '../store/app';
 import { changeAvatar, useMyAvatar } from '../lib/myAvatar';
 import { useDeleteAccount } from '../components/useDeleteAccount';
 import { palette } from '../theme';
-
-const thaiDate = (iso?: string | null) => {
-  if (!iso) return '-';
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return iso;
-  const M = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
-  return `${d.getDate()} ${M[d.getMonth()]} ${d.getFullYear() + 543}`;
-};
+import { column } from '../components/layout';
 
 function Info({ icon, bg, label, value, last }: { icon: string; bg: string; label: string; value: string; last?: boolean }) {
   return <ListRow icon={<CircleIcon name={icon} color={bg} />} overline={label} title={value || '-'} last={last} />;
 }
 
 export default function Profile() {
-  const { profile, certified, settings, update } = useApp();
+  const { profile, settings, update } = useApp();
+  const role = ROLES.find((r) => r.k === roleOf(settings.userRole))!;
   const myAvatar = useMyAvatar();
   const name = profile?.display_name || [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || doctor.name;
   const del = useDeleteAccount();
@@ -58,7 +52,7 @@ export default function Profile() {
         ),
       }}
     />
-    <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingTop: 8, paddingBottom: 56 }}>
+    <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={[{ paddingHorizontal: PAGE_PAD, paddingTop: 8, paddingBottom: 56 }, column.read]}>
       <Animated.View entering={FadeInDown.duration(420)} style={{ alignItems: 'center', marginTop: 8 }}>
         {/* แตะภาพเพื่อเปลี่ยน: ถ่ายรูป / เลือกจากคลังภาพ / ใช้ภาพเริ่มต้น */}
         <PressableScale haptic="select" scaleTo={0.96} onPress={() => changeAvatar(settings.avatarUri, (u) => update({ avatarUri: u }))} accessibilityLabel="เปลี่ยนภาพโปรไฟล์">
@@ -70,7 +64,7 @@ export default function Profile() {
           </View>
         </PressableScale>
         <T v="h2" center style={{ marginTop: 12 }}>{name}</T>
-        <T v="subhead" color={palette.primaryDeep}>{certified ? 'หมอพื้นบ้านที่ได้รับการรับรอง' : 'หมอพื้นบ้าน'}</T>
+        {ROLE_PICKER ? <T v="subhead" color={role.color}>{settings.userRole ? role.label : 'ยังไม่ได้เลือกบทบาท'}</T> : null}
       </Animated.View>
 
       <ListSection i={1} title="บัญชี">
@@ -79,22 +73,9 @@ export default function Profile() {
         <Info icon="envelope.fill" bg="#3B7DD8" label="อีเมล" value={profile?.email ?? '-'} last />
       </ListSection>
 
-      {/* ช่วงทดสอบ: ไม่ต้องยืนยันตัวตน → แสดงข้อมูลการรับรองเฉพาะบัญชีที่ยืนยันกับทะเบียนแล้ว */}
-      {certified ? (
-        <ListSection i={2} title="การรับรองหมอพื้นบ้าน" footer="ข้อมูลการรับรองมาจากทะเบียนหมอพื้นบ้าน กรมการแพทย์แผนไทยและการแพทย์ทางเลือก">
-          {/* หลายประเภทได้ → เขียนต่อกันคั่นด้วยจุลภาค */}
-          <ListRow
-            icon={<CircleIcon name="checkmark.seal.fill" color={palette.primary} />}
-            overline="ประเภทหมอพื้นบ้าน"
-            title={(profile?.healer_types ?? []).map((t) => TYPE_LABEL[t] ?? t).join(', ') || '-'}
-            titleLines={3}
-          />
-          <Info icon="doc.text.fill" bg="#8A6A44" label="เลขที่หนังสือรับรอง" value={profile?.cert_number ?? '-'} />
-          <Info icon="mappin.and.ellipse" bg="#C2564B" label="จังหวัดที่ขึ้นทะเบียน" value={profile?.cert_province ?? '-'} />
-          <Info icon="calendar" bg="#D9921A" label="หนังสือรับรองหมดอายุ" value={thaiDate(profile?.cert_expiry)} />
-          <Info icon="checkmark.shield.fill" bg="#2A8C7A" label="ยืนยันตัวตนเมื่อ" value={thaiDate(profile?.verified_at)} last />
-        </ListSection>
-      ) : null}
+      {ROLE_PICKER ? <ListSection i={2} title="บทบาท" footer="ครูปัญญาปรับคำแนะนำตามบทบาทนี้ · เปลี่ยนได้ทุกเมื่อ">
+        <ListRow icon={<CircleIcon name={role.icon} color={role.color} />} overline="บทบาทของฉัน" title={settings.userRole ? role.label : 'ยังไม่ได้เลือก'} subtitle={role.desc} onPress={() => router.push('/role')} chevron last />
+      </ListSection> : null}
 
     </ScrollView>
     {del.deleting ? (

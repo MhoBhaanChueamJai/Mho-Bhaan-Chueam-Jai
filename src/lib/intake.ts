@@ -5,6 +5,7 @@
  */
 import { chatJSON } from '../api/ai';
 import { dialectGreeting, dialectHint, dialectSpeakStyle } from './dialect';
+import { roleBrief } from './roles';
 
 export type IntakeData = {
   prefix?: string;
@@ -49,7 +50,7 @@ export async function intakeTurn(known: IntakeData, history: Turn[], answer: str
     const r = await chatJSON<{ fields?: IntakeData; reply?: string; done?: boolean }>([
       {
         role: 'user',
-        content: `คุณคือ "ครูปัญญา" ผู้ช่วยหมอพื้นบ้าน ผู้ชายวัย 45 น้ำเสียงอบอุ่น ใจดี ฉลาด มีไหวพริบ พูดเป็นธรรมชาติเหมือนคนคุยกันจริง (ไม่แข็งแบบหุ่นยนต์) ลงท้าย "ครับ"
+        content: `คุณคือ "ครูปัญญา" ผู้ช่วยด้านสุขภาพแผนไทย (${roleBrief()}) ผู้ชายวัย 45 น้ำเสียงอบอุ่น ใจดี ฉลาด มีไหวพริบ พูดเป็นธรรมชาติเหมือนคนคุยกันจริง (ไม่แข็งแบบหุ่นยนต์) ลงท้าย "ครับ"
 กำลังซักประวัติผู้ป่วยใหม่ด้วยเสียง
 ข้อมูลที่รู้แล้ว: ${JSON.stringify(known)}
 บทสนทนาล่าสุด:

@@ -9,7 +9,7 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, router, useFocusEffect } from 'expo-router';
 import React, { useCallback } from 'react';
-import { StyleSheet, View, useWindowDimensions } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { BookCover } from '../../../components/BookCover';
 import { KindIcon } from '../../../components/KindIcon';
@@ -20,6 +20,9 @@ import { type Wisdom } from '../../../data/mock';
 import { useApp } from '../../../store/app';
 import { elevation, palette } from '../../../theme';
 import { LargeTitle, useLargeTitleScroll } from '../../../components/nav/LargeTitle';
+import { column, useGrid } from '../../../components/layout';
+import { wisdomsPdf } from '../../../lib/knowledgePdf';
+import { useDoctor } from '../../../components/useDoctor';
 
 const KIND: Record<Wisdom['kind'], { icon: string; color: string }> = {
   ตำรับยา: { icon: 'leaf.fill', color: palette.primary },
@@ -53,6 +56,7 @@ function Book({ w, width, i }: { w: Wisdom; width: number; i: number }) {
 export default function Vault() {
   const lt = useLargeTitleScroll();
   const { wisdoms, updateWisdom } = useApp();
+  const dr = useDoctor();
   // ตำราที่เพื่อนแชร์มา: เปิดคลังเมื่อไหร่ ดึงเนื้อหาล่าสุดจากต้นฉบับ (เพื่อนแก้แล้วอัปเดตตาม)
   useFocusEffect(
     useCallback(() => {
@@ -60,9 +64,8 @@ export default function Vault() {
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []),
   );
-  const { width: SW } = useWindowDimensions();
-  // ชั้นหนังสือ 3 คอลัมน์: ขอบ 20 + ช่องไฟ 16
-  const GRID_W = Math.floor((SW - 40 - 32) / 3) - 4;
+  // ชั้นหนังสือ: มือถือ 3 คอลัมน์ · จอกว้างเพิ่มได้ถึง 6 (ขอบ 20 + ช่องไฟ 16)
+  const GRID_W = Math.floor(useGrid({ min: 140, gap: 16, pad: 20, least: 3, most: 6 }).cell) - 4;
   const list = wisdoms.filter((w) => !w.builtin);
   const library = wisdoms.filter((w) => w.builtin);
   const count = (k: Wisdom['kind']) => wisdoms.filter((w) => w.kind === k).length;
@@ -100,7 +103,7 @@ export default function Vault() {
         ),
       }}
     />
-    <Animated.ScrollView {...lt} contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={{ paddingTop: 4, paddingBottom: 130 }} showsVerticalScrollIndicator={false}>
+    <Animated.ScrollView {...lt} contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={[{ paddingTop: 4, paddingBottom: 130 }, column.grid]} showsVerticalScrollIndicator={false}>
         <LargeTitle title="คลังภูมิปัญญา" bleed={0} />
       {/* ── Hero: สันหนังสือบนหิ้ง (เบลอ) ── */}
       <View style={[styles.heroWrap, elevation.e3]}>
@@ -130,7 +133,8 @@ export default function Vault() {
                 <KindIcon kind={k} size={15} color="#FFFFFF" />
               </View>
               <T v="h2" color="#FFFFFF" style={{ marginTop: 8 }}>{count(k)}</T>
-              <T v="micro" color="rgba(255,255,255,0.82)" numberOfLines={1} style={{ fontWeight: '600' }}>{k}</T>
+              {/* "ตำราโบราณ" ยาวกว่าช่อง → ย่อตัวอักษรให้พอดี ไม่ตัดเป็น "ตำราโบ..." */}
+              <T v="micro" color="rgba(255,255,255,0.82)" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} style={{ fontWeight: '600' }}>{k}</T>
             </Animated.View>
           ))}
         </View>
@@ -152,11 +156,15 @@ export default function Vault() {
       {/* ── ตำราของหมอ (ยังไม่มี = ไม่แสดงหัวข้อนี้) ── */}
       {list.length ? (
         <>
-          <View style={styles.secHead}>
+          <View style={[styles.secHead, { justifyContent: 'flex-start', gap: 8, alignItems: 'center' }]}>
             <T v="h3">ทั้งหมด</T>
             <T v="subhead" color={ios.secondary}>{list.length} เรื่อง</T>
+            <PressableScale haptic="select" onPress={() => wisdomsPdf(list, dr.name).catch(() => {})} hitSlop={10} style={styles.dl} accessibilityLabel="ดาวน์โหลดภูมิปัญญาทั้งหมดเป็นเอกสาร">
+              <Sym name="arrow.down.doc" size={14} color={palette.primary} weight="semibold" />
+              <T v="subhead" color={palette.primary} style={{ fontWeight: '600' }}>ดาวน์โหลด</T>
+            </PressableScale>
           </View>
-          {/* ชั้นหนังสือ 3 คอลัมน์ */}
+          {/* ชั้นหนังสือ (3 คอลัมน์บนมือถือ) */}
           <View style={styles.shelf}>
             {list.map((w, i) => (
               <Book key={w.id} w={w} width={GRID_W} i={i} />
@@ -186,6 +194,7 @@ export default function Vault() {
 }
 
 const styles = StyleSheet.create({
+  dl: { flexDirection: 'row', alignItems: 'center', gap: 4, marginLeft: 'auto', minHeight: 32 },
   tell: { flexDirection: 'row', alignItems: 'center', gap: 12, marginHorizontal: 16, marginTop: 14, padding: 14, borderRadius: 22, borderCurve: 'continuous', backgroundColor: '#0E1A14' },
   tellIcon: { width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(124,240,168,0.14)' },
   empty: { marginHorizontal: 16, marginTop: 10, alignItems: 'center', paddingVertical: 28, gap: 6, backgroundColor: palette.surface, borderRadius: 20, borderCurve: 'continuous' },
@@ -198,7 +207,7 @@ const styles = StyleSheet.create({
   eyebrow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   title: { marginBottom: 4 },
   kpis: { flexDirection: 'row', gap: 8, marginTop: 18 },
-  kpi: { flex: 1, paddingVertical: 12, paddingHorizontal: 10, borderRadius: 18, borderCurve: 'continuous', overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.35)' },
+  kpi: { flex: 1, paddingVertical: 12, paddingHorizontal: 8, borderRadius: 18, borderCurve: 'continuous', overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.35)' },
   kpiIcon: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
   secHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', paddingHorizontal: 20, marginTop: 24, marginBottom: 2 },
   meta: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },

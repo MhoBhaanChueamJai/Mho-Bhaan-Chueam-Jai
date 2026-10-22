@@ -11,6 +11,7 @@ import { Sym, ios } from '../components/ios';
 import { PressableScale, T } from '../components/ui';
 import { elevation, palette } from '../theme';
 import { openManual } from '../lib/manual';
+import { column } from '../components/layout';
 
 
 type Topic = { id: string; title: string; icon: string; color: string; steps: string[] };
@@ -24,7 +25,7 @@ const TOPICS: Topic[] = [
     steps: [
       'สมัครบัญชีด้วยอีเมล หรือกด "ทดลองใช้" เพื่อลองใช้แอปก่อน (ข้อมูลในโหมดทดลองเก็บในเครื่องเท่านั้น)',
       'ตั้งรหัส PIN หรือ Face ID ไว้ปลดล็อกแอป เพื่อป้องกันข้อมูลผู้ป่วย (ตั้งค่า → ความปลอดภัย)',
-      'ยืนยันตัวตนหมอพื้นบ้านด้วยเลขที่หนังสือรับรอง เพื่อใช้งานการรักษาผู้ป่วย (ตั้งค่า → ยืนยันตัวตนหมอพื้นบ้าน)',
+      'ใช้ได้ทั้งแพทย์แผนไทย แพทย์แผนปัจจุบัน หมอพื้นบ้าน และประชาชนทั่วไป ไม่ต้องตั้งค่าเพิ่ม ครูปัญญาตอบให้เข้าใจง่ายและบอกแหล่งอ้างอิงทุกครั้ง',
     ],
   },
   {
@@ -97,7 +98,7 @@ export default function Help() {
   return (
     <>
       <Stack.Screen options={{ title: 'ช่วยเหลือ' }} />
-      <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
+      <ScrollView contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={[styles.page, column.read]} showsVerticalScrollIndicator={false}>
         <T v="callout" color={ios.secondary} style={{ marginHorizontal: 4, marginBottom: 4 }}>แตะหัวข้อเพื่อดูวิธีใช้งาน</T>
         {TOPICS.map((t) => {
           const on = open === t.id;

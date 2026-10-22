@@ -5,6 +5,7 @@
  *     → จับคู่กับข้อควรระวังของสมุนไพรในคลัง (ข้อมูลที่ตรวจแล้ว ไม่แต่งเอง) แล้วเตือนเมื่อขัดกัน
  */
 import type { Herb } from '../data/herbs';
+import { DRUG_MATCH, HERB_DRUG, type DrugClass, type HerbDrug } from '../data/interactions';
 
 /* ── 1) สัญญาณอันตราย ─────────────────────────────────────── */
 const RED_FLAGS: { re: RegExp; why: string }[] = [
@@ -100,3 +101,16 @@ export function guardReply(reply: string, flags: string[], conflicts: Conflict[]
 }
 
 const sentenceWith = (text: string, word: string) => text.split(/\n|(?<=[.!?])\s/).filter((s) => s.includes(word)).join(' ');
+
+/* ── 3) สมุนไพร ↔ ยาแผนปัจจุบัน (บัญชียาหลักแห่งชาติด้านสมุนไพร 2566) ── */
+export type DrugHit = { it: HerbDrug; hit: boolean };
+
+/** อันตรกิริยาของสมุนไพรแต่ละตัว · hit = ยาของผู้ป่วย (ข้อความ/รายการยา) หรือกลุ่มยาที่เลือก ตรงกับกลุ่มยาในประกาศ */
+export function drugInteractions(h: Herb, medsText: string, picked: DrugClass[] = [], hasMeds = false): DrugHit[] {
+  const t = medsText.replace(/\s+/g, '');
+  return HERB_DRUG.filter((x) => x.herb === h.id).map((it) => {
+    const re = DRUG_MATCH[it.drug];
+    const hit = picked.includes(it.drug) || (re ? re.test(t) : hasMeds);
+    return { it, hit };
+  });
+}

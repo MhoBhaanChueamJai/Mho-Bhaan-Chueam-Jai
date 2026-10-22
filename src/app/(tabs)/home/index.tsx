@@ -18,6 +18,8 @@ import { useApp } from '../../../store/app';
 import { todayPick } from '../../../lib/herbDaily';
 import { elevation, palette } from '../../../theme';
 import { LargeTitle, useLargeTitleScroll } from '../../../components/nav/LargeTitle';
+import { column, useLayout } from '../../../components/layout';
+import { ROLE_PICKER, showPatients } from '../../../lib/roles';
 
 const enter = (i: number) => FadeInDown.delay(30 + i * 50).duration(420);
 
@@ -45,10 +47,11 @@ function Bell({ unread, shake }: { unread: number; shake: number }) {
 
 export default function Home() {
   const lt = useLargeTitleScroll();
-  const { patients, settings, isPractitioner, profile, wisdoms: allW, ready } = useApp();
+  const { patients, settings, profile, wisdoms: allW, ready } = useApp();
   const wisdoms = allW; // นับรวมตำราอ้างอิงในระบบ
   // ผู้ป่วยที่มารักษาล่าสุด 3 ราย (หมอพื้นบ้านไม่ใช้ระบบนัด)
   const recent = [...patients].sort((a, b) => visitSortKey(lastVisit(b)?.date) - visitSortKey(lastVisit(a)?.date)).slice(0, 8);
+  const doc = showPatients(settings.userKind);
   const follow = patients.filter((p) => p.status === 'ติดตามอาการ' || p.status === 'นัดวันนี้').length;
   // สมุนไพรประจำวัน (เปลี่ยนทุกวัน ตามฤดู)
   const pick = todayPick();
@@ -57,7 +60,7 @@ export default function Home() {
   const [stock] = useStock();
   // สรุปงานตอนเช้า (นัดติดตาม · ยาใกล้หมดอายุ) — ตั้งแจ้งเตือนล่วงหน้า 7 วัน
   useMorningDigest(patients, stock, ready);
-  const notices = noticesFrom(patients, wisdoms, isPractitioner, ann, stock);
+  const notices = noticesFrom(showPatients(settings.userKind) ? patients : [], wisdoms, !ROLE_PICKER || !!settings.userRole, ann, stock);
   const pendingW = wisdoms.filter((w) => !w.verified).length;
   const unread = notices.filter((n) => !settings.readNotices?.includes(n.id)).length;
   // เข้าหน้านี้ทุกครั้ง → นับรอบ (ให้กระดิ่งสั่นเมื่อมีที่ยังไม่อ่าน)
@@ -65,6 +68,19 @@ export default function Home() {
   useFocusEffect(useCallback(() => setVisit((v) => v + 1), []));
   const myAvatar = useMyAvatar();
   const me = profile?.first_name || profile?.display_name?.split(' ')[0] || name;
+  const { wide } = useLayout();
+  const small = [
+    <Widget key="herb" onPress={() => router.push(`/herb/${pick.herb.id}`)} icon="leaf.fill" colors={G.leaf} title={pick.herb.name} sub={`สมุนไพรวันนี้ · รส${pick.herb.taste}`} photo={pick.herb.image} style={{ flex: 1 }} />,
+    <Widget key="scan" onPress={() => router.push('/scan')} icon="doc.viewfinder" colors={G.amber} title="สแกนตำรา" sub="สมุดข่อย ใบลาน" style={{ flex: 1 }} />,
+    <Widget key="tell" onPress={() => router.push('/wisdom/tell')} icon="book.closed.fill" colors={G.red} title="ถ่ายทอดตำรับ" sub="เล่าให้ครูปัญญาฟัง" style={{ flex: 1 }} />,
+    <Widget key="vault" onPress={() => router.push('/vault')} icon="books.vertical.fill" colors={G.brown} title={`ภูมิปัญญา ${wisdoms.length} เรื่อง`} sub={pendingW ? `รอตรวจทาน ${pendingW} เรื่อง` : 'ตรวจทานครบแล้ว'} style={{ flex: 1 }}>
+      {wisdoms.length ? (
+        <View style={styles.track}>
+          <View style={[styles.fillBar, { width: `${((wisdoms.length - pendingW) / wisdoms.length) * 100}%` }]} />
+        </View>
+      ) : null}
+    </Widget>,
+  ];
 
   return (
     <>
@@ -85,13 +101,27 @@ export default function Home() {
           ),
         }}
       />
-      <Animated.ScrollView {...lt} contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
+      <Animated.ScrollView {...lt} contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={[styles.page, column.grid]} showsVerticalScrollIndicator={false}>
         <LargeTitle title="วันนี้" bleed={16} />
         <Animated.View entering={enter(0)}>
           <T v="callout" color={ios.secondary} style={{ paddingHorizontal: 4 }}>
             {thaiDate(TODAY)} · สวัสดีครับ {me}
           </T>
         </Animated.View>
+
+        {/* ยังไม่ได้เลือกบทบาท → ชวนเลือก (ครูปัญญาปรับคำแนะนำตามบทบาท) */}
+        {ROLE_PICKER && !settings.userRole ? (
+          <Animated.View entering={enter(0)}>
+            <PressableScale haptic="select" scaleTo={0.98} onPress={() => router.push('/role')} style={[styles.roleCard, elevation.e1]} accessibilityLabel="เลือกบทบาทของคุณ">
+              <Sym name="person.crop.circle.badge.questionmark" size={26} color="#7A4FD0" />
+              <View style={{ flex: 1 }}>
+                <T v="bodyStrong">คุณใช้แอปในบทบาทไหน?</T>
+                <T v="caption" color={ios.secondary}>แพทย์แผนไทย · แพทย์แผนปัจจุบัน · ประชาชนทั่วไป · หมอพื้นบ้าน</T>
+              </View>
+              <Sym name="chevron.right" size={13} color={ios.tertiary} weight="semibold" />
+            </PressableScale>
+          </Animated.View>
+        ) : null}
 
         {/* ── Bento แถว 1: ครูปัญญา (ใหญ่) · ผู้ป่วย + เล่าอาการ ── */}
         <Animated.View entering={enter(1)} style={[styles.row, { height: 236, marginTop: 14 }]}>
@@ -103,7 +133,7 @@ export default function Home() {
             <View style={styles.tileBottom}>
               <T v="micro" color="rgba(124,240,168,0.85)" style={styles.kicker}>ผู้ช่วย AI</T>
               <T v="h3" color="#FFFFFF">ถามครูปัญญา</T>
-              <T v="caption" color="rgba(255,255,255,0.65)" numberOfLines={2}>สมุนไพร ตำรับยา ความปลอดภัยของยา</T>
+              <T v="caption" color="rgba(255,255,255,0.65)" numberOfLines={2}>ปรึกษาอาการ สมุนไพร ความปลอดภัยของยา</T>
               <PressableScale haptic="press" onPress={() => router.push({ pathname: '/assistant', params: { voice: '1' } })} style={styles.voiceBtn} accessibilityLabel="คุยกับครูปัญญาด้วยเสียง">
                 <Sym name="waveform" size={15} color="#04150E" />
                 <T v="subhead" color="#04150E" style={{ fontWeight: '700' }}>คุยด้วยเสียง</T>
@@ -111,40 +141,34 @@ export default function Home() {
             </View>
           </Tile>
           <View style={{ flex: 1, gap: 10 }}>
-            {isPractitioner ? (
-              <Widget onPress={() => router.push('/patients')} icon="person.2.fill" colors={G.green} title={`ผู้ป่วย ${patients.length} ราย`} sub={follow ? `ติดตามอาการ ${follow} ราย` : 'ไม่มีรายที่ต้องติดตาม'} subColor={follow ? '#B0761E' : undefined} style={{ flex: 1 }} />
+            {doc ? (
+              <>
+                <Widget onPress={() => router.push('/patients')} icon="person.2.fill" colors={G.green} title={`ผู้ป่วย ${patients.length} ราย`} sub={follow ? `ติดตามอาการ ${follow} ราย` : 'ไม่มีรายที่ต้องติดตาม'} subColor={follow ? '#B0761E' : undefined} style={{ flex: 1 }} />
+                <Widget onPress={() => router.push('/patient/tell')} icon="waveform" colors={G.purple} title="เล่าอาการ" sub="AI ช่วยบันทึก" style={{ flex: 1 }} />
+              </>
             ) : (
-              <Widget onPress={() => router.push('/verify')} icon="checkmark.seal.fill" colors={G.amber} title="ยืนยันตัวตน" sub="เพื่อรักษาผู้ป่วย" style={{ flex: 1 }} />
+              // ประชาชนทั่วไป: สมุนไพร · สแกนสมุนไพร (ไม่มีเมนูผู้ป่วย · ปรึกษาอาการอยู่ในถามครูปัญญา)
+              <>
+                <Widget onPress={() => router.push('/herbs')} icon="leaf.fill" colors={G.leaf} title="สมุนไพร" sub="สรรพคุณ วิธีใช้ ข้อควรระวัง" style={{ flex: 1 }} />
+                <Widget onPress={() => router.push('/herb/scan')} icon="camera.viewfinder" colors={G.green} title="สแกนสมุนไพร" sub="ถ่ายภาพ ครูปัญญาบอกชื่อ" style={{ flex: 1 }} />
+              </>
             )}
-            <Widget onPress={() => router.push('/patient/tell')} icon="waveform" colors={G.purple} title="เล่าอาการ" sub="AI ช่วยบันทึก" style={{ flex: 1 }} />
           </View>
         </Animated.View>
 
-        {/* ── Bento แถว 2: สมุนไพรวันนี้ · สแกนตำรา ── */}
-        <Animated.View entering={enter(2)} style={[styles.row, { height: 140 }]}>
-          <Widget onPress={() => router.push(`/herb/${pick.herb.id}`)} icon="leaf.fill" colors={G.leaf} title={pick.herb.name} sub={`สมุนไพรวันนี้ · รส${pick.herb.taste}`} photo={pick.herb.image} style={{ flex: 1 }} />
-          <Widget onPress={() => router.push('/scan')} icon="doc.viewfinder" colors={G.amber} title="สแกนตำรา" sub="สมุดข่อย ใบลาน" style={{ flex: 1 }} />
-        </Animated.View>
+        {/* ── Bento แถว 2–3: สมุนไพรวันนี้ · สแกนตำรา · ถ่ายทอดตำรับ · ภูมิปัญญาของฉัน (จอกว้าง = แถวเดียว 4 ช่อง) ── */}
+        {(wide ? [small] : [small.slice(0, 2), small.slice(2)]).map((row, i) => (
+          <Animated.View key={i} entering={enter(2 + i)} style={[styles.row, { height: 140 }]}>
+            {row}
+          </Animated.View>
+        ))}
 
-        {/* ── Bento แถว 3: ถ่ายทอดตำรับ · ภูมิปัญญาของฉัน ── */}
-        <Animated.View entering={enter(3)} style={[styles.row, { height: 140 }]}>
-          <Widget onPress={() => router.push('/wisdom/tell')} icon="book.closed.fill" colors={G.red} title="ถ่ายทอดตำรับ" sub="เล่าให้ครูปัญญาฟัง" style={{ flex: 1 }} />
-          <Widget onPress={() => router.push('/vault')} icon="books.vertical.fill" colors={G.brown} title={`ภูมิปัญญา ${wisdoms.length} เรื่อง`} sub={pendingW ? `รอตรวจทาน ${pendingW} เรื่อง` : 'ตรวจทานครบแล้ว'} style={{ flex: 1 }}>
-            {wisdoms.length ? (
-              <View style={styles.track}>
-                <View style={[styles.fillBar, { width: `${((wisdoms.length - pendingW) / wisdoms.length) * 100}%` }]} />
-              </View>
-            ) : null}
-          </Widget>
-        </Animated.View>
-
-        {/* ── ผู้ป่วยล่าสุด: การ์ดแนวนอนเลื่อนได้ ── */}
-        {isPractitioner ? (
-          <Animated.View entering={enter(4)}>
+        {/* ── ผู้ป่วยล่าสุด: การ์ดแนวนอนเลื่อนได้ (หมอ/บุคลากรเท่านั้น) ── */}
+          {doc ? <Animated.View entering={enter(wide ? 3 : 4)}>
             <SectionTitle title="ผู้ป่วยล่าสุด" action="ดูทั้งหมด" onAction={() => router.push('/patients')} />
             {recent.length ? (
               // เผื่อขอบบน-ล่างให้เงาการ์ด (ScrollView ตัดทุกอย่างที่เกินกรอบ)
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingRight: 4, paddingVertical: 14 }} style={{ marginHorizontal: -16, marginVertical: -14, overflow: 'visible' }} contentInset={{ left: 16, right: 16 }} contentOffset={{ x: -16, y: 0 }}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingRight: 4, paddingVertical: 14 }} style={{ marginHorizontal: wide ? 0 : -16, marginVertical: -14, overflow: 'visible' }} contentInset={{ left: 16, right: 16 }} contentOffset={{ x: -16, y: 0 }}>
                 {recent.map((p) => {
                   const v = lastVisit(p);
                   const what = v ? [v.diagnosis, v.symptoms].find((x) => x && x.trim() !== '-') ?? 'ยังไม่ได้ระบุอาการ' : 'ยังไม่มีการรักษา';
@@ -167,8 +191,7 @@ export default function Home() {
                 </View>
               </IOSCard>
             )}
-          </Animated.View>
-        ) : null}
+          </Animated.View> : null}
       </Animated.ScrollView>
     </>
   );
@@ -228,5 +251,6 @@ const styles = StyleSheet.create({
   voiceBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, alignSelf: 'flex-start', height: 36, paddingHorizontal: 14, marginTop: 10, borderRadius: 18, backgroundColor: '#7CF0A8' },
   track: { height: 5, borderRadius: 3, backgroundColor: '#E3EDE7', marginTop: 8, overflow: 'hidden' },
   fillBar: { height: 5, borderRadius: 3, backgroundColor: palette.primary },
+  roleCard: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 12, padding: 14, borderRadius: 20, borderCurve: 'continuous', backgroundColor: palette.surface },
   pCard: { width: 168, height: 150, padding: 14, borderRadius: 20, borderCurve: 'continuous', backgroundColor: palette.surface },
 });

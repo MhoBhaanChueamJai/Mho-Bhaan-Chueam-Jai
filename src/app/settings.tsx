@@ -13,8 +13,8 @@ import { useSpeaker } from '../components/audio';
 import { CircleIcon, ListRow, ListSection, PAGE_PAD } from '../components/ListRow';
 import { Sym, ios } from '../components/ios';
 import { Avatar, HeaderBack, PressableScale, T, useHaptic } from '../components/ui';
-import { doctor, doctorTypes, fullAddress } from '../data/mock';
-import { TYPE_LABEL } from './verify';
+import { doctor, fullAddress } from '../data/mock';
+import { KINDS, ROLE_PICKER, ROLES, roleOf, showPatients } from '../lib/roles';
 import { DIALECTS } from '../lib/dialect';
 import { AISphere } from '../components/AISphere';
 import { supabase } from '../lib/supabase';
@@ -25,12 +25,14 @@ import { authenticateBiometric, biometricInfo, clearPin } from '../store/securit
 import { elevation, palette } from '../theme';
 import { LargeTitle, useLargeTitleScroll } from '../components/nav/LargeTitle';
 import { openManual } from '../lib/manual';
+import { column } from '../components/layout';
+import { clearChats } from '../lib/chatStore';
 
 const enter = (i: number) => FadeInDown.delay(40 + i * 50).duration(420);
 
 export default function Settings() {
   const lt = useLargeTitleScroll();
-  const { settings, update, patients, wisdoms, clearLocal, setUnlocked, profile, isPractitioner, sync, pendingCount, syncNow, demo } = useApp();
+  const { settings, update, patients, wisdoms, clearLocal, setUnlocked, profile, sync, pendingCount, syncNow, demo } = useApp();
   const [syncing, setSyncing] = useState(false);
   const myAvatar = useMyAvatar();
   // สถานะซิงก์: ให้หมอรู้ว่าข้อมูลขึ้นคลาวด์ครบแล้วหรือยัง
@@ -61,13 +63,15 @@ export default function Settings() {
   const tts = useSpeaker();
   const h = useHaptic();
   const dialect = settings.dialect ?? 'central';
-  // ประเภทหมอพื้นบ้านจากทะเบียน (ยืนยันตัวตนแล้ว) หรือจากที่ตั้งไว้
-  // หมอหนึ่งคนขึ้นทะเบียนได้หลายประเภท → แสดงเป็นป้ายแยกทีละประเภท
-  const healers: string[] = isPractitioner
-    ? profile?.healer_types?.length
-      ? profile.healer_types.map((t) => TYPE_LABEL[t] ?? t)
-      : [(doctorTypes.find((d) => d.key === settings.doctorType) ?? doctorTypes[0]).label]
-    : [];
+  // บทบาทที่ผู้ใช้เลือกเอง (ไม่มีการยืนยันตัวตนแล้ว)
+  const role = ROLES.find((r) => r.k === roleOf(settings.userRole))!;
+  const doc = showPatients(settings.userKind);
+  const clearChatHistory = () =>
+    Alert.alert('ลบประวัติแชททั้งหมด?', 'ทุกแชทที่เก็บไว้ในเครื่องนี้จะถูกลบ และกู้คืนไม่ได้', [
+      { text: 'ยกเลิก', style: 'cancel' },
+      { text: 'ลบทั้งหมด', style: 'destructive', onPress: () => clearChats().then(() => Alert.alert('ลบประวัติแชทแล้ว')) },
+    ]);
+  const kind = KINDS.find((k) => k.k === settings.userKind) ?? KINDS[1];
 
   const exportAll = () => {
     const text = patients
@@ -128,7 +132,7 @@ export default function Settings() {
   return (
     <>
       <Stack.Screen options={{ headerLeft: () => <HeaderBack fallback="/home" color={palette.ink} /> }} />
-      <Animated.ScrollView {...lt} contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={{ paddingHorizontal: PAGE_PAD, paddingTop: 8, paddingBottom: 64 }} showsVerticalScrollIndicator={false}>
+      <Animated.ScrollView {...lt} contentInsetAdjustmentBehavior="automatic" style={{ backgroundColor: palette.bg }} contentContainerStyle={[{ paddingHorizontal: PAGE_PAD, paddingTop: 8, paddingBottom: 64 }, column.read]} showsVerticalScrollIndicator={false}>
         <LargeTitle title="ตั้งค่า" bleed={16} />
         {/* ── โปรไฟล์: แถวบัญชีแบบ iPhone (รูปซ้าย · ชื่อ/อีเมล/สถานะ · ลูกศร) กดเพื่อดูข้อมูลส่วนตัว ── */}
         <Animated.View entering={enter(0)}>
@@ -139,27 +143,21 @@ export default function Settings() {
             <View style={{ flex: 1, gap: 3 }}>
               <T v="title" numberOfLines={1} style={{ fontSize: 19, lineHeight: 26 }}>{displayName}</T>
               {profile?.email ? <T v="subhead" color={ios.secondary} numberOfLines={1}>{profile.email}</T> : null}
-              <View style={styles.badges}>
-                {/* แสดงประเภทแรก + จำนวนที่เหลือ (ดูทั้งหมดในหน้าข้อมูลส่วนตัว) */}
-                <View style={[styles.badge, { backgroundColor: isPractitioner ? palette.primarySoft : '#FBEFD9' }]}>
-                  <Sym name={isPractitioner ? 'checkmark.seal.fill' : 'person.fill'} size={11} color={isPractitioner ? palette.primary : palette.orange} />
-                  <T v="caption" color={isPractitioner ? palette.primaryDeep : '#8A5A10'} style={{ fontWeight: '700' }}>{healers[0] ?? 'สมาชิกทั่วไป'}</T>
+              {ROLE_PICKER ? <View style={styles.badges}>
+                <View style={[styles.badge, { backgroundColor: `${role.color}1F` }]}>
+                  <Sym name={role.icon as any} size={11} color={role.color} />
+                  <T v="caption" color={role.color} style={{ fontWeight: '700' }}>{settings.userRole ? role.label : 'ยังไม่ได้เลือกบทบาท'}</T>
                 </View>
-                {healers.length > 1 ? (
-                  <View style={[styles.badge, { backgroundColor: palette.primarySoft }]}>
-                    <T v="caption" color={palette.primaryDeep} style={{ fontWeight: '700' }}>+{healers.length - 1}</T>
-                  </View>
-                ) : null}
-              </View>
+              </View> : null}
             </View>
             <Sym name="chevron.right" size={14} color={ios.tertiary} weight="semibold" />
           </PressableScale>
         </Animated.View>
 
-        {/* สมาชิกทั่วไป: ชวนยืนยันตัวตน */}
-        {!isPractitioner ? (
+        {/* บทบาทผู้ใช้: ปรับคำแนะนำของครูปัญญา (ปิดอยู่ — ใช้แบบรวม) */}
+        {ROLE_PICKER ? (
           <ListSection i={1}>
-            <ListRow icon={<CircleIcon name="person.badge.shield.checkmark.fill" color={palette.orange} />} title="ยืนยันตัวตนหมอพื้นบ้าน" subtitle="เพื่อใช้งานการรักษาและบันทึกข้อมูลผู้ป่วย" onPress={() => router.push('/verify')} chevron last />
+            <ListRow icon={<CircleIcon name={role.icon} color={role.color} />} title="บทบาทของฉัน" subtitle={settings.userRole ? role.label : 'เลือกเพื่อให้ครูปัญญาแนะนำได้เหมาะกับคุณ'} onPress={() => router.push('/role')} chevron last />
           </ListSection>
         ) : null}
 
@@ -188,13 +186,19 @@ export default function Settings() {
           />
         </ListSection>
 
-        {/* ── เครื่องมือของหมอ: รายงาน · คลังยา · ตรวจยาตีกัน · นัดหมาย ── */}
-        <ListSection i={3} title="เครื่องมือของหมอ">
+        {/* ── การใช้งาน: ประชาชนทั่วไป / หมอ-บุคลากรสุขภาพ ── */}
+        {!ROLE_PICKER ? (
+          <ListSection i={3} title="การใช้งาน" footer={doc ? 'มีเมนูผู้ป่วย บันทึกการรักษา และเครื่องมือของหมอ' : 'เปลี่ยนเป็นหมอ/บุคลากรสุขภาพ เพื่อใช้เมนูผู้ป่วยและบันทึกการรักษา'}>
+            <ListRow icon={<CircleIcon name={kind.icon} color={kind.color} />} title={kind.label} subtitle={settings.userKind ? 'แตะเพื่อเปลี่ยน' : 'ยังไม่ได้เลือก · แตะเพื่อเลือก'} onPress={() => router.push('/role')} chevron last />
+          </ListSection>
+        ) : null}
+
+        {/* ── เครื่องมือของหมอ: รายงาน · คลังยา · นัดหมาย (หมอ/บุคลากรเท่านั้น) ── */}
+        {doc ? <ListSection i={3} title="เครื่องมือของหมอ">
           <ListRow icon={<CircleIcon name="chart.bar.doc.horizontal.fill" color="#14905C" />} title="รายงาน" subtitle="dashboard การรักษา · รายเดือน/ปี · ส่งออก PDF" onPress={() => router.push('/report')} chevron />
           <ListRow icon={<CircleIcon name="cross.vial.fill" color="#C27A12" />} title="คลังยาของหมอ" subtitle="ยาที่ปรุงไว้ · วันหมดอายุ · เหลือเท่าไร" onPress={() => router.push('/stock')} chevron />
-          <ListRow icon={<CircleIcon name="pills.circle.fill" color="#D2453A" />} title="ตรวจยาตีกัน" subtitle="สมุนไพร × โรคประจำตัว × ยาที่กินอยู่" onPress={() => router.push('/interactions')} chevron />
           <ListRow icon={<CircleIcon name="calendar" color="#2F7BE0" />} title="นัดหมาย" subtitle="นัดติดตามอาการวันนี้และสัปดาห์นี้" onPress={() => router.push('/appointments')} chevron last />
-        </ListSection>
+        </ListSection> : null}
 
         {/* ── ข้อมูล ── */}
         <ListSection i={3} title="ข้อมูล">
@@ -205,7 +209,8 @@ export default function Settings() {
             onPress={doSync}
             right={syncing ? <ActivityIndicator /> : <Sym name="arrow.triangle.2.circlepath" size={18} color={palette.primary} />}
           />
-          <ListRow icon={<CircleIcon name="square.and.arrow.up" color="#3B7DD8" />} title="ส่งออกข้อมูลผู้ป่วย" subtitle={`ผู้ป่วย ${patients.length} ราย · ภูมิปัญญา ${wisdoms.length} เรื่อง`} onPress={exportAll} chevron />
+          <ListRow icon={<CircleIcon name="square.and.arrow.up" color="#3B7DD8" />} title={doc ? 'ส่งออกข้อมูลผู้ป่วย' : 'ส่งออกข้อมูล'} subtitle={doc ? `ผู้ป่วย ${patients.length} ราย · ภูมิปัญญา ${wisdoms.length} เรื่อง` : `ภูมิปัญญา ${wisdoms.length} เรื่อง`} onPress={exportAll} chevron />
+          <ListRow icon={<CircleIcon name="trash.fill" color="#D9534A" />} title="ลบประวัติแชททั้งหมด" subtitle="แชทกับครูปัญญาที่เก็บไว้ในเครื่องนี้" onPress={clearChatHistory} />
           <ListRow icon={<CircleIcon name="hand.raised.fill" color="#7A5CC8" />} title="นโยบายความเป็นส่วนตัว" onPress={() => router.push('/privacy')} chevron last />
         </ListSection>
 

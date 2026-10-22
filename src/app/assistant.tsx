@@ -1,11 +1,13 @@
 import { MenuView } from '../components/Menu';
+import ReanimatedSwipeable, { type SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Keyboard, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Keyboard, Linking, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Alert } from '../lib/alert';
 import { TextInput } from '../components/AppText';
-import Animated, { FadeIn, FadeInDown, FadeInUp, useAnimatedKeyboard, useAnimatedStyle, useDerivedValue, useSharedValue, withDelay, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeInDown, FadeInUp, FadeOut, LinearTransition, useAnimatedKeyboard, useAnimatedStyle, useDerivedValue, useSharedValue, withDelay, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { chat, chatQuick, transcribe, type ChatMsg } from '../api/ai';
 import { AISphere } from '../components/AISphere';
@@ -15,15 +17,45 @@ import { Waveform } from '../components/Orb';
 import { createSpeech, listenOnce, type SpeechCtl } from '../components/speech';
 import { Glass, GlassCircle, PressableScale, T, useHaptic } from '../components/ui';
 import { askLaunch } from '../lib/askLaunch';
-import { citedSources, think, tidyReply } from '../lib/brain';
+import { citedSources, herbsMentioned, think, tidyReply, isSymptomQ } from '../lib/brain';
+import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
+import { herbs as HERBS, type Herb } from '../data/herbs';
 import { findPatient, patientCtx } from '../lib/patientRef';
 import { guardReply } from '../lib/safety';
 import { useDoctor } from '../components/useDoctor';
-import { deleteThread, getThread, loadChats, newThreadId, onChatsChange, saveThread, whenLabel, type ChatSource, type ChatThread, type StoredMsg } from '../lib/chatStore';
+import { clearChats, deleteThread, getThread, loadChats, newThreadId, onChatsChange, saveThread, whenLabel, type ChatSource, type ChatThread, type StoredMsg } from '../lib/chatStore';
 import { useApp } from '../store/app';
 import { control, palette } from '../theme';
 import { AiDownBanner } from '../components/AiDownBanner';
 import { AI_DOWN_MSG, checkAi } from '../lib/aiHealth';
+import { COLUMN, column, useLayout } from '../components/layout';
+import { PlanDark, PlanResult } from '../components/PlanCard';
+import { shortCite } from '../lib/sources';
+import { consultToPlan, consultTurn, type ConsultFacts } from '../lib/consult';
+import type { Turn } from '../lib/intake';
+import { treatmentPlan, type TreatmentPlan } from '../lib/plan';
+import { chatQA } from '../lib/chatQA';
+import { FAQ_CATS, faqList, makeQuiz, type Faq, type FaqCat, type QuizQ } from '../lib/qa';
+
+/* ── ปรึกษาอาการในแชท: ครูปัญญาซักประวัติทีละข้อ → แนวทางแผนไทย / แผนปัจจุบัน ── */
+const CONSULT_OPEN = 'เล่าอาการให้ครูปัญญาฟังได้เลยครับ เป็นอะไร ตรงไหน เป็นมานานเท่าไร';
+const CONSULT_QUICK = ['ไข้ ตัวร้อน', 'ไอ เจ็บคอ', 'ปวดหัว', 'ท้องอืด แน่นท้อง', 'ท้องเสีย', 'ปวดเมื่อย ปวดหลัง', 'นอนไม่หลับ', 'ผื่นคัน'];
+const PLAN_NOW = 'พอแล้ว ดูแนวทางเลย';
+const FIRST_AID = 'ดูการดูแลเบื้องต้น';
+type Consult = { facts: ConsultFacts; turns: Turn[]; qa: { q: string; a: string }[]; planned: boolean };
+/** สรุปแนวทางเป็นข้อความ (ให้ AI เห็นในประวัติแชท เวลาถามต่อ) */
+const planText = (p: TreatmentPlan) =>
+  [
+    'แนวทางจากครูปัญญา',
+    p.thaiDx && `แผนไทย: ${p.thaiDx}`,
+    p.modernDx && `แผนปัจจุบัน: ${p.modernDx}`,
+    p.thai.length ? `แนวทางแผนไทย: ${p.thai.map((x) => x.text).join(' · ')}` : '',
+    p.modern.length ? `ยาสามัญประจำบ้าน: ${p.modern.map((x) => x.text).join(' · ')}` : '',
+    p.followUp && `ติดตามอาการ: ${p.followUp}`,
+  ]
+    .filter(Boolean)
+    .join('\n');
 
 const SUGGEST = [
   { q: 'ผู้สูงอายุปวดเข่า ใช้สมุนไพรอะไรดี', sym: 'figure.walk' },
@@ -45,11 +77,75 @@ const queryFor = (msgs: Msg[]) =>
     .map((x) => x.content)
     .join(' ');
 
+/** สมุนไพรที่คำตอบพูดถึง (จากป้ายอ้างอิง + ชื่อในข้อความ) → แสดงรูปให้ดู */
+function herbsIn(m: StoredMsg): Herb[] {
+  if (m.role !== 'assistant' || m.failed || m.quiz || m.faq) return [];
+  const fromRefs = (m.sources ?? []).map((x) => (x.kind === 'herb' ? x.id : x.id.startsWith('herb:') ? x.id.slice(5) : '')).filter(Boolean);
+  const byId = HERBS.filter((h) => fromRefs.includes(h.id));
+  const pos = (h: Herb) => {
+    const i = m.content.indexOf(h.name);
+    return i < 0 ? 1e9 : i;
+  };
+  // เรียงตามลำดับที่พูดถึงในคำตอบ
+  return [...new Map([...herbsMentioned(m.content), ...byId].map((h) => [h.id, h])).values()].sort((a, b) => pos(a) - pos(b)).slice(0, 8);
+}
+
+/** แถบรูปสมุนไพรใต้คำตอบ — แตะเพื่อเปิดหน้าสมุนไพร */
+function HerbStrip({ list }: { list: Herb[] }) {
+  if (!list.length) return null;
+  return (
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.herbStrip} contentContainerStyle={{ gap: 10, paddingRight: 8 }}>
+      {list.map((h) => (
+        <PressableScale key={h.id} haptic="select" scaleTo={0.95} onPress={() => router.push(`/herb/${h.id}`)} style={styles.herbCard} accessibilityLabel={`ดูสมุนไพร ${h.name}`}>
+          <Image source={h.image} style={styles.herbImg} contentFit="cover" transition={150} />
+          <T v="caption" color="#FFFFFF" numberOfLines={1} style={{ fontWeight: '700' }}>{h.name}</T>
+          <T v="micro" color="rgba(255,255,255,0.55)" numberOfLines={1}>รส{h.taste}</T>
+        </PressableScale>
+      ))}
+    </ScrollView>
+  );
+}
+
+/** คำถามที่พบบ่อยในแชท: เลือกหมวด → แตะคำถาม → ได้คำตอบจากคลังความรู้ทันที (ไม่ต้องรอ AI) */
+function FaqBrowser({ onPick }: { onPick: (f: Faq) => void }) {
+  const all = React.useMemo(faqList, []);
+  const [cat, setCat] = useState<FaqCat | null>(null);
+  const [n, setN] = useState(6);
+  const list = all.filter((x) => !cat || x.cat === cat);
+  return (
+    <View style={styles.faqBox}>
+      <View style={styles.optRowWide}>
+        {[null, ...FAQ_CATS].map((c) => {
+          const on = cat === c;
+          return (
+            <PressableScale key={c ?? 'all'} haptic="select" scaleTo={0.95} onPress={() => (setCat(c), setN(6))} style={[styles.opt, on && styles.optPlan]} accessibilityLabel={`หมวด ${c ?? 'ทั้งหมด'}`} accessibilityState={{ selected: on }}>
+              <T v="caption" color={on ? '#04150E' : '#FFFFFF'} style={{ fontWeight: '700' }}>{c ?? 'ทั้งหมด'}</T>
+            </PressableScale>
+          );
+        })}
+      </View>
+      {list.slice(0, n).map((f) => (
+        <PressableScale key={f.id} haptic="select" scaleTo={0.98} onPress={() => onPick(f)} style={styles.followChip} accessibilityLabel={f.q}>
+          <Sym name="questionmark.circle.fill" size={14} color={MINT} />
+          <T v="subhead" color="#FFFFFF" style={{ flexShrink: 1 }}>{f.q}</T>
+        </PressableScale>
+      ))}
+      {list.length > n ? (
+        <PressableScale haptic="select" onPress={() => setN((x) => x + 8)} style={styles.more} accessibilityLabel="ดูคำถามเพิ่ม">
+          <T v="caption" color={MINT} style={{ fontWeight: '700' }}>ดูเพิ่ม ({list.length - n})</T>
+        </PressableScale>
+      ) : null}
+    </View>
+  );
+}
+
 /** หน้าแชทครูปัญญา — พิมพ์/พูดทีละคำถาม · โหมดคุยด้วยเสียงต่อเนื่อง · ประวัติแชทหลายห้อง */
 export default function Assistant() {
   const { q, voice } = useLocalSearchParams<{ q?: string; voice?: string }>();
   const insets = useSafeAreaInsets();
-  const { settings, wisdoms, patients } = useApp();
+  // จอกว้าง: แถบพิมพ์กว้างเท่าคอลัมน์อ่าน อยู่กึ่งกลาง
+  const dockSide = useLayout().side(COLUMN.read - 48, 24);
+  const { settings, wisdoms, patients, update } = useApp();
   const dr = useDoctor();
   // ความจำข้ามแชท: หัวข้อที่คุณหมอเคยถามในห้องแชทอื่นล่าสุด (เก็บในเครื่อง)
   const [topics, setTopics] = useState<{ id: string; title: string }[]>([]);
@@ -67,9 +163,14 @@ export default function Assistant() {
   const msgsRef = useRef<Msg[]>([]);
   msgsRef.current = msgs;
   const mounted = useRef(true);
-  useEffect(() => () => void (mounted.current = false), []);
+  useEffect(() => {
+    // ตั้งกลับเป็น true ทุกครั้งที่ mount (Fast Refresh / StrictMode เรียก cleanup แล้ว mount ใหม่)
+    mounted.current = true;
+    return () => void (mounted.current = false);
+  }, []);
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
+  const [busyKind, setBusyKind] = useState<'chat' | 'consult' | 'plan'>('chat');
   const [speakingId, setSpeakingId] = useState<string | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   // เปิดจากปุ่มไมค์หน้าหลัก → เข้าโหมดคุยด้วยเสียงทันที
@@ -103,8 +204,19 @@ export default function Assistant() {
         // แชท: 2 โมเดลช่วยกันคิดแล้วรวมคำตอบ (แม่นกว่า) · เสียง: โมเดลเดียวตอบเร็ว (คุยลื่นไม่เงียบนาน)
         const raw = mode === 'voice' ? await chatQuick(messages, 420) : await chat(messages, settings.model, brain.sources.length ? 1100 : 800, { deep: brain.deep });
         const reply = guardReply(tidyReply(raw, mode), brain.flags, brain.conflicts, mode);
-        const a: Msg = { id: `a${Date.now()}`, role: 'assistant', content: reply, sources: citedSources(reply, brain), voice: mode === 'voice' };
+        const a: Msg = { id: `a${Date.now()}`, role: 'assistant', content: reply, sources: citedSources(reply, brain), voice: mode === 'voice', ...(mode === 'chat' && isSymptomQ(user.content) ? { consult: user.content } : {}) };
         commit([...msgsRef.current, a]);
+        // ถาม-ตอบต่อ (เบื้องหลัง): คำถามกลับพร้อมตัวเลือก + คำถามต่อที่แนะนำ — ไม่ทำให้คำตอบช้า
+        if (mode === 'chat')
+          chatQA(user.content, reply)
+            .then((qa) => {
+              if (!mounted.current || (!qa.ask && !qa.follow.length)) return;
+              const asked = qa.ask && !reply.includes(qa.ask.q.slice(0, 12));
+              commit(msgsRef.current.map((x) => (x.id === a.id ? { ...x, content: asked ? `${x.content}\n\n${qa.ask!.q}` : x.content, askOpts: qa.ask?.options, follow: qa.follow } : x)));
+              // ตัวเลือก/คำถามต่อขึ้นมาทีหลัง → เลื่อนให้เห็น (ไม่ให้จมใต้แถบพิมพ์)
+              setTimeout(() => scroll.current?.scrollToEnd({ animated: true }), 150);
+            })
+            .catch(() => {});
         return a;
       } catch {
         const down = !(await checkAi(true));
@@ -116,10 +228,129 @@ export default function Assistant() {
     [commit, settings.model, wisdoms, patients, dr.name, dr.types, topics, threadId],
   );
 
+  // ── ปรึกษาอาการ (ซักประวัติในแชท) ──
+  const [cs, setCsState] = useState<Consult | null>(null);
+  const csRef = useRef<Consult | null>(null);
+  const setCs = (c: Consult | null) => ((csRef.current = c), setCsState(c));
+  const say = (m: Omit<Msg, 'id' | 'role'>) => commit([...msgsRef.current, { id: `a${Date.now()}${Math.random().toString(36).slice(2, 5)}`, role: 'assistant', ...m }]);
+
+  const makePlan = async (c: Consult) => {
+    setBusyKind('plan');
+    setBusy(true);
+    try {
+      const pairs = c.turns.flatMap((t, i) => (t.role === 'ai' && c.turns[i + 1]?.role === 'user' ? [{ q: t.text, a: c.turns[i + 1].text }] : []));
+      const { person, input } = consultToPlan(c.facts, [...pairs, ...c.qa]);
+      const plan = await treatmentPlan(person, input);
+      if (!mounted.current) return;
+      setCs({ ...c, planned: true });
+      say({ content: planText(plan), plan });
+      h.success();
+    } catch {
+      say({ content: 'ขออภัยครับ ตอนนี้ครูปัญญาวางแนวทางไม่ได้ ลองใหม่อีกครั้งนะครับ', failed: true, options: [PLAN_NOW] });
+    } finally {
+      if (mounted.current) setBusy(false);
+    }
+  };
+
+  /** ตอบ 1 ข้อระหว่างซักประวัติ */
+  const consultSend = async (answer: string, addUser = true) => {
+    const c = csRef.current;
+    if (!c) return;
+    const a = answer.trim();
+    if (!a) return;
+    if (addUser) commit([...msgsRef.current, { id: `u${Date.now()}`, role: 'user', content: a }]);
+    if (a === PLAN_NOW || a === FIRST_AID) return makePlan(c);
+    setBusyKind('consult');
+    setBusy(true);
+    const r = await consultTurn(c.facts, c.turns, a);
+    if (!mounted.current) return;
+    setBusy(false);
+    const turns: Turn[] = [...c.turns, { role: 'user', text: a }];
+    if (r.urgent.length) {
+      setCs({ ...c, facts: r.facts, turns });
+      h.warn();
+      return say({ content: 'อาการแบบนี้อาจอันตรายครับ ควรไปโรงพยาบาลหรือโทร 1669 ทันที', urgent: r.urgent, options: [FIRST_AID] });
+    }
+    if (r.done) return makePlan({ ...c, facts: r.facts, turns });
+    setCs({ ...c, facts: r.facts, turns: [...turns, { role: 'ai', text: r.reply }] });
+    say({ content: r.reply, options: r.options });
+  };
+
+  /** เริ่มปรึกษาอาการ (จากปุ่ม หรือจากคำถามเรื่องอาการที่ถามไปแล้ว) */
+  const startConsult = (seed?: string) => {
+    h.select();
+    tts.stop();
+    Keyboard.dismiss();
+    const c: Consult = { facts: {}, turns: [{ role: 'ai', text: CONSULT_OPEN }], qa: [], planned: false };
+    setCs(c);
+    if (seed) {
+      say({ content: 'ได้ครับ ขอถามเพิ่มอีกนิดเพื่อแนะนำได้ตรงขึ้นนะครับ' });
+      consultSend(seed, false);
+    } else say({ content: CONSULT_OPEN, options: CONSULT_QUICK });
+  };
+  /** ตอบคำถามซักประวัติเพิ่มในการ์ดแนวทาง → วางแนวทางใหม่ */
+  const refine = (more: { q: string; a: string }[]) => {
+    const c = csRef.current;
+    if (!c) return;
+    const next = { ...c, qa: [...c.qa.filter((x) => !more.some((m) => m.q === x.q)), ...more] };
+    setCs(next);
+    makePlan(next);
+  };
+  // ── คำถามที่พบบ่อย / แบบทดสอบความรู้ ในแชท (ไม่ต้องไปหน้าอื่น · ไม่ต้องรอ AI) ──
+  const toSources = (refs: { id: string; label: string }[]) => refs.map((r) => ({ id: r.id, title: r.label, kind: 'doc' as const }));
+  const startFaq = () => {
+    h.select();
+    setCs(null);
+    say({ content: 'คำถามที่พบบ่อยครับ เลือกหมวด แล้วแตะคำถามที่อยากรู้ได้เลย คำตอบมาจากคลังความรู้ในแอป', faq: true });
+  };
+  const pickFaq = (f: Faq) => {
+    h.tap();
+    commit([...msgsRef.current, { id: `u${Date.now()}`, role: 'user', content: f.q }]);
+    say({ content: f.a, sources: toSources(f.refs), follow: ['อธิบายเพิ่มเติมเรื่องนี้หน่อย', 'คำถามที่พบบ่อยข้ออื่น'] });
+  };
+  const quizRef = useRef<{ qs: QuizQ[]; i: number; score: number } | null>(null);
+  const askQuiz = () => {
+    const z = quizRef.current;
+    if (!z) return;
+    const q = z.qs[z.i];
+    say({ content: `ข้อ ${z.i + 1}/${z.qs.length}: ${q.q}`, quiz: q.choices });
+  };
+  const startQuiz = () => {
+    h.select();
+    setCs(null);
+    quizRef.current = { qs: makeQuiz(10), i: 0, score: 0 };
+    say({ content: 'แบบทดสอบความรู้ 10 ข้อครับ แตะคำตอบที่คิดว่าถูก ครูปัญญาเฉลยให้ทันทีพร้อมแหล่งอ้างอิง' });
+    askQuiz();
+  };
+  const answerQuiz = (k: number) => {
+    const z = quizRef.current;
+    if (!z) return;
+    const q = z.qs[z.i];
+    const ok = k === q.answer;
+    if (ok) z.score++;
+    if (ok) h.success();
+    else h.warn();
+    commit([...msgsRef.current, { id: `u${Date.now()}`, role: 'user', content: q.choices[k] }]);
+    say({ content: `${ok ? '✓ ถูกต้องครับ' : `✗ ยังไม่ถูกครับ คำตอบคือ ${q.choices[q.answer]}`}\n${q.explain}`, sources: toSources(q.refs) });
+    z.i++;
+    if (z.i < z.qs.length) askQuiz();
+    else {
+      say({ content: `จบแบบทดสอบแล้วครับ ได้ ${z.score}/${z.qs.length} คะแนน ${z.score >= 8 ? 'เก่งมากครับ' : z.score >= 5 ? 'ดีครับ ทบทวนข้อที่ผิดอีกนิดนะครับ' : 'ไม่เป็นไรครับ อ่านเฉลยแล้วลองใหม่อีกรอบ'}`, quizEnd: true });
+      quizRef.current = null;
+    }
+  };
+  const answered = cs ? cs.turns.filter((t) => t.role === 'user').length : 0;
+  const lastId = msgs[msgs.length - 1]?.id;
+  const lastPlanId = [...msgs].reverse().find((x) => x.plan)?.id;
+
   const send = async (content: string) => {
     if (!content.trim() || busy) return;
     h.tap();
     setText('');
+    // กำลังซักประวัติ → คำตอบไปที่ตัวซักประวัติ · ได้แนวทางแล้ว ถามต่อ = คุยปกติ
+    if (csRef.current && !csRef.current.planned) return consultSend(content);
+    quizRef.current = null;
+    setBusyKind('chat');
     setBusy(true);
     const a = await ask(content, 'chat');
     if (!mounted.current) return;
@@ -186,6 +417,8 @@ export default function Assistant() {
     msgsRef.current = [];
     setMsgs([]);
     setText('');
+    setCs(null);
+    quizRef.current = null;
   };
   const openThread = async (id: string) => {
     const t = await getThread(id);
@@ -195,6 +428,7 @@ export default function Assistant() {
     msgsRef.current = t.msgs;
     setMsgs(t.msgs);
     setHistoryOpen(false);
+    setCs(null);
   };
 
   /** ให้คะแนนคำตอบ (เก็บในห้องแชท) · ไม่ถูกใจ → ถามว่าจะแจ้งทีมพัฒนาไหม */
@@ -210,8 +444,8 @@ export default function Assistant() {
       { text: 'แจ้งทีมพัฒนา', onPress: () => router.push({ pathname: '/feedback', params: { kind: 'bug', text: `คำตอบของครูปัญญาไม่ถูกต้อง/ไม่ตรงคำถาม\n(เล่าเพิ่มได้ว่าผิดตรงไหน)\n\nคำถาม: ${q}\n\nคำตอบ: ${m.content}` } }) },
     ]);
   };
-  const openSource = (s: ChatSource) => router.push(s.kind === 'herb' ? `/herb/${s.id}` : `/wisdom/${s.id}`);
-  const status = busy ? 'กำลังคิด…' : tts.speaking ? 'กำลังพูด…' : rec.isRecording ? 'กำลังฟัง…' : 'พร้อมช่วยคุณหมอ';
+  const openSource = (s: ChatSource) => (s.kind === 'doc' ? router.push({ pathname: '/source', params: { id: s.id } }) : router.push(s.kind === 'herb' ? `/herb/${s.id}` : `/wisdom/${s.id}`));
+  const status = busy ? 'กำลังคิด…' : tts.speaking ? 'กำลังพูด…' : rec.isRecording ? 'กำลังฟัง…' : settings.userKind === 'clinician' ? 'พร้อมช่วยคุณหมอ' : 'พร้อมช่วยคุณ';
 
   return (
     <View style={{ flex: 1, backgroundColor: DARK }}>
@@ -243,7 +477,7 @@ export default function Assistant() {
 
       <ScrollView
         ref={scroll}
-        contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: insets.bottom + 110, gap: 12 }}
+        contentContainerStyle={[{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: insets.bottom + 110, gap: 12 }, column.read]}
         keyboardDismissMode="interactive"
         keyboardShouldPersistTaps="handled"
         onScrollBeginDrag={Keyboard.dismiss}
@@ -253,19 +487,59 @@ export default function Assistant() {
         {/* ก้อนแสงครูปัญญา: ใหญ่ตอนยังไม่คุย · เล็กติดด้านบนเมื่อเริ่มคุย */}
         <View style={{ alignItems: 'center', paddingTop: msgs.length ? 0 : 12 }}>
           {/* ระหว่างโหมดเสียง ลูกแก้วของหน้าแชทถูกทับอยู่ → ไม่ต้องวาด (ประหยัดแบต) */}
-          {voiceOn ? <View style={{ height: msgs.length ? 90 : 190 }} /> : <AISphere size={msgs.length ? 90 : 190} active={busy || tts.speaking || rec.isRecording} level={(tts.speaking ? tts.level : rec.level) as any} />}
+          {voiceOn ? <View style={{ height: msgs.length ? 90 : 132 }} /> : <AISphere size={msgs.length ? 90 : 132} active={busy || tts.speaking || rec.isRecording} level={(tts.speaking ? tts.level : rec.level) as any} />}
         </View>
         {msgs.length === 0 && (
           <Animated.View entering={FadeIn.duration(300)}>
             <T v="h2" color="#FFFFFF" center style={{ marginTop: 8 }}>ถามอะไรก็ได้ครับ</T>
             <T v="callout" center color="rgba(255,255,255,0.6)" style={{ marginTop: 6, alignSelf: 'center', maxWidth: 310 }}>
-              สมุนไพร การตั้งตำรับ-ผสมยา ธาตุเจ้าเรือน หรือความปลอดภัยของยา
+              ปรึกษาอาการ สมุนไพร การตั้งตำรับ-ผสมยา หรือความปลอดภัยของยา
             </T>
             {/* ปุ่มเข้าโหมดคุยด้วยเสียง */}
             <PressableScale haptic="press" scaleTo={0.97} onPress={() => (Keyboard.dismiss(), setVoiceOn(true))} style={styles.voiceCta} accessibilityLabel="คุยด้วยเสียง">
               <Sym name="waveform" size={20} color="#04150E" />
               <T v="bodyStrong" color="#04150E">คุยด้วยเสียง</T>
             </PressableScale>
+            {/* ผู้ใช้ครั้งแรก: แนะนำสิ่งที่ทำได้ (ปิดแล้วไม่ขึ้นอีก) */}
+            {!settings.assistantTip ? (
+              <Animated.View entering={FadeIn.duration(260)} style={styles.tip}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Sym name="sparkles" size={14} color={MINT} />
+                  <T v="subhead" color="#FFFFFF" style={{ fontWeight: '700', flex: 1 }}>ครูปัญญาทำอะไรได้บ้าง</T>
+                </View>
+                <T v="caption" color="rgba(255,255,255,0.75)">• ปรึกษาอาการ: ถามทีละข้อ แล้วเสนอแนวทางแผนไทยหรือแผนปัจจุบัน</T>
+                <T v="caption" color="rgba(255,255,255,0.75)">• ถามอะไรก็ได้ ครูปัญญาอาจถามกลับพร้อมปุ่มให้แตะตอบ และมี “ถามต่อ” ให้แตะ</T>
+                <T v="caption" color="rgba(255,255,255,0.75)">• ทุกคำตอบบอกแหล่งอ้างอิง แตะป้ายเพื่ออ่านต้นฉบับ แตะรูปสมุนไพรเพื่อดูรายละเอียด</T>
+                <PressableScale haptic="select" onPress={() => update({ assistantTip: true })} style={styles.tipBtn} accessibilityLabel="เข้าใจแล้ว ปิดคำแนะนำ">
+                  <T v="subhead" color="#04150E" style={{ fontWeight: '700' }}>เข้าใจแล้ว</T>
+                </PressableScale>
+              </Animated.View>
+            ) : null}
+            {/* เมนูกล่อง 2×2: ปรึกษาอาการ · สแกนสมุนไพร / คำถามที่พบบ่อย · แบบทดสอบความรู้ */}
+            <View style={[styles.qaRow, { marginTop: 16 }]}>
+              <PressableScale haptic="select" scaleTo={0.97} onPress={() => startConsult()} style={styles.qaCard} accessibilityLabel="ปรึกษาอาการ ครูปัญญาซักประวัติและเสนอแนวทางรักษา">
+                <Sym name="stethoscope" size={20} color={MINT} />
+                <T v="bodyStrong" color="#FFFFFF">ปรึกษาอาการ</T>
+                <T v="caption" color="rgba(255,255,255,0.55)">ซักประวัติ แนะนำแนวทาง</T>
+              </PressableScale>
+              <PressableScale haptic="select" scaleTo={0.97} onPress={() => router.push('/herb/scan')} style={styles.qaCard} accessibilityLabel="สแกนสมุนไพร ถ่ายภาพให้ครูปัญญาบอกชื่อ">
+                <Sym name="camera.viewfinder" size={20} color={MINT} />
+                <T v="bodyStrong" color="#FFFFFF">สแกนสมุนไพร</T>
+                <T v="caption" color="rgba(255,255,255,0.55)">ถ่ายภาพ ครูปัญญาบอกชื่อ</T>
+              </PressableScale>
+            </View>
+            <View style={styles.qaRow}>
+              <PressableScale haptic="select" scaleTo={0.97} onPress={startFaq} style={styles.qaCard} accessibilityLabel="คำถามที่พบบ่อย">
+                <Sym name="questionmark.bubble.fill" size={20} color={MINT} />
+                <T v="bodyStrong" color="#FFFFFF">คำถามที่พบบ่อย</T>
+                <T v="caption" color="rgba(255,255,255,0.55)">คำตอบจากคลังความรู้</T>
+              </PressableScale>
+              <PressableScale haptic="select" scaleTo={0.97} onPress={startQuiz} style={styles.qaCard} accessibilityLabel="แบบทดสอบความรู้">
+                <Sym name="graduationcap.fill" size={20} color={MINT} />
+                <T v="bodyStrong" color="#FFFFFF">แบบทดสอบความรู้</T>
+                <T v="caption" color="rgba(255,255,255,0.55)">10 ข้อ พร้อมเฉลย</T>
+              </PressableScale>
+            </View>
             <T v="subhead" color="rgba(255,255,255,0.5)" style={{ marginTop: 26, marginBottom: 10, marginLeft: 4 }}>คำถามแนะนำ</T>
             <View style={{ gap: 10 }}>
               {SUGGEST.map((s) => (
@@ -291,24 +565,103 @@ export default function Assistant() {
             </Animated.View>
           ) : (
             <Animated.View key={m.id} entering={FadeInUp.duration(220)} style={{ alignItems: 'flex-start' }}>
-              <View style={[styles.bubble, styles.ai, m.failed && { backgroundColor: 'rgba(217,83,74,0.25)' }]}>
-                <T v="body" color="#FFFFFF">{m.content}</T>
-              </View>
+              {m.plan ? (
+                <View style={{ alignSelf: 'stretch' }}>
+                  <PlanDark.Provider value>
+                    <PlanResult plan={m.plan} busy={busy} onRefine={cs && m.id === lastPlanId ? refine : undefined} />
+                  </PlanDark.Provider>
+                </View>
+              ) : (
+                <View style={[styles.bubble, styles.ai, m.failed && { backgroundColor: 'rgba(217,83,74,0.25)' }, m.urgent && styles.urgentBubble]}>
+                  {m.urgent ? <Sym name="exclamationmark.triangle.fill" size={16} color="#FF9F8A" /> : null}
+                  <T v={m.urgent ? 'bodyStrong' : 'body'} color="#FFFFFF">{m.content}</T>
+                  {m.urgent?.map((u) => (
+                    <T key={u} v="caption" color="rgba(255,255,255,0.8)">• {u}</T>
+                  ))}
+                  {m.urgent ? (
+                    <PressableScale haptic="press" onPress={() => Linking.openURL('tel:1669')} style={styles.callBtn} accessibilityLabel="โทร 1669">
+                      <Sym name="phone.fill" size={14} color="#FFFFFF" />
+                      <T v="subhead" color="#FFFFFF" style={{ fontWeight: '700' }}>โทร 1669</T>
+                    </PressableScale>
+                  ) : null}
+                </View>
+              )}
+              {/* ตัวเลือกคำตอบ (เฉพาะคำถามล่าสุดระหว่างซักประวัติ) */}
+              {cs && !cs.planned && m.options?.length && m.id === lastId && !busy ? (
+                <View style={styles.optRow}>
+                  {[...m.options, ...(answered >= 2 && !m.urgent && !m.options.includes(PLAN_NOW) ? [PLAN_NOW] : [])].map((o) => (
+                    <PressableScale key={o} haptic="select" scaleTo={0.95} onPress={() => (h.tap(), consultSend(o))} style={[styles.opt, o === PLAN_NOW && styles.optPlan]} accessibilityLabel={`ตอบ ${o}`}>
+                      {o === PLAN_NOW ? <Sym name="forward.fill" size={11} color="#04150E" /> : null}
+                      <T v="subhead" color={o === PLAN_NOW ? '#04150E' : '#FFFFFF'} style={{ fontWeight: '600' }}>{o}</T>
+                    </PressableScale>
+                  ))}
+                </View>
+              ) : null}
               {/* ที่มา: ตำราในคลังภูมิ / สมุนไพรในคลัง — กดเปิดดู */}
+              {/* รูปสมุนไพรที่คำตอบพูดถึง */}
+              <HerbStrip list={herbsIn(m)} />
               {m.sources?.length ? (
                 <View style={styles.sources}>
                   <T v="micro" color="rgba(255,255,255,0.55)" style={{ fontWeight: '600' }}>อ้างอิงจากคลัง</T>
                   <View style={styles.sourceRow}>
-                    {m.sources.map((src) => (
+                    {[...new Map(m.sources.map((x) => [shortCite(x.title), { ...x, title: shortCite(x.title) }])).values()].map((src) => (
                       <PressableScale key={`${src.kind}${src.id}`} haptic="select" onPress={() => openSource(src)} style={styles.sourceChip} accessibilityLabel={`เปิด ${src.title}`}>
-                        <Sym name={src.kind === 'herb' ? 'leaf.fill' : 'book.closed.fill'} size={12} color={MINT} />
+                        <Sym name={src.kind === 'herb' ? 'leaf.fill' : src.kind === 'doc' ? 'checkmark.seal.fill' : 'book.closed.fill'} size={12} color={MINT} />
                         <T v="caption" color="#FFFFFF" numberOfLines={1} style={{ maxWidth: 220, fontWeight: '600' }}>{src.title}</T>
                       </PressableScale>
                     ))}
                   </View>
                 </View>
               ) : null}
-              {!m.failed && (
+              {m.consult && !m.failed && !cs ? (
+                <PressableScale haptic="select" onPress={() => startConsult(m.consult)} style={styles.consultLink} accessibilityLabel="ให้ครูปัญญาซักประวัติละเอียดและเสนอแนวทาง">
+                  <Sym name="stethoscope" size={14} color={MINT} />
+                  <T v="caption" color="#FFFFFF" style={{ fontWeight: '600' }}>ให้ครูปัญญาซักประวัติละเอียด แล้วเลือกแผนไทย/แผนปัจจุบัน</T>
+                </PressableScale>
+              ) : null}
+              {m.faq ? <FaqBrowser onPick={pickFaq} /> : null}
+              {m.quiz && m.id === lastId && quizRef.current ? (
+                <View style={styles.optRowWide}>
+                  {m.quiz.map((c, k) => (
+                    <PressableScale key={k} haptic="none" scaleTo={0.97} onPress={() => answerQuiz(k)} style={styles.quizChoice} accessibilityLabel={`ตัวเลือก ${c}`}>
+                      <View style={styles.quizLetter}>
+                        <T v="caption" color="#04150E" style={{ fontWeight: '800' }}>{'กขคง'[k]}</T>
+                      </View>
+                      <T v="subhead" color="#FFFFFF" style={{ flexShrink: 1 }}>{c}</T>
+                    </PressableScale>
+                  ))}
+                </View>
+              ) : null}
+              {m.quizEnd && m.id === lastId ? (
+                <View style={styles.optRow}>
+                  <PressableScale haptic="select" scaleTo={0.95} onPress={startQuiz} style={[styles.opt, styles.optPlan]} accessibilityLabel="ทำแบบทดสอบใหม่">
+                    <Sym name="arrow.clockwise" size={12} color="#04150E" />
+                    <T v="subhead" color="#04150E" style={{ fontWeight: '700' }}>ทำแบบทดสอบใหม่</T>
+                  </PressableScale>
+                </View>
+              ) : null}
+              {/* ครูปัญญาถามกลับ → แตะตอบ · คำถามต่อที่แนะนำ (เฉพาะคำตอบล่าสุด) */}
+              {m.id === lastId && !busy && !(cs && !cs.planned) && m.askOpts?.length ? (
+                <View style={styles.optRow}>
+                  {m.askOpts.map((o) => (
+                    <PressableScale key={o} haptic="select" scaleTo={0.95} onPress={() => send(o)} style={styles.opt} accessibilityLabel={`ตอบ ${o}`}>
+                      <T v="subhead" color="#FFFFFF" style={{ fontWeight: '600' }}>{o}</T>
+                    </PressableScale>
+                  ))}
+                </View>
+              ) : null}
+              {m.id === lastId && !busy && !(cs && !cs.planned) && m.follow?.length ? (
+                <View style={styles.followBox}>
+                  <T v="micro" color="rgba(255,255,255,0.5)" style={{ fontWeight: '600' }}>ถามต่อ</T>
+                  {m.follow.map((f) => (
+                    <PressableScale key={f} haptic="select" scaleTo={0.98} onPress={() => (f === 'คำถามที่พบบ่อยข้ออื่น' ? startFaq() : send(f))} style={styles.followChip} accessibilityLabel={`ถามต่อ ${f}`}>
+                      <Sym name="arrow.turn.down.right" size={12} color={MINT} />
+                      <T v="subhead" color="#FFFFFF" style={{ flexShrink: 1 }}>{f}</T>
+                    </PressableScale>
+                  ))}
+                </View>
+              ) : null}
+              {!m.failed && !m.plan && !m.options && !m.urgent && !m.faq && !m.quiz && (
                 <View style={styles.actRow}>
                   <PressableScale
                     haptic="select"
@@ -335,13 +688,15 @@ export default function Assistant() {
             </Animated.View>
           ),
         )}
-        {busy && <Typing />}
+        {busy && <Typing kind={busyKind} />}
         <Animated.View style={scrollPad} />
       </ScrollView>
 
       {/* แถบมืดลอย: ไมค์ · ช่องพิมพ์ · ส่ง/คุยด้วยเสียง */}
       <Animated.View pointerEvents="box-none" style={[StyleSheet.absoluteFill, dockLift]}>
-        <View style={[styles.darkDock, { bottom: insets.bottom ? 24 : 16 }]}>
+        {/* เนื้อหาที่เลื่อนลงใต้แถบพิมพ์ค่อยๆ จางหาย (เดิมเห็นตัวหนังสือโผล่ใต้แถบ) */}
+        <LinearGradient pointerEvents="none" colors={[`${DARK}00`, DARK]} locations={[0, 0.55]} style={styles.dockFade} />
+        <View style={[styles.darkDock, { bottom: insets.bottom ? 24 : 16, left: dockSide, right: dockSide }]}>
           <View style={styles.typeRow}>
             <PressableScale haptic="none" onPress={toggleMic} style={[styles.send, { backgroundColor: rec.isRecording ? palette.coral : palette.primarySoft }]} accessibilityLabel={rec.isRecording ? 'หยุดพูด' : 'พูด'}>
               <Sym name={rec.isRecording ? 'stop.fill' : 'mic.fill'} size={17} color={rec.isRecording ? palette.white : palette.primaryDeep} />
@@ -351,7 +706,7 @@ export default function Assistant() {
                 <Waveform level={rec.level} bars={16} />
               </View>
             ) : (
-              <TextInput value={text} onChangeText={setText} placeholder="ถามครูปัญญา" placeholderTextColor="#9AA19D" multiline style={styles.typeInput} accessibilityLabel="พิมพ์คำถาม" />
+              <TextInput value={text} onChangeText={setText} placeholder={cs && !cs.planned ? 'พิมพ์คำตอบ' : 'ถามครูปัญญา'} placeholderTextColor="#9AA19D" multiline style={styles.typeInput} accessibilityLabel="พิมพ์คำถาม" />
             )}
             {text.trim() ? (
               <PressableScale haptic="press" onPress={() => send(text)} accessibilityLabel="ส่ง" style={[styles.send, { backgroundColor: palette.primary }]}>
@@ -378,7 +733,7 @@ export default function Assistant() {
         />
       ) : null}
 
-      <HistorySheet visible={historyOpen} current={threadId} onClose={() => setHistoryOpen(false)} onOpen={openThread} onNew={() => (newChat(), setHistoryOpen(false))} />
+      <HistorySheet visible={historyOpen} current={threadId} onClose={() => setHistoryOpen(false)} onOpen={openThread} onNew={() => (newChat(), setHistoryOpen(false))} onCurrentDeleted={newChat} />
     </View>
   );
 }
@@ -519,8 +874,63 @@ function VoiceMode({ greet, last, ask, onClose }: { greet: boolean; last: Msg[];
   );
 }
 
+/** แถวแชทในประวัติ: แตะเปิด · ปัดซ้ายเพื่อลบ · กดค้างเปิดเมนู */
+function ThreadRow({ t, on, onOpen, onDelete }: { t: ChatThread; on: boolean; onOpen: () => void; onDelete: () => void }) {
+  const h = useHaptic();
+  const sw = useRef<SwipeableMethods>(null);
+  // กำลังปัด/ปัดค้างอยู่ → แตะแถว = ปิดปุ่มลบ ไม่เปิดแชท
+  const moved = useRef(false);
+  const open = useRef(false);
+  const lastA = [...t.msgs].reverse().find((m) => m.role === 'assistant' && !m.failed);
+  const press = () => {
+    if (moved.current) return;
+    if (open.current) return sw.current?.close();
+    onOpen();
+  };
+  return (
+    <Animated.View exiting={FadeOut.duration(180)} layout={LinearTransition.duration(240)}>
+      <ReanimatedSwipeable
+        ref={sw}
+        containerStyle={{ overflow: 'visible' }}
+        onSwipeableOpenStartDrag={() => (moved.current = true)}
+        onSwipeableWillOpen={() => (open.current = true)}
+        onSwipeableWillClose={() => (open.current = false)}
+        onSwipeableClose={() => (moved.current = false)}
+        onSwipeableOpen={() => setTimeout(() => (moved.current = false), 250)}
+        friction={1.6}
+        rightThreshold={40}
+        overshootRight={false}
+        renderRightActions={() => (
+          <PressableScale haptic="none" scaleTo={0.92} onPress={() => (h.warn(), onDelete())} accessibilityLabel={`ลบแชท ${t.title}`} style={styles.swipeDel}>
+            <Sym name="trash.fill" size={17} color="#FFFFFF" />
+            <T v="caption" color="#FFFFFF" style={{ fontWeight: '700' }}>ลบ</T>
+          </PressableScale>
+        )}
+      >
+        <MenuView
+          shouldOpenOnLongPress
+          themeVariant="dark"
+          actions={[{ id: 'delete', title: 'ลบแชทนี้', image: 'trash', imageColor: '#E5484D', attributes: { destructive: true } }]}
+          onPressAction={({ nativeEvent }) => nativeEvent.event === 'delete' && onDelete()}
+        >
+          <PressableScale haptic="select" scaleTo={0.98} onPress={press} style={[styles.threadRow, on && { borderColor: 'rgba(124,240,168,0.55)' }]} accessibilityLabel={`${t.title} ${whenLabel(t.updatedAt)}`} accessibilityHint="ปัดไปทางซ้ายเพื่อลบ">
+            <View style={styles.suggestIcon}>
+              <Sym name={t.msgs.some((m) => m.voice) ? 'waveform' : 'bubble.left.and.text.bubble.right'} size={16} color={MINT} />
+            </View>
+            <View style={{ flex: 1, gap: 2 }}>
+              <T v="bodyStrong" color="#FFFFFF" numberOfLines={1}>{t.title}</T>
+              {lastA ? <T v="caption" color="rgba(255,255,255,0.55)" numberOfLines={1}>{lastA.content}</T> : null}
+            </View>
+            <T v="micro" color="rgba(255,255,255,0.45)">{whenLabel(t.updatedAt)}</T>
+          </PressableScale>
+        </MenuView>
+      </ReanimatedSwipeable>
+    </Animated.View>
+  );
+}
+
 /* ───────────── ประวัติแชท (แผ่นแบบ iOS) ───────────── */
-function HistorySheet({ visible, current, onClose, onOpen, onNew }: { visible: boolean; current: string; onClose: () => void; onOpen: (id: string) => void; onNew: () => void }) {
+function HistorySheet({ visible, current, onClose, onOpen, onNew, onCurrentDeleted }: { visible: boolean; current: string; onClose: () => void; onOpen: (id: string) => void; onNew: () => void; onCurrentDeleted: () => void }) {
   const [list, setList] = useState<ChatThread[]>([]);
   useEffect(() => {
     if (!visible) return;
@@ -528,13 +938,28 @@ function HistorySheet({ visible, current, onClose, onOpen, onNew }: { visible: b
     reload();
     return onChatsChange(reload);
   }, [visible]);
-  const remove = (t: ChatThread) =>
-    Alert.alert('ลบแชทนี้?', t.title, [
+  // ปัดซ้ายแล้วแตะ "ลบ" (ตั้งใจลบแล้ว ไม่ต้องถามซ้ำ)
+  const remove = (t: ChatThread) => {
+    deleteThread(t.id);
+    // ลบแชทที่เปิดอยู่ → หน้าแชทเริ่มใหม่ (ไม่ให้บันทึกกลับมาอีก)
+    if (t.id === current) onCurrentDeleted();
+  };
+  const removeAll = () =>
+    Alert.alert('ลบประวัติแชททั้งหมด?', `${list.length} แชท จะถูกลบออกจากเครื่องนี้ และกู้คืนไม่ได้`, [
       { text: 'ยกเลิก', style: 'cancel' },
-      { text: 'ลบ', style: 'destructive', onPress: () => deleteThread(t.id) },
+      {
+        text: 'ลบทั้งหมด',
+        style: 'destructive',
+        onPress: () => {
+          clearChats();
+          onCurrentDeleted();
+        },
+      },
     ]);
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+      {/* Modal ของ iOS แยกลำดับชั้นออกไป → ต้องมี GestureHandlerRootView ของตัวเอง ไม่งั้นปัดลบไม่ทำงาน */}
+      <GestureHandlerRootView style={{ flex: 1 }}>
       <View style={styles.sheet}>
         <View style={styles.sheetHead}>
           <PressableScale haptic="select" onPress={onClose} hitSlop={10} accessibilityLabel="ปิด">
@@ -546,32 +971,15 @@ function HistorySheet({ visible, current, onClose, onOpen, onNew }: { visible: b
           </PressableScale>
         </View>
         {list.length ? (
-          <ScrollView contentContainerStyle={{ padding: 16, gap: 10, paddingBottom: 40 }}>
-            {list.map((t) => {
-              const lastA = [...t.msgs].reverse().find((m) => m.role === 'assistant' && !m.failed);
-              const on = t.id === current;
-              return (
-                <MenuView
-                  key={t.id}
-                  shouldOpenOnLongPress
-                  themeVariant="dark"
-                  actions={[{ id: 'delete', title: 'ลบแชทนี้', image: 'trash', imageColor: '#E5484D', attributes: { destructive: true } }]}
-                  onPressAction={({ nativeEvent }) => nativeEvent.event === 'delete' && remove(t)}
-                >
-                  <PressableScale haptic="select" scaleTo={0.98} onPress={() => onOpen(t.id)} style={[styles.threadRow, on && { borderColor: 'rgba(124,240,168,0.55)' }]} accessibilityLabel={`${t.title} ${whenLabel(t.updatedAt)}`}>
-                    <View style={styles.suggestIcon}>
-                      <Sym name={t.msgs.some((m) => m.voice) ? 'waveform' : 'bubble.left.and.text.bubble.right'} size={16} color={MINT} />
-                    </View>
-                    <View style={{ flex: 1, gap: 2 }}>
-                      <T v="bodyStrong" color="#FFFFFF" numberOfLines={1}>{t.title}</T>
-                      {lastA ? <T v="caption" color="rgba(255,255,255,0.55)" numberOfLines={1}>{lastA.content}</T> : null}
-                    </View>
-                    <T v="micro" color="rgba(255,255,255,0.45)">{whenLabel(t.updatedAt)}</T>
-                  </PressableScale>
-                </MenuView>
-              );
-            })}
-            <T v="caption" color="rgba(255,255,255,0.4)" center style={{ marginTop: 6 }}>กดค้างที่แชทเพื่อลบ · เก็บไว้ในเครื่องนี้เท่านั้น</T>
+          <ScrollView contentContainerStyle={[{ padding: 16, gap: 10, paddingBottom: 40 }, column.read]}>
+            {list.map((t) => (
+              <ThreadRow key={t.id} t={t} on={t.id === current} onOpen={() => onOpen(t.id)} onDelete={() => remove(t)} />
+            ))}
+            <PressableScale haptic="select" scaleTo={0.97} onPress={removeAll} style={styles.clearAll} accessibilityLabel="ลบประวัติแชททั้งหมด">
+              <Sym name="trash" size={15} color="#FF9F8A" />
+              <T v="subhead" color="#FF9F8A" style={{ fontWeight: '700' }}>ลบประวัติแชททั้งหมด</T>
+            </PressableScale>
+            <T v="caption" color="rgba(255,255,255,0.4)" center style={{ marginTop: 2 }}>ปัดแชทไปทางซ้ายเพื่อลบ · ประวัติเก็บไว้ในเครื่องนี้เท่านั้น</T>
           </ScrollView>
         ) : (
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8, padding: 32 }}>
@@ -580,6 +988,7 @@ function HistorySheet({ visible, current, onClose, onOpen, onNew }: { visible: b
           </View>
         )}
       </View>
+      </GestureHandlerRootView>
     </Modal>
   );
 }
@@ -592,12 +1001,29 @@ function Dot({ d }: { d: number }) {
   const st = useAnimatedStyle(() => ({ transform: [{ translateY: y.value }] }));
   return <Animated.View style={[{ width: 8, height: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.6)' }, st]} />;
 }
-function Typing() {
+/** ระหว่างรอ: จุดกำลังพิมพ์ + บอกว่าครูปัญญากำลังทำอะไร (เปลี่ยนข้อความทุก ~3.5 วินาที) */
+const WAIT: Record<'chat' | 'consult' | 'plan', string[]> = {
+  chat: ['กำลังค้นคลังความรู้…', 'กำลังเรียบเรียงคำตอบ…', 'ใกล้เสร็จแล้วครับ…'],
+  consult: ['กำลังคิดคำถามถัดไป…'],
+  plan: ['กำลังค้นแนวทางจากตำรา…', 'กำลังตรวจความปลอดภัยของยา…', 'กำลังสรุปแนวทางแผนไทย / แผนปัจจุบัน…', 'ใกล้เสร็จแล้วครับ…'],
+};
+function Typing({ kind = 'chat' }: { kind?: keyof typeof WAIT }) {
+  const [i, setI] = useState(0);
+  useEffect(() => {
+    setI(0);
+    const id = setInterval(() => setI((x) => Math.min(x + 1, WAIT[kind].length - 1)), 3500);
+    return () => clearInterval(id);
+  }, [kind]);
   return (
-    <Animated.View entering={FadeIn} style={[styles.bubble, styles.ai, { flexDirection: 'row', gap: 5, paddingVertical: 16, alignSelf: 'flex-start' }]}>
-      <Dot d={0} />
-      <Dot d={140} />
-      <Dot d={280} />
+    <Animated.View entering={FadeIn} style={{ alignSelf: 'flex-start', gap: 6 }}>
+      <View style={[styles.bubble, styles.ai, { flexDirection: 'row', gap: 5, paddingVertical: 16, alignSelf: 'flex-start' }]}>
+        <Dot d={0} />
+        <Dot d={140} />
+        <Dot d={280} />
+      </View>
+      <Animated.View key={`${kind}${i}`} entering={FadeIn.duration(250)}>
+        <T v="caption" color="rgba(255,255,255,0.55)" style={{ marginLeft: 6 }}>{WAIT[kind][i]}</T>
+      </Animated.View>
     </Animated.View>
   );
 }
@@ -612,14 +1038,35 @@ const styles = StyleSheet.create({
   ai: { backgroundColor: 'rgba(255,255,255,0.1)', borderBottomLeftRadius: 6 },
   suggest: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 60, paddingHorizontal: 14, paddingVertical: 12, borderRadius: 20, borderCurve: 'continuous', backgroundColor: 'rgba(255,255,255,0.07)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.14)' },
   suggestIcon: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(124,240,168,0.14)', alignItems: 'center', justifyContent: 'center' },
+  herbStrip: { marginTop: 10, alignSelf: 'stretch', overflow: 'visible' },
+  herbCard: { width: 104, gap: 2, padding: 6, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.07)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' },
+  herbImg: { width: 92, height: 92, borderRadius: 13, backgroundColor: 'rgba(255,255,255,0.08)', marginBottom: 4 },
+  faqBox: { gap: 8, marginTop: 10, alignSelf: 'stretch' },
+  optRowWide: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4, alignSelf: 'stretch' },
+  more: { alignSelf: 'flex-start', minHeight: 32, justifyContent: 'center', paddingHorizontal: 6 },
+  quizChoice: { flexDirection: 'row', alignItems: 'center', gap: 10, width: '100%', minHeight: 48, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.16)' },
+  quizLetter: { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center', backgroundColor: MINT },
+  tip: { gap: 5, marginTop: 18, padding: 14, borderRadius: 20, borderCurve: 'continuous', backgroundColor: 'rgba(124,240,168,0.1)', borderWidth: 1, borderColor: 'rgba(124,240,168,0.3)' },
+  tipBtn: { alignSelf: 'flex-start', marginTop: 6, height: 34, paddingHorizontal: 16, borderRadius: 17, alignItems: 'center', justifyContent: 'center', backgroundColor: MINT },
+  qaRow: { flexDirection: 'row', gap: 10, marginTop: 10 },
+  qaCard: { flex: 1, gap: 4, padding: 14, borderRadius: 20, borderCurve: 'continuous', backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)' },
+  followBox: { gap: 6, marginTop: 10, marginLeft: 4, alignSelf: 'stretch', maxWidth: '92%' },
+  followChip: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 40, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.07)', borderWidth: 1, borderColor: 'rgba(124,240,168,0.25)' },
+  optRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8, maxWidth: '92%' },
+  opt: { flexDirection: 'row', alignItems: 'center', gap: 5, minHeight: 38, paddingHorizontal: 14, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.1)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)' },
+  optPlan: { backgroundColor: MINT, borderColor: MINT },
+  urgentBubble: { backgroundColor: 'rgba(217,83,74,0.32)', gap: 6 },
+  callBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', marginTop: 4, height: 38, paddingHorizontal: 16, borderRadius: 19, backgroundColor: '#D9534A' },
   voiceCta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, alignSelf: 'center', marginTop: 20, height: 50, paddingHorizontal: 26, borderRadius: 25, backgroundColor: MINT },
   actRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   rate: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', marginTop: 4 },
+  consultLink: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8, marginLeft: 4, paddingHorizontal: 12, minHeight: 34, borderRadius: 17, backgroundColor: 'rgba(124,240,168,0.14)', maxWidth: '88%' },
   sources: { marginTop: 8, marginLeft: 4, gap: 6, maxWidth: '88%' },
   sourceRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   sourceChip: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, backgroundColor: 'rgba(124,240,168,0.14)', borderWidth: 1, borderColor: 'rgba(124,240,168,0.3)' },
   listen: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 6, marginLeft: 6, height: 28 },
-  top: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingBottom: 8, gap: 8 },
+  top: { ...column.read, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingBottom: 8, gap: 8 },
+  dockFade: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 150 },
   darkDock: { position: 'absolute', left: 24, right: 24, padding: 8, borderRadius: 32, borderCurve: 'continuous', backgroundColor: 'rgba(28,30,29,0.96)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.22)', boxShadow: '0px 10px 30px rgba(0,0,0,0.6)' },
   typeRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, minHeight: 50, paddingHorizontal: 6, paddingVertical: 6, borderRadius: 25, backgroundColor: '#FFFFFF' },
   typeInput: { flex: 1, maxHeight: 120, fontSize: 17, color: '#1F2A24', paddingTop: 8, paddingBottom: 8, paddingHorizontal: 4 },
@@ -632,5 +1079,7 @@ const styles = StyleSheet.create({
   endBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, height: 50, paddingHorizontal: 24, borderRadius: 25, backgroundColor: 'rgba(255,255,255,0.14)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.25)' },
   sheet: { flex: 1, backgroundColor: '#111312' },
   sheetHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingTop: 18, paddingBottom: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(255,255,255,0.12)' },
+  swipeDel: { width: 78, marginLeft: 8, borderRadius: 18, borderCurve: 'continuous', alignItems: 'center', justifyContent: 'center', gap: 2, backgroundColor: '#E5484D' },
+  clearAll: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, alignSelf: 'center', minHeight: 44, marginTop: 10, paddingHorizontal: 18, borderRadius: 22, backgroundColor: 'rgba(255,159,138,0.1)' },
   threadRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: 18, borderCurve: 'continuous', backgroundColor: 'rgba(255,255,255,0.07)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
 });

@@ -10,6 +10,7 @@ import { Alert } from '../lib/alert';
 import { cancelReminder, thShort } from '../lib/reminders';
 import { FORMS, UNITS, remindExpiry, useStock, type StockItem } from '../lib/stock';
 import { elevation, palette } from '../theme';
+import { column } from '../components/layout';
 
 const LIFE = [
   { m: 1, label: '1 เดือน' },
@@ -92,7 +93,7 @@ export default function StockItemPage() {
     <>
       <Stack.Screen options={{ title: cur ? 'แก้ไขยา' : 'เพิ่มยาในคลัง' }} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1, backgroundColor: palette.bg }}>
-        <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.page} keyboardDismissMode="interactive" keyboardShouldPersistTaps="handled">
+        <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={[styles.page, column.read]} keyboardDismissMode="interactive" keyboardShouldPersistTaps="handled">
           <View style={[styles.card, elevation.e1]}>
             <View>
               <Label t="ชื่อยา" />
