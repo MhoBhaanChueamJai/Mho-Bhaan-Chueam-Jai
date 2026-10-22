@@ -9,6 +9,7 @@
  * - ถ่ายแล้วครอปเฉพาะส่วนในกรอบ ส่งกลับไปให้ AI อ่าน
  */
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import { CAMERA_HTTPS_MSG, cameraBlocked, withRealSize } from '../lib/cameraWeb';
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import { BlurView } from '../components/Blur';
@@ -168,7 +169,8 @@ export default function IdScan() {
     h.heavy();
     setBusy(true);
     try {
-      const p = await cam.current.takePictureAsync({ quality: 0.92 });
+      const raw = await cam.current.takePictureAsync({ quality: 0.92 });
+      const p = raw && (await withRealSize(raw));
       if (!p) {
         busyRef.current = false;
         return setBusy(false);
@@ -257,13 +259,14 @@ export default function IdScan() {
 
   if (!perm) return <View style={styles.page} />;
   if (!perm.granted) {
+    const blocked = cameraBlocked();
     return (
       <View style={[styles.page, styles.center, { paddingHorizontal: 32 }]}>
         <StatusBar style="light" />
         <Sym name="camera.fill" size={36} color="#FFFFFF" />
         <T v="h2" color="#FFFFFF" center style={{ marginTop: 14 }}>อนุญาตให้ใช้กล้อง</T>
-        <T v="callout" color="rgba(255,255,255,0.75)" center style={{ marginTop: 6 }}>ใช้ถ่ายบัตรประชาชนเพื่อกรอกข้อมูลผู้ป่วยอัตโนมัติ</T>
-        <Button label="อนุญาต" onPress={requestPerm} style={{ alignSelf: 'stretch', marginTop: 24 }} />
+        <T v="callout" color="rgba(255,255,255,0.75)" center style={{ marginTop: 6 }}>{blocked ? CAMERA_HTTPS_MSG : 'ใช้ถ่ายบัตรประชาชนเพื่อกรอกข้อมูลผู้ป่วยอัตโนมัติ'}</T>
+        {blocked ? null : <Button label="อนุญาต" onPress={requestPerm} style={{ alignSelf: 'stretch', marginTop: 24 }} />}
         <PressableScale onPress={() => router.back()} style={{ padding: 16 }}>
           <T v="callout" color="#FFFFFF">ยกเลิก</T>
         </PressableScale>

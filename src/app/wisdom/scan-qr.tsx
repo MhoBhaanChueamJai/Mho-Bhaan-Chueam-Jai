@@ -8,6 +8,7 @@ import SegmentedControl from '@react-native-segmented-control/segmented-control'
 import { BlurView } from '../../components/Blur';
 import { Image } from 'expo-image';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import { CAMERA_HTTPS_MSG, cameraBlocked } from '../../lib/cameraWeb';
 import { router, useFocusEffect } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -106,13 +107,14 @@ export default function ScanQr() {
 
   if (!perm) return <View style={styles.page} />;
   if (!perm.granted) {
+    const blocked = cameraBlocked();
     return (
       <View style={[styles.page, { alignItems: 'center', justifyContent: 'center', padding: 32 }]}>
         <StatusBar style="light" />
         <Sym name="qrcode.viewfinder" size={40} color="#FFFFFF" />
         <T v="h2" color="#FFFFFF" center style={{ marginTop: 14 }}>อนุญาตให้ใช้กล้อง</T>
-        <T v="callout" color="rgba(255,255,255,0.75)" center style={{ marginTop: 6 }}>ใช้สแกนคิวอาร์โค้ดตำราที่เพื่อนหมอแชร์ให้</T>
-        <Button label="อนุญาต" onPress={requestPerm} style={{ alignSelf: 'stretch', marginTop: 24 }} />
+        <T v="callout" color="rgba(255,255,255,0.75)" center style={{ marginTop: 6 }}>{blocked ? CAMERA_HTTPS_MSG : 'ใช้สแกนคิวอาร์โค้ดตำราที่เพื่อนหมอแชร์ให้'}</T>
+        {blocked ? null : <Button label="อนุญาต" onPress={requestPerm} style={{ alignSelf: 'stretch', marginTop: 24 }} />}
         <PressableScale onPress={() => router.back()} style={{ padding: 16 }}>
           <T v="callout" color="#FFFFFF">ยกเลิก</T>
         </PressableScale>

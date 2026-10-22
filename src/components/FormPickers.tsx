@@ -45,7 +45,7 @@ export const thaiDateLong = (d: Date) => `${d.getDate()} ${TH_MONTHS[d.getMonth(
  * Liquid Glass + แอนิเมชันของระบบ · ชั้นบนเป็นแคปซูลที่มองเห็น ทึบ บังปุ่มระบบไว้ แต่ปล่อยการแตะทะลุลงไป
  * locale "th-TH@calendar=buddhist" + patch datetimepicker (patches/) → ปฏิทิน พ.ศ.
  */
-export function DateField({ label, value, onChange, flex, placeholder = 'เลือกวันที่', fallback = new Date(1960, 0, 1) }: { label: string; value: Date | null; onChange: (d: Date) => void; flex?: number; placeholder?: string; fallback?: Date }) {
+export function DateField({ label, value, onChange, flex, placeholder = 'เลือกวันที่', fallback = new Date() }: { label: string; value: Date | null; onChange: (d: Date) => void; flex?: number; placeholder?: string; fallback?: Date }) {
   // Android / เว็บ: ปฏิทินป๊อปโอเวอร์แบบ iOS ที่วาดเอง (ปฏิทินของ Android เป็นกล่อง Material · เว็บไม่มี)
   const ref = useRef<View>(null);
   const [anchor, setAnchor] = useState<null | { x: number; y: number; w: number; h: number }>(null);

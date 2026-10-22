@@ -4,6 +4,7 @@
  * ไม่มีในคลัง = ข้อมูลจากครูปัญญา พร้อมคำเตือนให้ตรวจสอบ
  */
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import { CAMERA_HTTPS_MSG, cameraBlocked } from '../../lib/cameraWeb';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useFocusEffect } from 'expo-router';
@@ -120,13 +121,14 @@ export default function HerbScan() {
 
   if (!perm) return <View style={styles.page} />;
   if (!perm.granted) {
+    const blocked = cameraBlocked();
     return (
       <View style={[styles.page, styles.center, { padding: 32 }]}>
         <StatusBar style="light" />
         <Sym name="camera.viewfinder" size={42} color="#FFFFFF" />
         <T v="h2" color="#FFFFFF" center style={{ marginTop: 14 }}>อนุญาตให้ใช้กล้อง</T>
-        <T v="callout" color="rgba(255,255,255,0.75)" center style={{ marginTop: 6 }}>ใช้ถ่ายภาพต้นไม้ ใบ หรือเหง้า ให้ครูปัญญาบอกว่าเป็นสมุนไพรอะไร</T>
-        <Button label={perm.canAskAgain ? 'อนุญาต' : 'เปิดการตั้งค่า'} onPress={perm.canAskAgain ? requestPerm : () => Linking.openSettings()} style={{ alignSelf: 'stretch', marginTop: 24 }} />
+        <T v="callout" color="rgba(255,255,255,0.75)" center style={{ marginTop: 6 }}>{blocked ? CAMERA_HTTPS_MSG : 'ใช้ถ่ายภาพต้นไม้ ใบ หรือเหง้า ให้ครูปัญญาบอกว่าเป็นสมุนไพรอะไร'}</T>
+        {blocked ? null : <Button label={perm.canAskAgain ? 'อนุญาต' : 'เปิดการตั้งค่า'} onPress={perm.canAskAgain ? requestPerm : () => Linking.openSettings()} style={{ alignSelf: 'stretch', marginTop: 24 }} />}
         <PressableScale onPress={() => router.back()} style={{ padding: 16 }}>
           <T v="callout" color="#FFFFFF">ยกเลิก</T>
         </PressableScale>

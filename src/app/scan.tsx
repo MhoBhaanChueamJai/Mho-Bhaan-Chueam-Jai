@@ -9,6 +9,7 @@
 import { Asset } from 'expo-asset';
 import { BlurView } from '../components/Blur';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import { CAMERA_HTTPS_MSG, cameraBlocked, withRealSize } from '../lib/cameraWeb';
 import { Image } from 'expo-image';
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
@@ -188,7 +189,8 @@ export default function Scan() {
     h.heavy();
     setBusy(true);
     try {
-      const p = await cam.current.takePictureAsync({ quality: 0.92 });
+      const raw = await cam.current.takePictureAsync({ quality: 0.92 });
+      const p = raw && (await withRealSize(raw));
       if (!p) return setBusy(false);
       const scale = Math.max(W / p.width, H / p.height);
       const ox = (p.width * scale - W) / 2;
@@ -251,13 +253,14 @@ export default function Scan() {
 
   if (!perm) return <View style={styles.page} />;
   if (!perm.granted) {
+    const blocked = cameraBlocked();
     return (
       <View style={[styles.page, styles.center, { padding: 32 }]}>
         <StatusBar style="light" />
         <Sym name="camera.fill" size={36} color="#FFFFFF" />
         <T v="h2" color="#FFFFFF" center style={{ marginTop: 14 }}>อนุญาตให้ใช้กล้อง</T>
-        <T v="callout" color="rgba(255,255,255,0.75)" center style={{ marginTop: 6 }}>ใช้ถ่ายสมุดข่อย ใบลาน หรือตำรายา เพื่อถอดความเก็บเข้าคลังภูมิปัญญา</T>
-        <Button label="อนุญาต" onPress={requestPerm} style={{ alignSelf: 'stretch', marginTop: 24 }} />
+        <T v="callout" color="rgba(255,255,255,0.75)" center style={{ marginTop: 6 }}>{blocked ? CAMERA_HTTPS_MSG : 'ใช้ถ่ายสมุดข่อย ใบลาน หรือตำรายา เพื่อถอดความเก็บเข้าคลังภูมิปัญญา'}</T>
+        {blocked ? null : <Button label="อนุญาต" onPress={requestPerm} style={{ alignSelf: 'stretch', marginTop: 24 }} />}
         <PressableScale onPress={() => router.back()} style={{ padding: 16 }}>
           <T v="callout" color="#FFFFFF">ยกเลิก</T>
         </PressableScale>
