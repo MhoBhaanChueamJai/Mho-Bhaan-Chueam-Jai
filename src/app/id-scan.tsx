@@ -27,7 +27,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Sym } from '../components/ios';
 import { Button, PressableScale, T, useHaptic } from '../components/ui';
 import { cardDetectAvailable, detectCard, extractCard } from '../../modules/card-detect';
-import { readIdCard, setIdScanResult } from '../lib/idScan';
+import { hasAnyField, readIdCard, setIdScanResult } from '../lib/idScan';
 import { palette } from '../theme';
 
 const CARD_RATIO = 85.6 / 54;
@@ -130,7 +130,7 @@ export default function IdScan() {
     sheen.value = withDelay(700, withRepeat(withSequence(withTiming(1, { duration: 1500, easing: Easing.inOut(Easing.cubic) }), withTiming(0, { duration: 0 }), withTiming(0, { duration: 500 })), -1));
     try {
       const data = await readIdCard(card, mime);
-      if (!data?.name) throw new Error('empty');
+      if (!hasAnyField(data)) throw new Error('empty');
       setIdScanResult(data);
       setStage('done');
       h.success();
@@ -307,6 +307,7 @@ export default function IdScan() {
         </View>
         <View style={[styles.guide, { top: fy + fh + 18 }]}>
           <T v="subhead" color="rgba(255,255,255,0.85)" center>ด้านหน้าบัตร · ขอบบัตรชิดมุมกรอบ (ห่างประมาณ 15–20 ซม.)</T>
+          <T v="caption" color="rgba(255,255,255,0.85)" center style={{ marginTop: 4 }}>มีแสงสะท้อน: เอียงบัตรเล็กน้อย หรือหันหลังให้ไฟเพดาน · ไม่ต้องเปิดไฟฉาย</T>
           <T v="caption" color="rgba(255,255,255,0.65)" center style={{ marginTop: 4 }}>{cardDetectAvailable ? 'ถ่ายให้อัตโนมัติเมื่อบัตรพอดีกรอบ · ' : ''}แตะที่ภาพเพื่อโฟกัส · ไม่เก็บเลขบัตรประชาชน</T>
         </View>
 
@@ -410,7 +411,7 @@ export default function IdScan() {
             ) : (
               <Animated.View entering={FadeIn} style={{ alignItems: 'center', gap: 12, alignSelf: 'stretch' }}>
                 <T v="h3" color="#FFFFFF" center>อ่านบัตรไม่สำเร็จ</T>
-                <T v="callout" color="rgba(255,255,255,0.8)" center>ลองถ่ายใหม่ให้บัตรอยู่ในกรอบและไม่สะท้อนแสง</T>
+                <T v="callout" color="rgba(255,255,255,0.8)" center>ลองเอียงบัตรเล็กน้อยให้แสงสะท้อนไม่บังตัวหนังสือ แล้วถ่ายใหม่</T>
                 <Button label="ถ่ายใหม่" onPress={retry} style={{ alignSelf: 'stretch', marginTop: 8 }} />
                 <PressableScale onPress={() => router.back()} style={{ padding: 10 }}>
                   <T v="callout" color="#FFFFFF">กรอกเอง</T>
