@@ -87,7 +87,7 @@ function splitPrefix(full: string): { prefix: string; name: string } {
 }
 
 /** ช่องกรอก: ป้ายด้านบน + ช่องแคปซูลพื้นมิ้นต์ (โฟกัส = พื้นขาว ขอบเขียว) */
-function Field({ label, value, onChange, placeholder, keyboard, flex, multiline }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; keyboard?: KeyboardTypeOptions; flex?: number; multiline?: boolean }) {
+function Field({ label, value, onChange, placeholder, keyboard, flex, multiline, maxLength }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; keyboard?: KeyboardTypeOptions; flex?: number; multiline?: boolean; maxLength?: number }) {
   const [focus, setFocus] = useState(false);
   return (
     <View style={flex ? { flex } : undefined}>
@@ -101,6 +101,7 @@ function Field({ label, value, onChange, placeholder, keyboard, flex, multiline 
         onFocus={() => setFocus(true)}
         onBlur={() => setFocus(false)}
         multiline={multiline}
+        maxLength={maxLength}
         style={[styles.input, multiline && styles.inputMulti, focus && styles.inputFocus]}
         accessibilityLabel={label}
       />
@@ -350,7 +351,8 @@ function NewPatientInner() {
             </View>
           </View>
 
-          <Field label="โทรศัพท์" value={f.phone} onChange={set('phone')} placeholder="08X-XXX-XXXX" keyboard="phone-pad" />
+          {/* เบอร์โทรไทย: ตัวเลขล้วน ไม่เกิน 10 หลัก */}
+          <Field label="โทรศัพท์" value={f.phone} onChange={(v) => set('phone')(v.replace(/\D/g, '').slice(0, 10))} placeholder="08XXXXXXXX" keyboard="number-pad" maxLength={10} />
           <Field label="ที่อยู่" value={f.address} onChange={set('address')} placeholder="เช่น 12 หมู่ 4 บ้านป่าไผ่ ต.ดอนแก้ว อ.แม่ริม จ.เชียงใหม่" multiline />
         </Section>
 
