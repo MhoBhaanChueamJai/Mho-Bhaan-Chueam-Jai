@@ -7,8 +7,10 @@
  * ฟัง: VAD ปรับตามเสียงห้อง — เริ่มนับเมื่อพูดดังกว่าพื้นหลังชัดเจน จบเมื่อเงียบต่อเนื่อง
  */
 import { createAudioPlayer, setAudioModeAsync, type AudioPlayer } from 'expo-audio';
+import { Platform } from 'react-native';
 import { withTiming, type SharedValue } from 'react-native-reanimated';
 import { synthesize, transcribe } from '../api/ai';
+import { audioCtx } from './webAudio';
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -92,10 +94,55 @@ export function createSpeech(level: SharedValue<number>, onState?: (speaking: bo
     onState?.(false);
   };
 
+  /**
+   * เว็บ: เล่นผ่าน AudioContext ที่ปลดล็อกไว้ตอนผู้ใช้แตะ (Safari บล็อก <audio> ที่เริ่มเล่นหลังรอ AI)
+   * และวัดระดับเสียงจริงด้วย AnalyserNode ให้ลูกแก้วขยับ
+   */
+  const playWeb = (uri: string, my: number) =>
+    new Promise<void>((resolve) => {
+      if (my !== gen) return resolve();
+      (async () => {
+        const ac = audioCtx();
+        await ac.resume().catch(() => {});
+        const buf = await ac.decodeAudioData(await (await fetch(uri)).arrayBuffer());
+        if (my !== gen) return resolve();
+        const src = ac.createBufferSource();
+        src.buffer = buf;
+        const an = ac.createAnalyser();
+        an.fftSize = 1024;
+        src.connect(an);
+        an.connect(ac.destination);
+        const frame = new Float32Array(an.fftSize);
+        let done = false;
+        const end = () => {
+          if (done) return;
+          done = true;
+          clearInterval(meter);
+          try {
+            src.stop();
+          } catch {}
+          src.disconnect();
+          an.disconnect();
+          finishCur = null;
+          resolve();
+        };
+        finishCur = end;
+        const meter = setInterval(() => {
+          an.getFloatTimeDomainData(frame);
+          let sum = 0;
+          for (let i = 0; i < frame.length; i++) sum += frame[i] * frame[i];
+          level.value = withTiming(Math.min(1, Math.sqrt(sum / frame.length) * 5.8), { duration: 80 });
+        }, 80);
+        src.onended = end;
+        src.start();
+      })().catch(() => resolve());
+    });
+
   /** เล่นไฟล์ 1 ช่วงจนจบ */
   const playOne = (uri: string, my: number) =>
     new Promise<void>((resolve) => {
       if (my !== gen) return resolve();
+      if (Platform.OS === 'web') return playWeb(uri, my).then(resolve);
       let done = false;
       const end = () => {
         if (done) return;
@@ -175,10 +222,20 @@ export function createSpeech(level: SharedValue<number>, onState?: (speaking: bo
 
 type Rec = { start: () => Promise<void>; stop: () => Promise<string | null>; level: SharedValue<number> };
 
+/** ประโยคที่ค้างอยู่ — ลงท้ายด้วยคำเชื่อม/คำลังเล แปลว่ายังพูดไม่จบ (เช่น "ปวดหัวมาสามวัน แล้วก็…") */
+const UNFINISHED = /(และ|แล้วก็|แต่|แต่ว่า|เพราะ|เพราะว่า|คือ|คือว่า|ก็คือ|ที่|ว่า|หรือ|หรือว่า|กับ|ถ้า|ซึ่ง|โดย|ของ|ให้|จะ|ตอน|ตั้งแต่|เวลา|แบบ|เอ่อ|อ่า|อ่ะ|อืม|เออ|เอ้อ)[\s.,…]*$/;
+const COMPLETE = /(ครับ|ค่ะ|คะ|ค่า|จ้ะ|จ้า|นะคะ|นะครับ|เท่านั้น|แค่นั้น|เด้อ|เนาะ|เน้อ|เจ้า|แหละ)[\s.,!?…]*$/;
+export const looksUnfinished = (t: string) => !!t && !COMPLETE.test(t) && UNFINISHED.test(t.trim());
+
 /**
  * ฟัง 1 ครั้ง (VAD ปรับตามห้อง) แล้วถอดเป็นข้อความ
  * alive() = ยังอยู่ในโหมดนี้ไหม · submit() = ผู้ใช้แตะเพื่อส่งเอง · typed() = ข้อความที่พิมพ์แทน
  * onHeard = เริ่มได้ยินเสียงพูด (ให้หน้าจอเปลี่ยนสถานะ)
+ *
+ * กันตอบแทรกก่อนพูดจบ:
+ *  - รอเงียบ 1.6 วิ (พูดสั้นๆ แล้วหยุด = น่าจะกำลังคิด → รอ 2.4 วิ)
+ *  - พอเงียบแล้ว เปิดไมค์ต่อทันทีระหว่างถอดความ — ถ้าผู้ใช้พูดต่อ จะฟังต่อแล้วรวมเป็นข้อความเดียว
+ *  - ถ้าข้อความลงท้ายค้าง (แล้วก็ / เพราะว่า / เอ่อ…) รอฟังต่ออีก 4 วิก่อนส่ง
  */
 export async function listenOnce(
   rec: Rec,
@@ -193,53 +250,102 @@ export async function listenOnce(
     return { text: '', heard: false };
   }
   const TICK = 80;
-  let floor = 0;
-  let n = 0;
+  // เสียงพื้นหลัง: ใช้ค่าต่ำของช่วงวัด (ถ้าผู้ใช้เริ่มพูดเร็ว ค่าเฉลี่ยจะสูงเกินจริงจนเสียงพูดเบาๆ ถูกนับเป็นความเงียบ)
+  const samples: number[] = [];
   for (let i = 0; i < 6 && opts.alive(); i++) {
     await wait(TICK);
-    floor += rec.level.value;
-    n++;
+    samples.push(rec.level.value);
   }
-  floor = n ? floor / n : 0;
+  samples.sort((x, y) => x - y);
+  const floor = samples.length ? samples[Math.floor(samples.length / 3)] : 0;
   const speakTh = Math.min(0.9, floor + 0.14);
   const quietTh = Math.min(0.85, floor + 0.07);
-  let loud = 0;
-  let heard = false;
-  let quiet = 0;
-  const t0 = Date.now();
-  while (opts.alive() && !opts.submit?.()) {
-    const t = opts.typed?.();
-    if (t) {
-      await rec.stop().catch(() => null);
-      return { text: t, heard: true };
-    }
-    await wait(TICK);
-    const lv = rec.level.value;
-    if (lv > speakTh) {
-      loud += TICK;
-      if (loud >= 250 && !heard) {
-        heard = true;
-        opts.onHeard?.();
+
+  type Seg = { heard: boolean; submitted: boolean; typed: string | null };
+  /** ฟัง 1 ช่วงบนไมค์ที่เปิดอยู่ จนเงียบ/แตะส่ง/พิมพ์/หมดเวลา · cancel() = เลิกรอ (ไม่มีเสียงพูดในช่วงนี้) */
+  const segment = async (waitMs: number, cancel: () => boolean = () => false, onLoud?: () => void): Promise<Seg> => {
+    let loud = 0;
+    let speech = 0;
+    let heard = false;
+    let quiet = 0;
+    const t0 = Date.now();
+    while (opts.alive() && !opts.submit?.()) {
+      const t = opts.typed?.();
+      if (t) return { heard, submitted: false, typed: t };
+      if (!heard && cancel()) break;
+      await wait(TICK);
+      const lv = rec.level.value;
+      if (lv > speakTh) {
+        loud += TICK;
+        if (heard) speech += TICK;
+        if (loud >= 250 && !heard) {
+          heard = true;
+          speech = loud;
+          onLoud?.();
+        }
+        quiet = 0;
+      } else {
+        loud = 0;
+        if (heard && lv < quietTh) quiet += TICK;
+        else if (heard) quiet = Math.max(0, quiet - TICK / 2);
       }
-      quiet = 0;
-    } else {
-      loud = 0;
-      if (heard && lv < quietTh) quiet += TICK;
-      else if (heard) quiet = Math.max(0, quiet - TICK / 2);
+      if (heard && quiet >= (speech < 1200 ? 2400 : 1600)) break;
+      if (Date.now() - t0 > (heard ? 30_000 : waitMs)) break;
     }
-    // หยุดพูดเกิน 1.3 วินาที = จบประโยค (คนสูงอายุพูดช้า เว้นช่วงได้)
-    if (heard && quiet >= 1300) break;
-    if (Date.now() - t0 > (heard ? 30_000 : opts.maxSilentMs ?? 10_000)) break;
+    return { heard, submitted: !!opts.submit?.(), typed: null };
+  };
+  const finish = (texts: string[], heard: boolean) => ({ text: texts.filter(Boolean).join(' ').trim(), heard });
+
+  const texts: string[] = [];
+  let seg = await segment(opts.maxSilentMs ?? 10_000, undefined, opts.onHeard);
+  if (seg.typed) {
+    await rec.stop().catch(() => null);
+    return { text: seg.typed, heard: true };
   }
-  const submitted = !!opts.submit?.();
-  const uri = await rec.stop().catch(() => null);
-  if (!opts.alive() || !uri || (!heard && !submitted)) return { text: '', heard };
-  try {
-    const text = (await transcribe(uri)).trim();
-    // เสียงรบกวนมักถอดออกมาเป็นอักษรอื่น/เครื่องหมาย (เช่น "嗯。") → ถือว่าไม่ได้ยิน ให้ขอพูดใหม่ ไม่ส่งไปถามครูปัญญา
-    const real = text.replace(/[^\u0E00-\u0E7Fa-zA-Z0-9]/g, '');
-    return { text: real.length >= 2 ? text : '', heard: true };
-  } catch {
-    return { text: '', heard: true };
+  for (let round = 0; ; round++) {
+    const uri = await rec.stop().catch(() => null);
+    if (!opts.alive()) return { text: '', heard: seg.heard };
+    if (uri && (seg.heard || seg.submitted)) {
+      const job = transcribe(uri)
+        .then((t) => {
+          const text = t.trim();
+          // เสียงรบกวนมักถอดออกมาเป็นอักษรอื่น/เครื่องหมาย (เช่น "嗯。") → ถือว่าไม่ได้ยิน ให้ขอพูดใหม่ ไม่ส่งไปถามครูปัญญา
+          return text.replace(/[^\u0E00-\u0E7Fa-zA-Z0-9]/g, '').length >= 2 ? text : '';
+        })
+        .catch(() => '');
+      // แตะส่ง / ฟังต่อมาหลายรอบแล้ว → ส่งเลย
+      if (seg.submitted || round >= 3) {
+        texts.push(await job);
+        return finish(texts, true);
+      }
+      // เปิดไมค์ต่อระหว่างถอดความ เผื่อผู้ใช้แค่หยุดหายใจ/คิด
+      let next: Promise<Seg> | null = null;
+      let resumed = false;
+      let decided = false; // เลิกรอช่วงสั้น เพื่อเริ่มช่วงรอยาว 4 วิแทน
+      try {
+        await rec.start();
+        next = segment(1000, () => decided, () => (resumed = true));
+      } catch {}
+      const text = await job;
+      texts.push(text);
+      if (!next) return finish(texts, true);
+      // ข้อความดูค้าง → ให้เวลาพูดต่ออีก 4 วิ · ดูครบแล้ว → รอเฉพาะช่วงสั้นๆ ที่เปิดไว้ (1 วิ นับซ้อนกับเวลาถอดความ)
+      if (looksUnfinished(finish(texts, true).text) && !resumed) {
+        decided = true;
+        const r = await next;
+        next = r.heard || r.submitted || r.typed ? Promise.resolve(r) : segment(4000);
+      }
+      seg = await next;
+      if (seg.typed) {
+        await rec.stop().catch(() => null);
+        return { text: [...texts, seg.typed].join(' '), heard: true };
+      }
+      if (!seg.heard && !seg.submitted) {
+        await rec.stop().catch(() => null);
+        return finish(texts, true);
+      }
+      continue;
+    }
+    return { text: '', heard: seg.heard };
   }
 }

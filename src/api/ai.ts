@@ -6,6 +6,7 @@
  *  - OCR      : pdf-ocr-mcp → Typhoon OCR (ภาพตำรา/สมุดข่อย → ข้อความ)
  */
 import { File, Paths } from 'expo-file-system';
+import { Platform } from 'react-native';
 import { guarded } from './guard';
 
 export const ENDPOINTS = {
@@ -90,7 +91,9 @@ export async function chatJSON<T>(messages: ChatMsg[], _model?: ModelKey, opts?:
 export async function transcribe(uri: string): Promise<string> {
   return guarded('asr', () => withTimeout(async (signal) => {
     const form = new FormData();
-    form.append('file', { uri, name: 'voice.wav', type: 'audio/wav' } as any);
+    // เว็บ: uri เป็น blob: URL → ต้องแนบเป็น Blob จริง (FormData ของเบราว์เซอร์ไม่รู้จัก { uri })
+    if (Platform.OS === 'web') form.append('file', await (await fetch(uri)).blob(), 'voice.wav');
+    else form.append('file', { uri, name: 'voice.wav', type: 'audio/wav' } as any);
     form.append('model', 'Qwen/Qwen3-ASR-1.7B');
     form.append('language', 'th');
     const res = await fetch(`${ENDPOINTS.asr}/v1/audio/transcriptions`, { method: 'POST', body: form, signal });
@@ -139,6 +142,8 @@ export function speakable(text: string, strict = false): string {
  */
 export async function synthesize(text: string, voice = KRU_VOICE): Promise<string> {
   const save = (buf: Uint8Array, ext: string) => {
+    // เว็บไม่มีระบบไฟล์ → เล่นจาก blob: URL
+    if (Platform.OS === 'web') return URL.createObjectURL(new Blob([buf as BlobPart], { type: ext === 'mp3' ? 'audio/mpeg' : 'audio/wav' }));
     const file = new File(Paths.cache, `tts-${Date.now()}.${ext}`);
     file.write(buf);
     return file.uri;

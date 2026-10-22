@@ -15,7 +15,7 @@ import Animated, { Easing, FadeIn, FadeInDown, FadeInUp, FadeOutUp, useAnimatedK
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { transcribe } from '../api/ai';
 import { useVoiceRecorder } from './audio';
-import { createSpeech, type SpeechCtl } from './speech';
+import { createSpeech, listenOnce, type SpeechCtl } from './speech';
 import { Sym } from './ios';
 import { AISphere } from './AISphere';
 import { AIGlow, Waveform } from './Orb';
@@ -150,12 +150,7 @@ export function VoiceSession({ scribe, initialOptions, title, opening, topics, h
     stopSpeaking.current = null;
   };
 
-  /**
-   * ฟังคำตอบ (VAD แบบปรับตามห้อง):
-   * 1) รอ 0.3 วิ ให้เสียงครูปัญญาหายจากห้อง แล้ววัดเสียงพื้นหลัง 0.5 วิ
-   * 2) นับว่า "เริ่มพูด" เมื่อเสียงดังกว่าพื้นหลังชัดเจนต่อเนื่อง ≥ 0.25 วิ
-   * 3) จบเมื่อเงียบลงใกล้ระดับพื้นหลังต่อเนื่อง 1.4 วิ (หรือแตะดอกไม้เพื่อส่ง)
-   */
+  /** ฟังคำตอบ — VAD ตัวกลาง (listenOnce): รอจนพูดจบจริง ฟังต่อถ้าผู้ใช้พูดต่อ · แตะดอกไม้เพื่อส่ง · พิมพ์แทนได้ */
   const listen = async (): Promise<string> => {
     manualStop.current = false;
     const takeTyped = () => {
@@ -163,55 +158,8 @@ export function VoiceSession({ scribe, initialOptions, title, opening, topics, h
       typed.current = null;
       return t;
     };
-    const pre = takeTyped();
-    if (pre) return pre;
-    await wait(300);
-    try {
-      await rec.start();
-    } catch {
-      return '';
-    }
-    const TICK = 80;
-    // วัดเสียงพื้นหลัง
-    let floor = 0;
-    let n = 0;
-    for (let i = 0; i < 6 && alive.current; i++) {
-      await wait(TICK);
-      floor += rec.level.value;
-      n++;
-    }
-    floor = n ? floor / n : 0;
-    const speakTh = Math.min(0.9, floor + 0.14);
-    const quietTh = Math.min(0.85, floor + 0.07);
-    let loud = 0;
-    let heard = false;
-    let quiet = 0;
-    const t0 = Date.now();
-    while (alive.current && !manualStop.current && !typed.current) {
-      await wait(TICK);
-      const lv = rec.level.value;
-      if (lv > speakTh) {
-        loud += TICK;
-        if (loud >= 250) heard = true;
-        quiet = 0;
-      } else {
-        loud = 0;
-        if (heard && lv < quietTh) quiet += TICK;
-        else if (heard) quiet = Math.max(0, quiet - TICK / 2);
-      }
-      if (heard && quiet >= 1400) break;
-      if (Date.now() - t0 > (heard ? 25000 : 10000)) break;
-    }
-    const uri = await rec.stop().catch(() => null);
-    // พิมพ์ตอบระหว่างฟัง → ใช้ข้อความที่พิมพ์
-    const tt = takeTyped();
-    if (tt) return tt;
-    if (!alive.current || !uri || (!heard && !manualStop.current)) return '';
-    try {
-      return (await transcribe(uri)).trim();
-    } catch {
-      return '';
-    }
+    const r = await listenOnce(rec, { alive: () => alive.current, submit: () => manualStop.current, typed: takeTyped });
+    return r.text;
   };
 
   /** วงจรสนทนาถาม-ตอบ (เริ่มใหม่ได้เมื่อกลับจากโหมดฟังบทสนทนา/ตรวจทาน) */
