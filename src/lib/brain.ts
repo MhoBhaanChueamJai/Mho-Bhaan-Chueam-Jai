@@ -9,6 +9,7 @@
  */
 import { herbs, type Herb } from '../data/herbs';
 import { roleBrief } from './roles';
+import { meBrief, meRisk } from './me';
 import type { Wisdom } from '../data/mock';
 import { PHARMACY, type PharmacyDoc } from '../data/pharmacy';
 import { THAIMED } from '../data/thaimed';
@@ -265,7 +266,8 @@ export function think(query: string, opts: { wisdoms: Wisdom[]; mode: 'chat' | '
   const named = herbsMentioned(query);
   // ความปลอดภัย: สัญญาณอันตรายดูจากคำถามล่าสุด · กลุ่มเสี่ยงดูจากบทสนทนา + ข้อมูลผู้ป่วย
   const flags = redFlags(opts.latest ?? query);
-  const groups = riskGroups(query, opts.patient);
+  // ไม่มีผู้ป่วย → ใช้ข้อมูลของผู้ใช้เอง (คนทั่วไป) ตรวจกลุ่มเสี่ยงตามอายุ
+  const groups = riskGroups(query, opts.patient ?? meRisk());
   const pool = [...new Map([...named, ...hs].map((h) => [h.id, h])).values()];
   const conflicts = herbConflicts(pool, groups);
   const allergic = allergyHits(pool, opts.patient?.allergies);
@@ -282,6 +284,7 @@ export function think(query: string, opts: { wisdoms: Wisdom[]; mode: 'chat' | '
         .join('\n'),
     );
   if (opts.patient) blocks.push(patientBrief(opts.patient));
+  else if (meBrief()) blocks.push(meBrief());
   const safe = safetyBlock(flags, groups, conflicts, allergic);
   if (safe) blocks.push(safe);
   if (docs.length) blocks.push(`ความรู้การแพทย์และเภสัชกรรมแผนไทย (จากแหล่งทางการ ใช้อ้างอิงเรื่องหลักการ ทฤษฎีธาตุ การดูแลโรค ตำรับ วิธีปรุง ความปลอดภัย — เมื่อใช้ข้อมูลส่วนนี้ให้บอกชื่อแหล่งสั้นๆ เช่น "ตามแนวทางเวชกรรมไทย 2568"):\n${docs.map((d) => { const k = docById(d.id); return `【${d.title}】${k ? ` (ที่มา: ${citeLabel(k)})` : ''}\n${d.text}`; }).join('\n\n')}`);

@@ -4,7 +4,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Keyboard, Linking, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Keyboard, KeyboardAvoidingView, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Alert } from '../lib/alert';
 import { TextInput } from '../components/AppText';
 import Animated, { FadeIn, FadeInDown, FadeInUp, FadeOut, LinearTransition, useAnimatedKeyboard, useAnimatedStyle, useDerivedValue, useSharedValue, withDelay, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
@@ -739,10 +739,11 @@ export default function Assistant() {
 }
 
 /* ───────────── โหมดคุยด้วยเสียง (ต่อเนื่องแบบคุยกับคนจริง) ───────────── */
-type Phase = 'greeting' | 'listening' | 'hearing' | 'thinking' | 'speaking' | 'paused';
+type Phase = 'greeting' | 'listening' | 'hearing' | 'thinking' | 'speaking' | 'paused' | 'typing';
 
 function VoiceMode({ greet, last, ask, onClose }: { greet: boolean; last: Msg[]; ask: (t: string) => Promise<Msg>; onClose: () => void }) {
   const insets = useSafeAreaInsets();
+  const doc = useApp().settings.userKind === 'clinician';
   const h = useHaptic();
   const rec = useVoiceRecorder();
   const speakLevel = useSharedValue(0);
@@ -754,6 +755,11 @@ function VoiceMode({ greet, last, ask, onClose }: { greet: boolean; last: Msg[];
   const alive = useRef(true);
   const submit = useRef(false);
   const resume = useRef<(() => void) | null>(null);
+  // พิมพ์ได้ระหว่างคุยด้วยเสียง: ตอนพิมพ์ไมค์พักฟัง (ไม่เก็บเสียงแป้นพิมพ์) · ส่งแล้วครูปัญญาตอบด้วยเสียงต่อเลย
+  const typed = useRef<string | null>(null);
+  const typing = useRef(false);
+  const [draft, setDraft] = useState('');
+  const [kb, setKb] = useState(false);
   const micLevel = useDerivedValue(() => withTiming(rec.level.value, { duration: 120 }));
   const level = useDerivedValue(() => (phase === 'speaking' || phase === 'greeting' ? speakLevel.value : micLevel.value));
 
@@ -762,13 +768,25 @@ function VoiceMode({ greet, last, ask, onClose }: { greet: boolean; last: Msg[];
     Keyboard.dismiss();
     const loop = async () => {
       setPhase('greeting');
-      await speech.current!.speak(greet ? 'สวัสดีครับคุณหมอ วันนี้มีอะไรให้ครูปัญญาช่วยครับ' : 'ว่ามาได้เลยครับคุณหมอ');
+      // เรียก "คุณหมอ" เฉพาะผู้ใช้ที่เป็นหมอ (คนทั่วไปไม่เรียกว่าหมอ)
+      const you = doc ? 'คุณหมอ' : '';
+      await speech.current!.speak(greet ? `สวัสดีครับ${you} วันนี้มีอะไรให้ครูปัญญาช่วยครับ` : `ว่ามาได้เลยครับ${you}`);
       let misses = 0;
       while (alive.current) {
         submit.current = false;
+        if (typing.current && !typed.current) {
+          // กำลังพิมพ์ → พักไมค์จนกว่าจะส่งหรือเลิกพิมพ์
+          setPhase('typing');
+          await new Promise<void>((res) => (resume.current = res));
+          resume.current = null;
+          if (!alive.current) return;
+          continue;
+        }
         setPhase('listening');
-        const r = await listenOnce(rec, { alive: () => alive.current, submit: () => submit.current, onHeard: () => alive.current && setPhase('hearing') });
+        const r = await listenOnce(rec, { alive: () => alive.current && !typing.current, submit: () => submit.current, typed: () => typed.current, onHeard: () => alive.current && setPhase('hearing') });
         if (!alive.current) return;
+        typed.current = null;
+        if (!r.text && typing.current) continue;
         if (!r.text) {
           misses += r.heard ? 0 : 1;
           if (r.heard) {
@@ -811,17 +829,31 @@ function VoiceMode({ greet, last, ask, onClose }: { greet: boolean; last: Msg[];
   /** แตะลูกแก้ว: ตอนฟัง = ส่งเลย · ตอนพูด = ขัดจังหวะแล้วฟัง · ตอนพัก = คุยต่อ */
   const tapOrb = () => {
     h.press();
+    if (phase === 'typing') return Keyboard.dismiss();
     if (phase === 'listening' || phase === 'hearing') submit.current = true;
     else if (phase === 'speaking' || phase === 'greeting') speech.current?.stop();
     else if (phase === 'paused') resume.current?.();
   };
 
-  const label = { greeting: 'ครูปัญญากำลังทักทาย', listening: 'กำลังฟัง… พูดได้เลยครับ', hearing: 'กำลังฟัง…', thinking: 'กำลังคิด…', speaking: 'ครูปัญญากำลังพูด', paused: 'แตะลูกแก้วเพื่อคุยต่อ' }[phase];
-  const hint = { greeting: 'แตะลูกแก้วเพื่อข้าม', listening: 'พูดจบแล้วรอสักครู่ หรือแตะลูกแก้วเพื่อส่ง', hearing: 'แตะลูกแก้วเพื่อส่งทันที', thinking: '', speaking: 'แตะลูกแก้วเพื่อขัดจังหวะแล้วพูดต่อได้เลย', paused: '' }[phase];
+  const label = { greeting: 'ครูปัญญากำลังทักทาย', listening: 'กำลังฟัง… พูดได้เลยครับ', hearing: 'กำลังฟัง…', thinking: 'กำลังคิด…', speaking: 'ครูปัญญากำลังพูด', paused: 'แตะลูกแก้วเพื่อคุยต่อ', typing: 'พิมพ์ได้เลยครับ ไมค์พักไว้ก่อน' }[phase];
+  const hint = { greeting: 'แตะลูกแก้วเพื่อข้าม', listening: 'พูดจบแล้วรอสักครู่ หรือแตะลูกแก้วเพื่อส่ง', hearing: 'แตะลูกแก้วเพื่อส่งทันที', thinking: '', speaking: 'แตะลูกแก้วเพื่อขัดจังหวะแล้วพูดต่อได้เลย', paused: '', typing: '' }[phase];
+
+  /** ส่งข้อความที่พิมพ์: ขัดเสียงที่พูดอยู่ / ปลุกจากพัก แล้วครูปัญญาตอบด้วยเสียง */
+  const sendTyped = () => {
+    const t = draft.trim();
+    if (!t || phase === 'thinking') return;
+    h.press();
+    typed.current = t;
+    typing.current = false;
+    setDraft('');
+    Keyboard.dismiss();
+    if (phase === 'speaking' || phase === 'greeting') speech.current?.stop();
+    resume.current?.();
+  };
 
   return (
     // ไม่ใช้แอนิเมชันความโปร่งที่ตัวหน้า (ปุ่มกระจก Liquid Glass ไม่แสดงใต้ตัวจางเข้า)
-    <View style={[StyleSheet.absoluteFill, styles.voicePage]}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={[StyleSheet.absoluteFill, styles.voicePage]}>
       <View style={[styles.top, { paddingTop: insets.top + 8 }]}>
         <View style={{ width: 44 }} />
         <View style={{ alignItems: 'center' }}>
@@ -833,9 +865,9 @@ function VoiceMode({ greet, last, ask, onClose }: { greet: boolean; last: Msg[];
         </GlassCircle>
       </View>
 
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 28 }}>
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 28, overflow: 'hidden' }}>
         <Pressable onPress={tapOrb} accessibilityRole="button" accessibilityLabel={label}>
-          <AISphere size={250} active={phase !== 'paused'} level={level as any} />
+          <AISphere size={kb ? 120 : 250} active={phase !== 'paused' && phase !== 'typing'} level={level as any} />
         </Pressable>
         <View style={styles.statusPill}>
           {phase === 'listening' || phase === 'hearing' ? <View style={styles.liveDot} /> : null}
@@ -848,14 +880,14 @@ function VoiceMode({ greet, last, ask, onClose }: { greet: boolean; last: Msg[];
         ) : null}
         {/* คำบรรยาย: สิ่งที่หมอพูด + คำตอบล่าสุด */}
         <View style={{ marginTop: 22, gap: 12, alignSelf: 'stretch' }}>
-          {heardText ? (
+          {heardText && !kb ? (
             <Animated.View key={`h${heardText}`} entering={FadeInDown.duration(260)}>
               <T v="callout" color="rgba(255,255,255,0.55)" center numberOfLines={2}>“{heardText}”</T>
             </Animated.View>
           ) : null}
           {replyText && phase !== 'thinking' ? (
             <Animated.View key={`r${replyText.slice(0, 20)}`} entering={FadeInDown.duration(320)}>
-              <ScrollView style={{ maxHeight: 190 }} showsVerticalScrollIndicator={false}>
+              <ScrollView style={{ maxHeight: kb ? 120 : 190 }} showsVerticalScrollIndicator={false}>
                 <T v="body" color="#FFFFFF" center style={{ lineHeight: 26 }}>{replyText}</T>
               </ScrollView>
             </Animated.View>
@@ -863,14 +895,37 @@ function VoiceMode({ greet, last, ask, onClose }: { greet: boolean; last: Msg[];
         </View>
       </View>
 
-      <View style={{ paddingBottom: insets.bottom + 18, alignItems: 'center', gap: 14 }}>
-        {hint ? <T v="caption" color="rgba(255,255,255,0.45)" center>{hint}</T> : null}
-        <PressableScale haptic="press" onPress={onClose} style={styles.endBtn} accessibilityLabel="กลับไปพิมพ์">
-          <Sym name="keyboard" size={17} color="#FFFFFF" />
-          <T v="bodyStrong" color="#FFFFFF">กลับไปพิมพ์</T>
-        </PressableScale>
+      <View style={{ paddingBottom: kb ? 10 : insets.bottom + 14, paddingHorizontal: 16, gap: 12 }}>
+        {hint && !kb ? <T v="caption" color="rgba(255,255,255,0.45)" center>{hint}</T> : null}
+        {/* พิมพ์ไปด้วยคุยไปด้วย: ส่งแล้วครูปัญญาตอบเป็นเสียง ไม่ต้องออกจากหน้านี้ */}
+        <View style={[styles.voiceDock, column.read]}>
+          <View style={styles.typeRow}>
+            <TextInput
+              value={draft}
+              onChangeText={setDraft}
+              onFocus={() => {
+                typing.current = true;
+                setKb(true);
+              }}
+              onBlur={() => {
+                typing.current = false;
+                setKb(false);
+                resume.current?.();
+              }}
+              onSubmitEditing={sendTyped}
+              placeholder="หรือพิมพ์ถามครูปัญญา"
+              placeholderTextColor="#9AA19D"
+              returnKeyType="send"
+              style={[styles.typeInput, { paddingLeft: 10 }]}
+              accessibilityLabel="พิมพ์ถามครูปัญญา"
+            />
+            <PressableScale haptic="none" onPress={sendTyped} disabled={!draft.trim() || phase === 'thinking'} accessibilityLabel="ส่ง" style={[styles.send, { backgroundColor: draft.trim() && phase !== 'thinking' ? palette.primary : '#E4E9E6' }]}>
+              <Sym name="arrow.up" size={17} color={draft.trim() && phase !== 'thinking' ? '#FFFFFF' : '#9AA19D'} weight="bold" />
+            </PressableScale>
+          </View>
+        </View>
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -1067,6 +1122,7 @@ const styles = StyleSheet.create({
   listen: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 6, marginLeft: 6, height: 28 },
   top: { ...column.read, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingBottom: 8, gap: 8 },
   dockFade: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 150 },
+  voiceDock: { alignSelf: 'center', width: '100%', padding: 8, borderRadius: 32, borderCurve: 'continuous', backgroundColor: 'rgba(28,30,29,0.96)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.22)' },
   darkDock: { position: 'absolute', left: 24, right: 24, padding: 8, borderRadius: 32, borderCurve: 'continuous', backgroundColor: 'rgba(28,30,29,0.96)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.22)', boxShadow: '0px 10px 30px rgba(0,0,0,0.6)' },
   typeRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, minHeight: 50, paddingHorizontal: 6, paddingVertical: 6, borderRadius: 25, backgroundColor: '#FFFFFF' },
   typeInput: { flex: 1, maxHeight: 120, fontSize: 17, color: '#1F2A24', paddingTop: 8, paddingBottom: 8, paddingHorizontal: 4 },
@@ -1076,7 +1132,6 @@ const styles = StyleSheet.create({
   toolBtn: { width: 42, height: 44, alignItems: 'center', justifyContent: 'center' },
   statusPill: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14, paddingHorizontal: 14, height: 34, borderRadius: 17, backgroundColor: 'rgba(255,255,255,0.1)' },
   liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#FF5A4E' },
-  endBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, height: 50, paddingHorizontal: 24, borderRadius: 25, backgroundColor: 'rgba(255,255,255,0.14)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.25)' },
   sheet: { flex: 1, backgroundColor: '#111312' },
   sheetHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingTop: 18, paddingBottom: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(255,255,255,0.12)' },
   swipeDel: { width: 78, marginLeft: 8, borderRadius: 18, borderCurve: 'continuous', alignItems: 'center', justifyContent: 'center', gap: 2, backgroundColor: '#E5484D' },

@@ -17,6 +17,7 @@ import { syncShared } from '../../../lib/wisdomShare';
 import { Sym, ios } from '../../../components/ios';
 import { HeaderButton, PressableScale, T } from '../../../components/ui';
 import { type Wisdom } from '../../../data/mock';
+import { showPatients } from '../../../lib/roles';
 import { useApp } from '../../../store/app';
 import { elevation, palette } from '../../../theme';
 import { LargeTitle, useLargeTitleScroll } from '../../../components/nav/LargeTitle';
@@ -55,7 +56,9 @@ function Book({ w, width, i }: { w: Wisdom; width: number; i: number }) {
 
 export default function Vault() {
   const lt = useLargeTitleScroll();
-  const { wisdoms, updateWisdom } = useApp();
+  const { wisdoms, updateWisdom, settings } = useApp();
+  // คนทั่วไปอ่านได้อย่างเดียว: ไม่มีปุ่มเพิ่ม / รับตำรา / เล่าให้ครูปัญญาฟัง
+  const canAdd = showPatients(settings.userKind);
   const dr = useDoctor();
   // ตำราที่เพื่อนแชร์มา: เปิดคลังเมื่อไหร่ ดึงเนื้อหาล่าสุดจากต้นฉบับ (เพื่อนแก้แล้วอัปเดตตาม)
   useFocusEffect(
@@ -80,11 +83,13 @@ export default function Vault() {
             <HeaderButton label="ค้นหาภูมิปัญญา" onPress={() => router.push('/wisdom/search')}>
               <Sym name="magnifyingglass" size={20} color={palette.ink} weight="semibold" />
             </HeaderButton>
-            <HeaderButton label="สแกนคิวอาร์โค้ดรับตำรา" onPress={() => router.push('/wisdom/scan-qr')}>
-              <Sym name="qrcode.viewfinder" size={20} color={palette.ink} weight="semibold" />
-            </HeaderButton>
+            {canAdd ? (
+              <HeaderButton label="สแกนคิวอาร์โค้ดรับตำรา" onPress={() => router.push('/wisdom/scan-qr')}>
+                <Sym name="qrcode.viewfinder" size={20} color={palette.ink} weight="semibold" />
+              </HeaderButton>
+            ) : null}
             {/* เพิ่มภูมิปัญญา: เล่าให้ครูปัญญาฟัง (AI) / เขียนเอง / สแกน */}
-            <MenuView
+            {canAdd ? <MenuView
               shouldOpenOnLongPress={false}
               themeVariant="light"
               title="เพิ่มภูมิปัญญา"
@@ -98,7 +103,7 @@ export default function Vault() {
               <View style={{ width: 36, height: 36, alignItems: 'center', justifyContent: 'center' }} accessibilityRole="button" accessibilityLabel="เพิ่มภูมิปัญญา">
                 <Sym name="plus" size={20} color={palette.ink} weight="semibold" />
               </View>
-            </MenuView>
+            </MenuView> : null}
           </View>
         ),
       }}
@@ -120,8 +125,8 @@ export default function Vault() {
         </View>
 
         <Animated.View entering={FadeInDown.duration(420)}>
-          <T v="h1" color="#FFFFFF" style={styles.title}>บันทึกแล้ว {wisdoms.length} เรื่อง</T>
-          <T v="callout" color="rgba(255,255,255,0.78)">ตำรับยา วิธีรักษา คาถา และตำราโบราณของคุณหมอ</T>
+          <T v="h1" color="#FFFFFF" style={styles.title}>{canAdd ? `บันทึกแล้ว ${wisdoms.length} เรื่อง` : `ตำรา ${wisdoms.length} เรื่อง`}</T>
+          <T v="callout" color="rgba(255,255,255,0.78)">{canAdd ? 'ตำรับยา วิธีรักษา คาถา และตำราโบราณของคุณหมอ' : 'อ่านตำรับยา วิธีรักษา และตำราโบราณจากแหล่งอ้างอิง'}</T>
         </Animated.View>
 
         {/* KPI: จำนวนตามประเภทตำรา (แสดงผลอย่างเดียว) */}
@@ -141,8 +146,8 @@ export default function Vault() {
       </View>
       </View>
 
-      {/* ── โหมดเล่า: ทางลัดถ่ายทอดภูมิปัญญาด้วยเสียง ── */}
-      <PressableScale haptic="press" scaleTo={0.98} onPress={() => router.push('/wisdom/tell')} style={[styles.tell, elevation.e1]} accessibilityLabel="โหมดเล่า เล่าให้ครูปัญญาฟัง">
+      {/* ── โหมดเล่า: ทางลัดถ่ายทอดภูมิปัญญาด้วยเสียง (หมอเท่านั้น) ── */}
+      {canAdd ? <PressableScale haptic="press" scaleTo={0.98} onPress={() => router.push('/wisdom/tell')} style={[styles.tell, elevation.e1]} accessibilityLabel="โหมดเล่า เล่าให้ครูปัญญาฟัง">
         <View style={styles.tellIcon}>
           <Sym name="waveform" size={22} color="#7CF0A8" />
         </View>
@@ -151,7 +156,7 @@ export default function Vault() {
           <T v="caption" color="rgba(255,255,255,0.7)" numberOfLines={2}>เล่าต่อเนื่องเหมือนเล่าให้ลูกหลานฟัง ครูปัญญาเก็บเสียงไว้และเขียนเป็นหนังสือให้</T>
         </View>
         <Sym name="chevron.right" size={14} color="rgba(255,255,255,0.6)" weight="semibold" />
-      </PressableScale>
+      </PressableScale> : null}
 
       {/* ── ตำราของหมอ (ยังไม่มี = ไม่แสดงหัวข้อนี้) ── */}
       {list.length ? (

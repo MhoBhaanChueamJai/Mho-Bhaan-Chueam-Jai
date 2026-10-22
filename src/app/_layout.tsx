@@ -85,6 +85,7 @@ function Root() {
         <Stack.Screen name="wisdom/receive" options={{ headerShown: true, title: 'รับตำราจากเพื่อน', headerBackButtonDisplayMode: 'minimal', headerTintColor: palette.ink, headerShadowVisible: false, headerStyle: { backgroundColor: palette.bg }, contentStyle: { backgroundColor: palette.bg } }} />
         <Stack.Screen name="settings" options={{ headerShown: true, title: 'ตั้งค่า', headerLargeTitle: true, headerTransparent: true, headerShadowVisible: false, headerLargeTitleShadowVisible: false, headerBackVisible: false }} />
         <Stack.Screen name="account/edit" options={sheet({ presentation: 'formSheet', sheetAllowedDetents: [1.0], sheetGrabberVisible: false, contentStyle: { backgroundColor: palette.bg } })} />
+        <Stack.Screen name="account/health" options={sheet({ presentation: 'formSheet', sheetAllowedDetents: [1.0], sheetGrabberVisible: false, contentStyle: { backgroundColor: palette.bg } })} />
         <Stack.Screen name="account/password" options={sheet({ presentation: 'formSheet', sheetAllowedDetents: [1.0], sheetGrabberVisible: false, contentStyle: { backgroundColor: palette.bg } })} />
         <Stack.Screen name="forgot" options={{ headerShown: true, headerBackButtonDisplayMode: 'minimal', headerTintColor: palette.ink, headerShadowVisible: false, headerStyle: { backgroundColor: palette.bg } }} />
         <Stack.Screen name="reset-password" options={{ animation: 'fade', gestureEnabled: false }} />

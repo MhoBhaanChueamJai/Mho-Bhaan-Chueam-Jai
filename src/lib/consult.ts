@@ -3,6 +3,7 @@
  * ซักประวัติทีละคำถาม พร้อมตัวเลือกให้แตะตอบ → ครบพอแล้วเสนอแนวทางรักษา (แผนไทย / แผนปัจจุบัน) ผ่าน treatmentPlan
  * สัญญาณอันตรายตรวจในเครื่องทุกคำตอบ — เจอแล้วหยุดถาม บอกให้ไปโรงพยาบาลทันที
  */
+import { hasMe, meLine, mePerson } from './me';
 import { chatJSON } from '../api/ai';
 import type { Turn } from './intake';
 import type { PlanCase, PlanPerson } from './plan';
@@ -49,7 +50,8 @@ export async function consultTurn(known: ConsultFacts, history: Turn[], answer: 
         {
           role: 'user',
           content: `คุณคือ "ครูปัญญา" กำลังซักประวัติเพื่อให้คำแนะนำด้านสุขภาพแผนไทย (${roleBrief()})
-ข้อมูลที่รู้แล้ว: ${JSON.stringify(known)}
+ข้อมูลที่รู้แล้ว: ${JSON.stringify(known)}${meLine() && hasMe() ? `
+ข้อมูลของผู้ใช้เอง (จากโปรไฟล์): ${meLine()} — ถ้าปรึกษาให้ตัวเอง ใส่ age/sex จากนี้ได้เลยไม่ต้องถาม · ถ้าปรึกษาให้คนอื่นห้ามใช้` : ''}
 บทสนทนา:
 ${history.map((h) => `${h.role === 'ai' ? 'ครูปัญญา' : 'ผู้ใช้'}: ${h.text}`).join('\n')}
 ผู้ใช้: ${answer}
@@ -88,11 +90,15 @@ ${history.map((h) => `${h.role === 'ai' ? 'ครูปัญญา' : 'ผู�
 /** ข้อมูลที่ซักได้ → ใช้กับ treatmentPlan */
 export function consultToPlan(f: ConsultFacts, qa: { q: string; a: string }[]): { person: PlanPerson; input: PlanCase } {
   const age = Number(String(f.age ?? '').match(/\d+/)?.[0]);
+  // ปรึกษาให้ตัวเอง → เติมเพศ อายุ ธาตุ จากโปรไฟล์ที่ยังไม่ได้บอก
+  const self = !f.who || /ตัวเอง|ฉัน|ผม|ดิฉัน|หนู|เรา/.test(f.who);
+  const me = self ? mePerson() : {};
   return {
     person: {
-      name: f.who && !/ตัวเอง|ฉัน|ผม|ดิฉัน/.test(f.who) ? f.who : undefined,
-      sex: f.sex,
-      age: Number.isFinite(age) && age > 0 ? age : undefined,
+      name: f.who && !self ? f.who : undefined,
+      sex: f.sex ?? me.sex,
+      age: Number.isFinite(age) && age > 0 ? age : me.age,
+      element: me.element,
       chronic: [f.chronic, f.pregnant && !/ไม่/.test(f.pregnant) ? `ตั้งครรภ์/ให้นมบุตร (${f.pregnant})` : ''].filter(Boolean).join(' · ') || undefined,
       allergies: f.allergies,
       meds: f.meds && !/^(ไม่|ไม่มี|ไม่ได้)/.test(f.meds) ? f.meds.split(/[,，、]| และ /).map((x) => x.trim()).filter(Boolean) : [],

@@ -1,4 +1,5 @@
 import { setDialect, type Dialect } from '../lib/dialect';
+import { setMe, type MyHealth } from '../lib/me';
 import { ROLE_PICKER, kindOf, roleOf, setCurrentRole, type UserKind, type UserRole } from '../lib/roles';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
@@ -34,6 +35,10 @@ type Settings = {
   demoAppts?: boolean;
   /** ภาพโปรไฟล์ที่หมอเลือกเอง (ไฟล์ในเครื่อง) — ไม่มี = ภาพหมอเริ่มต้น */
   avatarUri?: string;
+  /** ข้อมูลสุขภาพของผู้ใช้เอง (วันเกิด อายุ เพศ น้ำหนัก ส่วนสูง ธาตุ) — ครูปัญญาใช้ตอนคนทั่วไปถามเรื่องตัวเอง */
+  me?: MyHealth;
+  /** ตัวการ์ตูนที่เลือก (คีย์ใน AVATAR_PRESETS) — ใช้เมื่อไม่มีภาพถ่าย */
+  avatarPreset?: string;
   /** อีเมล/ชื่อผู้ใช้ที่ใช้เข้าสู่ระบบครั้งล่าสุด (เติมให้ในช่องล็อกอิน) */
   loginId?: string;
   /** ล็อกแอปด้วยรหัส PIN */
@@ -158,6 +163,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // ให้ส่วน AI (นอก React) รู้ภาษาถิ่นที่ตั้งไว้
   useEffect(() => setDialect(settings.dialect ?? 'central'), [settings.dialect]);
   useEffect(() => setCurrentRole(settings.userRole), [settings.userRole]);
+  useEffect(() => setMe(settings.me, settings.userKind), [settings.me, settings.userKind]);
   // mine = ตำราของผู้ใช้ (บันทึกเครื่อง/คลาวด์) · wisdoms = ของผู้ใช้ + ตำราเริ่มต้นในระบบ
   const [mine, setMineRaw] = useState<Wisdom[]>(seedWisdoms);
   const setWisdoms = (v: Wisdom[] | ((l: Wisdom[]) => Wisdom[])) =>
@@ -514,7 +520,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       clearLocal: () => {
         // ประวัติแชทครูปัญญาเป็นข้อมูลส่วนตัวของผู้ใช้คนนี้ → ล้างเมื่อออกจากระบบ
         clearChats().catch(() => {});
-        setSettings((st) => ({ ...st, avatarUri: undefined, demoSeeded: undefined, demoAppts: undefined, userRole: undefined, userKind: undefined, patientFileMigrated: undefined }));
+        setSettings((st) => ({ ...st, avatarUri: undefined, avatarPreset: undefined, me: undefined, demoSeeded: undefined, demoAppts: undefined, userRole: undefined, userKind: undefined, patientFileMigrated: undefined }));
         setOnline(false);
         setDemo(false);
         setPatients([]);

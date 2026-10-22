@@ -69,12 +69,17 @@ export default function Home() {
   const myAvatar = useMyAvatar();
   const me = profile?.first_name || profile?.display_name?.split(' ')[0] || name;
   const { wide } = useLayout();
+  // คนทั่วไป: คลังภูมิปัญญาอ่านอย่างเดียว → ไม่มีทางลัดสแกน/ถ่ายทอดตำรับ
   const small = [
     <Widget key="herb" onPress={() => router.push(`/herb/${pick.herb.id}`)} icon="leaf.fill" colors={G.leaf} title={pick.herb.name} sub={`สมุนไพรวันนี้ · รส${pick.herb.taste}`} photo={pick.herb.image} style={{ flex: 1 }} />,
-    <Widget key="scan" onPress={() => router.push('/scan')} icon="doc.viewfinder" colors={G.amber} title="สแกนตำรา" sub="สมุดข่อย ใบลาน" style={{ flex: 1 }} />,
-    <Widget key="tell" onPress={() => router.push('/wisdom/tell')} icon="book.closed.fill" colors={G.red} title="ถ่ายทอดตำรับ" sub="เล่าให้ครูปัญญาฟัง" style={{ flex: 1 }} />,
-    <Widget key="vault" onPress={() => router.push('/vault')} icon="books.vertical.fill" colors={G.brown} title={`ภูมิปัญญา ${wisdoms.length} เรื่อง`} sub={pendingW ? `รอตรวจทาน ${pendingW} เรื่อง` : 'ตรวจทานครบแล้ว'} style={{ flex: 1 }}>
-      {wisdoms.length ? (
+    ...(doc
+      ? [
+          <Widget key="scan" onPress={() => router.push('/scan')} icon="doc.viewfinder" colors={G.amber} title="สแกนตำรา" sub="สมุดข่อย ใบลาน" style={{ flex: 1 }} />,
+          <Widget key="tell" onPress={() => router.push('/wisdom/tell')} icon="book.closed.fill" colors={G.red} title="ถ่ายทอดตำรับ" sub="เล่าให้ครูปัญญาฟัง" style={{ flex: 1 }} />,
+        ]
+      : []),
+    <Widget key="vault" onPress={() => router.push('/vault')} icon="books.vertical.fill" colors={G.brown} title={`ภูมิปัญญา ${wisdoms.length} เรื่อง`} sub={!doc ? 'อ่านตำราอ้างอิง' : pendingW ? `รอตรวจทาน ${pendingW} เรื่อง` : 'ตรวจทานครบแล้ว'} style={{ flex: 1 }}>
+      {doc && wisdoms.length ? (
         <View style={styles.track}>
           <View style={[styles.fillBar, { width: `${((wisdoms.length - pendingW) / wisdoms.length) * 100}%` }]} />
         </View>
@@ -157,7 +162,7 @@ export default function Home() {
         </Animated.View>
 
         {/* ── Bento แถว 2–3: สมุนไพรวันนี้ · สแกนตำรา · ถ่ายทอดตำรับ · ภูมิปัญญาของฉัน (จอกว้าง = แถวเดียว 4 ช่อง) ── */}
-        {(wide ? [small] : [small.slice(0, 2), small.slice(2)]).map((row, i) => (
+        {(wide ? [small] : [small.slice(0, 2), small.slice(2)]).filter((row) => row.length).map((row, i) => (
           <Animated.View key={i} entering={enter(2 + i)} style={[styles.row, { height: 140 }]}>
             {row}
           </Animated.View>
