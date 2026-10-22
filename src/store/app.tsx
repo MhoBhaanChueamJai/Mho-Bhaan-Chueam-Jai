@@ -9,11 +9,12 @@ import { DEMO_APPTS, DEMO_PATIENTS } from '../data/demoPatients';
 import { isoIn } from '../lib/reminders';
 import { LIBRARY } from '../data/library';
 import { clearChats } from '../lib/chatStore';
+import { clearAllDrafts } from '../lib/drafts';
 import { removeClips } from '../lib/wisdomAudio';
 import { LEGACY_SAMPLE_PATIENTS, isLegacyWisdom, agenda as seedAgenda, patients as seedPatients, wisdoms as seedWisdoms, type MB5Visit, type Patient, type Wisdom } from '../data/mock';
 import * as cloud from '../lib/cloud';
 import type { Agenda } from '../lib/cloud';
-import { supabase, usernameToEmail } from '../lib/supabase';
+import { demoAccountOf, supabase } from '../lib/supabase';
 
 type Settings = {
   /** เวลาที่ซิงก์คลาวด์สำเร็จล่าสุด (ms) — ใช้แยกข้อมูลที่บันทึกในเครื่องระหว่างออฟไลน์ */
@@ -253,8 +254,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (prof?.role) setSettings((s) => ({ ...s, role: prof.role }));
       // โหมดทดลอง (บัญชีสาธิตที่หลายคนใช้ร่วมกัน): ข้อมูลอยู่ในเครื่องนี้เท่านั้น ไม่โหลด/ไม่ส่งขึ้นคลาวด์
       // — กันไม่ให้ผู้ทดลองเห็นข้อมูลผู้ป่วยที่คนอื่นบันทึกไว้ในบัญชีเดียวกัน
-      const isDemo = (data.session.user.email ?? '').toLowerCase() === usernameToEmail('somchai').toLowerCase();
+      const demoAcct = demoAccountOf(data.session.user.email);
+      const isDemo = !!demoAcct;
       setDemo(isDemo);
+      // บัญชีทดลองใช้: ประเภทผู้ใช้ตายตัวตามบัญชี (พ่อหมอสมบัติ = แพทย์ · สมศรี = ประชาชน) ไม่ต้องถาม
+      if (demoAcct) setSettings((st) => ({ ...st, userKind: demoAcct.kind }));
       // บทบาทผู้ใช้ (คอลัมน์ใหม่ใน migration 009) — มีคอลัมน์นี้ = ฐานข้อมูลเปิดให้ทุกบัญชีบันทึกผู้ป่วยแล้ว
       // บัญชีทดลองใช้ร่วมกันหลายคน → บทบาทอยู่ในเครื่องเท่านั้น (ไม่อ่าน/ไม่เขียนคลาวด์)
       const ur = isDemo ? { data: null, error: true } : await supabase.from('profiles').select('user_role').eq('id', data.session.user.id).maybeSingle();
@@ -268,12 +272,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       } else if (cloudRole) setSettings((st) => (ROLE_PICKER ? { ...st, userRole: roleOf(cloudRole) } : kindOf(cloudRole) ? { ...st, userKind: kindOf(cloudRole) } : st));
       if (isDemo) {
         // ใส่ผู้ป่วยตัวอย่างให้ลองใช้ (ครั้งแรกที่เข้าโหมดนี้ในเครื่อง — ลบแล้วไม่ใส่ซ้ำ)
-        if (!settings.demoSeeded) {
+        if (demoAcct?.kind === 'clinician' && !settings.demoSeeded) {
           setPatients((list) => (list.length ? list : DEMO_PATIENTS));
           setSettings((st) => ({ ...st, demoSeeded: true }));
         }
         // นัดตัวอย่าง (นับจากวันนี้): เลยนัด · วันนี้ · ในสัปดาห์ · สัปดาห์หน้า — ใส่ครั้งเดียว ไม่ทับนัดที่หมอตั้งเอง
-        if (!settings.demoAppts) {
+        if (demoAcct?.kind === 'clinician' && !settings.demoAppts) {
           setPatients((list) => list.map((p) => (DEMO_APPTS[p.id] != null && !p.followUpOn ? { ...p, status: 'ติดตามอาการ', followUpOn: isoIn(DEMO_APPTS[p.id]) } : p)));
           setSettings((st) => ({ ...st, demoAppts: true }));
         }
@@ -520,6 +524,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       clearLocal: () => {
         // ประวัติแชทครูปัญญาเป็นข้อมูลส่วนตัวของผู้ใช้คนนี้ → ล้างเมื่อออกจากระบบ
         clearChats().catch(() => {});
+        // ดราฟต์ฟอร์ม (เพิ่มผู้ป่วย/บันทึกการรักษา) มีข้อมูลผู้ป่วย → ล้างด้วย ไม่ให้บัญชีถัดไปเห็น
+        clearAllDrafts().catch(() => {});
         setSettings((st) => ({ ...st, avatarUri: undefined, avatarPreset: undefined, me: undefined, demoSeeded: undefined, demoAppts: undefined, userRole: undefined, userKind: undefined, patientFileMigrated: undefined }));
         setOnline(false);
         setDemo(false);

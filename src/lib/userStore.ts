@@ -6,7 +6,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
 import { loadUserJSON, saveUserJSON } from './cloud';
-import { supabase, usernameToEmail } from './supabase';
+import { demoAccountOf, supabase } from './supabase';
 
 type Box<T> = { items: T[]; savedAt: number; loaded: boolean; listeners: Set<() => void>; timer?: ReturnType<typeof setTimeout> };
 const boxes = new Map<string, Box<any>>();
@@ -14,7 +14,7 @@ const boxes = new Map<string, Box<any>>();
 async function cloudOk() {
   const { data } = await supabase.auth.getSession();
   const email = data.session?.user.email?.toLowerCase();
-  return !!email && email !== usernameToEmail('somchai').toLowerCase();
+  return !!email && !demoAccountOf(email);
 }
 
 function box<T>(name: string): Box<T> {

@@ -7,7 +7,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Sym, ios } from '../components/ios';
 import { LoginFilm } from '../components/LoginFilm';
 import { Button, PressableScale, T, useHaptic } from '../components/ui';
-import { supabase, usernameToEmail } from '../lib/supabase';
+import { Alert } from '../lib/alert';
+import { DEMO_ACCOUNTS, supabase, usernameToEmail, type DemoAccount } from '../lib/supabase';
 import { PRIVACY_VERSION } from './privacy';
 import { useApp } from '../store/app';
 import { control, palette } from '../theme';
@@ -121,18 +122,27 @@ export default function Login() {
   };
 
   /** เข้าสู่ระบบ / สมัครบัญชี ด้วย Supabase Auth (ชื่อผู้ใช้ → อีเมลภายในแอป) */
-  /** ทดลองใช้งานด้วยบัญชีสาธิต */
-  const demo = async () => {
+  /** ทดลองใช้งานด้วยบัญชีสาธิต — เลือกฝั่งแพทย์ (พ่อหมอสมบัติ) หรือประชาชน (สมศรี) ไม่ต้องสมัคร */
+  const pickDemo = () => {
+    if (busy) return;
+    Alert.alert('ทดลองใช้งาน', 'เลือกบัญชีทดลอง (ไม่ต้องสมัคร · ข้อมูลเก็บในเครื่องนี้เท่านั้น)', [
+      ...DEMO_ACCOUNTS.map((d) => ({ text: d.label, onPress: () => demo(d) })),
+      { text: 'ยกเลิก', style: 'cancel' as const },
+    ]);
+  };
+  const demo = async (acct: DemoAccount) => {
     if (busy) return;
     setBusy(true);
     setError('');
     setInfo('');
     try {
-      const { data, error: e } = await supabase.auth.signInWithPassword({ email: usernameToEmail('somchai'), password: '123456' });
+      const { data, error: e } = await supabase.auth.signInWithPassword({ email: usernameToEmail(acct.username), password: acct.password });
       if (e) return fail('เข้าโหมดทดลองไม่สำเร็จ ลองใหม่อีกครั้ง');
       const md = data.user?.user_metadata ?? {};
+      // ประเภทผู้ใช้ตามบัญชีทดลอง → ไม่ต้องถามในหน้าเลือกประเภท
+      update({ userKind: acct.kind });
       await reloadCloud();
-      enter(md.first_name ? `${md.first_name} ${md.last_name ?? ''}`.trim() : 'somchai');
+      enter(md.first_name ? `${md.first_name} ${md.last_name ?? ''}`.trim() : acct.username);
     } catch {
       fail('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ ตรวจสอบอินเทอร์เน็ต');
     }
@@ -345,9 +355,9 @@ export default function Login() {
             <T v="callout" color={palette.primary} style={{ fontWeight: '700' }}>{mode === 'login' ? 'สมัครบัญชี' : 'เข้าสู่ระบบ'}</T>
           </T>
         </PressableScale>
-        {/* ทดลองใช้: เข้าด้วยบัญชีสาธิต (พ่อหมอสมบัติ) — อยู่ใต้บรรทัดสมัคร */}
+        {/* ทดลองใช้: เลือกบัญชีสาธิต แพทย์ (พ่อหมอสมบัติ) / ประชาชน (สมศรี) — อยู่ใต้บรรทัดสมัคร */}
         {mode === 'login' ? (
-          <PressableScale haptic="select" onPress={demo} disabled={busy} style={[styles.demo, { alignSelf: 'center' }]} accessibilityLabel="ทดลองใช้งาน">
+          <PressableScale haptic="select" onPress={pickDemo} disabled={busy} style={[styles.demo, { alignSelf: 'center' }]} accessibilityLabel="ทดลองใช้งาน">
             <Sym name="play.circle.fill" size={15} color={palette.primaryDeep} />
             <T v="subhead" color={palette.primaryDeep} style={{ fontWeight: '600' }}>ทดลองใช้</T>
           </PressableScale>

@@ -37,3 +37,18 @@ export function usernameToEmail(u: string) {
   const hex = Array.from(new TextEncoder().encode(k), (b) => b.toString(16).padStart(2, '0')).join('');
   return `u${hex}@mhobhaan.app`;
 }
+
+/**
+ * บัญชีทดลองใช้ (ปุ่ม "ทดลองใช้" หน้าเข้าสู่ระบบ ไม่ต้องสมัคร) — หลายคนใช้ร่วมกัน
+ * ข้อมูลอยู่ในเครื่องนี้เท่านั้น ไม่ขึ้นคลาวด์ · แก้/ลบบัญชีไม่ได้ · ประเภทผู้ใช้ตายตัวตามบัญชี
+ */
+export const DEMO_ACCOUNTS = [
+  { username: 'somchai', password: '123456', kind: 'clinician', label: 'พ่อหมอสมบัติ (แพทย์)' },
+  { username: 'somsri', password: '123456', kind: 'public', label: 'สมศรี (ประชาชน)' },
+] as const;
+export type DemoAccount = (typeof DEMO_ACCOUNTS)[number];
+/** อีเมลนี้เป็นบัญชีทดลองใช้ไหม (คืนข้อมูลบัญชี หรือ undefined) */
+export const demoAccountOf = (email?: string | null): DemoAccount | undefined => {
+  const e = (email ?? '').toLowerCase();
+  return DEMO_ACCOUNTS.find((d) => usernameToEmail(d.username).toLowerCase() === e);
+};

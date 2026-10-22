@@ -43,3 +43,13 @@ export function draftWhen(at: number) {
   const days = Math.round((new Date().setHours(0, 0, 0, 0) - new Date(at).setHours(0, 0, 0, 0)) / 86400000);
   return `${days === 0 ? '' : days === 1 ? 'เมื่อวาน ' : `${d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })} `}${t} น.`;
 }
+
+/** ลบดราฟต์ทุกฟอร์ม — เรียกตอนออกจากระบบ (ข้อมูลผู้ป่วยที่กรอกค้างไว้ห้ามข้ามไปบัญชีถัดไปในเครื่องเดียวกัน) */
+export async function clearAllDrafts() {
+  timers.forEach((t) => clearTimeout(t));
+  timers.clear();
+  try {
+    const keys = (await AsyncStorage.getAllKeys()).filter((k) => k.startsWith(K('')));
+    if (keys.length) await AsyncStorage.multiRemove(keys);
+  } catch {}
+}
